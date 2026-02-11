@@ -1,290 +1,286 @@
+
 import express from "express";
-import { createAdminAuth } from "./src/middleware/auth.js";
 import cors from "cors";
+import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import Database from "better-sqlite3";
-import { ethers } from "ethers";
+import cookieParser from "cookie-parser";
 import "dotenv/config";
-import fs from "fs";
+
+import { validateEnv } from "./src/config/env.js";
+import { migrate } from "./scripts/migrate.js";
 import { OperationsEngine } from "./src/services/operations-engine.js";
+import { createAdminAuth } from "./src/middleware/auth.js";
+import { createIntegrationRouter } from "./src/integrations/router.js";
 import { createLedgerRouter } from "./src/routes/ledger.js";
+import { UniversalDB } from "./src/db/index.js";
+import { LoggerService } from "./src/services/logger.js";
+import { DiagnosticsService } from "./src/services/diagnostics.js";
+import { createDashboardRouter } from "./src/routes/dashboard.js";
+import { createOpsRouter } from "./src/routes/ops.js";
+import { createUIRouter } from "./src/routes/ui.js";
+import { createBuilderAuthRouter } from "./src/routes/builder_auth.js";
+import { createBuilderApiRouter } from "./src/routes/builder_api.js";
+import { createUsageIngestRouter } from "./src/routes/usage_ingest.js";
+import { AlertService } from "./src/ops/alerts.js";
+import { Scheduler } from "./src/ops/scheduler.js";
 
-const PORT = process.env.PORT || 8080;
+// ─── CONFIG ──────────────────────────────────────────────────
+const config = validateEnv();
+const PORT = config.port;
 
-// Deterministic Admin Auth Middleware (Day-1 Requirement)
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
-if (!ADMIN_API_KEY) {
-  console.error("CRITICAL ERROR: ADMIN_API_KEY is not configured in .env. Failsafe shutdown.");
-  process.exit(1);
-}
+process.on("unhandledRejection", (err) => console.error("[CRITICAL] Unhandled:", err));
 
+// ─── APP FACTORY ─────────────────────────────────────────────
+export async function createApp(db) {
+  // 1) Migrations
+  // Note: Migrate script needs refactor too. For now we assume db passed in is ready or we run migrations separately.
 
+  // 2) Engine + Auth + Services
+  const logger = new LoggerService(db);
+  const diagnostics = new DiagnosticsService(db, logger);
+  const alertService = new AlertService(logger);
 
-export const createApp = (db) => {
-  const app = express();
-
-  // Initialize Operations Engine
   const opsEngine = new OperationsEngine(db);
-  const epochId = opsEngine.initEpoch();
-  console.log(`Current Epoch ID: ${epochId}`);
+  // await opsEngine.seed(); // [FIX] Moved to bootstrap/init to ensure DB ready
+  const adminAuth = createAdminAuth(opsEngine);
 
-  // Initial Treasury Safety Check (Day-1 Financial Guard)
-  const treasuryCheck = opsEngine.monitorTreasuryBalance();
-  console.log(`Treasury Safety Check: ${treasuryCheck.status} (Balance: ${treasuryCheck.availableBalance})`);
+  // Automation
+  const scheduler = new Scheduler(opsEngine, alertService);
+  scheduler.start();
 
-  // Run Financial Monitor every 30 minutes
-  setInterval(() => {
-    try {
-      opsEngine.monitorTreasuryBalance();
-    } catch (e) {
-      console.error("Treasury Monitor Error:", e);
-    }
-  }, 30 * 60 * 1000);
-
-  // Run Claims Monitor every 1 hour (Day-1 Enforcement)
-  setInterval(() => {
-    try {
-      opsEngine.forfeitExpired();
-    } catch (e) {
-      console.error("Claims Monitor Error:", e);
-    }
-  }, 60 * 60 * 1000);
-
-  // Monitored Admin Auth (Day-1 Security Requirement)
-  const monitoredAdminAuth = createAdminAuth(opsEngine);
-
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
-  app.use(express.static('public'));
-
-  // Rate Limiting (Global)
-  const limiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 100
+  // 3) Express Setup
+  const app = express();
+  app.use((req, res, next) => {
+    console.log(`[ROOT-DEBUG] ${req.method} ${req.url}`);
+    next();
   });
-  app.use(limiter);
+  app.set("trust proxy", 1);
+  app.set('view engine', 'ejs');
+  app.set('views', './views');
+  app.use(cookieParser());
 
-  // ---------------------------------------------------------
-  // Existing Node Logic (with DB handled by OperationsEngine)
-  // ---------------------------------------------------------
+  // Attach services
+  app.use((req, res, next) => {
+    req.logger = logger;
+    req.diagnostics = diagnostics;
+    req.opsEngine = opsEngine;
+    req.alertService = alertService;
+    req.scheduler = scheduler;
+    next();
+  });
+
+  // Make opsEngine available globally via app.get
+  app.set('opsEngine', opsEngine);
+
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"], // Allow inline for EJS & ethers CDN
+        styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline for Tailwind/custom
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    }
+  }));
+  app.use(cors());
+
+  // 4) Body Parsing: raw for webhooks, JSON for everything else
+  app.use("/webhooks", express.raw({ type: "application/json" }), (req, _res, next) => {
+    req.rawBody = req.body;
+    if (Buffer.isBuffer(req.rawBody)) {
+      try { req.body = JSON.parse(req.rawBody.toString()); } catch (_) { /* noop */ }
+    }
+    next();
+  });
+  app.use(express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
+  app.use(express.urlencoded({ extended: true })); // [FIX] Support form posts for login
+
+  // 5) Rate Limiting
+  app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+
+  // 6) Static
+  app.use(express.static("public"));
+
+  // 6b) DB Readiness Guard
+  app.use((req, res, next) => {
+    const opsEngine = req.app.get('opsEngine');
+    if (!opsEngine || !opsEngine.initialized || !opsEngine.db) {
+      return res.status(503).json({
+        ok: false,
+        error: "Database not ready"
+      });
+    }
+    next();
+  });
+
+  // 6c) Withdrawal Circuit Breaker
+  app.use(['/withdraw', '/claim', '/withdrawals'], async (req, res, next) => {
+    // Only block POST/PUT/DELETE for safety, GETs (like status) can remain open
+    if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+      const ops = req.app.get('opsEngine');
+      const safe = await ops.isSystemSafe();
+      if (!safe) {
+        return res.status(503).json({
+          ok: false,
+          error: "Withdrawals and claims are currently paused for system safety."
+        });
+      }
+    }
+    next();
+  });
+
+  // 7) Healthz (root level, always works)
+  app.get("/healthz", (_req, res) => res.json({ status: "ok", uptime: process.uptime() }));
 
 
-  // Heartbeat Endpoint
+
+  // 14) Builder Routes (Rung 10b) - Moved to top to avoid 404 interference
+  console.log(`[INIT] Builder Auth - NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+  const builderAuthRouter = createBuilderAuthRouter(opsEngine);
+  app.use('/', builderAuthRouter);
+
+  const builderApiRouter = createBuilderApiRouter(opsEngine, builderAuthRouter.requireAuth);
+  app.use('/builder', builderApiRouter);
+
+  const usageIngestRouter = createUsageIngestRouter(opsEngine);
+  app.use('/v1/builder', usageIngestRouter);
+
+  // 8) Mount Integration Router
+  app.use("/", createIntegrationRouter(opsEngine, adminAuth));
+
+  // 9) Legacy Ledger Router
+  app.use("/ledger", createLedgerRouter(opsEngine, adminAuth));
+
+  // 10) Dashboard Router (Old)
+  app.use("/", createDashboardRouter(opsEngine, adminAuth));
+
+  // 11) Ops Router (Rung 8)
+  app.use("/", createOpsRouter(opsEngine, adminAuth));
+
+  // 12) UI Router (Rung 9)
+  app.use("/ui", createUIRouter(opsEngine, adminAuth));
+
+  // 13) Heartbeat
   app.post("/heartbeat", async (req, res) => {
     try {
-      const { nodeWallet, timestamp, nonce, stats, signature } = req.body;
-
-      if (!nodeWallet || !timestamp || nonce === undefined || !stats || !signature) {
-        return res.status(400).json({ error: "Missing fields" });
-      }
-
-      // 1. Verify Message Format
-      const statsStr = JSON.stringify(stats);
-      const message = `SATELINK_HEARTBEAT
-wallet=${nodeWallet}
-timestamp=${timestamp}
-nonce=${nonce}
-stats=${statsStr}`;
-
-      // 1-3. Run Monitored Security Checks
-      const check = opsEngine.processHeartbeatSecurity({
-        nodeWallet,
-        message,
-        signature,
-        timestamp,
-        nonce
-      });
-
-      if (!check.ok) {
-        return res.status(check.code || 400).json({ error: check.error });
-      }
-
+      const { nodeWallet } = req.body || {};
+      if (!nodeWallet) return res.status(400).json({ error: "Missing nodeWallet" });
+      const uptime = await opsEngine.recordHeartbeatUptime(nodeWallet);
       const now = Math.floor(Date.now() / 1000);
-      // Update DB
-      db.prepare(`
-          INSERT INTO registered_nodes (wallet, last_heartbeat, last_nonce, active, updatedAt)
-          VALUES (?, ?, ?, 1, ?)
-          ON CONFLICT(wallet) DO UPDATE SET last_heartbeat = ?, last_nonce = ?, active = 1, updatedAt = ?
-        `).run(nodeWallet, now, nonce, now, now, nonce, now);
 
-      res.json({ status: "ok", timestamp: now, nonceAccepted: nonce });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+      // Upsert registration
+      const node = await db.get("SELECT 1 FROM registered_nodes WHERE wallet = ?", [nodeWallet]);
+      if (node) {
+        await db.query("UPDATE registered_nodes SET last_heartbeat = ?, active = 1, updatedAt = ? WHERE wallet = ?", [now, now, nodeWallet]);
+      } else {
+        await db.query("INSERT INTO registered_nodes (wallet, last_heartbeat, active, updatedAt) VALUES (?, ?, 1, ?)", [nodeWallet, now, now]);
+      }
+
+      res.json({ status: "ok", uptimeCredited: uptime });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // --- DEV ROUTES ---
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/__test/error', (req, res, next) => {
+      const err = new Error("Simulated Crash for Observability Test");
+      next(err);
+    });
+  }
+
+  // --- GLOBAL ERROR HANDLER ---
+  app.use(async (err, req, res, next) => {
+    console.error(`[ERROR] ${err.message}`);
+    if (req.logger) {
+      await req.logger.error('server', err.message, {
+        route: req.path,
+        meta: {
+          stack: err.stack,
+          method: req.method,
+          ip: req.ip
+        }
+      });
     }
-  });
-
-  // ---------------------------------------------------------
-  // New Operations Engine Endpoints
-  // ---------------------------------------------------------
-
-  app.post("/operations/routing", (req, res) => {
-    try {
-      const { nodeWallet, bytesRouted } = req.body;
-      if (!nodeWallet) return res.status(400).json({ error: "Missing nodeWallet" });
-
-      // Default 1GB if not specified, for testing
-      const result = opsEngine.processRouting({ nodeWallet, bytesRouted: bytesRouted || 1024 * 1024 * 1024 });
-      return res.json({ ok: true, ...result });
-    } catch (e) {
-      if (e.message.includes("Rate limit")) return res.status(429).json({ error: e.message });
-      return res.status(500).json({ ok: false, error: String(e.message) });
-    }
-  });
-
-  app.post("/operations/verification", (req, res) => {
-    try {
-      const { nodeWallet } = req.body;
-      if (!nodeWallet) return res.status(400).json({ error: "Missing nodeWallet" });
-
-      const result = opsEngine.processVerification({ nodeWallet });
-      return res.json({ ok: true, ...result });
-    } catch (e) {
-      if (e.message.includes("Rate limit")) return res.status(429).json({ error: e.message });
-      return res.status(500).json({ ok: false, error: String(e.message) });
-    }
-  });
-
-  // Generic Execute Endpoint for Mandatory Ops
-  app.post("/operations/execute", (req, res) => {
-    try {
-      const { nodeWallet, opType, quantity } = req.body;
-      if (!nodeWallet || !opType) return res.status(400).json({ error: "Missing fields" });
-
-      const result = opsEngine.executeOp({ nodeWallet, opType, quantity: quantity || 1 });
-      return res.json({ ok: true, ...result });
-    } catch (e) {
-      if (e.message.includes("Rate limit")) return res.status(429).json({ error: e.message });
-      if (e.message.includes("Invalid OpType")) return res.status(400).json({ error: e.message });
-      return res.status(500).json({ ok: false, error: String(e.message) });
-    }
-  });
-
-  app.get("/operations/epoch-stats", (req, res) => {
-    try {
-      const { epochId } = req.query;
-      const stats = opsEngine.getEpochStats(epochId ? Number(epochId) : null);
-      return res.json({ ok: true, stats });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: String(e.message) });
-    }
-  });
-
-  // ---------------------------------------------------------
-  // Ledger L5 Router (Mounted)
-  // ---------------------------------------------------------
-  app.use("/ledger", createLedgerRouter(opsEngine, monitoredAdminAuth));
-
-  // ---------------------------------------------------------
-  // Registry & Protocol (Protected)
-  // ---------------------------------------------------------
-  app.post("/epoch/finalize", monitoredAdminAuth, (req, res) => {
-    const { epochId } = req.body;
-    if (!epochId) return res.status(400).json({ error: "Missing epochId" });
-    try {
-      const result = opsEngine.finalizeEpoch(epochId);
-      res.json({ ok: true, ...result });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/registry/sync", monitoredAdminAuth, (req, res) => {
-    res.json({ ok: true, synced: true, timestamp: Math.floor(Date.now() / 1000) });
-  });
-
-  app.post("/protocol/pool/open", monitoredAdminAuth, (req, res) => {
-    res.json({ ok: true, poolStatus: 'OPEN', timestamp: Math.floor(Date.now() / 1000) });
-  });
-
-  app.post("/withdraw/execute", monitoredAdminAuth, (req, res) => {
-    try {
-      const { nodeWallet, amount } = req.body;
-      if (!nodeWallet || !amount) return res.status(400).json({ error: "Missing nodeWallet or amount" });
-      const result = opsEngine.withdrawFunds(nodeWallet, Number(amount));
-      res.json({ ok: true, ...result });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  app.post("/admin/config", monitoredAdminAuth, (req, res) => {
-    try {
-      const { key, value } = req.body;
-      const result = opsEngine.updateSystemConfig(key, value);
-      res.json({ ok: true, ...result });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // Backwards compatibility for the finalize route if needed in tests
-  app.post("/operations/epoch/finalize", monitoredAdminAuth, (req, res) => {
-    const { epochId } = req.body;
-    if (!epochId) return res.status(400).json({ error: "Missing epochId" });
-    try {
-      const result = opsEngine.finalizeEpoch(epochId);
-      return res.json({ ok: true, ...result });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e.message });
-    }
-  });
-
-  // ---------------------------------------------------------
-  // Payments & Revenue (Mock for MVP)
-  // ---------------------------------------------------------
-
-  app.post("/nodes/bootstrap-payment", monitoredAdminAuth, (req, res) => {
-    try {
-      const { nodeWallet, nodeType, paymentTxHash } = req.body;
-      const MANAGED_NODE_PRICE = 50;
-
-      const type = nodeType || 'managed';
-
-      // Record bootstrap revenue
-      db.prepare(`
-                INSERT INTO revenue_events (amount, token, source, payer_wallet, reference, created_at, on_chain_tx)
-                VALUES (?, 'USDT', ?, ?, ?, ?, ?)
-            `).run(
-        MANAGED_NODE_PRICE,
-        'managed_node_bootstrap',
-        nodeWallet,
-        `node:${nodeWallet}`,
-        Math.floor(Date.now() / 1000),
-        paymentTxHash || 'mock_tx_hash'
-      );
-
-      // Update or Insert Node with type
-      db.prepare(`
-          INSERT INTO registered_nodes (wallet, node_type, active, updatedAt)
-          VALUES (?, ?, 1, ?)
-          ON CONFLICT(wallet) DO UPDATE SET node_type = ?, active = 1, updatedAt = ?
-      `).run(nodeWallet, type, Math.floor(Date.now() / 1000), type, Math.floor(Date.now() / 1000));
-
-      return res.json({ ok: true, activated: true, type });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: String(e.message) });
+    if (req.accepts('html')) {
+      res.status(500).send(`<h1>500 Internal Server Error</h1><p>${err.message}</p>`);
+    } else {
+      res.status(500).json({ error: "Internal Server Error", id: Date.now() });
     }
   });
 
   return app;
 }
 
-// Execution Block
-// Only run if main module
-if (process.argv[1] === fs.realpathSync(new URL(import.meta.url).pathname) ||
-  process.argv[1].endsWith('server.js')) {
+// ─── BOOT ────────────────────────────────────────────────────
+if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1].endsWith("server"))) {
+  (async () => {
+    const dbConfig = {
+      type: process.env.DATABASE_URL ? 'postgres' : 'sqlite',
+      connectionString: process.env.DATABASE_URL || config.sqlitePath
+    };
 
-  // Initialize Database
-  const db = new Database("satelink.db");
-  db.pragma('journal_mode = WAL');
+    const db = new UniversalDB(dbConfig);
 
-  const app = createApp(db);
+    if (process.env.RUN_MIGRATIONS === 'true') {
+      // TODO: Async migration logic
+      console.log("Migrations skipped in server boot. Use scripts/migrate.js");
+    }
 
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+    const app = await createApp(db);
+
+    async function bootstrap() {
+      console.log("─── STARTUP VALIDATION ───");
+      console.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+
+      const isProd = process.env.NODE_ENV === "production";
+      if (!process.env.JWT_SECRET && isProd) {
+        console.error("FATAL: JWT_SECRET missing in production. Failsafe shutdown.");
+        process.exit(1);
+      }
+
+      const jwtSecret = process.env.JWT_SECRET || "dev_only_secret";
+      if (jwtSecret && jwtSecret.length < 32) {
+        console.warn("WARNING: JWT_SECRET is too short (< 32 chars). For production, use a strong 256-bit secret.");
+      }
+      console.log(`JWT SECRET: ${process.env.JWT_SECRET ? 'Present' : 'Missing (Using Dev Fallback)'}`);
+
+      const opsEngine = app.get('opsEngine');
+      if (!opsEngine) {
+        console.error("Critical: OperationsEngine not found in app context");
+        process.exit(1);
+      }
+
+      try {
+        await opsEngine.init();
+        console.log(`DB Type: ${dbConfig.type}`);
+        console.log(`DB Ready: ${typeof opsEngine.db.prepare === "function"}`);
+        console.log("──────────────────────────");
+      } catch (err) {
+        console.error("CRITICAL: Database initialization failed. Failsafe shutdown.");
+        console.error(err);
+        process.exit(1);
+      }
+
+      app.listen(PORT, () => {
+        console.log(`Satelink MVP running on port ${PORT}`);
+        console.log(`Admin user: satelink_admin`);
+      });
+    }
+
+    bootstrap().catch(err => {
+      console.error("Unexpected Bootstrap Error:", err);
+      process.exit(1);
+    });
+  })();
 }
 
-// Default export if imported directly (though create app is preferred)
-export default createApp; 
+export default createApp;
