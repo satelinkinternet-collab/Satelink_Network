@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satelink Operator Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🛰️</span>
+                <h1>Satelink</h1>
+            </div>
+            <nav>
+                <a href="#" class="active">Overview</a>
+                <a href="#">Epochs</a>
+                <a href="#">Treasury</a>
+                <a href="#">Nodes</a>
+            </nav>
+            <div class="status-panel">
+                <div class="status-item">
+                    <span class="status-dot green"></span>
+                    <span>System Live</span>
+                </div>
+                <div id="freeze-alert" class="status-item hidden">
+                    <span class="status-dot red"></span>
+                    <span>Security Freeze</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header>
+                <h2>Operator Dashboard</h2>
+                <div class="epoch-label">Current Epoch: <span id="current-epoch">#1</span></div>
+            </header>
+
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <span class="label">Total Treasury</span>
+                    <span class="value" id="treasury-balance">$0.00</span>
+                    <span class="delta">USDT</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Active Nodes</span>
+                    <span class="value" id="active-nodes">0</span>
+                    <span class="delta">Across network</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Total Ops</span>
+                    <span class="value" id="total-ops">0</span>
+                    <span class="delta">Network volume</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Est. Revenue</span>
+                    <span class="value" id="est-revenue">$0.00</span>
+                    <span class="delta">Pending finalization</span>
+                </div>
+            </section>
+
+            <section class="profitability-section">
+                <h3>Public Epoch Profitability</h3>
+                <div class="table-container">
+                    <table id="epoch-table">
+                        <thead>
+                            <tr>
+                                <th>Epoch</th>
+                                <th>Active Nodes</th>
+                                <th>Total Ops</th>
+                                <th>Revenue (USDT)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="epoch-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="payout-section">
+                <h3>Latest Payouts</h3>
+                <div class="payout-grid" id="payout-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="dashboard.js"></script>
+</body>
+</html>

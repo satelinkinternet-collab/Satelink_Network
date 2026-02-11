@@ -5,18 +5,23 @@ import { ethers } from "ethers";
 
 async function main() {
   const RPC_URL = process.env.RPC_URL || "http://127.0.0.1:8545";
+  const DEPLOYER_PK = process.env.DEPLOYER_PK;
 
-  // Hardhat default FIRST account private key (works on local hardhat node)
-  // If your hardhat node shows a different first private key, replace it here.
-  const DEPLOYER_PK =
-    process.env.DEPLOYER_PK ||
-    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+  if (!DEPLOYER_PK) {
+    throw new Error("DEPLOYER_PK missing in .env");
+  }
 
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(DEPLOYER_PK, provider);
 
   console.log("RPC:", RPC_URL);
-  console.log("Deployer:", await wallet.getAddress());
+  console.log("Deployer:", wallet.address);
+
+  const net = await provider.getNetwork();
+  console.log("chainId:", net.chainId.toString());
+
+  const bal = await provider.getBalance(wallet.address);
+  console.log("balance_POL:", ethers.formatEther(bal));
 
   const artifactPath = path.resolve(
     "artifacts/contracts/NodeRegistryV2.sol/NodeRegistryV2.json"
@@ -29,14 +34,38 @@ async function main() {
     wallet
   );
 
-  const contract = await factory.deploy();
-  await contract.waitForDeployment();
+  // Get fee data (EIP-1559) and add small bump to avoid underpricing
+  const fee = await provider.getFeeData();
+  const overrides = {};
+
+  // Some RPCs return nulls; handle safely
+  if (fee.maxFeePerGas != null && fee.maxPriorityFeePerGas != null) {
+    overrides.maxFeePerGas = fee.maxFeePerGas + ethers.parseUnits("2", "gwei");
+    overrides.maxPriorityFeePerGas =
+      fee.maxPriorityFeePerGas + ethers.parseUnits("1", "gwei");
+  } else if (fee.gasPrice != null) {
+    overrides.gasPrice = fee.gasPrice + ethers.parseUnits("2", "gwei");
+  }
+
+  console.log("deploying...");
+
+  // Deploy and immediately print tx hash
+  const contract = await factory.deploy(overrides);
+  console.log("deploy tx:", contract.deploymentTransaction().hash);
+
+  console.log("waiting for 1 confirmation...");
+  const receipt = await contract.deploymentTransaction().wait(1);
+  console.log("mined in block:", receipt.blockNumber);
 
   const addr = await contract.getAddress();
   console.log("NodeRegistryV2 deployed to:", addr);
+
+  // Helpful explorer link (Amoy)
+  console.log("Explorer:", `https://amoy.polygonscan.com/address/${addr}`);
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error("DEPLOY ERROR:", e?.message || e);
   process.exit(1);
 });
+
