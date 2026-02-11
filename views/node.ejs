@@ -1,0 +1,121 @@
+<%- include('partials/header') %>
+
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">Node Dashboard</h2>
+        <div
+            class="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-satelink-accent border border-blue-100 text-sm font-mono font-bold">
+            <%= node.wallet %>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl p-6 border border-satelink-border shadow-sm">
+            <div class="text-sm font-medium text-satelink-muted mb-1">Current Balance</div>
+            <div class="text-3xl font-bold text-gray-900 tracking-tight">$<%= (balance || 0).toFixed(6) %>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-satelink-border shadow-sm">
+            <div class="text-sm font-medium text-satelink-muted mb-1">Status</div>
+            <div class="flex items-center text-2xl font-bold mb-1">
+                <% if(node.active) { %>
+                    <span class="flex items-center text-emerald-600">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
+                        Online
+                    </span>
+                    <% } else { %>
+                        <span class="flex items-center text-gray-400">
+                            <span class="w-3 h-3 rounded-full bg-gray-300 mr-2"></span>
+                            Offline
+                        </span>
+                        <% } %>
+            </div>
+            <div class="text-xs text-satelink-muted">
+                Last Heartbeat: <%= node.last_heartbeat ? new Date(node.last_heartbeat * 1000).toLocaleTimeString()
+                    : 'Never' %>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Earnings -->
+        <div class="bg-white rounded-xl border border-satelink-border shadow-sm overflow-hidden flex flex-col h-full">
+            <div class="p-6 border-b border-satelink-border bg-gray-50/50">
+                <h3 class="text-lg font-bold text-gray-900">Recent Earnings</h3>
+            </div>
+
+            <div class="flex-1 overflow-auto">
+                <% if(earnings.length===0) { %>
+                    <div class="p-8 text-center text-satelink-muted italic">No earnings recorded yet.</div>
+                    <% } else { %>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-satelink-muted font-medium border-b border-satelink-border">
+                                <tr>
+                                    <th class="px-6 py-3">Epoch</th>
+                                    <th class="px-6 py-3">Ops</th>
+                                    <th class="px-6 py-3 font-mono text-xs uppercase tracking-wider">Weight</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <% earnings.forEach(function(e) { %>
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-4 font-mono text-gray-700">
+                                            <%= e.epoch_id %>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-900 font-bold">
+                                            <%= e.ops %>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-600">
+                                            <%= e.weight %>
+                                        </td>
+                                    </tr>
+                                    <% }); %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>
+
+        <!-- Withdrawals -->
+        <div class="bg-white rounded-xl border border-satelink-border shadow-sm overflow-hidden flex flex-col h-full">
+            <div class="p-6 border-b border-satelink-border bg-gray-50/50">
+                <h3 class="text-lg font-bold text-gray-900">Withdrawal History</h3>
+            </div>
+
+            <div class="flex-1 overflow-auto">
+                <% if(withdrawals.length===0) { %>
+                    <div class="p-8 text-center text-satelink-muted italic">No withdrawals found.</div>
+                    <% } else { %>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-satelink-muted font-medium border-b border-satelink-border">
+                                <tr>
+                                    <th class="px-6 py-3">Amount</th>
+                                    <th class="px-6 py-3">Status</th>
+                                    <th class="px-6 py-3 text-right">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <% withdrawals.forEach(function(w) { %>
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-4 font-bold text-gray-900">$<%= w.amount_usdt %>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span
+                                                class="px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider <%= w.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-blue-50 text-blue-600 border border-blue-100' %>">
+                                                <%= w.status %>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-right text-satelink-muted text-xs">
+                                            <%= new Date(w.created_at).toLocaleDateString() %>
+                                        </td>
+                                    </tr>
+                                    <% }); %>
+                            </tbody>
+                        </table>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>

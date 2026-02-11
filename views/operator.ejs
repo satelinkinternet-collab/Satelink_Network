@@ -1,0 +1,271 @@
+<%- include('partials/header', { activePage: 'operator' }) %>
+
+    <!-- Drawer Partial -->
+    <%- include('partials/drawer') %>
+
+        <!-- Top Section: Header & KPIs -->
+        <div class="mb-8">
+            <!-- Breadcrumb -->
+            <div class="flex items-center space-x-2 text-sm text-satelink-muted mb-4">
+                <a href="/ui/admin/nodes"
+                    class="hover:text-gray-900 transition-colors pointer-events-none opacity-50">Nodes</a>
+                <span>/</span>
+                <span class="text-gray-900 font-medium">Operator View</span>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                <!-- Identity -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-2">
+                        <h1 class="text-3xl font-bold text-gray-900 font-mono tracking-tight" id="wallet-address">
+                            <%= node.wallet %>
+                        </h1>
+                        <button onclick="copyToClipboard('<%= node.wallet %>')"
+                            class="text-satelink-accent hover:text-blue-700 transition-colors p-1 rounded hover:bg-blue-50"
+                            title="Copy Address">
+                            <%- include('partials/icon', { name: 'copy' , className: 'w-5 h-5' }) %>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <span
+                            class="px-2.5 py-1 rounded border border-gray-200 bg-white text-xs uppercase font-bold text-gray-600 tracking-wider shadow-sm">
+                            <%= node.node_type %>
+                        </span>
+                        <% if(node.active) { %>
+                            <span
+                                class="px-2.5 py-1 rounded border border-emerald-100 bg-emerald-50 text-satelink-success text-xs font-bold uppercase tracking-wider flex items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-satelink-success mr-2 animate-pulse"></span>
+                                Online
+                            </span>
+                            <% } else { %>
+                                <span
+                                    class="px-2.5 py-1 rounded border border-slate-200 bg-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-2"></span> Offline
+                                </span>
+                                <% } %>
+                                    <span class="text-satelink-muted text-xs font-medium">Last Heartbeat: <%=
+                                            node.last_heartbeat ? formatDate(node.last_heartbeat * 1000) : 'Never' %>
+                                            </span>
+                    </div>
+                </div>
+
+                <!-- CTAs -->
+                <div class="flex space-x-3">
+                    <button onclick="document.getElementById('claim-modal').classList.remove('hidden')"
+                        class="bg-satelink-success hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md shadow-emerald-500/20 transition-all transform hover:scale-105 flex items-center">
+                        <%- include('partials/icon', { name: 'coins' , className: 'w-5 h-5 mr-2' }) %> Claim Rewards
+                    </button>
+                    <button onclick="document.getElementById('withdraw-modal').classList.remove('hidden')"
+                        class="bg-white border border-satelink-border hover:bg-gray-50 text-gray-700 font-bold py-2.5 px-6 rounded-lg transition-colors flex items-center shadow-sm">
+                        <%- include('partials/icon', { name: 'arrow-right-from-bracket' , className: 'w-5 h-5 mr-2' })
+                            %> Withdraw
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <%- include('partials/kpi_card', { title: 'Total Balance' , value: balance, icon: 'wallet' ,
+                subtext: ' Available in Wallet' }) %>
+                <%- include('partials/kpi_card', { title: 'Claimable Rewards' , value: balance, icon: 'gift' ,
+                    subtext: 'Ready to Claim' , trend: 'up' }) %>
+                    <%- include('partials/kpi_card', { title: 'Last Epoch Earnings' , value: (rewards[0] ?
+                        rewards[0].amount : '$0.00' ), icon: 'history' , subtext: 'Epoch #' + (rewards[0] ?
+                        rewards[0].epoch_id : '-' ) }) %>
+                        <%- include('partials/kpi_card', { title: 'Uptime Score' , value: '98.5%' , icon: 'server' ,
+                            subtext: 'Current Epoch' , trend: 'up' }) %>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Rewards Table (Left 2/3) -->
+            <div
+                class="lg:col-span-2 bg-white rounded-2xl border border-satelink-border shadow-sm overflow-hidden flex flex-col h-[500px]">
+                <div class="p-5 border-b border-satelink-border flex justify-between items-center bg-gray-50/50">
+                    <h3 class="font-bold text-lg text-gray-900 flex items-center">
+                        <%- include('partials/icon', { name: 'list-ul' , className: 'w-5 h-5 mr-2 text-satelink-accent'
+                            }) %> Reward History
+                    </h3>
+                    <div class="flex items-center space-x-2">
+                        <!-- Export Button -->
+                        <a href="/ui/export/node_rewards?wallet=<%= node.wallet %>" target="_blank"
+                            class="text-xs bg-white hover:bg-gray-50 text-satelink-muted border border-satelink-border px-3 py-1.5 rounded transition-colors flex items-center shadow-sm font-medium">
+                            <%- include('partials/icon', { name: 'copy' , className: 'w-3 h-3 mr-1' }) %> CSV
+                        </a>
+                        <div class="relative">
+                            <input type="text" id="rewardSearch" onkeyup="filterTable('rewardSearch', 'rewardsTable')"
+                                placeholder="Search Epoch..."
+                                class="bg-gray-50 border border-satelink-border text-gray-900 text-sm rounded-lg focus:ring-satelink-accent focus:border-satelink-accent block w-48 pl-3 p-1.5 placeholder-gray-400">
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-y-auto flex-1 custom-scrollbar">
+                    <table class="w-full text-left text-sm" id="rewardsTable">
+                        <thead
+                            class="bg-gray-50 text-satelink-muted font-medium sticky top-0 backdrop-blur-sm border-b border-satelink-border">
+                            <tr>
+                                <th class="px-6 py-3 font-semibold">Epoch</th>
+                                <th class="px-6 py-3 font-semibold">Amount</th>
+                                <th class="px-6 py-3 font-semibold">Date</th>
+                                <th class="px-6 py-3 font-semibold text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <% if(rewards.length===0) { %>
+                                <tr>
+                                    <td colspan="4" class="px-6 py-12 text-center text-satelink-muted italic">No rewards
+                                        found.</td>
+                                </tr>
+                                <% } %>
+                                    <% rewards.forEach(r=> { %>
+                                        <tr class="hover:bg-gray-50 transition-colors group cursor-default">
+                                            <td class="px-6 py-3.5 font-mono text-satelink-accent font-medium">#<%=
+                                                    r.epoch_id %>
+                                            </td>
+                                            <td class="px-6 py-3.5 font-bold text-gray-900">
+                                                <%= r.amount %>
+                                            </td>
+                                            <td class="px-6 py-3.5 text-gray-500 text-xs">
+                                                <%= formatDate(r.created_at * 1000) %>
+                                            </td>
+                                            <td class="px-6 py-3.5 text-right">
+                                                <button onclick='openDrawer("Reward Details: Epoch #<%= r.epoch_id %>", `
+                            <div class="space-y-4">
+                                <div class="p-4 bg-white rounded-lg border border-satelink-border shadow-sm">
+                                    <div class="text-xs text-satelink-muted uppercase mb-1 font-bold">Total Reward</div>
+                                    <div class="text-2xl font-bold text-satelink-success"><%= r.amount %></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="p-3 bg-gray-50 rounded border border-gray-200">
+                                        <div class="text-xs text-slate-500 font-medium">Epoch ID</div>
+                                        <div class="font-mono text-gray-900">#<%= r.epoch_id %></div>
+                                    </div>
+                                    <div class="p-3 bg-gray-50 rounded border border-gray-200">
+                                        <div class="text-xs text-slate-500 font-medium">Node Class</div>
+                                        <div class="font-mono text-gray-900 uppercase"><%= node.node_type %> - Tier 1</div>
+                                    </div>
+                                </div>
+                                <div class="border-t border-gray-200 pt-4 mt-4">
+                                    <h4 class="font-bold text-sm text-gray-900 mb-2">Breakdown</h4>
+                                    <div class="flex justify-between text-sm py-1 border-b border-gray-100">
+                                        <span class="text-slate-500">Base Reward</span>
+                                        <span class="text-gray-900"><%= r.amount %></span>
+                                    </div>
+                                    <div class="flex justify-between text-sm py-1 border-b border-gray-100">
+                                        <span class="text-slate-500">Bonus</span>
+                                        <span class="text-gray-900">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm py-1 pt-2 font-bold">
+                                        <span class="text-satelink-muted">Net Total</span>
+                                        <span class="text-satelink-success"><%= r.amount %></span>
+                                    </div>
+                                </div>
+                            </div>
+                        `)' class="text-satelink-accent hover:text-blue-700 px-3 py-1.5 rounded hover:bg-blue-50 transition-all text-xs font-bold uppercase tracking-wider">
+                                                    View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination Controls (Demo) -->
+                <div
+                    class="p-3 border-t border-satelink-border bg-gray-50/50 flex justify-between items-center text-xs text-satelink-muted font-medium">
+                    <span>Showing recent 20</span>
+                    <div class="space-x-1">
+                        <button disabled
+                            class="px-2 py-1 rounded bg-white border border-gray-200 text-gray-400 cursor-not-allowed">Prev</button>
+                        <button
+                            class="px-2 py-1 rounded bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 shadow-sm">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Withdrawals List (Right 1/3) -->
+            <div
+                class="bg-white rounded-2xl border border-satelink-border shadow-sm overflow-hidden flex flex-col h-[500px]">
+                <div class="p-5 border-b border-satelink-border bg-gray-50/50 flex justify-between items-center">
+                    <h3 class="font-bold text-lg text-gray-900 flex items-center">
+                        <%- include('partials/icon', { name: 'money-bill-transfer' ,
+                            className: 'w-5 h-5 mr-2 text-satelink-warning' }) %> Payouts
+                    </h3>
+                    <a href="/ui/export/withdrawals?wallet=<%= node.wallet %>" target="_blank"
+                        class="text-xs bg-white hover:bg-gray-50 text-satelink-muted border border-satelink-border px-3 py-1.5 rounded transition-colors flex items-center shadow-sm font-medium">
+                        <%- include('partials/icon', { name: 'copy' , className: 'w-3 h-3 mr-1' }) %> CSV
+                    </a>
+                </div>
+                <div class="overflow-y-auto flex-1 custom-scrollbar">
+                    <div class="divide-y divide-gray-100">
+                        <% if(withdrawals.length===0) { %>
+                            <div class="p-8 text-center text-satelink-muted italic">No withdrawal history.</div>
+                            <% } %>
+                                <% withdrawals.forEach(w=> { %>
+                                    <div class="p-4 hover:bg-gray-50 transition-colors">
+                                        <div class="flex justify-between items-start mb-1">
+                                            <span class="font-bold text-gray-900">
+                                                <%= w.amount %>
+                                            </span>
+                                            <span
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider <%= w.status === 'COMPLETED' ? 'bg-emerald-50 text-satelink-success border border-emerald-100' : 'bg-amber-50 text-satelink-warning border border-amber-100' %>">
+                                                <%= w.status %>
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between items-end">
+                                            <span class="font-mono text-xs text-satelink-muted">#<%= w.id %></span>
+                                            <span class="text-xs text-gray-500">
+                                                <%= w.date %>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <% }) %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modals (Hidden by default) -->
+        <div id="claim-modal"
+            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
+            <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xl max-w-sm w-full mx-4 text-center">
+                <div
+                    class="w-16 h-16 bg-emerald-50 text-satelink-success rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
+                    <%- include('partials/icon', { name: 'coins' , className: 'w-8 h-8' }) %>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Claim Rewards</h3>
+                <p class="text-gray-500 mb-6 text-sm">You are about to claim <strong class="text-gray-900">
+                        <%= balance %>
+                    </strong> to your registered wallet. Please sign the transaction in your wallet to proceed.</p>
+
+                <button disabled
+                    class="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-lg cursor-not-allowed mb-3 flex items-center justify-center border border-gray-200">
+                    <%- include('partials/icon', { name: 'lock' , className: 'w-4 h-4 mr-2' }) %> Confirm Sign (Demo)
+                </button>
+                <button onclick="document.getElementById('claim-modal').classList.add('hidden')"
+                    class="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">Cancel</button>
+            </div>
+        </div>
+
+        <div id="withdraw-modal"
+            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
+            <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xl max-w-sm w-full mx-4 text-center">
+                <div
+                    class="w-16 h-16 bg-amber-50 text-satelink-warning rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
+                    <%- include('partials/icon', { name: 'arrow-right-from-bracket' , className: 'w-8 h-8' }) %>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Withdraw Funds</h3>
+                <p class="text-gray-500 mb-6 text-sm">Withdrawal requests are processed within 24 hours.</p>
+                <button disabled
+                    class="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-lg cursor-not-allowed mb-3 flex items-center justify-center border border-gray-200">
+                    <%- include('partials/icon', { name: 'lock' , className: 'w-4 h-4 mr-2' }) %> Initiate Withdrawal
+                        (Demo)
+                </button>
+                <button onclick="document.getElementById('withdraw-modal').classList.add('hidden')"
+                    class="text-gray-500 hover:text-gray-900 text-sm font-medium transition-colors">Cancel</button>
+            </div>
+        </div>
+
+        <%- include('partials/footer') %>

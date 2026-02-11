@@ -1,0 +1,88 @@
+<%- include('partials/header', { activePage: 'builder_login' }) %>
+
+    <div class="min-h-[80vh] flex items-center justify-center">
+        <div class="max-w-md w-full bg-white p-10 rounded-2xl border border-gray-200 shadow-xl text-center">
+            <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <%- include('partials/icon', { name: 'plug' , className: 'w-10 h-10 text-satelink-accent' }) %>
+            </div>
+
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Builder Console</h1>
+            <p class="text-satelink-muted mb-8 leading-relaxed">Connect your wallet to manage API keys, projects, and
+                billing.</p>
+
+            <div id="error-msg"
+                class="hidden bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium border border-red-100">
+            </div>
+
+            <button onclick="login()" id="login-btn"
+                class="w-full bg-satelink-accent hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center group hover:scale-[1.02]">
+                <%- include('partials/icon', { name: 'wallet' ,
+                    className: 'w-5 h-5 mr-2 group-hover:scale-110 transition-transform' }) %>
+                    Connect Wallet
+            </button>
+
+            <p class="mt-8 text-xs text-gray-400">
+                By connecting, you agree to our <a href="#"
+                    class="text-satelink-accent hover:underline font-medium">Terms of Service</a>.
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script>
+        async function login() {
+            const btn = document.getElementById('login-btn');
+            const err = document.getElementById('error-msg');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin mr-2">⟳</span> Connecting...';
+            btn.classList.add('opacity-75');
+            err.classList.add('hidden');
+
+            try {
+                if (!window.ethereum) throw new Error("No crypto wallet found. Please install MetaMask.");
+
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const signer = await provider.getSigner();
+                const wallet = await signer.getAddress();
+
+                // 1. Challenge
+                const cRes = await fetch('/auth/builder/challenge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet })
+                });
+                const cData = await cRes.json();
+                if (cData.error) throw new Error(cData.error);
+
+                // 2. Sign
+                btn.innerHTML = '<span class="animate-spin mr-2">✎</span> Signing...';
+                const msg = `Sign to login to Satelink Builder Console.\nNonce: ${cData.nonce}`;
+                const signature = await signer.signMessage(msg);
+
+                // 3. Verify
+                btn.innerHTML = '<span class="animate-spin mr-2">⟳</span> Verifying...';
+                const vRes = await fetch('/auth/builder/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, signature })
+                });
+                const vData = await vRes.json();
+
+                if (vData.success) {
+                    window.location.href = '/ui/builder';
+                } else {
+                    throw new Error(vData.error || 'Verification failed');
+                }
+
+            } catch (e) {
+                console.error(e);
+                err.textContent = e.message;
+                err.classList.remove('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-75');
+                btn.innerHTML = '<%- include("partials/icon", { name: "wallet", className: "w-5 h-5 mr-2" }) %> Connect Wallet';
+            }
+        }
+    </script>
+
+    <%- include('partials/footer') %>

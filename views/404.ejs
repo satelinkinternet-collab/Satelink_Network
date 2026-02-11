@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Not Found</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body class="bg-satelink-base text-satelink-text h-screen flex items-center justify-center font-sans">
+    <div class="text-center">
+        <h1 class="text-6xl font-bold text-satelink-accent mb-4">404</h1>
+        <p class="text-xl text-slate-400 mb-8">
+            <%= typeof message !=='undefined' ? message : 'Page Not Found' %>
+        </p>
+        <a href="/ui/admin"
+            class="bg-satelink-surface hover:bg-slate-700 px-6 py-3 rounded-lg border border-slate-600 transition-colors">
+            Return Home
+        </a>
+    </div>
+</body>
+
+</html>

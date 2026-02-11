@@ -1,0 +1,179 @@
+<%- include('partials/header', { activePage: 'builder' }) %>
+    <%- include('partials/drawer') %>
+
+        <div class="mb-8">
+            <a href="/ui/builder"
+                class="text-satelink-muted hover:text-gray-900 text-sm mb-4 inline-flex items-center transition-colors">
+                <%- include('partials/icon', { name: 'arrow-right-from-bracket' , className: 'w-3 h-3 rotate-180 mr-2'
+                    }) %> Back to Projects
+            </a>
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2" id="proj-name">Loading...</h1>
+                    <div class="flex items-center space-x-6 text-sm">
+                        <span class="text-satelink-muted font-mono" id="proj-id">ID: ...</span>
+                        <span class="text-satelink-muted" id="proj-created">Created: ...</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-right">
+                        <div class="text-sm text-satelink-muted font-medium">Total Usage</div>
+                        <div class="text-2xl font-bold text-gray-900" id="proj-cost">$0.00</div>
+                        <div class="text-xs text-satelink-success font-bold" id="proj-calls">0 calls</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Keys Section -->
+        <div class="bg-white border border-satelink-border rounded-xl overflow-hidden mb-8 shadow-sm">
+            <div class="p-6 border-b border-satelink-border flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-lg text-gray-900">API Keys</h3>
+                <button onclick="createKey()"
+                    class="bg-white hover:bg-gray-50 border border-satelink-border text-gray-700 px-3 py-1.5 rounded text-sm font-bold transition-all flex items-center shadow-sm">
+                    <%- include('partials/icon', { name: 'plug' , className: 'w-3 h-3 mr-2' }) %> Create Key
+                </button>
+            </div>
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-satelink-muted border-b border-satelink-border">
+                    <tr>
+                        <th class="px-6 py-3 font-semibold">Key Prefix</th>
+                        <th class="px-6 py-3 font-semibold">Status</th>
+                        <th class="px-6 py-3 font-semibold">Created</th>
+                        <th class="px-6 py-3 font-semibold text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100" id="keys-list"></tbody>
+            </table>
+        </div>
+
+        <!-- Usage Section -->
+        <div class="bg-white border border-satelink-border rounded-xl overflow-hidden mb-8 shadow-sm">
+            <div class="p-6 border-b border-satelink-border flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-lg text-gray-900">Recent Usage</h3>
+                <a href="/ui/export/builder_usage?project_id=<%= project.id %>"
+                    class="text-satelink-accent hover:underline text-sm font-bold flex items-center">
+                    <%- include('partials/icon', { name: 'download' , className: 'w-3 h-3 mr-1' }) %> Export CSV
+                </a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-satelink-muted border-b border-satelink-border">
+                        <tr>
+                            <th class="px-6 py-3 font-semibold">Time</th>
+                            <th class="px-6 py-3 font-semibold">Endpoint</th>
+                            <th class="px-6 py-3 font-semibold">Status</th>
+                            <th class="px-6 py-3 font-semibold text-right">Cost (USDT)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <% if(usage.length===0) { %>
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-satelink-muted italic">No usage
+                                    recorded.</td>
+                            </tr>
+                            <% } else { %>
+                                <% usage.forEach(u=> { %>
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-4 text-gray-500 font-mono text-xs">
+                                            <%= u.ts %>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-900 font-medium">
+                                            <%= u.endpoint %>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span
+                                                class="px-2 py-0.5 rounded text-[10px] uppercase font-bold <%= u.ok ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100' %>">
+                                                <%= u.ok ? 'OK' : 'ERR' %>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-right font-mono text-gray-900">
+                                            <%= formatCurrency(u.cost_usdt) %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- New Key Modal -->
+        <div id="new-key-modal"
+            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
+            <div class="bg-white p-8 rounded-xl border border-emerald-100 shadow-2xl max-w-md w-full mx-4 text-center">
+                <div
+                    class="w-16 h-16 bg-emerald-50 text-satelink-success rounded-full flex items-center justify-center mx-auto mb-4">
+                    <%- include('partials/icon', { name: 'check-circle' , className: 'w-8 h-8' }) %>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Key Created!</h3>
+                <p class="text-gray-500 mb-6 text-sm">Copy this key now. You won't see it again.</p>
+
+                <div
+                    class="bg-slate-50 p-4 rounded border border-gray-200 mb-6 flex items-center justify-between group">
+                    <code class="text-emerald-600 font-mono text-sm break-all font-bold" id="new-key-value">...</code>
+                    <button onclick="copyToClipboard(document.getElementById('new-key-value').textContent)"
+                        class="text-gray-400 hover:text-gray-900 ml-2 transition-colors">
+                        <%- include('partials/icon', { name: 'copy' , className: 'w-4 h-4' }) %>
+                    </button>
+                </div>
+
+                <button onclick="document.getElementById('new-key-modal').classList.add('hidden'); loadProject();"
+                    class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-lg transition-colors">Done</button>
+            </div>
+        </div>
+
+        <script>
+            const projectId = window.location.pathname.split('/').pop();
+
+            async function loadProject() {
+                try {
+                    const res = await fetch(`/builder/projects/${projectId}`);
+                    if (!res.ok) throw new Error('Failed');
+                    const data = await res.json();
+
+                    document.getElementById('proj-name').textContent = data.project.name;
+                    document.getElementById('proj-id').textContent = 'ID: ' + data.project.id;
+                    document.getElementById('proj-created').textContent = 'Created: ' + new Date(data.project.created_at).toLocaleDateString();
+                    document.getElementById('proj-cost').textContent = '$' + (data.usage.cost || 0).toFixed(4);
+                    document.getElementById('proj-calls').textContent = (data.usage.calls || 0) + ' calls';
+
+                    const keysBody = document.getElementById('keys-list');
+                    if (data.keys.length === 0) {
+                        keysBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-satelink-muted italic">No active keys.</td></tr>`;
+                    } else {
+                        keysBody.innerHTML = data.keys.map(k => `
+            <tr class="hover:bg-gray-50 transition-colors">
+                <td class="px-6 py-4 font-mono text-gray-900 font-medium">${k.key_prefix}</td>
+                <td class="px-6 py-4"><span class="text-emerald-600 text-xs font-bold uppercase tracking-wider bg-emerald-50 px-2 py-1 rounded border border-emerald-100 shadow-sm">${k.status}</span></td>
+                <td class="px-6 py-4 text-gray-500 text-xs">${new Date(k.created_at).toLocaleDateString()}</td>
+                <td class="px-6 py-4 text-right">
+                        <button onclick="revokeKey(${k.id})" class="text-red-500 hover:text-red-700 text-xs font-bold uppercase hover:underline">Revoke</button>
+                </td>
+            </tr>
+        `).join('');
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            async function createKey() {
+                const res = await fetch(`/builder/projects/${projectId}/keys`, { method: 'POST' });
+                const data = await res.json();
+
+                document.getElementById('new-key-value').textContent = data.key;
+                document.getElementById('new-key-modal').classList.remove('hidden');
+            }
+
+            async function revokeKey(keyId) {
+                if (!confirm('Are you sure you want to revoke this key? Apps using it will stop working immediately.')) return;
+                await fetch(`/builder/projects/${projectId}/keys/${keyId}/revoke`, { method: 'POST' });
+                loadProject();
+            }
+
+            loadProject();
+        </script>
+
+        <%- include('partials/footer') %>

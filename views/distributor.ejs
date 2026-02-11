@@ -1,0 +1,66 @@
+<%- include('partials/header', { activePage: 'distributor' }) %>
+    <%- include('partials/drawer') %>
+
+        <div class="mb-8">
+            <div class="flex items-center space-x-2 text-sm text-satelink-muted mb-4">
+                <span class="text-gray-900 font-medium">Distributor Portal</span>
+            </div>
+
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Partner Dashboard</h1>
+                    <p class="text-satelink-muted font-mono flex items-center text-sm">
+                        <%- include('partials/icon', { name: 'wallet' , className: 'w-4 h-4 mr-2 text-slate-400' }) %>
+                            <%= wallet %>
+                                <button onclick="copyToClipboard('<%= wallet %>')"
+                                    class="ml-2 text-satelink-accent hover:text-blue-700 transition-colors"
+                                    title="Copy">
+                                    <%- include('partials/icon', { name: 'copy' , className: 'w-4 h-4' }) %>
+                                </button>
+                    </p>
+                </div>
+                <div>
+                    <span
+                        class="px-3 py-1 rounded-full border border-amber-200 bg-amber-50 text-satelink-warning text-xs font-bold uppercase tracking-wider flex items-center shadow-sm">
+                        <%- include('partials/icon', { name: 'flask' , className: 'w-4 h-4 mr-1' }) %> Beta Program
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <%- include('partials/kpi_card', { title: 'Total Earnings' , value: '$0.00' , icon: 'dollar-sign' }) %>
+                <%- include('partials/kpi_card', { title: 'Pending Payout' , value: '$0.00' , icon: 'hourglass-half' })
+                    %>
+                    <%- include('partials/kpi_card', { title: 'Active Referrals' , value: '0' , icon: 'users' ,
+                        subtext: 'Nodes Onboarded' }) %>
+                        <%- include('partials/kpi_card', { title: 'Conversion Rate' , value: '0.0%' , icon: 'chart-pie'
+                            , subtext: 'Click to Install' }) %>
+        </div>
+
+        <div
+            class="bg-white rounded-2xl border border-satelink-border p-12 text-center relative overflow-hidden group shadow-sm transition-shadow hover:shadow-md">
+            <div
+                class="absolute inset-0 bg-gradient-to-r from-blue-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md border border-gray-100 transform group-hover:scale-110 transition-transform duration-500">
+                    <%- include('partials/icon', { name: 'rocket' , className: 'w-8 h-8 text-satelink-accent' }) %>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-900 mb-3">Distributor Program Beta</h3>
+                <p class="text-gray-500 max-w-lg mx-auto mb-8 leading-relaxed">
+                    The advanced distributor analytics suite is currently being rolled out to select partners. You will
+                    soon see detailed breakdowns of your referral performance, daily earning charts, and automated
+                    payout management here.
+                </p>
+                <button
+                    class="bg-white hover:bg-gray-50 text-gray-900 font-bold py-2.5 px-6 rounded-lg transition-colors border border-gray-200 shadow-sm flex items-center justify-center mx-auto hover:border-gray-300">
+                    <%- include('partials/icon', { name: 'envelope' , className: 'w-4 h-4 mr-2 text-satelink-muted' })
+                        %> Contact Partner Support
+                </button>
+            </div>
+        </div>
+
+        <%- include('partials/footer') %>

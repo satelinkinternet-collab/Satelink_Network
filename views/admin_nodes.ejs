@@ -1,0 +1,73 @@
+<%- include('partials/header', { activePage: 'nodes' }) %>
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Network Nodes</h1>
+        <div class="flex items-center space-x-2 text-sm text-satelink-muted">
+            <span>Total Registered: <%= nodes.length %></span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-satelink-border shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-satelink-muted font-medium border-b border-satelink-border">
+                    <tr>
+                        <th class="px-6 py-3 font-semibold">Wallet Address</th>
+                        <th class="px-6 py-3 font-semibold">Type</th>
+                        <th class="px-6 py-3 font-semibold">Status</th>
+                        <th class="px-6 py-3 font-semibold">Last Heartbeat</th>
+                        <th class="px-6 py-3 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <% if(nodes.length===0) { %>
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-satelink-muted italic">No nodes
+                                registered.</td>
+                        </tr>
+                        <% } %>
+                            <% nodes.forEach(n=> { %>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-mono text-satelink-accent font-medium">
+                                        <a href="/ui/operator/<%= n.wallet %>"
+                                            class="hover:underline hover:text-blue-700 transition-colors">
+                                            <%= n.wallet %>
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-2.5 py-1 rounded border border-gray-200 bg-white text-xs uppercase font-bold text-gray-600 tracking-wider shadow-sm">
+                                            <%= n.node_type %>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <% if(n.active) { %>
+                                            <span
+                                                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-satelink-success border border-emerald-100">
+                                                <span
+                                                    class="w-1.5 h-1.5 rounded-full bg-satelink-success mr-2 animate-pulse"></span>
+                                                Online
+                                            </span>
+                                            <% } else { %>
+                                                <span
+                                                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-2"></span>
+                                                    Offline
+                                                </span>
+                                                <% } %>
+                                    </td>
+                                    <td class="px-6 py-4 text-gray-600">
+                                        <%= n.last_heartbeat ? formatDate(n.last_heartbeat * 1000) : 'Never' %>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <a href="/ui/operator/<%= n.wallet %>"
+                                            class="text-xs bg-white hover:bg-gray-50 text-satelink-muted border border-satelink-border px-3 py-1.5 rounded transition-colors shadow-sm font-medium">Details</a>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>

@@ -1,0 +1,25 @@
+<!-- views/partials/drawer.ejs -->
+<div id="drawer-backdrop"
+    class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300"
+    onclick="closeDrawer()"></div>
+<div id="details-drawer"
+    class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col border-l border-satelink-border">
+    <div class="p-6 border-b border-satelink-border flex justify-between items-center bg-gray-50/50">
+        <h3 id="drawer-title" class="text-lg font-bold text-gray-900">Details</h3>
+        <button onclick="closeDrawer()"
+            class="text-slate-400 hover:text-gray-900 transition-colors p-1 rounded-full hover:bg-slate-100">
+            <%- include('icon', { name: 'times' , className: 'w-5 h-5' }) %>
+        </button>
+    </div>
+    <div id="drawer-content" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- Dynamic Content Injected Here -->
+    </div>
+    <div class="p-6 border-t border-satelink-border bg-gray-50/50">
+        <button onclick="closeDrawer()"
+            class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg transition-colors">Close</button>
+    </div>
+</div>
+
+<!-- Backdrop -->
+<div id="drawer-backdrop" onclick="closeDrawer()"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden transition-opacity opacity-0"></div>

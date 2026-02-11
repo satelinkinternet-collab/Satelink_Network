@@ -1,0 +1,14 @@
+[Unit]
+Description=Satelink DePIN Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/satelink-mvp
+EnvironmentFile=/home/ubuntu/satelink-mvp/.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
