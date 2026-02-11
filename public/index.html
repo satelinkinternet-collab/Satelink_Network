@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
@@ -23,13 +25,24 @@
                 <a href="#">Nodes</a>
             </nav>
             <div class="status-panel">
-                <div class="status-item">
-                    <span class="status-dot green"></span>
-                    <span>System Live</span>
+                <button id="connect-wallet" class="connect-btn">Connect Wallet</button>
+                <div id="wallet-info" class="hidden">
+                    <div class="wallet-address" id="wallet-address"></div>
+                    <div class="node-status">
+                        <span id="node-active-dot" class="status-dot gray"></span>
+                        <span id="node-status-text">Not Registered</span>
+                    </div>
                 </div>
-                <div id="freeze-alert" class="status-item hidden">
-                    <span class="status-dot red"></span>
-                    <span>Security Freeze</span>
+
+                <div class="system-status">
+                    <div class="status-item">
+                        <span class="status-dot green"></span>
+                        <span>System Live</span>
+                    </div>
+                    <div id="freeze-alert" class="status-item hidden">
+                        <span class="status-dot red"></span>
+                        <span>Security Freeze</span>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -93,4 +106,5 @@
     </div>
     <script src="dashboard.js"></script>
 </body>
+
 </html>

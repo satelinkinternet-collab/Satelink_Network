@@ -71,7 +71,8 @@ nav a {
     transition: all 0.3s ease;
 }
 
-nav a:hover, nav a.active {
+nav a:hover,
+nav a.active {
     background: var(--card-bg);
     color: var(--text-primary);
 }
@@ -95,10 +96,19 @@ nav a:hover, nav a.active {
     border-radius: 50%;
 }
 
-.status-dot.green { background-color: var(--success); box-shadow: 0 0 10px var(--success); }
-.status-dot.red { background-color: var(--danger); box-shadow: 0 0 10px var(--danger); }
+.status-dot.green {
+    background-color: var(--success);
+    box-shadow: 0 0 10px var(--success);
+}
 
-.hidden { display: none; }
+.status-dot.red {
+    background-color: var(--danger);
+    box-shadow: 0 0 10px var(--danger);
+}
+
+.hidden {
+    display: none;
+}
 
 /* Main Content */
 .content {
@@ -213,8 +223,15 @@ tr:not(:last-child) td {
     font-weight: 600;
 }
 
-.status-badge.finalized { background: rgba(72, 187, 120, 0.1); color: var(--success); }
-.status-badge.active { background: rgba(74, 144, 226, 0.1); color: var(--accent-color); }
+.status-badge.finalized {
+    background: rgba(72, 187, 120, 0.1);
+    color: var(--success);
+}
+
+.status-badge.active {
+    background: rgba(74, 144, 226, 0.1);
+    color: var(--accent-color);
+}
 
 /* Payout Grid */
 .payout-grid {
@@ -242,7 +259,56 @@ tr:not(:last-child) td {
     text-overflow: ellipsis;
 }
 
+
 .payout-amount {
     font-weight: 700;
     color: var(--accent-color);
+}
+
+/* Wallet Connect Styles */
+.connect-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #00C6FF, #0072FF);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.connect-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
+}
+
+.wallet-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.9em;
+}
+
+.wallet-address {
+    font-family: monospace;
+    color: #00C6FF;
+    margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.node-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8em;
+    color: #aaa;
+}
+
+.system-status {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 15px;
 }

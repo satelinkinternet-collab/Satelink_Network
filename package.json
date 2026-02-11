@@ -12,6 +12,7 @@
     "ethers": "^6.16.0",
     "hardhat": "^3.1.5",
     "supertest": "^7.2.2",
+    "tailwindcss": "^4.1.18",
     "ts-node": "^10.9.2",
     "typescript": "~5.8.0",
     "viem": "^2.45.0"
@@ -19,13 +20,37 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
     "better-sqlite3": "^12.6.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
+    "ejs": "^4.0.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.18.0",
     "sqlite3": "^5.1.7"
   },
   "scripts": {
-    "test": "npx mocha test/FullProduct.test.js test/Security.test.js test/Heartbeat.test.js test/Claims.test.js test/RevenueSplit.test.js test/Dashboard.test.js --timeout 15000"
-  }
+    "test": "npx mocha test/FullProduct.test.js test/Security.test.js test/Heartbeat.test.js test/Claims.test.js test/RevenueSplit.test.js test/Dashboard.test.js --timeout 15000",
+    "migrate": "node scripts/migrate.js",
+    "start": "node server.js"
+  },
+  "description": "This project has a minimal setup of Hardhat 3 Beta, without any plugins.",
+  "main": "debug_env.js",
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/satelinkinternet-collab/satelink-mvp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/satelinkinternet-collab/satelink-mvp/issues"
+  },
+  "homepage": "https://github.com/satelinkinternet-collab/satelink-mvp#readme"
 }

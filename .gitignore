@@ -36,3 +36,10 @@ node_modules/
 # OS
 .DS_Store
 
+# build
+build/
+
+# secrets
+.env
+.env.*
+env_copy.txt
