@@ -30,7 +30,8 @@
     "jsonwebtoken": "^9.0.3",
     "node-fetch": "^3.3.2",
     "pg": "^8.18.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "uuid": "^13.0.0"
   },
   "scripts": {
     "test": "npx mocha test/FullProduct.test.js test/Security.test.js test/Heartbeat.test.js test/Claims.test.js test/RevenueSplit.test.js test/Dashboard.test.js --timeout 15000",

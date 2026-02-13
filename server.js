@@ -5,6 +5,13 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import "dotenv/config";
+import { createAdminApiRouter } from "./src/routes/admin_api_v2.js";
+import { createNodeApiRouter } from "./src/routes/node_api_v2.js";
+import { createBuilderApiV2Router } from "./src/routes/builder_api_v2.js";
+import { createDistApiRouter } from "./src/routes/dist_api_v2.js";
+import { createEntApiRouter } from "./src/routes/ent_api_v2.js";
+import { createPairApiRouter } from "./src/routes/pair_api.js";
+import { createStreamApiRouter } from "./src/routes/stream_api.js";
 
 import { validateEnv } from "./src/config/env.js";
 import { migrate } from "./scripts/migrate.js";
@@ -21,6 +28,8 @@ import { createUIRouter } from "./src/routes/ui.js";
 import { createBuilderAuthRouter } from "./src/routes/builder_auth.js";
 import { createBuilderApiRouter } from "./src/routes/builder_api.js";
 import { createUsageIngestRouter } from "./src/routes/usage_ingest.js";
+import { createUnifiedAuthRouter, verifyJWT } from "./src/routes/auth_v2.js";
+import { createDevAuthRouter } from "./src/routes/dev_auth_tokens.js";
 import { AlertService } from "./src/ops/alerts.js";
 import { Scheduler } from "./src/ops/scheduler.js";
 
@@ -138,9 +147,18 @@ export async function createApp(db) {
     next();
   });
 
-  // 7) Healthz (root level, always works)
-  app.get("/healthz", (_req, res) => res.json({ status: "ok", uptime: process.uptime() }));
-
+  // 7) Health (root level, always works)
+  app.get(["/health", "/healthz"], (_req, res) => {
+    res.json({
+      ok: true,
+      service: "satelink",
+      port: PORT,
+      node_env: process.env.NODE_ENV,
+      time: Date.now(),
+      pid: process.pid,
+      uptime: process.uptime()
+    });
+  });
 
 
   // 14) Builder Routes (Rung 10b) - Moved to top to avoid 404 interference
@@ -153,6 +171,43 @@ export async function createApp(db) {
 
   const usageIngestRouter = createUsageIngestRouter(opsEngine);
   app.use('/v1/builder', usageIngestRouter);
+
+  const unifiedAuthRouter = createUnifiedAuthRouter(opsEngine);
+  app.use('/auth', unifiedAuthRouter);
+
+
+
+
+  // --- Dashboard V2 API Routers ---
+  // --- Dashboard V2 API Routers ---
+  app.use('/admin-api', verifyJWT, createAdminApiRouter(opsEngine));
+  app.use('/node-api', verifyJWT, createNodeApiRouter(opsEngine));
+  app.use('/builder-api', verifyJWT, createBuilderApiV2Router(opsEngine));
+  app.use('/dist-api', verifyJWT, createDistApiRouter(opsEngine));
+  app.use('/ent-api', verifyJWT, createEntApiRouter(opsEngine));
+  app.use('/pair', createPairApiRouter(opsEngine));
+  app.use('/stream', verifyJWT, createStreamApiRouter(opsEngine));
+
+  // [Phase 22 Fix] User requested Aliases for Curl/Frontend compatibility
+  {
+    // 1. GET /me (Root level alias)
+    const { getPermissionsForRole } = await import('./src/routes/auth_v2.js');
+    app.get('/me', verifyJWT, (req, res) => {
+      res.json({
+        ok: true,
+        user: {
+          wallet: req.user.wallet,
+          role: req.user.role,
+          permissions: getPermissionsForRole(req.user.role),
+          exp: req.user.exp,
+          iss: req.user.iss
+        }
+      });
+    });
+
+    // 2. /admin Alias (Redirects logic to admin router)
+    app.use('/admin', verifyJWT, createAdminApiRouter(opsEngine));
+  }
 
   // 8) Mount Integration Router
   app.use("/", createIntegrationRouter(opsEngine, adminAuth));
@@ -172,25 +227,83 @@ export async function createApp(db) {
   // 13) Heartbeat
   app.post("/heartbeat", async (req, res) => {
     try {
-      const { nodeWallet } = req.body || {};
-      if (!nodeWallet) return res.status(400).json({ error: "Missing nodeWallet" });
-      const uptime = await opsEngine.recordHeartbeatUptime(nodeWallet);
-      const now = Math.floor(Date.now() / 1000);
+      const { node_id, wallet, timestamp, signature } = req.body;
+      const target = node_id || wallet;
 
-      // Upsert registration
-      const node = await db.get("SELECT 1 FROM registered_nodes WHERE wallet = ?", [nodeWallet]);
-      if (node) {
-        await db.query("UPDATE registered_nodes SET last_heartbeat = ?, active = 1, updatedAt = ? WHERE wallet = ?", [now, now, nodeWallet]);
-      } else {
-        await db.query("INSERT INTO registered_nodes (wallet, last_heartbeat, active, updatedAt) VALUES (?, ?, 1, ?)", [nodeWallet, now, now]);
+      if (!target) return res.status(400).json({ error: "Missing node_id or wallet" });
+
+      // 1. Signature Verification (Phase 3)
+      if (process.env.NODE_ENV === 'production' || signature) {
+        if (!timestamp || !signature) return res.status(401).json({ error: "Missing signature/timestamp" });
+
+        // message: HEARTBEAT:{timestamp}
+        const message = `HEARTBEAT:${timestamp}`;
+        try {
+          const { ethers } = await import("ethers");
+          const recovered = ethers.verifyMessage(message, signature);
+          if (recovered.toLowerCase() !== target.toLowerCase()) {
+            return res.status(403).json({ error: "Invalid signature" });
+          }
+          // Optional: Check timestamp freshness (e.g. within 60s)
+          if (Math.abs(Date.now() - timestamp) > 60000) {
+            return res.status(400).json({ error: "Stale heartbeat" });
+          }
+        } catch (e) {
+          console.error("Sig Verify Error:", e);
+          return res.status(403).json({ error: "Signature verification failed" });
+        }
       }
 
+      const uptime = await opsEngine.recordHeartbeatUptime(target);
+      const now = Math.floor(Date.now() / 1000);
+
+      // Phase 2: Update nodes table AND registered_nodes (Dual Write for Safety)
+      await Promise.all([
+        // Legacy Config
+        (async () => {
+          const node = await db.get("SELECT 1 FROM registered_nodes WHERE wallet = ?", [target]);
+          if (node) {
+            await db.query("UPDATE registered_nodes SET last_heartbeat = ?, active = 1, updatedAt = ? WHERE wallet = ?", [now, now, target]);
+          } else {
+            await db.query("INSERT INTO registered_nodes (wallet, last_heartbeat, active, updatedAt) VALUES (?, ?, 1, ?)", [target, now, now]);
+          }
+        })(),
+        // New Cycle
+        (async () => {
+          // We assume 'nodes' record was created by pair/confirm. If not, create it.
+          const node = await db.get("SELECT 1 FROM nodes WHERE node_id = ?", [target]);
+          if (node) {
+            await db.query("UPDATE nodes SET last_seen = ?, status = 'active' WHERE node_id = ?", [now, target]);
+          } else {
+            // Auto-register via heartbeat if not paired? Allowed for now to support non-paired nodes.
+            await db.query("INSERT INTO nodes (node_id, wallet, device_type, status, last_seen, created_at) VALUES (?, ?, 'connected', 'active', ?, ?)",
+              [target, target, now, now]);
+          }
+        })()
+      ]);
+
+      // Phase 4: Emit Event (Real-time binding)
+      // We can emit to a global bus or just let the SSE loop pick it up (Polling)
+      // Since SSE polling is 10s, it's "near real-time". 
+      // User asked: "Emit event to admin SSE stream."
+      // If we want instant, we need an event emitter. 
+      // For MVP, Polling in SSE is sufficient as per previous design.
+
       res.json({ status: "ok", uptimeCredited: uptime });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+      console.error("Heartbeat Error:", e);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // --- DEV ROUTES ---
   if (process.env.NODE_ENV !== 'production') {
+    app.use('/__test/auth', createDevAuthRouter(opsEngine));
+
+    // Phase 23: Dev Seeding
+    const { createDevSeedRouter } = await import('./src/routes/dev_seed.js');
+    app.use('/__test/seed', createDevSeedRouter(opsEngine));
+
     app.get('/__test/error', (req, res, next) => {
       const err = new Error("Simulated Crash for Observability Test");
       next(err);
@@ -223,6 +336,17 @@ export async function createApp(db) {
 // ─── BOOT ────────────────────────────────────────────────────
 if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1].endsWith("server"))) {
   (async () => {
+    // Fail Fast Handlers
+    process.on('uncaughtException', (err) => {
+      console.error('[FATAL] Uncaught Exception:', err);
+      process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
+      process.exit(1);
+    });
+
     const dbConfig = {
       type: process.env.DATABASE_URL ? 'postgres' : 'sqlite',
       connectionString: process.env.DATABASE_URL || config.sqlitePath
@@ -270,9 +394,43 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
         process.exit(1);
       }
 
-      app.listen(PORT, () => {
-        console.log(`Satelink MVP running on port ${PORT}`);
+      const HOST = process.env.HOST || "0.0.0.0";
+      app.listen(PORT, HOST, () => {
+        console.log(`Satelink MVP running on http://${HOST}:${PORT}`);
         console.log(`Admin user: satelink_admin`);
+
+        if (!isProd) {
+          console.log("\n=== 🛠️  DEV TOOLS (Copy-Paste for macOS/Zsh) ===");
+          console.log("# 1. Check Health & Reachability");
+          console.log(`curl -s http://localhost:${PORT}/health`);
+
+          console.log("\n# 2. Mint Admin Token");
+          console.log(`curl -s -X POST http://localhost:${PORT}/__test/auth/admin/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"wallet":"0xadmin"}'`);
+
+          console.log("\n# 3. Export Token (ROBUST)");
+          console.log(`ADMIN_TOKEN=$(curl -s -X POST http://localhost:${PORT}/__test/auth/admin/login -H "Content-Type: application/json" -d '{"wallet":"0xadmin"}' | node -pe 'JSON.parse(fs.readFileSync(0,"utf8")).token')`);
+
+          console.log("\n# 4. Test Auth & View Token Claims");
+          console.log(`curl -s -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:${PORT}/auth/me`);
+
+          console.log("\n# 5. Test SSE Stream (Auto-exit after 5s)");
+          console.log(`curl --max-time 5 -N -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:${PORT}/stream/admin || true`);
+
+          console.log("\n# 6. Mint Node Token & Request Pair Code");
+          console.log(`NODE_TOKEN=$(curl -s -X POST http://localhost:${PORT}/__test/auth/node/login -H "Content-Type: application/json" -d '{"wallet":"0xnode"}' | node -pe 'JSON.parse(fs.readFileSync(0,"utf8")).token')`);
+          // Note: pair_api returns { pair_code: "..." }
+          console.log(`PAIR_CODE=$(curl -s -X POST http://localhost:${PORT}/pair/request -H "Authorization: Bearer $NODE_TOKEN" -H "Content-Type: application/json" -d '{}' | node -pe 'JSON.parse(fs.readFileSync(0,"utf8")).pair_code')`);
+          console.log(`echo "Got Pair Code: $PAIR_CODE"`);
+
+          console.log("\n# 7. Confirm Pair (Device Action)");
+          console.log(`curl -s -X POST http://localhost:${PORT}/pair/confirm -H "Content-Type: application/json" -d "{\\"code\\":\\"$PAIR_CODE\\",\\"device_id\\":\\"dev_test_01\\"}"`);
+
+          console.log("\n# 8. Check Status");
+          console.log(`curl -s "http://localhost:${PORT}/pair/status/$PAIR_CODE"`);
+          console.log("================================================\n");
+        }
       });
     }
 

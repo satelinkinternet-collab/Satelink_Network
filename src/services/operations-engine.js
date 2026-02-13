@@ -56,6 +56,50 @@ export class OperationsEngine {
         await this.db.query("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)", [op, 1.0]);
       }
     }
+
+    await this.db.query(`CREATE TABLE IF NOT EXISTS user_roles (
+      wallet TEXT PRIMARY KEY,
+      role TEXT NOT NULL,
+      updated_at INTEGER
+    )`);
+
+    await this.db.query(`CREATE TABLE IF NOT EXISTS referrals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_wallet TEXT,
+      referee_wallet TEXT,
+      metadata TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at INTEGER
+    )`);
+
+    // Phase 21: Full P0 Requirements
+    await this.db.query(`CREATE TABLE IF NOT EXISTS nodes (
+      node_id TEXT PRIMARY KEY,
+      wallet TEXT,
+      device_type TEXT,
+      status TEXT,
+      last_seen INTEGER,
+      created_at INTEGER
+    )`);
+
+    await this.db.query(`CREATE TABLE IF NOT EXISTS pair_codes (
+      code TEXT PRIMARY KEY,
+      wallet TEXT,
+      device_id TEXT,
+      status TEXT, -- pending, used, expired
+      created_at INTEGER,
+      expires_at INTEGER,
+      used_at INTEGER
+    )`);
+
+    await this.db.query(`CREATE TABLE IF NOT EXISTS conversions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ref_code TEXT,
+      wallet TEXT,
+      role TEXT,
+      node_id TEXT,
+      created_at INTEGER
+    )`);
   }
 
   /**

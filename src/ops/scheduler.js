@@ -21,12 +21,16 @@ export class Scheduler {
         setTimeout(() => {
             if (this.isRunning) this.healthTimer = setInterval(() => this.runHealthCheck(), 60000);
         }, 30000);
+
+        // Loop 3: Node Lifecycle (Every 30s)
+        this.lifecycleTimer = setInterval(() => this.runNodeLifecycle(), 30000);
     }
 
     stop() {
         this.isRunning = false;
         if (this.timer) clearInterval(this.timer);
         if (this.healthTimer) clearInterval(this.healthTimer);
+        if (this.lifecycleTimer) clearInterval(this.lifecycleTimer);
     }
 
     async runEpochCycle() {
@@ -56,6 +60,14 @@ export class Scheduler {
 
                 // 1. Finalize
                 await this.opsEngine.finalizeEpoch(currentId);
+
+                // Phase 5: Audit Log
+                try {
+                    await this.opsEngine.db.query(
+                        "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
+                        ['system_scheduler', 'EPOCH_FINALIZE', JSON.stringify({ epochId: currentId }), Date.now()]
+                    );
+                } catch (e) { console.error("Audit Log Error:", e.message); }
 
                 // 2. Validate Distribution Logic (Pre-flight)
                 const valid = await this.opsEngine.validateDistributionMath(currentId);
@@ -106,6 +118,34 @@ export class Scheduler {
 
         } catch (e) {
             await this.alertService.send(`🚨 HEALTH CHECK FAILED: ${e.message}`, 'fatal');
+        }
+    }
+
+    async runNodeLifecycle() {
+        if (!this.isRunning) return;
+        try {
+            const now = Math.floor(Date.now() / 1000);
+            const cutoff = now - 60; // 60s timeout per Phase 3 requirements
+
+            // 1. Mark 'nodes' offline
+            const res1 = await this.opsEngine.db.query(
+                "UPDATE nodes SET status = 'offline' WHERE last_seen < ? AND status = 'active'",
+                [cutoff]
+            );
+
+            // 2. Mark 'registered_nodes' inactive (Legacy sync)
+            const res2 = await this.opsEngine.db.query(
+                "UPDATE registered_nodes SET active = 0 WHERE last_heartbeat < ? AND active = 1",
+                [cutoff]
+            );
+
+            if (res1.changes > 0 || res2.changes > 0) {
+                console.log(`[SCHEDULER] Marked ${res1.changes || res2.changes} nodes offline.`);
+                // Phase 4: Could emit event here if we had an event bus.
+                // For now, SSE polling will pick up the status change on next tick.
+            }
+        } catch (e) {
+            console.error("[SCHEDULER] Node Lifecycle Error:", e.message);
         }
     }
 }

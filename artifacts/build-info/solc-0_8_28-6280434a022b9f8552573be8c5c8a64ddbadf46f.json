@@ -1,0 +1,35 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-6280434a022b9f8552573be8c5c8a64ddbadf46f",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/NodeRegistryV2.sol": "project/contracts/NodeRegistryV2.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/NodeRegistryV2.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ncontract NodeRegistryV2 {\n    struct Node {\n        address wallet;\n        bool active;\n    }\n\n    Node[] private nodes;\n    mapping(address => uint256) private indexPlusOne; // 0 means not exists\n\n    event NodeRegistered(address indexed wallet);\n    event NodeStatusUpdated(address indexed wallet, bool active);\n\n    function nodeCount() external view returns (uint256) {\n        return nodes.length;\n    }\n\n    function getNode(uint256 i) external view returns (address wallet, bool active) {\n        require(i < nodes.length, \"index out of range\");\n        Node memory n = nodes[i];\n        return (n.wallet, n.active);\n    }\n\n    function registerNode(address wallet) external {\n        require(wallet != address(0), \"bad wallet\");\n        require(indexPlusOne[wallet] == 0, \"already registered\");\n\n        nodes.push(Node({ wallet: wallet, active: true }));\n        indexPlusOne[wallet] = nodes.length;\n\n        emit NodeRegistered(wallet);\n        emit NodeStatusUpdated(wallet, true);\n    }\n\n    function setActive(address wallet, bool active) external {\n        uint256 idx1 = indexPlusOne[wallet];\n        require(idx1 != 0, \"not registered\");\n        nodes[idx1 - 1].active = active;\n\n        emit NodeStatusUpdated(wallet, active);\n    }\n}\n"
+      }
+    }
+  }
+}

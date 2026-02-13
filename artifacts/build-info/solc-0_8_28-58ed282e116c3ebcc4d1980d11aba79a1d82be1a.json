@@ -1,0 +1,35 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-58ed282e116c3ebcc4d1980d11aba79a1d82be1a",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/RevenueDistributor.sol": "project/contracts/RevenueDistributor.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/RevenueDistributor.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ninterface INodeRegistry {\n    function getNode(uint256 i) external view returns (address wallet, bool active);\n}\n\ncontract RevenueDistributor {\n    INodeRegistry public registry;\n\n    event Distributed(uint256 indexed nodeId, address indexed wallet, uint256 amount);\n\n    constructor(address _registry) {\n        require(_registry != address(0), \"Invalid registry\");\n        registry = INodeRegistry(_registry);\n    }\n\n    function distribute(uint256 nodeId) external payable {\n        require(msg.value > 0, \"No value sent\");\n\n        (address wallet, bool active) = registry.getNode(nodeId);\n        require(active, \"Node not active\");\n        require(wallet != address(0), \"Invalid node wallet\");\n\n        (bool sent, ) = wallet.call{value: msg.value}(\"\");\n        require(sent, \"Failed to send Ether\");\n\n        emit Distributed(nodeId, wallet, msg.value);\n    }\n}\n"
+      }
+    }
+  }
+}
