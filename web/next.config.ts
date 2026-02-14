@@ -40,8 +40,12 @@ const nextConfig: NextConfig = {
         destination: 'http://localhost:8080/admin/:path*',
       },
       {
-        source: '/admin/:path(command|network|ops|revenue|rewards|security|settings|controls)/:rest*',
+        source: '/admin/:path(command|network|ops|revenue|rewards|security|settings|controls|support)/:rest*',
         destination: 'http://localhost:8080/admin/:path/:rest*',
+      },
+      {
+        source: '/support/:path*',
+        destination: 'http://localhost:8080/support/:path*',
       }
     ];
   },

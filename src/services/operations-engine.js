@@ -14,9 +14,11 @@ const OP_CONFIG = {
 };
 
 export class OperationsEngine {
-  constructor(db, ledger) {
+  constructor(db, ledger, webhookService = null) {
     this.db = db;
     this.ledger = ledger;
+    this.webhookService = webhookService;
+    this.slaEngine = null; // Injected post-construction [Phase Q]
     this.currentEpochId = null;
     this.initialized = false;
   }
@@ -125,6 +127,14 @@ export class OperationsEngine {
   async executeOp({ op_type, node_id, client_id, request_id, timestamp, payload_hash }) {
     await this.checkSafeMode();
 
+    // [Phase Q4] Circuit Breaker — per-tenant throttling
+    if (this.slaEngine && client_id) {
+      const cb = await this.slaEngine.checkCircuitBreaker(client_id);
+      if (!cb.allowed) {
+        throw new Error(`tenant_throttled:${cb.reason}`);
+      }
+    }
+
     // 1. Validate pricing and existence
     const pricing = await this.db.get("SELECT * FROM ops_pricing WHERE op_type = ? AND enabled = 1", [op_type]);
     if (!pricing) throw new Error(`Operation type ${op_type} is disabled or invalid`);
@@ -208,6 +218,23 @@ export class OperationsEngine {
       } catch (e) {
         console.error("Ledger Write Failed for Revenue:", e.message);
       }
+    }
+
+    // [Phase Q4] Record execution for circuit breaker counters
+    if (this.slaEngine && client_id) {
+      this.slaEngine.recordExecution(client_id, billingAmount).catch(e =>
+        console.error("[Ops] SLA Record Failed:", e.message));
+    }
+
+    // [Phase P] Webhook Trigger
+    if (this.webhookService) {
+      this.webhookService.dispatchEvent('op_completed', {
+        op_type,
+        req_id: request_id,
+        status: 'success',
+        amount_usdt: billingAmount,
+        meta_hash: payload_hash
+      }, client_id).catch(e => console.error("[Ops] Webhook Dispatch Failed:", e.message));
     }
 
     return {

@@ -1,115 +1,153 @@
-"use client";
+'use client';
 
-import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+import {
+        getActiveAddress,
+        createAndStoreWallet,
+        signMessage,
+        getDevicePublicId
+    } from '@/lib/embeddedWallet';
+import { connectMetaMask, signMessageMetaMask } from '@/lib/metaMask';
+import axios from 'axios';
 import { toast } from 'sonner';
-import api from '@/lib/api';
-import { Loader2, Wallet } from 'lucide-react';
 
+/**
+ * Phase 37 & F — Login Page
+ * Supports:
+ * 1. Silent Embedded Wallet (Create/Get -> Sign)
+ * 2. External Wallet (MetaMask -> Sign)
+ */
 export default function LoginPage() {
-    const [wallet, setWallet] = useState('');
-    const [role, setRole] = useState('builder');
+    const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
-    const searchParams = useSearchParams();
-    const refCode = searchParams.get('ref');
+    const [step, setStep] = useState<'initial' | 'generating' | 'signing'>('initial');
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!wallet) {
-            toast.error('Wallet address is required');
-            return;
-        }
-
+    // Shared Auth Flow (Nonce -> Sign -> JWT)
+    const authenticate = async (address: string, signer: (msg: string) => Promise<string | null>) => {
         setLoading(true);
         try {
-            // Updated Path: /__test/auth/login (proxied via Next.js rewrites or direct if API base is set)
-            // Assuming API base is set or proxy handles /__test
-            // web/src/lib/api.ts logic handles base URL. 
-            // If dev server runs on 3000 and express on 8080/3001, we need full path if no proxy.
-            // But usually api.post handles it. 
-            // The path in dev_auth_tokens.js is mounted at /__test/auth
-            // The router has .post('/login')
-            // So full path is /__test/auth/login
-            const { data } = await api.post('/__test/auth/login', { wallet, role, refCode });
-            if (data.success) {
-                toast.success(`Logged in as ${role}`);
-                await login(data.token);
-            } else {
-                toast.error(data.error || 'Login failed');
+            // 2. Start Auth (Get Nonce)
+            setStep('signing');
+            const startRes = await axios.post('/auth/embedded/start', { address });
+            if (!startRes.data.ok) throw new Error(startRes.data.error);
+
+            const { nonce, message_template } = startRes.data;
+            const message = message_template
+                .replace('${nonce}', nonce)
+                .replace('${address}', address)
+                .replace('${timestamp}', startRes.data.created_at || Date.now());
+
+            // 3. Sign Message
+            const signature = await signer(message);
+            if (!signature) {
+                setStep('initial');
+                setLoading(false);
+                return; // User rejected or failed
             }
-        } catch (err: any) {
-            console.error(err);
-            toast.error('Network error or server unavailable');
-        } finally {
+
+            // 4. Finish Auth (Verify & JWT)
+            const finishRes = await axios.post('/auth/embedded/finish', {
+                address,
+                signature,
+                device_public_id: getDevicePublicId()
+            });
+
+            if (finishRes.data.ok) {
+                toast.success('Authenticated successfully');
+                router.push('/admin/command-center');
+            } else {
+                throw new Error(finishRes.data.error);
+            }
+        } catch (error: any) {
+            console.error('Login failed:', error);
+            toast.error(error.response?.data?.error || error.message || 'Login failed');
+            setStep('initial');
             setLoading(false);
         }
     };
 
-    const roles = [
-        { value: 'admin_super', label: 'Super Admin' },
-        { value: 'admin_ops', label: 'Ops Admin' },
-        { value: 'node_operator', label: 'Node Operator' },
-        { value: 'builder', label: 'Builder' },
-        { value: 'distributor_lco', label: 'Distributor (LCO)' },
-        { value: 'distributor_influencer', label: 'Distributor (Influencer)' },
-        { value: 'enterprise', label: 'Enterprise' },
-    ];
+    const handleContinue = async () => {
+        setLoading(true);
+        try {
+            // 1. Get or Generate Embedded Wallet
+            setStep('generating');
+            let address = await getActiveAddress();
+            if (!address) {
+                address = await createAndStoreWallet();
+                toast.success('Secure device wallet created');
+            }
+            // Use embedded signer
+            await authenticate(address, (msg) => signMessage(msg));
+        } catch (error: any) {
+            console.error('Embedded init failed:', error);
+            toast.error('Failed to initialize secure wallet');
+            setLoading(false);
+            setStep('initial');
+        }
+    };
+
+    const handleConnectMetaMask = async () => {
+        setLoading(true);
+        const address = await connectMetaMask();
+        if (address) {
+            // Use MetaMask signer
+            await authenticate(address, (msg) => signMessageMetaMask(address, msg));
+        } else {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
-            <Card className="w-full max-w-md border-zinc-800 bg-zinc-900 text-zinc-100">
-                <CardHeader className="space-y-1">
-                    <div className="flex items-center justify-center mb-4">
-                        <div className="p-3 rounded-full bg-blue-600/10 text-blue-500">
-                            <Wallet className="h-8 w-8" />
-                        </div>
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4">
+            <div className="max-w-md w-full p-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl">
+                <div className="text-center mb-10">
+                    <div className="w-16 h-16 bg-white rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                        <div className="w-8 h-8 bg-black rounded-lg transform rotate-45"></div>
                     </div>
-                    <CardTitle className="text-2xl text-center font-bold">Satelink MVP</CardTitle>
-                    <CardDescription className="text-center text-zinc-400">
-                        Enter your wallet address to access the dashboard.
-                    </CardDescription>
-                </CardHeader>
-                <form onSubmit={handleLogin}>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-300">Wallet Address</label>
-                            <Input
-                                placeholder="0x..."
-                                value={wallet}
-                                onChange={(e) => setWallet(e.target.value)}
-                                className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-zinc-300">Role (Dev Only)</label>
-                            <select
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                                className="w-full rounded-md border border-zinc-700 bg-zinc-800 p-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                {roles.map((r) => (
-                                    <option key={r.value} value={r.value}>
-                                        {r.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-all font-semibold py-6">
-                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign In'}
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
-            <div className="absolute bottom-4 text-xs text-zinc-500">
-                Beta Mode • Satelink Network v0.1.0
+                    <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome to Satelink</h1>
+                    <p className="text-white/50 text-sm">Decentralized connectivity starting with your device.</p>
+                </div>
+
+                <div className="space-y-4">
+                    <button
+                        onClick={handleContinue}
+                        disabled={loading}
+                        className="w-full py-4 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+                    >
+                        {loading ? (
+                            <span className="flex items-center gap-2">
+                                <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></span>
+                                {step === 'generating' ? 'Initializing...' : 'Authorizing...'}
+                            </span>
+                        ) : (
+                            <>
+                                Continue
+                                <span className="group-hover:translate-x-1 transition-transform">→</span>
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={handleConnectMetaMask}
+                        disabled={loading}
+                        className="w-full py-4 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/70"
+                    >
+                        I already have a wallet
+                    </button>
+                </div>
+
+                <div className="mt-10 pt-8 border-t border-white/5 text-center">
+                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-medium">
+                        Non-Custodial • Device Bound • End-to-End Encrypted
+                    </p>
+                </div>
             </div>
+
+            <p className="mt-8 text-white/40 text-xs">
+                By continuing, you agree to our Terms of Service.
+            </p>
         </div>
     );
 }

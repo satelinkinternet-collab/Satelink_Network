@@ -15,6 +15,10 @@ export class UniversalDB {
         if (this.type === 'sqlite') {
             this.db = new Database(this.config.connectionString || ":memory:");
             this.db.pragma("journal_mode = WAL");
+            this.db.pragma("busy_timeout = 5000");
+            this.db.pragma("foreign_keys = ON");
+            this.db.pragma("auto_vacuum = INCREMENTAL");
+            this.db.pragma("temp_store = MEMORY");
             console.log("DB ready (sqlite):", typeof this.db.prepare);
         } else {
             this.pool = new Pool({ connectionString: this.config.connectionString });
@@ -152,7 +156,7 @@ export class UniversalDB {
     }
 
     _logSlowQuery(sql, duration, source = "sqlite") {
-        if (sql.includes("INSERT INTO slow_queries")) return; // Prevent loop
+        if (sql.includes("INSERT INTO slow_queries") || sql.includes("INSERT INTO error_events")) return; // Prevent loop
 
         // Fire and forget - do not await
         try {
@@ -160,8 +164,8 @@ export class UniversalDB {
             const hash = Buffer.from(redacted).toString('base64').substring(0, 16); // Simple hash
             const now = Date.now();
 
+            // 1. Slow Query Log
             if (this.type === 'sqlite') {
-                // Direct SQLite access to bypass wrapper for logging
                 const stmt = this.db.prepare(`
                     INSERT INTO slow_queries (query_hash, avg_ms, p95_ms, count, last_seen_at, sample_sql, source)
                     VALUES (?, ?, ?, 1, ?, ?, ?)
@@ -173,7 +177,7 @@ export class UniversalDB {
                 `);
                 stmt.run([hash, duration, duration, now, redacted, source]);
             } else {
-                // Postgres - fire and forget
+                // Postgres impl matches above pattern
                 this.pool.query(
                     `INSERT INTO slow_queries (query_hash, avg_ms, p95_ms, count, last_seen_at, sample_sql, source)
                      VALUES ($1, $2, $3, 1, $4, $5, $6)
@@ -185,6 +189,27 @@ export class UniversalDB {
                     [hash, duration, duration, now, redacted, source]
                 ).catch(() => { });
             }
+
+            // 2. Strict Budget Violation (> 1000ms) -> Log as Error
+            if (duration > 1000) {
+                const errorSql = `
+                    INSERT INTO error_events (service, route, method, status_code, message, stack_hash, stack_preview, first_seen_at, last_seen_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 `;
+                const params = [
+                    'db', 'internal', 'QUERY', 500,
+                    `Query Budget Violation (${duration.toFixed(0)}ms): ${redacted}`,
+                    hash, redacted, now, now
+                ];
+
+                if (this.type === 'sqlite') {
+                    this.db.prepare(errorSql).run(params);
+                } else {
+                    // PG params need $1...
+                    this.pool.query(this._formatSql(errorSql), params).catch(() => { });
+                }
+            }
+
         } catch (e) {
             // Silent fail for telemetry
         }

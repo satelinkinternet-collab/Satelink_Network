@@ -16,7 +16,11 @@ export function verifyJWT(req, res, next) {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev_only_secret'); // Issuer check removed for simplicity if causing issues, or keep if consistent
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            console.warn("WARNING: JWT_SECRET not set. Using insecure default for DEV.");
+        }
+        const decoded = jwt.verify(token, secret || 'insecure_dev_secret_replace_immediately');
         req.user = decoded;
         next();
     } catch (e) {
@@ -50,7 +54,7 @@ export function createUnifiedAuthRouter(opsEngine) {
 
             const token = jwt.sign(
                 { wallet: wallet.toLowerCase(), role },
-                process.env.JWT_SECRET || 'dev_only_secret',
+                process.env.JWT_SECRET || 'insecure_dev_secret_replace_immediately',
                 { expiresIn: '7d', issuer: 'satelink-core' }
             );
 

@@ -17,6 +17,8 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 import { LayoutShell } from "@/components/layout-shell";
 import { BetaFeedbackButton } from "@/components/beta/BetaFeedbackButton";
+import { BackupNudge } from "@/components/auth/BackupNudge";
+import { SigningGuard } from "@/components/auth/SigningGuard";
 
 export const metadata: Metadata = {
   title: "Satelink MVP Dashboard",
@@ -37,7 +39,9 @@ export default function RootLayout({
           <LayoutShell>
             {children}
           </LayoutShell>
+          <BackupNudge />
           <BetaFeedbackButton />
+          <SigningGuard />
           <Toaster position="top-right" />
         </AuthProvider>
       </body>

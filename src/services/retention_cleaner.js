@@ -37,17 +37,9 @@ export class RetentionCleaner {
                 `DELETE FROM request_traces WHERE created_at < ? RETURNING 1`,
                 [traceCutoff]
             );
-            stats.traces_removed = traceRes.length || 0; // flexible depending on driver return
+            stats.traces_removed = traceRes.length || 0;
 
-            // SQLite DELETE doesn't return count easily in all drivers without RETURNING, 
-            // but better-sqlite3 run() returns changes. If this.db is wrapper, we adapt.
-            // Assuming this.db.query returns rows, or we might need a specific run().
-            // For safety with the user's likely `better-sqlite3` wrapper:
-            // Let's assume standard run pattern or just execute.
-            // Only 'RETURNING' works in newer SQLite. 
-            // We'll use a pragmatic approach: just delete.
-
-            // Refined approach for SQLite compatibility without assuming RETURNING support
+            // Refined approach for SQLite compatibility
             await this._prune('request_traces', 'created_at', traceCutoff, 'traces_removed', stats);
 
             // 2. Errors - 30 days
@@ -60,6 +52,13 @@ export class RetentionCleaner {
             // 4. Self Tests - 30 days
             await this._prune('self_test_runs', 'created_at', errorCutoff, 'test_runs_removed', stats);
 
+            // 4b. Runtime Metrics - 7 days
+            await this._prune('runtime_metrics', 'created_at', traceCutoff, 'runtime_metrics_removed', stats);
+
+            // 4c. Backup Logs - 90 days
+            const backupCutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+            await this._prune('backup_log', 'created_at', backupCutoff, 'backup_logs_removed', stats);
+
             // 5. Incidents - 90 days (if not open)
             const incidentCutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
             // Only prune resolved/sent incidents, keep open ones forever until handled
@@ -67,7 +66,7 @@ export class RetentionCleaner {
                 `DELETE FROM incident_bundles WHERE created_at < ? AND status != 'open'`,
                 [incidentCutoff]
             );
-            // Manually update stats if wrapper returns array, otherwise ignore count for now
+            // Manually update stats if wrapper returns array
             if (Array.isArray(incRes)) stats.incidents_removed = incRes.length;
 
             // 6. Security Alerts - 90 days
@@ -105,15 +104,7 @@ export class RetentionCleaner {
 
     async _prune(table, timeCol, cutoff, statKey, statsObj) {
         try {
-            // Try to get count first (cheap in SQLite usually)
-            // const countRes = await this.db.get(`SELECT count(*) as c FROM ${table} WHERE ${timeCol} < ?`, [cutoff]);
-            // const count = countRes?.c || 0;
-
-            // Just delete. 
             await this.db.query(`DELETE FROM ${table} WHERE ${timeCol} < ?`, [cutoff]);
-
-            // We won't have exact count without `this.lastID/changes` access from the wrapper
-            // which varies. We'll mark as 'executed'.
             statsObj[statKey] = 'executed';
         } catch (e) {
             console.error(`[Retention] Failed to prune ${table}:`, e.message);

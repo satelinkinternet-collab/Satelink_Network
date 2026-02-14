@@ -17,7 +17,8 @@ import {
     Award,
     ScrollText,
     Stethoscope,
-    Bug
+    Bug,
+    Fingerprint
 } from 'lucide-react';
 import { Role } from '@/lib/permissions';
 
@@ -112,6 +113,13 @@ export const NAV_ITEMS: NavItem[] = [
         label: 'Audit Log',
         path: '/admin/security/audit',
         icon: ScrollText,
+        roles: ['admin_super', 'admin_ops'],
+        section: 'SECURITY'
+    },
+    {
+        label: 'Forensics',
+        path: '/admin/forensics',
+        icon: Fingerprint,
         roles: ['admin_super', 'admin_ops'],
         section: 'SECURITY'
     },

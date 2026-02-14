@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { sseHelper } from '../utils/sse.js';
+import { SSEManager } from '../services/sse_manager.js';
+
+const sseManager = new SSEManager();
 
 export function createStreamApiRouter(opsEngine) {
     const router = Router();
@@ -37,6 +40,10 @@ export function createStreamApiRouter(opsEngine) {
         res.setHeader('X-Accel-Buffering', 'no');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
+
+        if (!sseManager.add(req, res)) {
+            return res.status(429).json({ error: "Too many active SSE connections" });
+        }
 
         const conn = sseHelper.init(req, res);
 
@@ -210,6 +217,11 @@ export function createStreamApiRouter(opsEngine) {
         }
 
         const wallet = req.user.wallet;
+
+        if (!sseManager.add(req, res)) {
+            return res.status(429).json({ error: "Too many active SSE connections" });
+        }
+
         const conn = sseHelper.init(req, res);
 
         const pollStatus = setInterval(async () => {
@@ -257,6 +269,11 @@ export function createStreamApiRouter(opsEngine) {
         }
 
         const wallet = req.user.wallet;
+
+        if (!sseManager.add(req, res)) {
+            return res.status(429).json({ error: "Too many active SSE connections" });
+        }
+
         const conn = sseHelper.init(req, res);
         let lastUsageId = 0;
 

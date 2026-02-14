@@ -38,6 +38,10 @@ import { RetentionCleaner } from "./src/services/retention_cleaner.js";
 import { OpsReporter } from "./src/services/ops_reporter.js";
 import { AbuseFirewall } from "./src/services/abuse_firewall.js";
 import { createBetaRouter } from "./src/routes/beta_api.js";
+import { createUserSettingsRouter } from "./src/routes/user_settings.js";
+import { createAdminGrowthRouter } from "./src/routes/admin_growth.js";
+import { createAdminSystemRouter } from "./src/routes/admin_system.js";
+import { RuntimeMonitor } from "./src/services/runtime_monitor.js";
 
 
 import { Scheduler } from "./src/ops/scheduler.js";
@@ -62,8 +66,13 @@ export async function createApp(db) {
   const logger = new LoggerService(db);
   const diagnostics = new DiagnosticsService(db, logger);
   const alertService = new AlertService(logger);
+  const incidentBuilder = new IncidentBuilder(db);
 
-  const opsEngine = new OperationsEngine(db);
+  // [Phase P] Webhook Service
+  const { WebhookService } = await import('./src/services/partner/webhook_service.js');
+  const webhookService = new WebhookService(db);
+
+  const opsEngine = new OperationsEngine(db, null, webhookService); // ledger injected later
   // await opsEngine.seed(); 
   const opsReporter = new OpsReporter(db);
   await opsReporter.init();
@@ -72,13 +81,28 @@ export async function createApp(db) {
 
   const adminAuth = createAdminAuth(opsEngine);
 
+  // 2b) Runtime Monitor (Phase K)
+  const runtimeMonitor = new RuntimeMonitor(db, alertService);
+  await runtimeMonitor.init();
+
+  // 2c) Backup Service (Phase K6)
+  const { BackupService } = await import('./src/services/backup_service.js');
+  const backupService = new BackupService(db);
+  await backupService.init();
+
   // Automation
-  const scheduler = new Scheduler(opsEngine, alertService);
-  scheduler.start();
+  // Moved to after M1-M5 services init below
 
   // 3) Express Setup
   const app = express();
+  app.use(express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
+  app.use(express.urlencoded({ extended: true }));
   app.set('db', db); // Make DB available globally via app.get('db')
+  app.set('backupService', backupService);
 
   // Abuse Firewall (Phase 21)
   const abuseFirewall = new AbuseFirewall(db, alertService); // Pass alertService
@@ -102,12 +126,6 @@ export async function createApp(db) {
   const drills = new DrillsService(db, opsEngine, alertService, abuseFirewall, safeModeAutopilot);
   app.set('drills', drills);
 
-  // Backups (Phase 27)
-  const { BackupService } = await import('./src/services/backup_service.js');
-  const backupService = new BackupService(db);
-  await backupService.init();
-  app.set('backupService', backupService);
-
   // Preflight Gate (Phase 28)
   // Moved to after OpsEngine/Ledger init below
 
@@ -116,8 +134,88 @@ export async function createApp(db) {
   const ledger = new EconomicLedger(db);
   app.set('ledger', ledger);
 
+  // [Phase M1] Breakeven Service
+  const { BreakevenService } = await import('./src/services/economics/breakeven_service.js');
+  const breakevenService = new BreakevenService(db, { default_node_cost_usdt_day: 0.40 });
+  // We don't run daily job here; Scheduler does it.
+
+  const { createAdminEconomicsRouter } = await import('./src/routes/admin_economics.js');
+  const { AuthenticityService } = await import('./src/services/economics/authenticity_service.js');
+  const authenticityService = new AuthenticityService(db);
+
+  const { RevenueStabilityService } = await import('./src/services/economics/revenue_stability_service.js');
+  const stabilityService = new RevenueStabilityService(db);
+
+  // [Phase M2] Retention Service
+  const { RetentionService } = await import('./src/services/growth/retention_service.js');
+  const retentionService = new RetentionService(db);
+
+  // [Phase N] Autonomous Ops Engine
+  const { AutoOpsEngine } = await import('./src/services/autonomous/auto_ops_engine.js');
+  const autoOpsEngine = new AutoOpsEngine(db);
+
+  app.use('/admin/economics', verifyJWT, createAdminEconomicsRouter(db, breakevenService, authenticityService, stabilityService));
+
+  const { createAdminAutonomousRouter } = await import('./src/routes/admin_autonomous.js');
+  app.use('/admin/autonomous', verifyJWT, createAdminAutonomousRouter(db, autoOpsEngine));
+
+  // [Phase R] Forensics & Audit Chain
+  const { AuditService } = await import('./src/services/forensics/audit_service.js');
+  const { ForensicsSnapshotService } = await import('./src/services/forensics/snapshot_service.js');
+  const { ReplayEngine } = await import('./src/services/forensics/replay_engine.js');
+  const { LedgerIntegrityJob } = await import('./src/jobs/ledger_integrity_job.js');
+  const { SSEManager } = await import('./src/services/sse_manager.js'); // Assuming it exists or using internal
+
+  // Reuse existing sseManager if available, or create for forensics
+  const auditService = new AuditService(db);
+  const snapshotService = new ForensicsSnapshotService(db, app.get('sseManager'));
+  const replayEngine = new ReplayEngine(db, incidentBuilder);
+  const integrityJob = new LedgerIntegrityJob(db, incidentBuilder);
+
+  const forensicsServices = { auditService, snapshotService, replayEngine, integrityJob };
+  const { createAdminForensicsRouter } = await import('./src/routes/admin_forensics.js');
+  app.use('/admin/forensics', verifyJWT, createAdminForensicsRouter(db, forensicsServices));
+
   // Inject Ledger into OpsEngine
   opsEngine.ledger = ledger;
+
+  // [Phase M5] Density Service
+  const { DensityService } = await import('./src/services/network/density_service.js');
+  const densityService = new DensityService(db);
+  const { createAdminNetworkRouter } = await import('./src/routes/admin_network.js');
+  const { createAdminLifecycleRouter } = await import('./src/routes/admin_lifecycle.js'); // [Phase O]
+  app.use('/admin/network', verifyJWT, createAdminNetworkRouter(db, densityService));
+  app.use('/admin/network', verifyJWT, createAdminLifecycleRouter(db));
+
+  // Override admin control router to use AuditService [Phase R]
+  const { createAdminControlRouter } = await import('./src/routes/admin_control_api.js');
+  app.use('/admin/control', verifyJWT, createAdminControlRouter(opsEngine, auditService));
+
+  // [Phase Q] SLA Engine
+  const { SLAEngine } = await import('./src/services/sla/sla_engine.js');
+  const slaEngine = new SLAEngine(db, alertService);
+  opsEngine.slaEngine = slaEngine;
+
+  // [Phase Q] Admin SLA Routes
+  const { createAdminSLARouter } = await import('./src/routes/admin_sla.js');
+  app.use('/admin/partners', verifyJWT, createAdminSLARouter(db, slaEngine));
+
+  // Partner Portal [Phase P + Q]
+  const { createPartnerPortalRouter } = await import('./src/routes/partner_portal.js');
+  app.use('/partner', verifyJWT, createPartnerPortalRouter(db, slaEngine));
+
+  // Automation (Scheduler) - Start after all services are ready
+  const scheduler = new Scheduler(opsEngine, alertService, runtimeMonitor, backupService, {
+    breakeven: breakevenService,
+    retention: retentionService,
+    authenticity: authenticityService,
+    stability: stabilityService,
+    density: densityService,
+    forensics: { snapshotService, integrityJob } // [Phase R]
+  });
+  scheduler.autoOpsEngine = autoOpsEngine;
+  scheduler.start();
+  app.set('scheduler', scheduler);
 
   // [Phase 31] Settlement Engine
   const { AdapterRegistry } = await import('./src/settlement/adapter_registry.js');
@@ -171,7 +269,6 @@ export async function createApp(db) {
   app.set('opsEngine', opsEngine);
 
   // Incident builder + self-test runner (started later in bootstrap after listen)
-  const incidentBuilder = new IncidentBuilder(db);
   const selfTestRunner = new SelfTestRunner(opsEngine, PORT, incidentBuilder);
   app.set('selfTestRunner', selfTestRunner);
   app.set('incidentBuilder', incidentBuilder);
@@ -210,12 +307,6 @@ export async function createApp(db) {
     }
     next();
   });
-  app.use(express.json({
-    verify: (req, res, buf) => {
-      req.rawBody = buf;
-    }
-  }));
-  app.use(express.urlencoded({ extended: true })); // [FIX] Support form posts for login
 
   // 4b) Abuse Firewall Middleware (Enhanced Phase 21)
   app.use(async (req, res, next) => {
@@ -329,6 +420,14 @@ export async function createApp(db) {
 
   const unifiedAuthRouter = createUnifiedAuthRouter(opsEngine);
   app.use('/auth', unifiedAuthRouter);
+  app.use('/me', createUserSettingsRouter(db));
+  // 5. Stress Tester (Phase K7)
+  const { StressTester } = await import('./src/services/stress_tester.js');
+  const stressTester = new StressTester(db);
+  // await stressTester.init(); // handled in router or here
+
+
+  // Automation (Scheduler) - Already started above [Phase R update]
 
 
 
@@ -475,15 +574,14 @@ export async function createApp(db) {
   const { createPublicStatusRouter } = await import('./src/routes/public_status.js');
   app.use('/status', createPublicStatusRouter(db));
 
-  app.use('/admin', verifyJWT, await createAdminControlRoomRouter(opsEngine, { selfTestRunner, incidentBuilder, opsReporter }));
+  // Pass AuditService [Phase R]
+  app.use('/admin', verifyJWT, await createAdminControlRoomRouter(opsEngine, { selfTestRunner, incidentBuilder, opsReporter, auditService }));
 
-  // [Phase 33] Admin Network/Fleet
-  const { createAdminNetworkRouter } = await import('./src/routes/admin_network.js');
-  app.use('/admin/network', verifyJWT, createAdminNetworkRouter(db, console));
+  // [Phase 33] Network (Replaced by M5 above)
 
   // [Phase 34] Admin Revenue
   const { createAdminRevenueRouter } = await import('./src/routes/admin_revenue.js');
-  app.use('/admin/revenue', verifyJWT, createAdminRevenueRouter(db));
+  app.use('/admin/revenue', verifyJWT, createAdminRevenueRouter(db, auditService));
 
   // [Phase 34] Admin Distributors
   const { createAdminDistributorsRouter } = await import('./src/routes/admin_distributors.js');
@@ -493,8 +591,6 @@ export async function createApp(db) {
   app.use('/network-stats', createPublicStatusRouter(db));
 
   // [Phase 35] Admin Growth (regions, referrals, marketing)
-  const { createAdminGrowthRouter } = await import('./src/routes/admin_growth.js');
-  app.use('/admin/growth', verifyJWT, createAdminGrowthRouter(db));
 
   // [Phase 35] Admin Partners
   const { createAdminPartnersRouter } = await import('./src/routes/admin_partners.js');
@@ -513,6 +609,16 @@ export async function createApp(db) {
   app.use('/admin/network', verifyJWT, createAdminReputationRouter(db));
   app.use('/admin/economics', verifyJWT, createAdminReputationImpactRouter(db));
 
+  // [Phase 37.1] Support & Diagnostics
+  const { createSupportRouter } = await import('./src/routes/support.js');
+  app.use('/support', createSupportRouter(db));
+  app.use('/admin/support', createSupportRouter(db)); // Shared router, handler checks role
+
+  // [Phase O] Node Lifecycle Management
+  // Must be mounted BEFORE public node router to handle specific paths like /setup, /pair
+  const { createNodeLifecycleRouter } = await import('./src/routes/node_lifecycle.js');
+  app.use('/node', createNodeLifecycleRouter(db));
+
   // [Phase 36] Public Node Profile
   const { createPublicNodeRouter } = await import('./src/routes/public_node.js');
   app.use('/node', createPublicNodeRouter(db));
@@ -521,8 +627,9 @@ export async function createApp(db) {
   const { createPublicMarketplaceRouter } = await import('./src/routes/public_marketplace.js');
   app.use('/network/marketplace', createPublicMarketplaceRouter(db));
 
-
-
+  // [Phase 37] Embedded Auth
+  const { createEmbeddedAuthRouter } = await import('./src/routes/auth_embedded.js');
+  app.use('/auth/embedded', createEmbeddedAuthRouter(db));
 
   // --- GLOBAL ERROR HANDLER ---
   app.use(async (err, req, res, next) => {

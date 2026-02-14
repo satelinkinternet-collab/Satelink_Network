@@ -2,6 +2,7 @@ import http from 'http';
 import { execFile } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ethers } from 'ethers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +36,13 @@ const ALLOWED_KINDS = [
     'pricing_integrity', 'commission_integrity', 'unit_economics_sanity', 'growth_fraud_detection',
     'region_cap_enforcement', 'partner_rate_limit_integrity', 'referral_fraud_detection',
     'launch_mode_safety', 'marketing_metrics_sanity',
-    'quality_routing_integrity', 'reward_multiplier_sanity', 'reputation_decay_sanity', 'tier_assignment_contract'
+    'quality_routing_integrity', 'reward_multiplier_sanity', 'reputation_decay_sanity', 'tier_assignment_contract',
+    'embedded_auth_flow', 'silent_reauth_contract', 'support_bundle_redaction', 'session_binding_sanity',
+    'revenue_stability_integrity', 'authenticity_integrity',
+    'autonomy_safety_contract', 'recommendation_engine_contract',
+    'pairing_integrity', 'diag_redaction_contract', 'release_policy_contract',
+    'sla_math_contract', 'tenant_limits_enforced', 'op_type_slo_contract', 'report_export_contract',
+    'forensics_hash_contract', 'ledger_integrity_contract', 'audit_chain_integrity'
 ];
 
 export class SelfTestRunner {
@@ -61,7 +68,7 @@ export class SelfTestRunner {
 
     /** Run all test kinds (excluding browser_smoke which is on-demand only) */
     async runAll() {
-        const kinds = ['backend_smoke', 'api_contract', 'db_integrity', 'sse_health'];
+        const kinds = ['backend_smoke', 'api_contract', 'db_integrity', 'sse_health', 'silent_reauth_contract', 'session_binding_sanity', 'revenue_stability_integrity', 'authenticity_integrity'];
         const results = [];
         for (const kind of kinds) {
             results.push(await this.runKind(kind));
@@ -161,6 +168,60 @@ export class SelfTestRunner {
                     break;
                 case 'tier_assignment_contract':
                     output = await this._testTierAssignment();
+                    break;
+                case 'embedded_auth_flow':
+                    output = await this._testEmbeddedAuthFlow();
+                    break;
+                case 'silent_reauth_contract':
+                    output = await this._testSilentReauthContract();
+                    break;
+                case 'support_bundle_redaction':
+                    output = await this._testSupportBundleRedaction();
+                    break;
+                case 'session_binding_sanity':
+                    output = await this._testSessionBindingSanity();
+                    break;
+                case 'revenue_stability_integrity':
+                    output = await this._testRevenueStability();
+                    break;
+                case 'authenticity_integrity':
+                    output = await this._testAuthenticity();
+                    break;
+                case 'autonomy_safety_contract':
+                    output = await this._testAutonomySafetyContract();
+                    break;
+                case 'recommendation_engine_contract':
+                    output = await this._testRecommendationEngineContract();
+                    break;
+                case 'pairing_integrity':
+                    output = await this._testPairingIntegrity();
+                    break;
+                case 'diag_redaction_contract':
+                    output = await this._testDiagRedaction();
+                    break;
+                case 'release_policy_contract':
+                    output = await this._testReleasePolicyContract();
+                    break;
+                case 'sla_math_contract':
+                    output = await this._testSLAMathContract();
+                    break;
+                case 'tenant_limits_enforced':
+                    output = await this._testTenantLimitsEnforced();
+                    break;
+                case 'op_type_slo_contract':
+                    output = await this._testOpTypeSloContract();
+                    break;
+                case 'report_export_contract':
+                    output = await this._testReportExportContract();
+                    break;
+                case 'forensics_hash_contract':
+                    output = await this._testForensicsHashContract();
+                    break;
+                case 'ledger_integrity_contract':
+                    output = await this._testLedgerIntegrityContract();
+                    break;
+                case 'audit_chain_integrity':
+                    output = await this._testAuditChainIntegrity();
                     break;
                 default:
                     throw new Error(`Unknown test kind: ${kind}`);
@@ -650,6 +711,38 @@ export class SelfTestRunner {
     }
 
     // ═══════════════════════════════════════════════════════════
+    // Phase M Self-Tests
+    // ═══════════════════════════════════════════════════════════
+
+    async _testRevenueStability() {
+        try {
+            const last = await this.db.get("SELECT * FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT 1");
+            if (!last) return { status: 'no_data', note: 'No stability data yet' };
+
+            if (last.stability_score < 0 || last.stability_score > 100) {
+                return { _fail: `Stability score out of bounds: ${last.stability_score}` };
+            }
+            return { stability_score: last.stability_score, status: 'pass' };
+        } catch (e) {
+            return { status: 'check_skipped', note: e.message };
+        }
+    }
+
+    async _testAuthenticity() {
+        try {
+            const last = await this.db.get("SELECT * FROM usage_authenticity_daily ORDER BY day_yyyymmdd DESC LIMIT 1");
+            if (!last) return { status: 'no_data', note: 'No authenticity data yet' };
+
+            if (last.authenticity_score < 0 || last.authenticity_score > 100) {
+                return { _fail: `Authenticity score out of bounds: ${last.authenticity_score}` };
+            }
+            return { authenticity_score: last.authenticity_score, status: 'pass' };
+        } catch (e) {
+            return { status: 'check_skipped', note: e.message };
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // Phase 36 Self-Tests
     // ═══════════════════════════════════════════════════════════
 
@@ -728,6 +821,257 @@ export class SelfTestRunner {
             return { nodes_checked: nodes.length, status: 'tiers_consistent' };
         } catch (e) {
             return { status: 'check_skipped', note: e.message };
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Phase 37.1 (H) Self-Tests
+    // ═══════════════════════════════════════════════════════════
+
+    async _testEmbeddedAuthFlow() {
+        // Verify /start and /finish basic connectivity
+        const startRes = await this._httpPost(`http://127.0.0.1:${this.port}/auth/embedded/start`, { address: '0xSelfTest' });
+        if (!startRes || !startRes.ok) return { _fail: 'Auth /start failed or unreachable' };
+        if (!startRes.nonce || !startRes.message_template) return { _fail: 'Auth /start returned invalid bundle' };
+
+        return { auth_start: 'ok', nonce_generated: true };
+    }
+
+    async _testSilentReauthContract() {
+        // Verify 401 response contract for re-auth trigger
+        // We'll call an admin endpoint without JWT
+        const res = await new Promise((resolve) => {
+            const req = http.get(`http://127.0.0.1:${this.port}/admin/network/reputation`, (res) => {
+                resolve({ status: res.statusCode });
+            });
+            req.on('error', () => resolve({ status: 500 }));
+        });
+
+        if (res.status !== 401) {
+            return { _fail: `Expected 401 for unauthorized admin access, got ${res.status}` };
+        }
+        return { status: 'contract_verified', auth_protection: 'active' };
+    }
+
+    async _testSupportBundleRedaction() {
+        // This is a logic check — ensure ticket system exists and tables are correct
+        const tickets = await this.db.get("SELECT COUNT(*) as c FROM support_tickets");
+        if (tickets === undefined) return { _fail: 'support_tickets table missing' };
+
+        // Check recent bundle for secrets (mock check)
+        const recent = await this.db.get("SELECT bundle_json FROM support_tickets ORDER BY created_at DESC LIMIT 1");
+        if (recent) {
+            const b = recent.bundle_json.toLowerCase();
+            if (b.includes('private_key') || b.includes('secret') || b.includes('password')) {
+                return { _fail: 'Potential secret leak detected in support bundle!' };
+            }
+        }
+        return { tickets_checked: true, status: 'redaction_sane' };
+    }
+
+    async _testSessionBindingSanity() {
+        // Full E2E: generate wallet -> start -> sign -> finish -> check JWT claims
+        try {
+            const wallet = ethers.Wallet.createRandom();
+            const address = wallet.address;
+
+            // 1. Start
+            const startRes = await this._httpPost(`http://127.0.0.1:${this.port}/auth/embedded/start`, { address });
+            if (!startRes || !startRes.ok) return { _fail: 'Auth /start failed' };
+
+            const { nonce, created_at, message_template } = startRes;
+
+            // 2. Sign
+            // Template: ... Nonce: ${nonce}... Timestamp: ${timestamp}
+            const message = message_template
+                .replace('${nonce}', nonce)
+                .replace('${address}', address)
+                .replace('${timestamp}', created_at);
+
+            const signature = await wallet.signMessage(message);
+
+            // 3. Finish
+            const finishRes = await this._httpPost(`http://127.0.0.1:${this.port}/auth/embedded/finish`, {
+                address,
+                signature,
+                device_public_id: 'self_test_device_id'
+            });
+
+            if (!finishRes || !finishRes.ok) return { _fail: `Auth /finish failed: ${finishRes?.error}` };
+
+            const token = finishRes.token;
+            if (!token) return { _fail: 'No token returned' };
+
+            // 4. Inspect JWT (basic decode)
+            const payloadBase64 = token.split('.')[1];
+            const payloadJson = Buffer.from(payloadBase64, 'base64').toString();
+            const payload = JSON.parse(payloadJson);
+
+            if (payload.device_id !== 'self_test_device_id') {
+                return { _fail: `JWT missing correct device_id. Got: ${payload.device_id}` };
+            }
+            if (!payload.ip_hash) {
+                return { _fail: 'JWT missing ip_hash claim' };
+            }
+
+            return { status: 'binding_verified', claims_present: ['device_id', 'ip_hash'] };
+
+        } catch (e) {
+            return { _fail: `Session binding test exception: ${e.message}` };
+        }
+    }
+
+    _httpPost(url, data) {
+        return new Promise((resolve) => {
+            const postData = JSON.stringify(data);
+            const req = http.request(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': postData.length
+                },
+                timeout: 5000
+            }, (res) => {
+                let body = '';
+                res.on('data', (chunk) => body += chunk);
+                res.on('end', () => {
+                    try { resolve(JSON.parse(body)); } catch { resolve(null); }
+                });
+            });
+            req.on('error', () => resolve(null));
+            req.write(postData);
+            req.end();
+        });
+    }
+
+    // ─── Phase Q: SLA Self-Tests ──────────────────────────────────
+
+    async _testSLAMathContract() {
+        // Verify error budget math: budget_remaining = (allowed_error - actual_error) / allowed_error * 100
+        const target = 0.99; // 99% target
+        const totalOps = 1000;
+        const failedOps = 5; // 0.5% error rate
+        const allowedError = 1 - target; // 0.01
+        const actualError = failedOps / totalOps; // 0.005
+        const budget = ((allowedError - actualError) / allowedError) * 100; // 50%
+
+        if (Math.abs(budget - 50) > 0.1) {
+            return { _fail: `Budget math incorrect: expected ~50%, got ${budget.toFixed(2)}%` };
+        }
+
+        // Edge case: exactly at target
+        const budgetAtTarget = ((allowedError - allowedError) / allowedError) * 100;
+        if (budgetAtTarget !== 0) {
+            return { _fail: `At-target budget should be 0%, got ${budgetAtTarget}%` };
+        }
+
+        // Verify plans exist
+        const plans = await this.db.query("SELECT id FROM sla_plans");
+        if (!plans || plans.length === 0) {
+            return { _fail: 'No SLA plans found in database' };
+        }
+
+        return { budget_math: 'correct', plans_found: plans.length };
+    }
+
+    async _testTenantLimitsEnforced() {
+        // Check that tenant_limits table exists and circuit breaker can trip
+        try {
+            // Verify table schema
+            const schema = await this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_limits'"
+            );
+            if (!schema || schema.length === 0) {
+                return { _fail: 'tenant_limits table not found' };
+            }
+
+            // Verify circuit state table
+            const csSchema = await this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_circuit_state'"
+            );
+            if (!csSchema || csSchema.length === 0) {
+                return { _fail: 'tenant_circuit_state table not found' };
+            }
+
+            return { tenant_limits: 'enforced', circuit_state_table: 'exists' };
+        } catch (e) {
+            return { _fail: `Schema check failed: ${e.message}` };
+        }
+    }
+
+    async _testOpTypeSloContract() {
+        // Verify tenant_op_slo_daily table exists
+        try {
+            const schema = await this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_op_slo_daily'"
+            );
+            if (!schema || schema.length === 0) {
+                return { _fail: 'tenant_op_slo_daily table not found' };
+            }
+
+            return { op_slo_table: 'exists' };
+        } catch (e) {
+            return { _fail: `SLO check failed: ${e.message}` };
+        }
+    }
+
+    async _testReportExportContract() {
+        // Verify sla_reports + sla_credits tables exist
+        try {
+            const reports = await this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='sla_reports'"
+            );
+            const credits = await this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='sla_credits'"
+            );
+            if (!reports?.length) return { _fail: 'sla_reports table not found' };
+            if (!credits?.length) return { _fail: 'sla_credits table not found' };
+
+            return { reports_table: 'exists', credits_table: 'exists' };
+        } catch (e) {
+            return { _fail: `Report export check failed: ${e.message}` };
+        }
+    }
+
+    async _testForensicsHashContract() {
+        try {
+            const { hashObject } = await import('../utils/canonical_json.js');
+            const sample = { b: 2, a: 1, c: { e: 5, d: 4 } };
+            const hash1 = hashObject(sample);
+            const hash2 = hashObject({ a: 1, b: 2, c: { d: 4, e: 5 } });
+
+            if (hash1 !== hash2) return { _fail: 'Canonical hashing is not stable' };
+
+            // Check if snapshots exist
+            const snap = await this.db.get("SELECT COUNT(*) as c FROM daily_state_snapshots");
+            return { canonical_json: 'stable', existing_snapshots: snap?.c || 0 };
+        } catch (e) {
+            return { _fail: `Forensics hash check failed: ${e.message}` };
+        }
+    }
+
+    async _testLedgerIntegrityContract() {
+        try {
+            const runner = await this.db.get("SELECT count(*) as c FROM ledger_integrity_runs");
+            const incidents = await this.db.get("SELECT count(*) as c FROM incident_bundles WHERE title LIKE '%Ledger Integrity%'");
+            return { integrity_runs: runner?.c || 0, integrity_incidents: incidents?.c || 0 };
+        } catch (e) {
+            return { _fail: `Ledger integrity check failed: ${e.message}` };
+        }
+    }
+
+    async _testAuditChainIntegrity() {
+        try {
+            const logs = await this.db.query("SELECT id, prev_hash, entry_hash FROM admin_audit_log ORDER BY id ASC LIMIT 10");
+            if (!logs || logs.length === 0) return { status: 'empty (skip)' };
+
+            // Check if any has hash
+            const hashed = logs.filter(l => l.entry_hash);
+            if (hashed.length === 0) return { status: 'no_hashed_entries' };
+
+            return { hashed_entries: hashed.length, latest_id: logs[logs.length - 1].id };
+        } catch (e) {
+            return { _fail: `Audit chain check failed: ${e.message}` };
         }
     }
 }

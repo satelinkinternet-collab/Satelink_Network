@@ -1,11 +1,25 @@
 
 export class Scheduler {
-    constructor(opsEngine, alertService) {
+    constructor(opsEngine, alertService, runtimeMonitor, backupService, econServices = {}) {
         this.opsEngine = opsEngine;
         this.alertService = alertService;
+        this.runtimeMonitor = runtimeMonitor;
+        this.backupService = backupService;
+        this.breakevenService = econServices.breakeven;
+        this.retentionService = econServices.retention;
+        this.authenticityService = econServices.authenticity;
+        this.stabilityService = econServices.stability;
+        this.densityService = econServices.density;
+        this.forensicsService = econServices.forensics?.snapshotService; // [Phase R]
+        this.integrityJob = econServices.forensics?.integrityJob; // [Phase R]
+
         this.timer = null;
         this.isRunning = false;
         this.healthTimer = null;
+        this.maintTimer = null;
+        this.runtimeTimer = null;
+        this.backupTimer = null;
+        this.econTimer = null; // New
         this.distFailures = 0;
     }
 
@@ -24,6 +38,24 @@ export class Scheduler {
 
         // Loop 3: Node Lifecycle (Every 30s)
         this.lifecycleTimer = setInterval(() => this.runNodeLifecycle(), 30000);
+
+        // Loop 4: DB Maintenance (Hourly)
+        this.maintTimer = setInterval(() => this.runMaintenance(), 60 * 60 * 1000);
+
+        // Loop 5: Runtime Monitor (Every 60s)
+        if (this.runtimeMonitor) {
+            this.runtimeTimer = setInterval(() => this.runtimeMonitor.collect(), 60000);
+        }
+
+        // Loop 6: Backup Verification (Weekly)
+        // 7 days = 604800000 ms
+        if (this.backupService) {
+            this.backupTimer = setInterval(() => this.runBackupVerification(), 7 * 24 * 60 * 60 * 1000);
+        }
+
+        // Loop 7: Daily Economics (Every 24h)
+        // For MVP: Simple interval. Prod would use cron at specific time.
+        this.econTimer = setInterval(() => this.runDailyEconomics(), 24 * 60 * 60 * 1000);
     }
 
     stop() {
@@ -31,6 +63,10 @@ export class Scheduler {
         if (this.timer) clearInterval(this.timer);
         if (this.healthTimer) clearInterval(this.healthTimer);
         if (this.lifecycleTimer) clearInterval(this.lifecycleTimer);
+        if (this.maintTimer) clearInterval(this.maintTimer);
+        if (this.runtimeTimer) clearInterval(this.runtimeTimer);
+        if (this.backupTimer) clearInterval(this.backupTimer);
+        if (this.econTimer) clearInterval(this.econTimer);
     }
 
     async runEpochCycle() {
@@ -146,6 +182,83 @@ export class Scheduler {
             }
         } catch (e) {
             console.error("[SCHEDULER] Node Lifecycle Error:", e.message);
+        }
+    }
+
+    async runMaintenance() {
+        if (!this.isRunning) return;
+        console.log('[SCHEDULER] Running DB Maintenance...');
+        try {
+            // WAL Checkpoint (Passive)
+            await this.opsEngine.db.query("PRAGMA wal_checkpoint(PASSIVE)");
+            // Incremental Vacuum (free pages)
+            await this.opsEngine.db.query("PRAGMA incremental_vacuum(100)"); // Limit to 100 pages per run to avoid latency spikes
+        } catch (e) {
+            console.error('[SCHEDULER] Maintenance failed:', e.message);
+        }
+    }
+
+    async runBackupVerification() {
+        if (!this.isRunning || !this.backupService) return;
+        console.log('[SCHEDULER] Running Weekly Backup Verification...');
+        try {
+            const result = await this.backupService.runBackup('verification_job');
+            if (!result.ok) {
+                await this.alertService.send(`🚨 Backup Creation Failed: ${result.error}`, 'fatal');
+                return;
+            }
+
+            // Verify
+            // Assuming backupService returns { ok: true, id: folderPath }
+            // But we need 'id' which is integer PK.
+            // Wait, runBackup returns { ok:true, id: targetFolder ... }
+            // But verifyBackup expects integer ID from DB?
+            // "const record = await this.db.get("SELECT * FROM backup_log WHERE id = ?", [id]);" in BackupService
+            // runBackup inserts into DB but doesn't return the PK ID.
+            // I need to fix BackupService to return ID or handle path.
+            // Or just query the latest backup for verification.
+
+            // Workaround: Query latest backup
+            const latest = await this.opsEngine.db.get("SELECT id FROM backup_log ORDER BY id DESC LIMIT 1");
+            if (latest) {
+                const verify = await this.backupService.verifyBackup(latest.id);
+                if (verify.valid) {
+                    await this.alertService.send(`✅ Weekly Backup Verified. Checksum: ${verify.computed.substring(0, 8)}`, 'info');
+                } else {
+                    await this.alertService.send(`🚨 Backup Verification Failed! Checksum mismatch.`, 'fatal');
+                }
+            }
+        } catch (e) {
+            await this.alertService.send(`🚨 Backup Verification Job Error: ${e.message}`, 'fatal');
+        }
+    }
+
+    async runDailyEconomics() {
+        if (!this.isRunning) return;
+        console.log('[SCHEDULER] Running Economic & Growth Analysis...');
+        try {
+            if (this.breakevenService) await this.breakevenService.runDailyJob();
+            if (this.retentionService) await this.retentionService.runDailyJob();
+            if (this.authenticityService) await this.authenticityService.runDailyJob();
+            if (this.stabilityService) await this.stabilityService.runDailyJob();
+            if (this.densityService) await this.densityService.runDailyJob();
+
+            // Phase N: Autonomous Ops
+            if (this.autoOpsEngine) await this.autoOpsEngine.runDailyJob();
+
+            // Phase R: Forensics
+            if (this.forensicsService) {
+                const day = parseInt(new Date().toISOString().split('T')[0].replace(/-/g, ''));
+                await this.forensicsService.runDailySnapshot(day);
+
+                if (this.integrityJob) {
+                    await this.integrityJob.runDailyCheck(day);
+                }
+            }
+
+        } catch (e) {
+            console.error('[SCHEDULER] Daily Economics Job Failed:', e);
+            if (this.alertService) await this.alertService.send(`🚨 Daily Econ Job Failed: ${e.message}`, 'fatal');
         }
     }
 }

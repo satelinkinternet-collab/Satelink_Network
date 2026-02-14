@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-export function createAdminControlRouter(opsEngine) {
+export function createAdminControlRouter(opsEngine, auditService = null) {
     const router = Router();
     const db = opsEngine.db;
 
@@ -114,8 +114,14 @@ export function createAdminControlRouter(opsEngine) {
         await db.query("INSERT INTO system_flags (key, value, updated_by, updated_at) VALUES ('withdrawals_paused', ?, ?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_by=excluded.updated_by, updated_at=excluded.updated_at",
             [paused ? '1' : '0', req.user.wallet, Math.floor(Date.now() / 1000)]);
 
-        await db.query("INSERT INTO admin_audit_log (actor_wallet, action_type, target_type, after_json, created_at) VALUES (?, 'PAUSE_WITHDRAWALS', 'SYSTEM', ?, ?)",
-            [req.user.wallet, JSON.stringify({ paused }), Date.now()]);
+        if (auditService) {
+            await auditService.logAction({
+                actor_wallet: req.user.wallet,
+                action_type: 'PAUSE_WITHDRAWALS',
+                target_type: 'SYSTEM',
+                after_json: JSON.stringify({ paused })
+            });
+        }
 
         res.json({ ok: true });
     });

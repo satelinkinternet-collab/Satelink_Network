@@ -1,17 +1,20 @@
 
 import express from 'express';
 
-export function createAdminRevenueRouter(db) {
+export function createAdminRevenueRouter(db, auditService = null) {
     const router = express.Router();
     // NOTE: All routes already protected by verifyJWT in server.js mounting
 
-    // ── Audit helper ───────────────────────────────────────────
+    // ── Audit helper (Phase R) ──────────────────────────────────
     async function auditLog(action, actor, details) {
+        if (!auditService) return;
         try {
-            await db.query(
-                `INSERT INTO admin_audit_log (action, actor, details, created_at) VALUES (?, ?, ?, ?)`,
-                [action, actor, JSON.stringify(details), Date.now()]
-            );
+            await auditService.logAction({
+                actor_wallet: actor,
+                action_type: action,
+                target_type: 'REVENUE',
+                after_json: JSON.stringify(details)
+            });
         } catch (e) { console.error('[AuditLog]', e.message); }
     }
 

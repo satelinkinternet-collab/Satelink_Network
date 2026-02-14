@@ -30,7 +30,24 @@ function parseIntParam(val, fallback) {
     return isNaN(n) ? fallback : n;
 }
 
-async function auditLog(db, { actor, action, target_type, target_id, before, after, ip }) {
+async function auditLog(db, { actor, action, target_type, target_id, before, after, ip }, auditService = null) {
+    if (auditService) {
+        try {
+            await auditService.logAction({
+                actor_wallet: actor,
+                action_type: action,
+                target_type: target_type || 'SYSTEM',
+                target_id: target_id || null,
+                before_json: before ? JSON.stringify(redactSensitive(before)) : null,
+                after_json: after ? JSON.stringify(redactSensitive(after)) : null,
+                ip_hash: hashIp(ip)
+            });
+            return;
+        } catch (e) {
+            console.error('[AuditLog-Service] Error:', e.message);
+        }
+    }
+
     try {
         await db.query(`
             INSERT INTO admin_audit_log (actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash, created_at)
@@ -73,6 +90,10 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     const selfTestRunner = opts.selfTestRunner || null;
     const incidentBuilder = opts.incidentBuilder || null;
     const opsReporter = opts.opsReporter || null;
+    const auditService = opts.auditService || null;
+
+    // Local override for auditLog to include service [Phase R]
+    const log = async (params) => auditLog(db, params, auditService);
 
     // All routes require admin role
     // All routes require admin role

@@ -1,0 +1,196 @@
+openapi: 3.0.0
+info:
+  title: Satelink Public API
+  version: 1.0.0
+  description: |
+    Public API for Satelink Network Partners.
+    
+    ## Authentication
+    All requests must include the `X-API-Key` header with your secret API key.
+    
+    ## Rate Limiting
+    Requests are rate-limited per partner. Check `X-RateLimit-*` headers.
+    
+    ## Errors
+    Standard error format:
+    ```json
+    {
+      "ok": false,
+      "error": "ERROR_CODE",
+      "message": "Human readable message",
+      "trace_id": "trace-...",
+      "request_id": "req-..."
+    }
+    ```
+
+servers:
+  - url: https://api.satelink.network
+    description: Production
+  - url: https://staging-api.satelink.network
+    description: Staging
+  - url: http://localhost:8080
+    description: Local Dev
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "RATE_LIMITED"
+        message:
+          type: string
+        trace_id:
+          type: string
+        request_id:
+          type: string
+
+    OpRequest:
+      type: object
+      required: [op_type, payload]
+      properties:
+        op_type:
+          type: string
+          example: "social_sentiment"
+        payload:
+          type: object
+          description: "Operation-specific parameters"
+        idempotency_key:
+          type: string
+          description: "Unique client-generated key for retries"
+
+    OpResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        job_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        result:
+          type: object
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /v1/ops/execute:
+    post:
+      summary: Execute an Operation
+      operationId: executeOp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpRequest'
+      responses:
+        '200':
+          description: Operation accepted/completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limited
+  
+  /v1/ops/pricing:
+    get:
+      summary: Get Operation Pricing
+      operationId: getPricing
+      responses:
+        '200':
+          description: Pricing table
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        op_type:
+                          type: string
+                        cost_usdt:
+                          type: number
+
+  /v1/status:
+    get:
+      summary: System Status
+      operationId: getStatus
+      security: []  # Public
+      responses:
+        '200':
+          description: System status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "LIVE"
+
+  /v1/network-stats:
+    get:
+      summary: Network Statistics
+      operationId: getNetworkStats
+      security: [] # Public
+      responses:
+        '200':
+          description: Network stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes_active: 
+                    type: integer
+
+  /v1/usage/summary:
+    get:
+      summary: Partner Usage Summary
+      operationId: getUsageSummary
+      responses:
+        '200':
+          description: Usage stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  period:
+                    type: string
+                  total_ops:
+                    type: integer
+                  total_spend_usdt:
+                    type: number

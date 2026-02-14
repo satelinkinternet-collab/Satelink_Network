@@ -44,3 +44,8 @@ web/src/app/node/.page.tsx.swp
 extracted_scope.txt
 scope.txt
 satelink Developer -Master Scope & arcitech /
+backups/
+.env.sandbox
+.env.local
+.env.production
+.env.test
