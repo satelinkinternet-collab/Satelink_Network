@@ -9,75 +9,144 @@ export function createStreamApiRouter(opsEngine) {
      */
     const pollDB = async (query, params) => {
         try {
-            return await opsEngine.db.query(query, params); // usage assumes array return
+            return await opsEngine.db.query(query, params);
         } catch (e) {
             console.error("[SSE] Poll Error:", e.message);
             return [];
         }
     };
 
-    const getSystemConfig = async () => {
+    const getSystemFlags = async () => {
         try {
-            const rows = await opsEngine.db.query("SELECT * FROM system_config");
+            const rows = await opsEngine.db.query("SELECT * FROM system_flags");
             return rows.reduce((acc, r) => ({ ...acc, [r.key]: r.value }), {});
         } catch (e) { return {}; }
     };
 
     /**
      * GET /stream/admin
-     * Access: Admin only (guarded by verifyJWT + role check in handler or middleware)
+     * Access: Admin only (admin_super, admin_ops, admin_readonly)
+     * Emits: hello, snapshot, revenue_batch, error_batch, security_alerts, audit, ping
      */
     router.get('/admin', async (req, res) => {
-        if (!['admin_super', 'admin_ops'].includes(req.user?.role)) {
+        if (!['admin_super', 'admin_ops', 'admin_readonly'].includes(req.user?.role)) {
             return res.status(403).json({ error: "Access denied" });
         }
 
         const conn = sseHelper.init(req, res);
-        let lastEventId = 0;
+        let lastRevenueId = 0;
+        let lastErrorTs = Date.now() - 60000; // last minute
+        let lastAlertTs = Date.now() - 60000;
+        let lastAuditTs = Date.now() - 60000;
 
-        // Pollers
-        const pollTreasury = setInterval(async () => {
+        // ── Send initial snapshot immediately ──
+        const sendSnapshot = async () => {
             try {
+                const flags = await getSystemFlags();
+                const fiveMinAgo = Math.floor(Date.now() / 1000) - 300;
+                const dayAgo = Math.floor(Date.now() / 1000) - 86400;
+                const hourAgoMs = Date.now() - 3600000;
+
+                const [activeNodes, opsCount, revenue24h, alertsOpen, errors1h, slowQueries1h] = await Promise.all([
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinAgo]),
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
+                    opsEngine.db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [hourAgoMs]),
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?", [hourAgoMs]),
+                ]);
+
                 const treasury = await opsEngine.getTreasuryAvailable();
-                const activeNodes = (await opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1"))?.c || 0;
 
                 conn.send('snapshot', {
-                    balance: treasury,
-                    active_nodes: activeNodes,
+                    system: {
+                        withdrawals_paused: flags.withdrawals_paused === '1',
+                        security_freeze: flags.security_freeze === '1',
+                        revenue_mode: flags.revenue_mode || 'ACTIVE'
+                    },
+                    kpis: {
+                        active_nodes_5m: activeNodes?.c || 0,
+                        ops_5m: opsCount?.c || 0,
+                        revenue_24h_usdt: parseFloat(revenue24h?.t || 0).toFixed(2),
+                        treasury_balance: parseFloat(treasury || 0).toFixed(2)
+                    },
+                    alerts_open_count: alertsOpen?.c || 0,
+                    errors_1h_count: errors1h?.c || 0,
+                    slow_queries_1h_count: slowQueries1h?.c || 0,
                     timestamp: Date.now()
                 });
             } catch (e) { }
-        }, 10000);
+        };
 
+        // Send immediately
+        await sendSnapshot();
+
+        // ── Snapshot every 10s ──
+        const pollSnapshot = setInterval(sendSnapshot, 10000);
+
+        // ── Revenue batch ──
         const pollRevenue = setInterval(async () => {
             try {
-                // Fetch events newer than lastEventId
-                // NOTE: id > lastEventId. On first run lastEventId=0, might fetch too many.
-                // Limit to last 5 on first run, then incremental.
                 const events = await pollDB(
                     `SELECT * FROM revenue_events_v2 WHERE id > ? ORDER BY id ASC LIMIT 10`,
-                    [lastEventId]
+                    [lastRevenueId]
                 );
-
                 if (events.length > 0) {
-                    lastEventId = events[events.length - 1].id;
+                    lastRevenueId = events[events.length - 1].id;
                     conn.send('revenue_batch', events);
                 }
             } catch (e) { }
         }, 10000);
 
-        const pollControls = setInterval(async () => {
+        // ── Error batch ──
+        const pollErrors = setInterval(async () => {
             try {
-                const config = await getSystemConfig();
-                conn.send('control_state', config);
+                const errors = await pollDB(
+                    `SELECT * FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at ASC LIMIT 10`,
+                    [lastErrorTs]
+                );
+                if (errors.length > 0) {
+                    lastErrorTs = errors[errors.length - 1].last_seen_at;
+                    conn.send('error_batch', errors);
+                }
             } catch (e) { }
         }, 10000);
 
-        // Cleanup specific to this route
+        // ── Security alerts ──
+        const pollAlerts = setInterval(async () => {
+            try {
+                const alerts = await pollDB(
+                    `SELECT * FROM security_alerts WHERE created_at > ? ORDER BY created_at ASC LIMIT 10`,
+                    [lastAlertTs]
+                );
+                if (alerts.length > 0) {
+                    lastAlertTs = alerts[alerts.length - 1].created_at;
+                    conn.send('security_alerts', alerts);
+                }
+            } catch (e) { }
+        }, 10000);
+
+        // ── Audit log ──
+        const pollAudit = setInterval(async () => {
+            try {
+                const logs = await pollDB(
+                    `SELECT * FROM admin_audit_log WHERE created_at > ? ORDER BY created_at ASC LIMIT 10`,
+                    [lastAuditTs]
+                );
+                if (logs.length > 0) {
+                    lastAuditTs = logs[logs.length - 1].created_at;
+                    conn.send('audit', logs);
+                }
+            } catch (e) { }
+        }, 10000);
+
+        // Cleanup
         req.on('close', () => {
-            clearInterval(pollTreasury);
+            clearInterval(pollSnapshot);
             clearInterval(pollRevenue);
-            clearInterval(pollControls);
+            clearInterval(pollErrors);
+            clearInterval(pollAlerts);
+            clearInterval(pollAudit);
         });
     });
 
@@ -98,11 +167,11 @@ export function createStreamApiRouter(opsEngine) {
                 const node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
                 if (node) {
                     const now = Math.floor(Date.now() / 1000);
-                    const isOnline = (now - node.last_heartbeat) < 300; // 5 mins tolerance
+                    const isOnline = (now - node.last_heartbeat) < 300;
                     conn.send('node_status', {
                         online: isOnline,
                         last_seen: node.last_heartbeat,
-                        ip: '127.0.0.1' // Mock, actual would be in DB if tracked
+                        ip: '127.0.0.1'
                     });
                 }
             } catch (e) { }
@@ -110,14 +179,11 @@ export function createStreamApiRouter(opsEngine) {
 
         const pollEarnings = setInterval(async () => {
             try {
-                // Total earnings
                 const total = await opsEngine.getBalance(wallet);
-                // Last 5 epochs
                 const recent_earnings = await pollDB(
                     `SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 5`,
                     [wallet]
                 );
-
                 conn.send('earnings', {
                     unpaid_balance: total,
                     recent_epochs: recent_earnings || []
@@ -140,29 +206,20 @@ export function createStreamApiRouter(opsEngine) {
             return res.status(403).json({ error: "Access denied" });
         }
 
-        const wallet = req.user.wallet; // Builder Identity key
+        const wallet = req.user.wallet;
         const conn = sseHelper.init(req, res);
-
         let lastUsageId = 0;
 
         const pollUsage = setInterval(async () => {
             try {
-                // Get usage stats - this is heavy if aggregated.
-                // Better: Stream recent request logs or just current meter.
-                // MVP: Stream recent requests from revenue_events where client_id = wallet
-
                 const events = await pollDB(
                     `SELECT * FROM revenue_events_v2 WHERE client_id = ? AND id > ? ORDER BY id ASC LIMIT 5`,
                     [wallet, lastUsageId]
                 );
-
                 if (events.length > 0) {
                     lastUsageId = events[events.length - 1].id;
                     conn.send('usage_log', events);
                 }
-
-                // Balance / Credit if we had prepaid
-                // const balance = ... 
             } catch (e) { }
         }, 10000);
 

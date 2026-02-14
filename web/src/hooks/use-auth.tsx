@@ -26,6 +26,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fetchMe = async () => {
         try {
+            const token = localStorage.getItem('satelink_token');
+            if (!token) {
+                setLoading(false);
+                return null;
+            }
+
+            // Ensure we don't send without token, though interceptor handles it
             const { data } = await api.get('/auth/me');
             if (data.ok) {
                 setUser(data.user);
@@ -34,6 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
             console.error('Failed to fetch user', err);
             setUser(null);
+            // If 401, interceptor redirects, but we should also clear state
+            if (localStorage.getItem('satelink_token')) {
+                // Maybe token expired
+            }
         } finally {
             setLoading(false);
         }

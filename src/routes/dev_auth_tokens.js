@@ -15,8 +15,8 @@ export function createDevAuthRouter(opsEngine) {
         next();
     });
 
-    // Generic login for frontend convenience + ref tracking
-    router.post('/login', async (req, res) => {
+    // Generic login handler
+    const handleLogin = async (req, res) => {
         const { wallet, role, refCode } = req.body;
         if (!wallet) return res.status(400).json({ error: "Wallet required" });
 
@@ -24,25 +24,14 @@ export function createDevAuthRouter(opsEngine) {
         let userRole = role || 'builder';
 
         // Ref Tracking (Phase 21)
-        if (refCode) {
+        if (refCode && opsEngine && opsEngine.db) {
             try {
-                // OpsEngine might not be passed here? Need to pass it to createDevAuthRouter
-                // If not passed, we skip conversion tracking or need to fix server.js
-                // server.js calls createDevAuthRouter() without args.
-                // Let's modify server.js first? Or just use raw DB if possible? 
-                // We don't have DB access here easily unless we change signature.
-                // I will update server.js to pass opsEngine to createDevAuthRouter.
-
-                // Assuming opsEngine is passed now (I will do that next tool call)
-                if (opsEngine && opsEngine.db) {
-                    // Check existing
-                    const existing = await opsEngine.db.get("SELECT 1 FROM conversions WHERE wallet = ?", [wallet]);
-                    if (!existing) {
-                        await opsEngine.db.query(
-                            "INSERT INTO conversions (ref_code, wallet, role, created_at) VALUES (?, ?, ?, ?)",
-                            [refCode, wallet, userRole, Date.now()]
-                        );
-                    }
+                const existing = await opsEngine.db.get("SELECT 1 FROM conversions WHERE wallet = ?", [wallet]);
+                if (!existing) {
+                    await opsEngine.db.query(
+                        "INSERT INTO conversions (ref_code, wallet, role, created_at) VALUES (?, ?, ?, ?)",
+                        [refCode, wallet, userRole, Date.now()]
+                    );
                 }
             } catch (e) {
                 console.error("[DEV AUTH] Conversion Error:", e.message);
@@ -56,7 +45,14 @@ export function createDevAuthRouter(opsEngine) {
         );
 
         res.json({ success: true, token, role: userRole });
-    });
+    };
+
+    router.post('/login', handleLogin);
+
+    // Aliases for scripts/docs compatibility
+    router.post('/admin/login', (req, res, next) => { req.body.role = 'admin_super'; handleLogin(req, res, next); });
+    router.post('/node/login', (req, res, next) => { req.body.role = 'node_operator'; handleLogin(req, res, next); });
+    router.post('/builder/login', (req, res, next) => { req.body.role = 'builder'; handleLogin(req, res, next); });
 
     return router;
 

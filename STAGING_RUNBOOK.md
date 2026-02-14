@@ -1,99 +1,51 @@
-# Staging Deployment Runbook
+# Staging Environment Runbook
 
-**Goal:** setup a fresh Ubuntu VPS for Satelink Beta.
+## 1. Prerequisites
+- **OS**: Ubuntu 22.04 LTS (Recommended) or macOS (Local Staging)
+- **Node.js**: v18+
+- **PM2**: `npm install -g pm2`
+- **Nginx**: `sudo apt install nginx` (Linux) or `brew install nginx` (macOS)
 
-## 1. Provisioning (Ubuntu 22.04 LTS)
+## 2. Initial Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/satelinkinternet-collab/satelink-mvp.git
+   cd satelink-mvp
+   ```
+2. Create Envs:
+   ```bash
+   cp .env.example .env
+   cp web/.env.example web/.env.local
+   ```
+   *Edit `.env` and set `NODE_ENV=staging`.*
 
-### Install Dependencies
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl git nginx certbot python3-certbot-nginx build-essential
-```
-
-### Install Node.js 20+ (via NVM)
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-source ~/.bashrc
-nvm install 20
-nvm use 20
-npm install -g pm2
-```
-
-## 2. Code Setup
-
-### Clone Repository
-```bash
-# Setup directory
-sudo mkdir -p /var/www/satelink
-sudo chown -R $USER:$USER /var/www/satelink
-git clone https://github.com/satelinkinternet-collab/satelink-mvp.git /var/www/satelink
-cd /var/www/satelink
-```
-
-### Environment Configuration
-```bash
-# Copy template
-cp .env.staging.example .env
-
-# EDIT THE VARIABLES
-nano .env
-# 1. Set JWT_SECRET (use `openssl rand -hex 32`)
-# 2. Set DATABASE_URL=file:/var/www/satelink/satelink.db
-# 3. Set NEXT_PUBLIC_API_BASE_URL=https://your-domain.com
-```
+3. Install Global Tools:
+   ```bash
+   npm install -g pm2
+   ```
 
 ## 3. Deployment
-
-### First Run
+Run the automated script:
 ```bash
-# Make script executable
-chmod +x scripts/deploy_staging.sh
-
-# Run full deploy (Install path, build web, start pm2)
 ./scripts/deploy_staging.sh
 ```
 
-### Verify PM2
-```bash
-pm2 status
-# Should show:
-# satelink-api    online
-# satelink-web    online
-```
+## 4. Nginx Configuration
+1. Test the config:
+   ```bash
+   nginx -t -c $(pwd)/nginx.staging.conf
+   ```
+2. (Linux) Link to enabled sites:
+   ```bash
+   sudo ln -s $(pwd)/nginx.staging.conf /etc/nginx/sites-enabled/satelink
+   sudo systemctl reload nginx
+   ```
+3. (Local macOS) Run manually:
+   ```bash
+   nginx -c $(pwd)/nginx.staging.conf
+   ```
 
-## 4. Network & SSL
-
-### Configure Nginx
-```bash
-# Copy config
-sudo cp nginx_staging.conf /etc/nginx/sites-available/satelink
-
-# Link
-sudo ln -s /etc/nginx/sites-available/satelink /etc/nginx/sites-enabled/
-
-# Test syntax
-sudo nginx -t
-
-# Reload
-sudo systemctl reload nginx
-```
-
-### Enable SSL (Certbot)
-```bash
-# Follow interactive prompts to enable HTTPS for your domain
-sudo certbot --nginx -d your-domain.com
-```
-
-## 5. Maintenance
-
-### Update Code
-```bash
-cd /var/www/satelink
-./scripts/deploy_staging.sh
-```
-
-### Check Logs
-```bash
-pm2 logs satelink-api
-pm2 logs satelink-web
-```
+## 5. Verification
+- **Frontend**: http://localhost:8000
+- **API**: http://localhost:8000/health
+- **Swagger**: http://localhost:8000/api-docs

@@ -32,5 +32,26 @@ export function createEntApiRouter(opsEngine) {
         }
     });
 
+    // GET /ent-api/history - Daily Usage History
+    router.get('/history', async (req, res) => {
+        try {
+            // Mock history for MVP visualization (would be agg(revenue_events) in prod)
+            // Generating last 14 days
+            const days = [];
+            for (let i = 13; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                days.push({
+                    date: d.toLocaleDateString(),
+                    ops: Math.floor(Math.random() * 500) + 100, // Mock data
+                    spend: (Math.random() * 50).toFixed(2)
+                });
+            }
+            res.json({ ok: true, history: days });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     return router;
 }

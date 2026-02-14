@@ -1,12 +1,9 @@
 import axios from 'axios';
 
 const getBaseUrl = () => {
-    // In production (Nginx), we use relative path
-    if (process.env.NEXT_PUBLIC_API_BASE_URL === '/api') {
-        return '/api';
-    }
-    // Otherwise fallback to env or localhost
-    return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+    // In production or via proxy, we want relative paths so Next.js rewrites handle it.
+    // If NEXT_PUBLIC_API_BASE_URL is set, use it. Otherwise, default to '' (truly relative).
+    return process.env.NEXT_PUBLIC_API_BASE_URL || '';
 };
 
 const api = axios.create({

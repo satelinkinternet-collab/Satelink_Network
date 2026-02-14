@@ -1,16 +1,16 @@
 import { ethers } from "ethers";
 
 const OP_CONFIG = {
-  'api_relay_execution': { price: 0.01, limit: 100 },
-  'automation_job_execute': { price: 0.05, limit: 50 },
-  'network_health_oracle_update': { price: 0.02, limit: 60 },
-  'routing_decision_compute': { price: 0.001, limit: 1000 },
-  'verification_op': { price: 0.05, limit: 50 },
-  'provisioning_op': { price: 0.10, limit: 10 },
-  'monitoring_op': { price: 0.01, limit: 120 },
-  'claim_validation_op': { price: 0.02, limit: 20 },
-  'withdraw_execution_op': { price: 0.05, limit: 10 },
-  'epoch_score_compute': { price: 0.05, limit: 5 }
+  'api_relay_execution': { price: 0.01, limit: 100, node_limit: 200 },
+  'automation_job_execute': { price: 0.05, limit: 50, node_limit: 100 },
+  'network_health_oracle_update': { price: 0.02, limit: 60, node_limit: 120 },
+  'routing_decision_compute': { price: 0.001, limit: 1000, node_limit: 2000 },
+  'verification_op': { price: 0.05, limit: 50, node_limit: 100 },
+  'provisioning_op': { price: 0.10, limit: 10, node_limit: 20 },
+  'monitoring_op': { price: 0.01, limit: 120, node_limit: 240 },
+  'claim_validation_op': { price: 0.02, limit: 20, node_limit: 40 },
+  'withdraw_execution_op': { price: 0.05, limit: 10, node_limit: 20 },
+  'epoch_score_compute': { price: 0.05, limit: 5, node_limit: 10 }
 };
 
 export class OperationsEngine {
@@ -41,13 +41,28 @@ export class OperationsEngine {
     await this.db.query("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING", ['revenue_mode', 'ACTIVE']);
     await this.db.query("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING", ['monitoring_status', 'ENFORCED']);
 
+    // Ensure ops_pricing has limit columns (Phase 28)
+    try {
+      await this.db.query("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_client INTEGER DEFAULT 60");
+    } catch (e) { /* Column likely exists */ }
+    try {
+      await this.db.query("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_node INTEGER DEFAULT 120");
+    } catch (e) { /* Column likely exists */ }
+
     // Seed pricing from OP_CONFIG if table exists
     try {
       const ops = Object.keys(OP_CONFIG);
       for (const op of ops) {
-        await this.db.query("INSERT INTO ops_pricing (op_type, price_usdt, enabled) VALUES (?, ?, 1) ON CONFLICT DO NOTHING", [op, OP_CONFIG[op].price]);
+        const conf = OP_CONFIG[op];
+        await this.db.query(`
+          INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node) 
+          VALUES (?, ?, 1, ?, ?) 
+          ON CONFLICT(op_type) DO UPDATE SET 
+            max_per_minute_per_client = excluded.max_per_minute_per_client,
+            max_per_minute_per_node = excluded.max_per_minute_per_node
+        `, [op, conf.price, conf.limit || 60, conf.node_limit || 120]);
       }
-    } catch (e) { /* Table might not exist yet if migration hasn't run */ }
+    } catch (e) { console.error("Error seeding pricing:", e); }
 
     const row = await this.db.get("SELECT COUNT(*) as c FROM op_weights");
     if (row.c == 0) {
@@ -77,6 +92,7 @@ export class OperationsEngine {
       node_id TEXT PRIMARY KEY,
       wallet TEXT,
       device_type TEXT,
+      management_type TEXT DEFAULT 'self_hosted', -- 'managed' or 'self_hosted'
       status TEXT,
       last_seen INTEGER,
       created_at INTEGER
@@ -116,17 +132,29 @@ export class OperationsEngine {
     const existing = await this.db.get("SELECT id FROM revenue_events_v2 WHERE client_id = ? AND op_type = ? AND request_id = ?", [client_id, op_type, request_id]);
     if (existing) return { ok: true, note: "Already processed", id: existing.id };
 
-    // 3. Rate Limiting (Simple check against minute window)
+    // 3. Rate Limiting (Phase 28)
     const now = Math.floor(Date.now() / 1000);
     const minuteAgo = now - 60;
 
-    // Client limit
-    const clientUsage = await this.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE client_id = ? AND created_at > ?", [client_id, minuteAgo]);
-    if (clientUsage.c >= pricing.max_per_minute_per_client) throw new Error("Client rate limit exceeded");
+    const limitClient = pricing.max_per_minute_per_client || 60;
+    const limitNode = pricing.max_per_minute_per_node || 120;
 
-    // Node limit
-    const nodeUsage = await this.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?", [node_id, minuteAgo]);
-    if (nodeUsage.c >= pricing.max_per_minute_per_node) throw new Error("Node rate limit exceeded");
+    // Client limit checks
+    if (limitClient > 0) {
+      const clientUsage = await this.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE client_id = ? AND created_at > ?", [client_id, minuteAgo]);
+      if (clientUsage.c >= limitClient) {
+        // Failsafe: Return 429-like structure (throw error caught by API)
+        throw new Error("rate_limited");
+      }
+    }
+
+    // Node limit checks
+    if (limitNode > 0) {
+      const nodeUsage = await this.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?", [node_id, minuteAgo]);
+      if (nodeUsage.c >= limitNode) {
+        throw new Error("rate_limited");
+      }
+    }
 
     // 4. Record Revenue Event
     const epochId = await this.initEpoch();
@@ -166,11 +194,33 @@ export class OperationsEngine {
 
         // Record immutable splits
         await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, ?)", [id, platformFee, now]);
-        await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distribution_pool', 'DAO_POOL', ?, ?)", [id, distroPool, now]);
+
+        // Phase 28: Distributor Split Logic
+        // Check if there are ANY conversions/referrals active for this epoch?
+        // Using a simpler heuristic: If 'conversions' table has rows, we assume Distribution Network is active.
+        const hasDistributors = await tx.get("SELECT 1 FROM conversions LIMIT 1");
+
+        if (hasDistributors) {
+          const lcoShare = distroPool * 0.60;
+          const infShare = distroPool * 0.40;
+          await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distributor_lco', 'DIST_LCO_POOL', ?, ?)", [id, lcoShare, now]);
+          await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distributor_influencer', 'DIST_INF_POOL', ?, ?)", [id, infShare, now]);
+        } else {
+          // Fallback to DAO/Platform if no distributors
+          await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distribution_pool', 'DAO_POOL', ?, ?)", [id, distroPool, now]);
+        }
+
+        // Ensure 'management_type' column exists (Phase 29)
+        try {
+          await this.db.query("ALTER TABLE nodes ADD COLUMN management_type TEXT DEFAULT 'self_hosted'");
+        } catch (e) { /* Column likely exists */ }
+        try {
+          await this.db.query("ALTER TABLE registered_nodes ADD COLUMN management_type TEXT DEFAULT 'self_hosted'");
+        } catch (e) { /* Column likely exists */ }
 
         // Node rewards distribution
         const nodes = await tx.query(`
-                SELECT u.node_wallet, u.uptime_seconds, n.node_type
+                SELECT u.node_wallet, u.uptime_seconds, n.node_type, n.management_type
                 FROM node_uptime u
                 JOIN registered_nodes n ON u.node_wallet = n.wallet
                 WHERE u.epoch_id = ?
@@ -179,7 +229,15 @@ export class OperationsEngine {
         const totalUptime = nodes.reduce((s, n) => s + n.uptime_seconds, 0);
         if (totalUptime > 0) {
           for (const n of nodes) {
-            const share = (n.uptime_seconds / totalUptime) * nodePool;
+            let share = (n.uptime_seconds / totalUptime) * nodePool;
+
+            // Phase 29: Infra Reserve Deduction for Managed Nodes
+            if (n.management_type === 'managed') {
+              const deduction = share * 0.10;
+              share = share - deduction;
+              await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'infra_reserve', 'INFRA_RESERVE_POOL', ?, ?)", [id, deduction, now]);
+            }
+
             if (share > 0) {
               await tx.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'node_operator', ?, ?, ?)", [id, n.node_wallet, share, now]);
             }
@@ -235,10 +293,11 @@ export class OperationsEngine {
       return existing.id;
     }
 
-    const res = await this.db.query("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN') RETURNING id");
+    const res = await this.db.query("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN') RETURNING id", [now]);
     if (res.lastInsertRowid) {
       this.currentEpochId = res.lastInsertRowid;
     } else {
+      // Fallback if RETURNING not supported or ignored by wrapper
       const row = await this.db.get("SELECT MAX(id) as id FROM epochs");
       this.currentEpochId = row.id;
     }

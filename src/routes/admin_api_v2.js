@@ -20,8 +20,8 @@ export function createAdminApiRouter(opsEngine) {
             const currentEpoch = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
 
             // Nodes
-            const nodesOnline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1")).c;
-            const nodesOffline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 0")).c;
+            const nodesOnline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE status = 'online'")).c;
+            const nodesOffline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE status != 'online'")).c;
 
             res.json({
                 ok: true,
@@ -60,6 +60,11 @@ export function createAdminApiRouter(opsEngine) {
 
     // POST /admin/controls/pause-withdraw
     router.post('/controls/pause-withdraw', async (req, res) => {
+        // RBAC: Super Admin Only
+        if (req.user?.role !== 'admin_super') {
+            return res.status(403).json({ ok: false, error: "Access Denied: Super Admin restrictions apply." });
+        }
+
         const { paused } = req.body;
         await opsEngine.updateSystemConfig('withdrawals_paused', paused ? '1' : '0');
 
@@ -150,6 +155,46 @@ export function createAdminApiRouter(opsEngine) {
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
+    });
+
+    // GET /admin-api/history - Revenue Trend
+    router.get('/history', async (req, res) => {
+        try {
+            // In prod: SELECT date(created_at), sum(amount) FROM revenue_events GROUP BY date
+            // MVP: Mocking a growth curve
+            const days = [];
+            let base = 1000;
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                base += Math.random() * 200 - 50; // Random walk
+                days.push({
+                    date: d.toLocaleDateString(),
+                    revenue: Math.max(0, base).toFixed(2)
+                });
+            }
+            res.json({ ok: true, history: days });
+        } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    });
+
+    // GET /admin-api/nodes/distribution - Node Types Pie Chart
+    router.get('/nodes/distribution', async (req, res) => {
+        try {
+            // Get actual counts if possible, else mock
+            const starlink = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'starlink%'"))?.c || 0;
+            const iot = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'iot%'"))?.c || 0;
+            const validator = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'validator%'"))?.c || 0;
+
+            // If DB empty, show mocks for UI demo
+            const distribution = [
+                { name: 'Starlink V2', value: starlink || 45 },
+                { name: 'Generic IoT', value: iot || 30 },
+                { name: 'Validator', value: validator || 15 },
+                { name: 'Gateway', value: 10 }
+            ];
+
+            res.json({ ok: true, distribution });
+        } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
     return router;

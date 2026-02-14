@@ -1,6 +1,7 @@
 export type Role =
     | 'admin_super'
     | 'admin_ops'
+    | 'admin_readonly'
     | 'node_operator'
     | 'builder'
     | 'distributor_lco'
@@ -8,7 +9,7 @@ export type Role =
     | 'enterprise';
 
 export const ROLE_ROUTES: Record<string, Role[]> = {
-    '/admin': ['admin_super', 'admin_ops'],
+    '/admin': ['admin_super', 'admin_ops', 'admin_readonly'],
     '/node': ['node_operator', 'admin_super'],
     '/builder': ['builder', 'admin_super'],
     '/distributor': ['distributor_lco', 'distributor_influencer', 'admin_super'],

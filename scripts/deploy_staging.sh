@@ -3,27 +3,24 @@ set -e
 
 echo "🚀 Starting Staging Deployment..."
 
-# 1. Update Code
-echo "📦 Pulling latest code..."
+# 1. Pull latest code
+echo "📦 Pulling latest changes..."
 git pull origin main
 
-# 2. Backend Setup
-echo "🛠 Building Backend..."
-npm install --production
-# Run migrations (ensure DB exists)
-npm run migrate
+# 2. Install Backend Deps
+echo "🔧 Installing Backend Dependencies..."
+npm ci
 
-# 3. Frontend Setup
+# 3. Install & Build Frontend
 echo "🎨 Building Frontend..."
 cd web
-npm install --production
-# Ensure NEXT_PUBLIC_API_BASE_URL is available at build time
-# We assume .env.production.local or system env vars are set
+npm ci
 npm run build
 cd ..
 
-# 4. Restart Services
-echo "🔄 Reloading PM2..."
-pm2 reload ecosystem.config.js --env staging
+# 4. Reload PM2
+echo "🔄 Reloading PM2 Processes..."
+pm2 reload ecosystem.config.cjs --env staging || pm2 start ecosystem.config.cjs --env staging
 
 echo "✅ Deployment Complete!"
+pm2 status

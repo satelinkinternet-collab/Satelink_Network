@@ -38,3 +38,9 @@ out/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+web/src/app/enterprise/.page.tsx.swp
+web/src/app/node/.page.tsx.swp
+*.swp
+extracted_scope.txt
+scope.txt
+satelink Developer -Master Scope & arcitech /

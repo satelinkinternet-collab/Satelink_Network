@@ -1,0 +1,185 @@
+openapi: 3.0.0
+info:
+  title: Satelink API
+  description: API for Satelink Node Operations, Admin Controls, and Distributor Management.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  # --- Authentication ---
+  /__test/auth/login:
+    post:
+      summary: Dev/Test Login
+      description: Generates a JWT for development testing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wallet:
+                  type: string
+                  example: "0xadmin_super"
+                role:
+                  type: string
+                  enum: [admin_super, admin_support, admin_dev, node_operator, distributor_lco, enterprise]
+      responses:
+        200:
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+
+  # --- Admin API ---
+  /admin-api/stats:
+    get:
+      summary: Get Global Admin Stats
+      description: Returns revenue, treasury status, and network health.
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: A JSON object containing admin stats.
+
+  /admin-api/controls/pause-withdraw:
+    post:
+      summary: Pause/Resume Withdrawals
+      description: Toggles the global withdrawal freeze. REQUIRES `admin_super` role.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paused:
+                  type: boolean
+      responses:
+        200:
+          description: Action successful.
+        403:
+          description: Forbidden (Non-Super Admin).
+
+  /admin-api/users/role:
+    post:
+      summary: Assign User Role
+      description: Assigns a role to a wallet. REQUIRES `admin_super` role.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wallet:
+                  type: string
+                role:
+                  type: string
+      responses:
+        200:
+          description: Role assigned.
+        403:
+          description: Forbidden.
+
+  # --- Node API ---
+  /node-api/stats:
+    get:
+      summary: Get Node Operator Stats
+      description: Returns node status, earnings history, and recent logs.
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Node stats object.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats:
+                    type: object
+                    properties:
+                      active:
+                        type: boolean
+                      totalEarned:
+                        type: string
+                  logs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                        message:
+                          type: string
+
+  /node-api/claim:
+    post:
+      summary: Claim Earnings
+      description: Initiates a payout for unpaid earnings.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signature:
+                  type: string
+      responses:
+        200:
+          description: Claim processed.
+
+  # --- Distributor API ---
+  /dist-api/stats:
+    get:
+      summary: Get Distributor Stats
+      description: Returns referral counts and commissions.
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Distributor stats.
+
+  /dist-api/fleet:
+    get:
+      summary: Get Fleet Data
+      description: Returns list of nodes managed by this distributor (LCO).
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: List of fleet nodes.
+
+  /dist-api/history:
+    get:
+      summary: Get Earnings History
+      description: Returns historical earnings data for charting.
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: History array.

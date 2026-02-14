@@ -32,6 +32,39 @@ export function createBuilderApiV2Router(opsEngine) {
         }
     });
 
+    // POST /builder-api/usage - Execute Op (Simulate Usage)
+    router.post('/usage', async (req, res) => {
+        try {
+            const { op_type, count } = req.body;
+            const wallet = req.user.wallet;
+
+            if (!op_type || typeof op_type !== 'string') return res.status(400).json({ error: "op_type required (string)" });
+
+            // Security Hardening: Cap max ops per request to prevent Loop DoS
+            let n = parseInt(count) || 1;
+            if (n < 1) n = 1;
+            if (n > 100) return res.status(400).json({ error: "Max 100 ops per request" });
+
+            const results = [];
+
+            for (let i = 0; i < n; i++) {
+                const result = await opsEngine.executeOp({
+                    op_type: op_type,
+                    client_id: wallet,
+                    node_id: 'sim_node_1',
+                    request_id: `req_${Date.now()}_${i}`,
+                    payload_hash: 'dummy_hash'
+                });
+                results.push(result);
+            }
+
+            res.json({ ok: true, processed: results.length });
+        } catch (e) {
+            console.error("Builder Usage Error:", e);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /builder-api/keys - List API keys
     router.get('/keys', async (req, res) => {
         try {

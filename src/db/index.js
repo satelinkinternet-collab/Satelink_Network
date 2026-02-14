@@ -45,17 +45,33 @@ export class UniversalDB {
         if (this.type === 'sqlite') {
             const stmt = this.db.prepare(sql);
             if (sql.trim().toUpperCase().startsWith("SELECT")) {
-                return stmt.all(params);
+                const start = performance.now();
+                const res = stmt.all(params);
+                const duration = performance.now() - start;
+                if (duration > 250) this._logSlowQuery(sql, duration);
+                return res;
             } else {
-                return stmt.run(params);
+                const start = performance.now();
+                const res = stmt.run(params);
+                const duration = performance.now() - start;
+                if (duration > 250) this._logSlowQuery(sql, duration);
+                return res;
             }
         } else {
-            const res = await this.pool.query(this._formatSql(sql), params);
+            const start = performance.now();
+            let res;
+            try {
+                res = await this.pool.query(this._formatSql(sql), params);
+            } finally {
+                const duration = performance.now() - start;
+                if (duration > 250) this._logSlowQuery(sql, duration, 'postgres');
+            }
+
             if (sql.trim().toUpperCase().startsWith("SELECT")) {
                 return res.rows;
             } else {
                 return {
-                    lastInsertRowid: res.rows[0]?.id || 0, // specific handling needed for RETURNING id
+                    lastInsertRowid: res.rows[0]?.id || 0,
                     changes: res.rowCount
                 };
             }
@@ -132,6 +148,45 @@ export class UniversalDB {
             } finally {
                 client.release();
             }
+        }
+    }
+
+    _logSlowQuery(sql, duration, source = "sqlite") {
+        if (sql.includes("INSERT INTO slow_queries")) return; // Prevent loop
+
+        // Fire and forget - do not await
+        try {
+            const redacted = sql.replace(/'[^']*'/g, "'REDACTED'").substring(0, 200);
+            const hash = Buffer.from(redacted).toString('base64').substring(0, 16); // Simple hash
+            const now = Date.now();
+
+            if (this.type === 'sqlite') {
+                // Direct SQLite access to bypass wrapper for logging
+                const stmt = this.db.prepare(`
+                    INSERT INTO slow_queries (query_hash, avg_ms, p95_ms, count, last_seen_at, sample_sql, source)
+                    VALUES (?, ?, ?, 1, ?, ?, ?)
+                    ON CONFLICT(query_hash) DO UPDATE SET
+                        avg_ms = (avg_ms + excluded.avg_ms) / 2,
+                        p95_ms = MAX(p95_ms, excluded.p95_ms),
+                        count = count + 1,
+                        last_seen_at = excluded.last_seen_at
+                `);
+                stmt.run([hash, duration, duration, now, redacted, source]);
+            } else {
+                // Postgres - fire and forget
+                this.pool.query(
+                    `INSERT INTO slow_queries (query_hash, avg_ms, p95_ms, count, last_seen_at, sample_sql, source)
+                     VALUES ($1, $2, $3, 1, $4, $5, $6)
+                     ON CONFLICT(query_hash) DO UPDATE SET
+                        avg_ms = (slow_queries.avg_ms + EXCLUDED.avg_ms) / 2,
+                        p95_ms = GREATEST(slow_queries.p95_ms, EXCLUDED.p95_ms),
+                        count = slow_queries.count + 1,
+                        last_seen_at = EXCLUDED.last_seen_at`,
+                    [hash, duration, duration, now, redacted, source]
+                ).catch(() => { });
+            }
+        } catch (e) {
+            // Silent fail for telemetry
         }
     }
 

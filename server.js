@@ -31,7 +31,13 @@ import { createUsageIngestRouter } from "./src/routes/usage_ingest.js";
 import { createUnifiedAuthRouter, verifyJWT } from "./src/routes/auth_v2.js";
 import { createDevAuthRouter } from "./src/routes/dev_auth_tokens.js";
 import { AlertService } from "./src/ops/alerts.js";
+
 import { Scheduler } from "./src/ops/scheduler.js";
+
+// Documentation (Swagger)
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+const swaggerDocument = YAML.load('./docs/swagger.yaml');
 
 // ─── CONFIG ──────────────────────────────────────────────────
 const config = validateEnv();
@@ -59,6 +65,11 @@ export async function createApp(db) {
 
   // 3) Express Setup
   const app = express();
+
+  // [INSTRUMENTATION] Tracing
+  const { tracingMiddleware } = await import("./src/middleware/tracing.js");
+  app.use(tracingMiddleware);
+
   app.use((req, res, next) => {
     console.log(`[ROOT-DEBUG] ${req.method} ${req.url}`);
     next();
@@ -159,6 +170,9 @@ export async function createApp(db) {
       uptime: process.uptime()
     });
   });
+
+  // 8) Documentation (Swagger UI) - Publicly Accessible
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
   // 14) Builder Routes (Rung 10b) - Moved to top to avoid 404 interference
@@ -310,9 +324,48 @@ export async function createApp(db) {
     });
   }
 
+  // 14.5) Admin Control Room API
+  const { createAdminControlRoomRouter } = await import("./src/routes/admin_control_room_api.js");
+  app.use('/admin', verifyJWT, createAdminControlRoomRouter(opsEngine));
+
+
   // --- GLOBAL ERROR HANDLER ---
   app.use(async (err, req, res, next) => {
     console.error(`[ERROR] ${err.message}`);
+
+    // [INSTRUMENTATION] Log to error_events
+    if (opsEngine && opsEngine.db) {
+      try {
+        const stackHash = require('crypto').createHash('md5').update(err.stack || err.message).digest('hex');
+        // Check dedupe in last hour
+        const recent = await opsEngine.db.get("SELECT id FROM error_events WHERE stack_hash = ? AND last_seen_at > ?", [stackHash, Date.now() - 3600000]);
+
+        if (recent) {
+          await opsEngine.db.query("UPDATE error_events SET count = count + 1, last_seen_at = ? WHERE id = ?", [Date.now(), recent.id]);
+        } else {
+          await opsEngine.db.query(`
+                    INSERT INTO error_events (service, route, method, status_code, message, stack_hash, stack_preview, trace_id, request_id, client_id, first_seen_at, last_seen_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+            'api',
+            req.path,
+            req.method,
+            res.statusCode !== 200 ? res.statusCode : 500,
+            err.message,
+            stackHash,
+            (err.stack || '').substring(0, 500),
+            req.traceId || null,
+            req.requestId || null,
+            req.user?.wallet || null,
+            Date.now(),
+            Date.now()
+          ]);
+        }
+      } catch (e) {
+        console.error("Failed to log error event:", e.message);
+      }
+    }
+
     if (req.logger) {
       await req.logger.error('server', err.message, {
         route: req.path,
