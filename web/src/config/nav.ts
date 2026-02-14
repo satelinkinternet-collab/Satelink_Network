@@ -15,7 +15,9 @@ import {
     Eye,
     SlidersHorizontal,
     Award,
-    ScrollText
+    ScrollText,
+    Stethoscope,
+    Bug
 } from 'lucide-react';
 import { Role } from '@/lib/permissions';
 
@@ -126,6 +128,22 @@ export const NAV_ITEMS: NavItem[] = [
         icon: Settings,
         roles: ['admin_super', 'admin_ops'],
         section: 'SETTINGS'
+    },
+
+    // ─── Diagnostics ───
+    {
+        label: 'Self-Tests',
+        path: '/admin/diagnostics/self-tests',
+        icon: Stethoscope,
+        roles: ['admin_super', 'admin_ops'],
+        section: 'DIAGNOSTICS'
+    },
+    {
+        label: 'Incidents',
+        path: '/admin/diagnostics/incidents',
+        icon: Bug,
+        roles: ['admin_super', 'admin_ops'],
+        section: 'DIAGNOSTICS'
     },
 
     // ─── Other Roles ───

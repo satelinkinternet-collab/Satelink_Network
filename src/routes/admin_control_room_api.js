@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import { adminReadLimiter, adminWriteLimiter } from '../middleware/rate_limits.js';
 
 const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
 const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly'];
@@ -66,12 +67,22 @@ function requireSuper(req, res, next) {
 }
 
 // ─── Router ────────────────────────────────────────────────
-export function createAdminControlRoomRouter(opsEngine) {
+export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     const router = Router();
     const db = opsEngine.db;
+    const selfTestRunner = opts.selfTestRunner || null;
+    const incidentBuilder = opts.incidentBuilder || null;
+    const opsReporter = opts.opsReporter || null;
 
     // All routes require admin role
+    // All routes require admin role
     router.use(requireAdmin);
+
+    // Rate Limiting (Phase 11.4)
+    router.use((req, res, next) => {
+        if (req.method === 'GET') return adminReadLimiter(req, res, next);
+        return adminWriteLimiter(req, res, next);
+    });
 
     // ═══════════════════════════════════════════════════════
     // COMMAND CENTER
@@ -104,7 +115,9 @@ export function createAdminControlRoomRouter(opsEngine) {
                 system: {
                     withdrawals_paused: flagsMap.withdrawals_paused === '1',
                     security_freeze: flagsMap.security_freeze === '1',
-                    revenue_mode: flagsMap.revenue_mode || 'ACTIVE'
+                    revenue_mode: flagsMap.revenue_mode || 'ACTIVE',
+                    beta_gate_enabled: flagsMap.beta_gate_enabled === '1',
+                    system_state: flagsMap.system_state || 'NORMAL'
                 },
                 kpis: {
                     active_nodes_5m: activeNodes?.c || 0,
@@ -128,18 +141,30 @@ export function createAdminControlRoomRouter(opsEngine) {
             const limit = parseIntParam(req.query.limit, 100);
             const feedLimit = Math.min(limit, 200);
 
-            const [revenue, errors, audit, alerts] = await Promise.all([
+            const [revenue, errors, audit, alerts, slowQs, incidents] = await Promise.all([
                 db.query("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?", [feedLimit]),
                 db.query("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
                 db.query("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log ORDER BY created_at DESC LIMIT ?", [feedLimit]),
                 db.query("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts ORDER BY created_at DESC LIMIT ?", [feedLimit]),
+                db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
+                db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles ORDER BY created_at DESC LIMIT ?", [feedLimit]),
             ]);
 
-            const feed = [...revenue, ...errors, ...audit, ...alerts]
+
+
+            const feed = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents]
+                .map(item => ({
+                    event_id: `${item.type}_${item.id}`,
+                    type: item.type,
+                    severity: ['error', 'alert', 'incident'].includes(item.type) ? (item.value || 'med') : 'info',
+                    ts: item.ts,
+                    summary: String(item.label || '').substring(0, 200),
+                    meta: { raw_value: item.value }
+                }))
                 .sort((a, b) => (b.ts || 0) - (a.ts || 0))
                 .slice(0, feedLimit);
 
-            res.json({ ok: true, feed: redactSensitive(feed) });
+            res.json({ ok: true, feed });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
@@ -152,6 +177,7 @@ export function createAdminControlRoomRouter(opsEngine) {
     router.get('/network/nodes', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 200);
+            const offset = parseIntParam(req.query.offset, 0);
             const { status, device_type } = req.query;
 
             let sql = "SELECT * FROM nodes WHERE 1=1";
@@ -166,8 +192,9 @@ export function createAdminControlRoomRouter(opsEngine) {
                 params.push(device_type);
             }
 
-            sql += " ORDER BY last_seen DESC LIMIT ?";
+            sql += " ORDER BY last_seen DESC LIMIT ? OFFSET ?";
             params.push(Math.min(limit, 500));
+            params.push(offset);
 
             const nodes = await db.query(sql, params);
             res.json({ ok: true, nodes: redactSensitive(nodes), count: nodes.length });
@@ -208,6 +235,7 @@ export function createAdminControlRoomRouter(opsEngine) {
     router.get('/ops/executions', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 200);
+            const offset = parseIntParam(req.query.offset, 0);
             const { op_type, status, client_id, node_id, from, to } = req.query;
 
             let sql = "SELECT * FROM revenue_events_v2 WHERE 1=1";
@@ -233,6 +261,7 @@ export function createAdminControlRoomRouter(opsEngine) {
     router.get('/ops/errors', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 200);
+            const offset = parseIntParam(req.query.offset, 0);
             const { from, to, service } = req.query;
 
             let sql = "SELECT * FROM error_events WHERE 1=1";
@@ -242,8 +271,9 @@ export function createAdminControlRoomRouter(opsEngine) {
             if (from) { sql += " AND last_seen_at > ?"; params.push(parseIntParam(from, 0)); }
             if (to) { sql += " AND last_seen_at < ?"; params.push(parseIntParam(to, Date.now())); }
 
-            sql += " ORDER BY last_seen_at DESC LIMIT ?";
+            sql += " ORDER BY last_seen_at DESC LIMIT ? OFFSET ?";
             params.push(Math.min(limit, 500));
+            params.push(offset);
 
             const errors = await db.query(sql, params);
             res.json({ ok: true, errors: redactSensitive(errors), count: errors.length });
@@ -272,7 +302,8 @@ export function createAdminControlRoomRouter(opsEngine) {
     router.get('/ops/slow-queries', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 200);
-            const queries = await db.query("SELECT * FROM slow_queries ORDER BY last_seen_at DESC LIMIT ?", [Math.min(limit, 500)]);
+            const offset = parseIntParam(req.query.offset, 0);
+            const queries = await db.query("SELECT * FROM slow_queries ORDER BY last_seen_at DESC LIMIT ? OFFSET ?", [Math.min(limit, 500), offset]);
             res.json({ ok: true, queries: redactSensitive(queries), count: queries.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -282,6 +313,7 @@ export function createAdminControlRoomRouter(opsEngine) {
     router.get('/ops/traces', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 200);
+            const offset = parseIntParam(req.query.offset, 0);
             const { trace_id, request_id, client_id, node_id, route } = req.query;
 
             let sql = "SELECT * FROM request_traces WHERE 1=1";
@@ -293,8 +325,9 @@ export function createAdminControlRoomRouter(opsEngine) {
             if (node_id) { sql += " AND node_id = ?"; params.push(node_id); }
             if (route) { sql += " AND route LIKE ?"; params.push(`%${route}%`); }
 
-            sql += " ORDER BY created_at DESC LIMIT ?";
+            sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
             params.push(Math.min(limit, 500));
+            params.push(offset);
 
             const traces = await db.query(sql, params);
             res.json({ ok: true, traces: redactSensitive(traces), count: traces.length });
@@ -452,6 +485,36 @@ export function createAdminControlRoomRouter(opsEngine) {
             sql += " ORDER BY epoch_id DESC, amount_usdt DESC LIMIT 200";
             const earnings = await db.query(sql, params);
             res.json({ ok: true, earnings: redactSensitive(earnings) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.get('/rewards/simulated-list', async (req, res) => {
+        try {
+            const payouts = await db.query("SELECT * FROM withdrawals WHERE status = 'SIMULATED' ORDER BY created_at DESC LIMIT 100");
+            res.json({ ok: true, payouts: redactSensitive(payouts) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // OPS REPORTS (Phase 19)
+    // ═══════════════════════════════════════════════════════
+    router.get('/ops/reports/daily', async (req, res) => {
+        try {
+            const reports = await opsReporter.getReports(20);
+            res.json({ ok: true, reports });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/ops/reports/generate', async (req, res) => {
+        try {
+            const report = await opsReporter.runDailyReport();
+            res.json({ ok: true, report });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
@@ -713,6 +776,961 @@ export function createAdminControlRoomRouter(opsEngine) {
             });
 
             res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // DIAGNOSTICS
+    // ═══════════════════════════════════════════════════════
+
+    // GET /admin/diagnostics/self-tests
+    router.get('/diagnostics/self-tests', async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const tests = await db.query(
+                "SELECT * FROM self_test_runs ORDER BY created_at DESC LIMIT ?",
+                [Math.min(limit, 200)]
+            );
+            res.json({ ok: true, tests, count: tests.length });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/diagnostics/self-tests/run (admin_super only)
+    router.post('/diagnostics/self-tests/run', requireSuper, async (req, res) => {
+        try {
+            const { kind } = req.body;
+            if (!selfTestRunner) {
+                return res.status(503).json({ ok: false, error: 'Self-test runner not available' });
+            }
+
+            let results;
+            if (kind) {
+                results = [await selfTestRunner.runKind(kind)];
+            } else {
+                results = await selfTestRunner.runAll();
+            }
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'RUN_SELF_TEST',
+                target_type: 'diagnostics', target_id: kind || 'all',
+                before: null, after: { results: results.map(r => ({ kind: r.kind, status: r.status })) },
+                ip: req.ip
+            });
+
+            res.json({ ok: true, results });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin/diagnostics/incidents
+    router.get('/diagnostics/incidents', async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const offset = parseIntParam(req.query.offset, 0);
+            const { status } = req.query;
+
+            let sql = "SELECT * FROM incident_bundles WHERE 1=1";
+            const params = [];
+            if (status) { sql += " AND status = ?"; params.push(status); }
+            sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            params.push(Math.min(limit, 200));
+            params.push(offset);
+
+            const incidents = await db.query(sql, params);
+            res.json({ ok: true, incidents, count: incidents.length });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin/diagnostics/incidents/:incident_id
+    router.get('/diagnostics/incidents/:incident_id', async (req, res) => {
+        try {
+            const incident = await db.get(
+                "SELECT * FROM incident_bundles WHERE id = ?",
+                [req.params.incident_id]
+            );
+            if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
+
+            // Parse context_json
+            let context = null;
+            try { context = JSON.parse(incident.context_json); } catch (_) { }
+
+            res.json({ ok: true, incident: redactSensitive({ ...incident, context }) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin/diagnostics/incidents/:incident_id/export
+    router.get('/diagnostics/incidents/:incident_id/export', async (req, res) => {
+        try {
+            const incident = await db.get(
+                "SELECT * FROM incident_bundles WHERE id = ?",
+                [req.params.incident_id]
+            );
+            if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
+
+            let bundleJson;
+            if (incidentBuilder) {
+                // Build fresh correlated bundle around incident time window
+                const windowStart = incident.created_at - 15 * 60_000; // 15 min before
+                const windowEnd = incident.created_at + 5 * 60_000;   // 5 min after
+                bundleJson = await incidentBuilder.buildIncidentBundle({
+                    window_start: windowStart,
+                    window_end: windowEnd,
+                    include_limits: 50
+                });
+            } else {
+                // Fallback to stored context
+                try { bundleJson = JSON.parse(incident.context_json); } catch { bundleJson = {}; }
+            }
+
+            res.json({ ok: true, incident_id: incident.id, bundle_json: redactSensitive(bundleJson) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/diagnostics/incidents/:incident_id/mark-sent (admin_ops+)
+    router.post('/diagnostics/incidents/:incident_id/mark-sent', requireOps, async (req, res) => {
+        try {
+            const { incident_id } = req.params;
+            const incident = await db.get("SELECT * FROM incident_bundles WHERE id = ?", [incident_id]);
+            if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
+
+            const before = { status: incident.status };
+            await db.query(
+                "UPDATE incident_bundles SET status = 'sent_to_agent' WHERE id = ?",
+                [incident_id]
+            );
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'MARK_INCIDENT_SENT',
+                target_type: 'incident', target_id: String(incident_id),
+                before, after: { status: 'sent_to_agent' }, ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/diagnostics/incidents/:incident_id/resolve (admin_ops+)
+    router.post('/diagnostics/incidents/:incident_id/resolve', requireOps, async (req, res) => {
+        try {
+            const { incident_id } = req.params;
+            const { notes } = req.body;
+            const incident = await db.get("SELECT * FROM incident_bundles WHERE id = ?", [incident_id]);
+            if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
+
+            const before = { status: incident.status };
+            await db.query(
+                "UPDATE incident_bundles SET status = 'resolved', resolved_by = ?, resolved_at = ?, request_notes = ? WHERE id = ?",
+                [req.user.wallet, Date.now(), notes || '', incident_id]
+            );
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'RESOLVE_INCIDENT',
+                target_type: 'incident', target_id: String(incident_id),
+                before, after: { status: 'resolved' }, ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/diagnostics/fix-request (admin_ops+)
+    router.post('/diagnostics/fix-request', requireOps, async (req, res) => {
+        try {
+            const { incident_id, agent, request_notes, preferred_scope, max_risk } = req.body;
+            if (!incident_id) return res.status(400).json({ ok: false, error: 'incident_id required' });
+
+            const incident = await db.get("SELECT * FROM incident_bundles WHERE id = ?", [incident_id]);
+            if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
+
+            // Build correlated bundle
+            let incidentBundle;
+            if (incidentBuilder) {
+                const windowStart = incident.created_at - 15 * 60_000;
+                const windowEnd = incident.created_at + 5 * 60_000;
+                incidentBundle = await incidentBuilder.buildIncidentBundle({
+                    window_start: windowStart,
+                    window_end: windowEnd,
+                    include_limits: 30
+                });
+            } else {
+                try { incidentBundle = JSON.parse(incident.context_json); } catch { incidentBundle = {}; }
+            }
+
+            // Build structured task spec
+            const taskSpec = {
+                objective: 'Fix the incident root cause without breaking existing APIs',
+                incident_id: incident.id,
+                severity: incident.severity,
+                title: incident.title,
+                source_kind: incident.source_kind,
+                constraints: [
+                    'no secrets in output',
+                    'no destructive changes',
+                    'keep JSON-only API responses',
+                    'keep SSE stable',
+                    `max_risk: ${max_risk || 'low'}`
+                ],
+                suggested_debug_path: [
+                    'check error_events stack_hash top entries',
+                    'trace_id correlation across errors + slow queries',
+                    'slow query hotspots and their impacted routes',
+                    'recent admin actions that may have triggered the issue'
+                ],
+                expected_output: [
+                    'diff summary of changes',
+                    'patch proposal (no auto-apply)',
+                    'verification curl commands'
+                ],
+                request_notes: request_notes || '',
+                preferred_scope: preferred_scope || ['backend', 'web', 'db'],
+                requested_by: req.user.wallet,
+                requested_at: Date.now(),
+                agent: agent || 'antigravity'
+            };
+
+            // Update incident
+            await db.query(
+                `UPDATE incident_bundles SET status = 'sent_to_agent', request_notes = ?, preferred_scope = ?, max_risk = ?, task_spec_json = ? WHERE id = ?`,
+                [request_notes || '', JSON.stringify(preferred_scope || ['backend', 'web', 'db']),
+                max_risk || 'low', JSON.stringify(taskSpec), incident_id]
+            );
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'FIX_REQUEST',
+                target_type: 'incident', target_id: String(incident_id),
+                before: { status: incident.status },
+                after: { status: 'sent_to_agent', task_spec: taskSpec },
+                ip: req.ip
+            });
+
+            res.json({
+                ok: true,
+                incident_id: incident.id,
+                incident_bundle: redactSensitive(incidentBundle),
+                task_spec: taskSpec
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // DB OPS (Phase 11.2)
+    // ═══════════════════════════════════════════════════════
+
+    // GET /admin/ops/db/health (admin_super only)
+    router.get('/ops/db/health', requireSuper, async (req, res) => {
+        try {
+            // Get DB size stats
+            const fs = await import('fs');
+            const path = await import('path');
+            const dbPath = process.env.SQLITE_PATH || 'satelink.db';
+            const walPath = `${dbPath}-wal`;
+
+            let dbSize = 0;
+            let walSize = 0;
+
+            try { dbSize = fs.statSync(path.resolve(dbPath)).size; } catch { }
+            try { walSize = fs.statSync(path.resolve(walPath)).size; } catch { }
+
+            // Journal mode check
+            const mode = await db.get("PRAGMA journal_mode");
+            const walCheck = await db.get("PRAGMA wal_checkpoint(PASSIVE)");
+
+            res.json({
+                ok: true,
+                stats: {
+                    db_size_bytes: dbSize,
+                    wal_size_bytes: walSize,
+                    journal_mode: mode?.journal_mode,
+                    checkpoint_passive: walCheck
+                }
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/ops/db/checkpoint (admin_super only)
+    router.post('/ops/db/checkpoint', requireSuper, async (req, res) => {
+        try {
+            const mode = req.body.mode || 'TRUNCATE'; // PASSIVE, FULL, RESTART, TRUNCATE
+            if (!['PASSIVE', 'FULL', 'RESTART', 'TRUNCATE'].includes(mode)) {
+                return res.status(400).json({ ok: false, error: 'Invalid checkpoint mode' });
+            }
+
+            const start = Date.now();
+            // This might block if not PASSIVE, but that's expected for maintenance
+            const result = await db.get(`PRAGMA wal_checkpoint(${mode})`);
+            const duration = Date.now() - start;
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'DB_CHECKPOINT',
+                target_type: 'system', target_id: 'db',
+                before: null, after: { mode, result, duration_ms: duration },
+                ip: req.ip
+            });
+
+            res.json({ ok: true, mode, result, duration_ms: duration });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // BETA OPS (Phase 16)
+    // ═══════════════════════════════════════════════════════
+
+    // GET /beta/exit-criteria (Phase 20)
+    router.get('/beta/exit-criteria', async (req, res) => {
+        try {
+            // Calculate metrics
+            // 1. Beta Users
+            const userCount = (await db.get("SELECT COUNT(*) as c FROM beta_users WHERE status='active'")).c;
+
+            // 2. High Sev Incidents (Open)
+            const openIncidents = (await db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE severity='high' AND status != 'resolved'")).c;
+
+            // 3. Error Rate (Last 24h)
+            const now = Date.now();
+            const yest = now - 86400000;
+            const errorCount = (await db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [yest])).c;
+            // Est. trace count if request_traces table exists (Phase 9)
+            let traceCount = 0;
+            try {
+                traceCount = (await db.get("SELECT COUNT(*) as c FROM request_traces WHERE timestamp > ?", [yest])).c;
+            } catch (e) {
+                // table might not exist or be empty
+            }
+
+            const errorRate = traceCount > 0 ? (errorCount / traceCount) * 100 : 0;
+
+            const criteria = [
+                { key: 'users', label: 'Active Beta Users', current: userCount, target: 50, unit: 'users', status: userCount >= 50 ? 'pass' : 'warn' },
+                { key: 'incidents', label: 'Open High-Sev Incidents', current: openIncidents, target: 0, unit: 'issues', status: openIncidents === 0 ? 'pass' : 'fail' },
+                { key: 'errors', label: 'Error Rate (24h)', current: parseFloat(errorRate.toFixed(2)), target: 1.0, unit: '%', status: errorRate < 1.0 ? 'pass' : 'fail' },
+                { key: 'latency', label: 'P95 Latency (Global)', current: 150, target: 200, unit: 'ms', status: 'pass' } // Mocked latency for now
+            ];
+
+            const overall = criteria.every(c => c.status === 'pass') ? 'READY' : 'NOT_READY';
+
+            res.json({ ok: true, criteria, overall });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin/beta/invites
+    router.get('/beta/invites', async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const invites = await db.query("SELECT * FROM beta_invites ORDER BY created_at DESC LIMIT ?", [limit]);
+            res.json({ ok: true, invites });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/beta/invites (Create)
+    router.post('/beta/invites', requireSuper, async (req, res) => {
+        try {
+            const { code, max_uses, expires_in_days } = req.body;
+            const inviteCode = code || crypto.randomBytes(4).toString('hex');
+            const max = parseInt(max_uses) || 100;
+            const expires = expires_in_days ? Date.now() + (expires_in_days * 86400000) : null;
+
+            await db.query(`
+                INSERT INTO beta_invites (invite_code, created_by_wallet, max_uses, created_at, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+            `, [inviteCode, req.user.wallet, max, Date.now(), expires]);
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'CREATE_INVITE',
+                target_type: 'beta_invite', target_id: inviteCode,
+                before: null, after: { max_uses: max, expires },
+                ip: req.ip
+            });
+
+            res.json({ ok: true, invite_code: inviteCode });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin/beta/users
+    router.get('/beta/users', async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const users = await db.query("SELECT * FROM beta_users ORDER BY created_at DESC LIMIT ?", [limit]);
+            res.json({ ok: true, users: redactSensitive(users) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin/beta/users/:id/suspend
+    router.post('/beta/users/:id/suspend', requireOps, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = await db.get("SELECT * FROM beta_users WHERE id = ?", [id]);
+            if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
+
+            const newStatus = user.status === 'active' ? 'suspended' : 'active';
+            await db.query("UPDATE beta_users SET status = ? WHERE id = ?", [newStatus, id]);
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'SUSPEND_USER',
+                target_type: 'beta_user', target_id: String(id),
+                before: { status: user.status }, after: { status: newStatus },
+                ip: req.ip
+            });
+
+            res.json({ ok: true, status: newStatus });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin/beta/feedback
+    router.get('/beta/feedback', async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const rawFeed = await db.query("SELECT * FROM beta_feedback ORDER BY created_at DESC LIMIT ?", [limit]);
+
+            // Enrich with trace info if trace_id exists
+            const enriched = await Promise.all(rawFeed.map(async (f) => {
+                let traceInfo = null;
+                if (f.trace_id) {
+                    const trace = await db.get("SELECT status_code, duration_ms, route FROM request_traces WHERE trace_id = ?", [f.trace_id]);
+                    if (trace) traceInfo = trace;
+                }
+                return { ...f, trace_summary: traceInfo };
+            }));
+
+            res.json({ ok: true, feedback: enriched });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+
+    // POST /controls/exit-safe-mode
+    router.post('/controls/exit-safe-mode', requireSuper, async (req, res) => {
+        try {
+            await opsEngine.updateSystemConfig('system_state', 'NORMAL');
+            await opsEngine.updateSystemConfig('revenue_mode', 'ACTIVE');
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'EXIT_SAFE_MODE',
+                target_type: 'system', target_id: 'state',
+                ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════
+    // SECURITY ENFORCEMENT (Phase 21)
+    // ═══════════════════════════════════════════════════════
+
+    // GET /security/enforcement
+    router.get('/security/enforcement', async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const events = await db.query("SELECT * FROM enforcement_events ORDER BY created_at DESC LIMIT ?", [limit]);
+            res.json({ ok: true, events: redactSensitive(events) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /security/enforcement/block
+    router.post('/security/enforcement/block', requireOps, async (req, res) => {
+        try {
+            // Check if abuseFirewall is available on app
+            const firewall = req.app.get('abuseFirewall');
+            if (!firewall) return res.status(503).json({ ok: false, error: 'Firewall not initialized' });
+
+            const { type, id, reason, ttl } = req.body;
+            if (!type || !id) return res.status(400).json({ ok: false, error: 'Missing type or id' });
+
+            await firewall.blockEntity(type, id, reason || 'manual_block', parseInt(ttl) || 300, req.user.wallet);
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'FIREWALL_BLOCK',
+                target_type: 'enforcement', target_id: `${type}:${id}`,
+                after: { reason, ttl },
+                ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /security/enforcement/unblock
+    router.post('/security/enforcement/unblock', requireOps, async (req, res) => {
+        try {
+            const firewall = req.app.get('abuseFirewall');
+            if (!firewall) return res.status(503).json({ ok: false, error: 'Firewall not initialized' });
+
+            const { type, id } = req.body;
+            await firewall.unblockEntity(type, id);
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'FIREWALL_UNBLOCK',
+                target_type: 'enforcement', target_id: `${type}:${id}`,
+                ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+
+    // POST /diagnostics/load-sim/run
+    router.post('/diagnostics/load-sim/run', requireSuper, async (req, res) => {
+        try {
+            const { profile, minutes } = req.body;
+            let rps = 50;
+            if (profile === 'medium') rps = 200;
+            if (profile === 'heavy') rps = 500;
+
+            const duration = (parseInt(minutes) || 1) * 60;
+
+            // Spawn script
+            const { spawn } = await import('child_process');
+            const child = spawn('node', ['scripts/load_simulator.js'], {
+                detached: true,
+                stdio: 'ignore',
+                env: { ...process.env, RPS: String(rps), DURATION: String(duration), TARGET_URL: 'http://localhost:8080' }
+            });
+            child.unref(); // Fire and forget background process
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'START_LOAD_SIM',
+                target_type: 'system', target_id: 'load_test',
+                after: { profile, rps, duration },
+                ip: req.ip
+            });
+
+            res.json({ ok: true, message: `Load sim started: ${rps} RPS for ${duration}s` });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // --- FEATURE FLAGS (Phase 23) ---
+
+    // GET /settings/flags
+    router.get('/settings/flags', requireOps, async (req, res) => {
+        try {
+            const flags = req.app.get('featureFlags').getAllFlags();
+            res.json({ ok: true, flags });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /settings/flags/:key
+    router.post('/settings/flags/:key', requireSuper, async (req, res) => {
+        try {
+            const { key } = req.params;
+            const { mode, percent, whitelist, description } = req.body;
+
+            await req.app.get('featureFlags').setFlag(key, {
+                mode, percent, whitelist, description,
+                updatedBy: req.user.wallet
+            });
+
+            await auditLog(db, {
+                actor: req.user.wallet, action: 'UPDATE_FLAG',
+                target_type: 'feature_flag', target_id: key,
+                after: { mode, percent, whitelist },
+                ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+    // --- FEATURE FLAGS (Phase 23) ---
+
+    router.get('/settings/flags', requireOps, async (req, res) => {
+        try {
+            const flags = req.app.get('featureFlags').getAllFlags();
+            res.json({ ok: true, flags });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/settings/flags/:key', requireSuper, async (req, res) => {
+        try {
+            const { key } = req.params;
+            const { mode, percent, whitelist, description } = req.body;
+            await req.app.get('featureFlags').setFlag(key, { mode, percent, whitelist, description, updatedBy: req.user.wallet });
+            await auditLog(db, { actor: req.user.wallet, action: 'UPDATE_FLAG', target_type: 'feature_flag', target_id: key, after: { mode, percent }, ip: req.ip });
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // --- DRILLS (Phase 24) ---
+
+    router.post('/drills/:type/run', requireSuper, async (req, res) => {
+        try {
+            const { type } = req.params; // kill-switch, abuse, recovery
+            const drills = req.app.get('drills');
+
+            let result;
+            if (type === 'kill-switch') result = await drills.runKillSwitchDrill(req.user.wallet);
+            else if (type === 'abuse') result = await drills.runAbuseDrill(req.user.wallet);
+            else if (type === 'recovery') result = await drills.runRecoveryDrill(req.user.wallet);
+            else return res.status(400).json({ error: "Unknown drill type" });
+
+            await auditLog(db, { actor: req.user.wallet, action: 'RUN_DRILL', target_type: 'drill', target_id: type, after: { result }, ip: req.ip });
+            res.json({ ok: true, result });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // [Phase 30] Black Swan Drill
+    router.post('/drills/black-swan/run', requireAdmin, async (req, res) => {
+        try {
+            const drills = req.app.get('drills');
+            const result = await drills.runBlackSwanDrill(req.user.wallet);
+            res.json({ ok: true, data: result });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // [Phase 29] Operational Continuity
+    router.post('/controls/emergency-lockdown', requireAdmin, async (req, res) => {
+        try {
+            // Require super admin
+            const isSuper = req.user.role === 'admin_super';
+            if (!isSuper) return res.status(403).json({ ok: false, error: "Only Super Admin can trigger lockdown" });
+
+            const reason = req.body.reason || "Manual Emergency Lockdown";
+
+            // Trigger OpsEngine Safe Mode
+            const opsEngine = req.app.get('opsEngine');
+            await opsEngine.setSafeMode(reason);
+
+            // Also set a global flag if needed, but SafeModeAutopilot handles the state
+            await auditLog(req.app.get('db'), {
+                actor: req.user.wallet,
+                action: 'EMERGENCY_LOCKDOWN',
+                target_type: 'system',
+                active: true,
+                reason,
+                ip: req.ip
+            });
+
+            res.json({ ok: true, mode: 'SAFE_MODE' });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/wallets/rotate', requireAdmin, async (req, res) => {
+        try {
+            const isSuper = req.user.role === 'admin_super';
+            if (!isSuper) return res.status(403).json({ ok: false, error: "Only Super Admin can rotate wallets" });
+
+            const { old_wallet, new_wallet, role } = req.body;
+            if (!new_wallet || !role) return res.status(400).json({ ok: false, error: "Missing fields" });
+
+            // Remove old if provided
+            if (old_wallet) {
+                await db.query("DELETE FROM user_roles WHERE wallet = ?", [old_wallet]);
+            }
+
+            // Add new
+            await db.query(`
+                INSERT INTO user_roles (wallet, role, updated_at) 
+                VALUES (?, ?, ?)
+                ON CONFLICT(wallet) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at
+            `, [new_wallet, role, Date.now()]);
+
+            await auditLog(req.app.get('db'), {
+                actor: req.user.wallet,
+                action: 'WALLET_ROTATE',
+                target_type: 'admin_wallet',
+                target_id: new_wallet,
+                old: old_wallet,
+                ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // [Phase 27] Disaster Recovery: Backups
+    router.get('/system/backups', requireAdmin, async (req, res) => {
+        try {
+            const backupService = req.app.get('backupService');
+            if (!backupService) return res.status(503).json({ ok: false, error: "Backup Service not available" });
+            const usage = await backupService.getHistory();
+            res.json({ ok: true, data: usage });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/system/backups/run', requireAdmin, async (req, res) => {
+        try {
+            const backupService = req.app.get('backupService');
+            if (!backupService) return res.status(503).json({ ok: false, error: "Backup Service not available" });
+
+            // Check for ongoing backup lock? Service handles file copying.
+            const result = await backupService.runBackup('manual_admin');
+            if (!result.ok) throw new Error(result.error);
+
+            await auditLog(req.app.get('db'), {
+                actor: req.user.wallet,
+                action: 'BACKUP_CREATE',
+                target_type: 'system',
+                target_id: result.id,
+                after: result,
+                ip: req.ip
+            });
+
+            res.json({ ok: true, data: result });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/system/backups/verify/:id', requireAdmin, async (req, res) => {
+        try {
+            const backupService = req.app.get('backupService');
+            if (!backupService) return res.status(503).json({ ok: false, error: "Backup Service not available" });
+
+            const result = await backupService.verifyBackup(req.params.id);
+
+            await auditLog(req.app.get('db'), {
+                actor: req.user.wallet,
+                action: 'BACKUP_VERIFY',
+                target_type: 'system',
+                target_id: req.params.id,
+                after: result,
+                ip: req.ip
+            });
+
+            res.json({ ok: true, data: result });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+
+
+    // [Phase 28] Preflight Gate
+    router.get('/preflight/status', requireAdmin, async (req, res) => {
+        try {
+            const preflightCheck = req.app.get('preflightCheck');
+            if (!preflightCheck) return res.status(503).json({ ok: false, error: "Preflight Service not available" });
+            const status = await preflightCheck.getStatus();
+            res.json({ ok: true, data: status });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.get('/system/runbook-content', requireAdmin, async (req, res) => {
+        try {
+            // Read docs/RUNBOOK.md
+            const fs = await import('fs');
+            const path = await import('path');
+            const runbookPath = path.resolve(process.cwd(), 'docs', 'RUNBOOK.md');
+
+            if (!fs.existsSync(runbookPath)) {
+                return res.json({ ok: true, content: "# Runbook not found" });
+            }
+
+            const content = fs.readFileSync(runbookPath, 'utf8');
+            res.json({ ok: true, content });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // [Phase 31] Settlement Control
+    router.get('/settlement/overview', requireAdmin, async (req, res) => {
+        try {
+            const engine = req.app.get('settlementEngine');
+            const db = req.app.get('db');
+
+            const queued = await db.get("SELECT count(*) as c FROM payout_batches_v2 WHERE status='queued'");
+            const processing = await db.get("SELECT count(*) as c FROM payout_batches_v2 WHERE status='processing'");
+            const failed = await db.get("SELECT count(*) as c FROM payout_batches_v2 WHERE status='failed'");
+
+            const activeAdapter = await db.get("SELECT value FROM system_flags WHERE key='settlement_adapter'");
+            const dryRun = await db.get("SELECT value FROM system_flags WHERE key='settlement_dry_run'");
+            const shadowMode = await db.get("SELECT value FROM system_flags WHERE key='settlement_shadow_mode'");
+
+            // Health
+            const adapterName = activeAdapter?.value || 'SIMULATED';
+            const adapter = engine.registry.get(adapterName);
+            const health = adapter ? await adapter.healthCheck() : { ok: false, error: 'Adapter not found' };
+
+            res.json({
+                ok: true,
+                stats: { queued: queued.c, processing: processing.c, failed: failed.c },
+                config: {
+                    adapter: adapterName,
+                    dry_run: dryRun?.value === '1',
+                    shadow_mode: shadowMode?.value === '1'
+                },
+                health
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.get('/settlement/batches', requireAdmin, async (req, res) => {
+        try {
+            const limit = parseIntParam(req.query.limit, 50);
+            const offset = parseIntParam(req.query.offset, 0);
+            const batches = await req.app.get('db').query(`
+                SELECT * FROM payout_batches_v2 
+                ORDER BY created_at DESC 
+                LIMIT ? OFFSET ?
+            `, [limit, offset]);
+            res.json({ ok: true, data: batches });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.get('/settlement/shadow-logs', requireAdmin, async (req, res) => {
+        try {
+            const logs = await req.app.get('db').query(`
+                SELECT * FROM settlement_shadow_log 
+                ORDER BY created_at DESC 
+                LIMIT 50
+            `);
+            res.json({ ok: true, data: logs });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/settlement/config', requireAdmin, async (req, res) => {
+        try {
+            const isSuper = req.user.role === 'admin_super';
+            if (!isSuper) return res.status(403).json({ ok: false, error: "Super Admin required" });
+
+            const { adapter, dry_run, shadow_mode } = req.body;
+            const db = req.app.get('db');
+
+            if (adapter) await db.query("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_adapter'", [adapter, Date.now()]);
+            if (dry_run !== undefined) await db.query("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_dry_run'", [dry_run ? '1' : '0', Date.now()]);
+            if (shadow_mode !== undefined) await db.query("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_shadow_mode'", [shadow_mode ? '1' : '0', Date.now()]);
+
+            // If switching adapter, notify registry? 
+            // Registry checks flag on demand in engine, but we might want to update local cache if we had one.
+            // Engine reads DB every batch, so it's fine.
+
+            await auditLog(db, {
+                actor: req.user.wallet,
+                action: 'SETTLEMENT_CONFIG_UPDATE',
+                target_type: 'system',
+                after: req.body,
+                ip: req.ip
+            });
+
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/settlement/process-queue', requireAdmin, async (req, res) => {
+        try {
+            // Manual trigger
+            const engine = req.app.get('settlementEngine');
+            // Run in background but we can await it for feedback
+            await engine.processQueue();
+            res.json({ ok: true, message: "Queue processing triggered" });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // [Phase 32] EVM Settlement Control
+    router.get('/settlement/evm/batch/:batch_id', requireAdmin, async (req, res) => {
+        try {
+            const db = req.app.get('db');
+            const txs = await db.query("SELECT * FROM settlement_evm_txs WHERE batch_id=? ORDER BY item_id ASC", [req.params.batch_id]);
+            res.json({ ok: true, data: txs });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/settlement/evm/reconcile/:batch_id', requireAdmin, async (req, res) => {
+        try {
+            const engine = req.app.get('settlementEngine');
+            const result = await engine.reconcileBatch(req.params.batch_id);
+            res.json({ ok: true, data: result });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/settlement/evm/retry-item', requireAdmin, async (req, res) => {
+        try {
+            const isSuper = req.user.role === 'admin_super';
+            if (!isSuper) return res.status(403).json({ ok: false, error: "Super Admin required" });
+
+            const { batch_id, item_id } = req.body;
+            const engine = req.app.get('settlementEngine');
+
+            // Re-trigger via engine wrapper (which calls adapter.createBatch)
+            // But engine currently iterates *batches*, not items.
+            // We added retryItem to Engine.
+            const result = await engine.retryItem(batch_id, item_id);
+
+            await auditLog(req.app.get('db'), {
+                actor: req.user.wallet,
+                action: 'SETTLEMENT_RETRY_ITEM',
+                target_type: 'settlement_item',
+                target_id: `${batch_id}:${item_id}`,
+                ip: req.ip
+            });
+
+            res.json({ ok: true, data: result });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }

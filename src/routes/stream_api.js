@@ -33,11 +33,22 @@ export function createStreamApiRouter(opsEngine) {
             return res.status(403).json({ error: "Access denied" });
         }
 
+        // Anti-buffering headers (nginx/proxies)
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
         const conn = sseHelper.init(req, res);
+
+        // ── Hello event (once) ──
+        conn.send('hello', { server: 'satelink-admin', version: '1.0', ts: Date.now() });
+
         let lastRevenueId = 0;
         let lastErrorTs = Date.now() - 60000; // last minute
         let lastAlertTs = Date.now() - 60000;
         let lastAuditTs = Date.now() - 60000;
+        let lastSlowQueryTs = Date.now() - 60000;
+        let lastIncidentTs = Date.now() - 60000;
 
         // ── Send initial snapshot immediately ──
         const sendSnapshot = async () => {
@@ -47,13 +58,14 @@ export function createStreamApiRouter(opsEngine) {
                 const dayAgo = Math.floor(Date.now() / 1000) - 86400;
                 const hourAgoMs = Date.now() - 3600000;
 
-                const [activeNodes, opsCount, revenue24h, alertsOpen, errors1h, slowQueries1h] = await Promise.all([
+                const [activeNodes, opsCount, revenue24h, alertsOpen, errors1h, slowQueries1h, incidentsOpen] = await Promise.all([
                     opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinAgo]),
                     opsEngine.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
                     opsEngine.db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
                     opsEngine.db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
                     opsEngine.db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [hourAgoMs]),
                     opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?", [hourAgoMs]),
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'"),
                 ]);
 
                 const treasury = await opsEngine.getTreasuryAvailable();
@@ -73,6 +85,7 @@ export function createStreamApiRouter(opsEngine) {
                     alerts_open_count: alertsOpen?.c || 0,
                     errors_1h_count: errors1h?.c || 0,
                     slow_queries_1h_count: slowQueries1h?.c || 0,
+                    incidents_open_count: incidentsOpen?.c || 0,
                     timestamp: Date.now()
                 });
             } catch (e) { }
@@ -140,6 +153,39 @@ export function createStreamApiRouter(opsEngine) {
             } catch (e) { }
         }, 10000);
 
+        // ── Slow query batch ──
+        const pollSlowQueries = setInterval(async () => {
+            try {
+                const queries = await pollDB(
+                    `SELECT * FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at ASC LIMIT 10`,
+                    [lastSlowQueryTs]
+                );
+                if (queries.length > 0) {
+                    lastSlowQueryTs = queries[queries.length - 1].last_seen_at;
+                    conn.send('slow_query_batch', queries);
+                }
+            } catch (e) { }
+        }, 10000);
+
+        // ── Incident bundles ──
+        const pollIncidents = setInterval(async () => {
+            try {
+                const incidents = await pollDB(
+                    `SELECT * FROM incident_bundles WHERE created_at > ? ORDER BY created_at ASC LIMIT 10`,
+                    [lastIncidentTs]
+                );
+                if (incidents.length > 0) {
+                    lastIncidentTs = incidents[incidents.length - 1].created_at;
+                    conn.send('incident', incidents);
+                }
+            } catch (e) { }
+        }, 10000);
+
+        // ── Ping keepalive every 15s ──
+        const pollPing = setInterval(() => {
+            conn.send('ping', { ts: Date.now() });
+        }, 15000);
+
         // Cleanup
         req.on('close', () => {
             clearInterval(pollSnapshot);
@@ -147,8 +193,12 @@ export function createStreamApiRouter(opsEngine) {
             clearInterval(pollErrors);
             clearInterval(pollAlerts);
             clearInterval(pollAudit);
+            clearInterval(pollSlowQueries);
+            clearInterval(pollIncidents);
+            clearInterval(pollPing);
         });
     });
+
 
     /**
      * GET /stream/node

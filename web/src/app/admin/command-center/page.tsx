@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
@@ -14,11 +15,13 @@ import {
     PageHeader, ErrorBanner, KpiSkeleton, LivePill, ConfirmDialog,
     useIsReadonly, formatTs, timeAgo, DataTable
 } from '@/components/admin/admin-shared';
+import { DebugToolbox } from '@/components/admin/DebugToolbox';
 
 interface SystemState {
     withdrawals_paused: boolean;
     security_freeze: boolean;
     revenue_mode: string;
+    beta_gate_enabled?: boolean;
 }
 
 interface KPIs {
@@ -40,7 +43,7 @@ interface FeedItem {
 export default function CommandCenterPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [system, setSystem] = useState<SystemState>({ withdrawals_paused: false, security_freeze: false, revenue_mode: 'ACTIVE' });
+    const [system, setSystem] = useState<SystemState>({ withdrawals_paused: false, security_freeze: false, revenue_mode: 'ACTIVE', beta_gate_enabled: false });
     const [kpis, setKpis] = useState<KPIs>({ active_nodes_5m: 0, ops_5m: 0, success_rate_5m: 99.9, p95_latency_ms_5m: 0, revenue_24h_usdt: '0.00' });
     const [alertsCount, setAlertsCount] = useState(0);
     const [errorsCount, setErrorsCount] = useState(0);
@@ -90,6 +93,10 @@ export default function CommandCenterPage() {
         try {
             if (type === 'pause') {
                 await api.post('/admin/controls/pause-withdrawals', { paused: val });
+            } else if (type === 'beta_gate') {
+                await api.post('/admin/controls/beta-gate', { enabled: val });
+            } else if (type === 'exit_safe_mode') {
+                await api.post('/admin/controls/exit-safe-mode', {});
             } else {
                 await api.post('/admin/controls/security-freeze', { frozen: val });
             }
@@ -134,8 +141,39 @@ export default function CommandCenterPage() {
 
             {error && <ErrorBanner message={error} onRetry={fetchData} />}
 
+            {/* SAFE MODE BANNER (Phase 22) */}
+            {system.beta_gate_enabled && ( // Wait, beta_gate_enabled is not safe mode. I need to check system.revenue_mode or new flag
+                // System state is not in 'system' object yet?
+                // FetchData gets 'summary'.
+                // Let's check 'system.revenue_mode === 'READONLY' or 'system.security_freeze'
+                // Actually, I should add 'system_state' to the system object in backend.
+                // For now, I'll use revenue_mode === 'READONLY' as proxy or fetch 'system_state'.
+                // Let's assume 'system.revenue_mode === 'READONLY' AND system.security_freeze might overlap.
+                // The plan said 'set system_state=DEGRADED'.
+                // I'll rely on a specific check.
+                null
+            )}
+
+            {/* SAFE MODE BANNER */}
+            {(system as any).system_state === 'DEGRADED' && (
+                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center justify-between animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <ShieldAlert className="h-6 w-6 text-red-500" />
+                        <div>
+                            <h3 className="text-lg font-bold text-red-400">SAFE MODE ACTIVE</h3>
+                            <p className="text-sm text-red-300">System functionality is degraded due to high load or errors.</p>
+                        </div>
+                    </div>
+                    {!readonly && (
+                        <Button variant="destructive" size="sm" onClick={() => setConfirmAction({ type: 'exit_safe_mode', val: true })}>
+                            Exit Safe Mode
+                        </Button>
+                    )}
+                </div>
+            )}
+
             {/* System Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
                 <Card className="bg-zinc-900/80 border-zinc-800/60">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -189,6 +227,68 @@ export default function CommandCenterPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                <Card className="bg-zinc-900/80 border-zinc-800/60">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            {system.beta_gate_enabled ? <Lock className="h-5 w-5 text-emerald-400" /> : <Unlock className="h-5 w-5 text-zinc-500" />}
+                            <div>
+                                <p className="text-sm font-semibold text-zinc-200">Beta Gate</p>
+                                <p className="text-xs text-zinc-500">{system.beta_gate_enabled ? 'Active' : 'Open (Public)'}</p>
+                            </div>
+                        </div>
+                        {!readonly && (
+                            <Button
+                                size="sm"
+                                variant={system.beta_gate_enabled ? 'default' : 'outline'}
+                                onClick={() => setConfirmAction({ type: 'beta_gate', val: !system.beta_gate_enabled })}
+                                className="text-xs"
+                            >
+                                {system.beta_gate_enabled ? 'Open' : 'Enforce'}
+                            </Button>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Ops Tools & Quick Links */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+                <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                    <CardContent className="p-4 flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/admin/rewards/simulated'}>
+                        <div className="p-2 bg-yellow-500/10 rounded-full text-yellow-500"><TrendingUp size={16} /></div>
+                        <div>
+                            <div className="text-sm font-semibold text-zinc-200">Simulated Payouts</div>
+                            <div className="text-xs text-zinc-500">View Queue</div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                    <CardContent className="p-4 flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/admin/reports/daily'}>
+                        <div className="p-2 bg-purple-500/10 rounded-full text-purple-500"><Activity size={16} /></div>
+                        <div>
+                            <div className="text-sm font-semibold text-zinc-200">Daily Ops Reports</div>
+                            <div className="text-xs text-zinc-500">System Health</div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                    <CardContent className="p-4 flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/admin/beta/invites'}>
+                        <div className="p-2 bg-pink-500/10 rounded-full text-pink-500"><Zap size={16} /></div>
+                        <div>
+                            <div className="text-sm font-semibold text-zinc-200">Beta Invites</div>
+                            <div className="text-xs text-zinc-500">Manage Keys</div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                    <CardContent className="p-4 flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = '/admin/beta/feedback'}>
+                        <div className="p-2 bg-blue-500/10 rounded-full text-blue-500"><Shield size={16} /></div>
+                        <div>
+                            <div className="text-sm font-semibold text-zinc-200">Feedback Triage</div>
+                            <div className="text-xs text-zinc-500">Beta Issues</div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* KPIs */}
@@ -233,15 +333,21 @@ export default function CommandCenterPage() {
             {/* Confirm Dialog */}
             <ConfirmDialog
                 open={!!confirmAction}
-                title={confirmAction?.type === 'pause' ? (confirmAction.val ? 'Pause Withdrawals?' : 'Resume Withdrawals?') : (confirmAction?.val ? 'Security Freeze?' : 'Remove Security Freeze?')}
+                title={confirmAction?.type === 'pause' ? (confirmAction.val ? 'Pause Withdrawals?' : 'Resume Withdrawals?') : confirmAction?.type === 'beta_gate' ? (confirmAction.val ? 'Enforce Beta Gate?' : 'Open Beta Gate?') : (confirmAction?.val ? 'Security Freeze?' : 'Remove Security Freeze?')}
                 description={confirmAction?.type === 'pause'
                     ? 'This will immediately affect all pending and future withdrawals.'
-                    : 'This will toggle the global security freeze state.'}
-                variant="danger"
-                confirmLabel={confirmAction?.type === 'pause' ? (confirmAction.val ? 'Pause Now' : 'Resume') : (confirmAction?.val ? 'Freeze Now' : 'Unfreeze')}
+                    : confirmAction?.type === 'beta_gate' ? 'Enforcing beta gate will verify invite codes for new users.' : 'This will toggle the global security freeze state.'}
+                variant={confirmAction?.type === 'beta_gate' ? 'default' : 'danger'}
+                confirmLabel={confirmAction?.type === 'pause' ? (confirmAction.val ? 'Pause Now' : 'Resume') : confirmAction?.type === 'beta_gate' ? (confirmAction.val ? 'Enforce' : 'Open') : (confirmAction?.val ? 'Freeze Now' : 'Unfreeze')}
                 onConfirm={() => confirmAction && executeControl(confirmAction.type, confirmAction.val)}
                 onCancel={() => setConfirmAction(null)}
                 loading={actionLoading}
+            />
+
+            <DebugToolbox
+                viewContext={{ page: 'command-center', kpis, alertsCount, errorsCount }}
+                lastSsePayload={lastEvent}
+                sseConnected={sseStatus === 'connected'}
             />
         </div>
     );

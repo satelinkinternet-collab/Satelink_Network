@@ -33,6 +33,11 @@ export const createAdminAuth = (opsEngine) => (req, res, next) => {
         if (opsEngine && typeof opsEngine.recordAuthFailure === 'function') {
             opsEngine.recordAuthFailure(req.path, req.ip);
         }
+        // [Phase 21] Record in Firewall
+        if (req.abuseFirewall) {
+            const ipHash = req.ipHash || crypto.createHash('sha256').update(req.ip + process.env.IP_HASH_SALT).digest('hex');
+            req.abuseFirewall.recordMetric({ key_type: 'ip_hash', key_value: ipHash, metric: 'auth_fail' });
+        }
         return res.status(401).json({ error: "Invalid token" });
     }
 };

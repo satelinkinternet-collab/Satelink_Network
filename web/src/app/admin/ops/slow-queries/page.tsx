@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
 import { PageHeader, ErrorBanner, DataTable, formatTs } from '@/components/admin/admin-shared';
+import { DebugToolbox } from '@/components/admin/DebugToolbox';
 
 export default function SlowQueriesPage() {
     const [loading, setLoading] = useState(true);
@@ -46,6 +47,8 @@ export default function SlowQueriesPage() {
                     <DataTable columns={columns} data={data} loading={loading} searchable searchPlaceholder="Search queries..." emptyMessage="No slow queries ⚡" />
                 </CardContent>
             </Card>
+
+            <DebugToolbox viewContext={{ page: 'ops/slow-queries', queryCount: data.length }} />
         </div>
     );
 }

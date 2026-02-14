@@ -1,0 +1,13 @@
+{
+  "ok": "boolean",
+  "user": {
+    "exp": "number",
+    "iat": "number",
+    "iss": "string",
+    "permissions": [
+      "string"
+    ],
+    "role": "string",
+    "wallet": "string"
+  }
+}

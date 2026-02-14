@@ -1,0 +1,14 @@
+{
+  "nodes": [
+    {
+      "created_at": "number",
+      "device_type": "string",
+      "last_seen": "number",
+      "management_type": "string",
+      "node_id": "string",
+      "status": "string",
+      "wallet": "string"
+    }
+  ],
+  "ok": "boolean"
+}

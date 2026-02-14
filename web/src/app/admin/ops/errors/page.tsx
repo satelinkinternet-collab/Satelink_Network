@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 import api from '@/lib/api';
 import { PageHeader, ErrorBanner, DataTable, DetailDrawer, JsonViewer, formatTs, timeAgo } from '@/components/admin/admin-shared';
+import { DebugToolbox } from '@/components/admin/DebugToolbox';
 
 export default function ErrorsPage() {
     const [loading, setLoading] = useState(true);
@@ -88,6 +89,8 @@ export default function ErrorsPage() {
                     </div>
                 )}
             </DetailDrawer>
+
+            <DebugToolbox viewContext={{ page: 'ops/errors', errorCount: data.length }} />
         </div>
     );
 }

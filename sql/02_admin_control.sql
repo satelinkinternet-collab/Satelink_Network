@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS slow_queries (
     trace_id TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_slow_queries_hash ON slow_queries(query_hash);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_slow_queries_hash ON slow_queries(query_hash);
 
 CREATE TABLE IF NOT EXISTS security_alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,3 +108,55 @@ INSERT OR IGNORE INTO config_limits (key, value, updated_by, updated_at) VALUES 
 INSERT OR IGNORE INTO config_limits (key, value, updated_by, updated_at) VALUES ('max_ops_per_min_node', '120', 'system', strftime('%s','now'));
 INSERT OR IGNORE INTO config_limits (key, value, updated_by, updated_at) VALUES ('min_withdraw_usdt', '5', 'system', strftime('%s','now'));
 INSERT OR IGNORE INTO config_limits (key, value, updated_by, updated_at) VALUES ('max_withdraw_usdt_day', '500', 'system', strftime('%s','now'));
+
+-- ═══════════════════════════════════════════════════════
+-- SELF-TEST RUNS (Phase 6 – Autonomous Self-Tests)
+-- ═══════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS self_test_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,            -- backend_smoke, api_contract, sse_health, db_integrity, browser_smoke
+    status TEXT NOT NULL,          -- pass, fail, error, skipped
+    duration_ms INTEGER,
+    output_json TEXT,              -- JSON result payload
+    error_message TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_self_test_runs_created ON self_test_runs(created_at, status);
+
+-- ═══════════════════════════════════════════════════════
+-- INCIDENT BUNDLES (Phase 6 – Fix-Request Pipeline)
+-- ═══════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS incident_bundles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    severity TEXT NOT NULL,        -- low, med, high, critical
+    title TEXT NOT NULL,
+    source_kind TEXT,              -- self_test, manual, alert
+    source_id INTEGER,
+    context_json TEXT,             -- redacted debug bundle
+    status TEXT DEFAULT 'open',   -- open, sent_to_agent, resolved
+    request_notes TEXT,
+    preferred_scope TEXT,
+    max_risk TEXT,
+    task_spec_json TEXT,
+    resolved_by TEXT,
+    resolved_at INTEGER,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_incident_bundles_status ON incident_bundles(status, severity, created_at);
+
+-- ═══════════════════════════════════════════════════════
+-- ADDITIONAL INDEXES
+-- ═══════════════════════════════════════════════════════
+
+CREATE INDEX IF NOT EXISTS idx_slow_queries_last_seen ON slow_queries(last_seen_at);
+CREATE INDEX IF NOT EXISTS idx_security_alerts_severity ON security_alerts(severity, created_at);
+
+-- ═══════════════════════════════════════════════════════
+-- ADDITIONAL SEEDS
+-- ═══════════════════════════════════════════════════════
+
+INSERT OR IGNORE INTO system_flags (key, value, updated_by, updated_at) VALUES ('system_state', 'LIVE', 'system', strftime('%s','now'));

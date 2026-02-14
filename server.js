@@ -1,4 +1,5 @@
 
+import crypto from "crypto";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -31,6 +32,13 @@ import { createUsageIngestRouter } from "./src/routes/usage_ingest.js";
 import { createUnifiedAuthRouter, verifyJWT } from "./src/routes/auth_v2.js";
 import { createDevAuthRouter } from "./src/routes/dev_auth_tokens.js";
 import { AlertService } from "./src/ops/alerts.js";
+import { SelfTestRunner } from "./src/services/self_test_runner.js";
+import { IncidentBuilder } from "./src/services/incident_builder.js";
+import { RetentionCleaner } from "./src/services/retention_cleaner.js";
+import { OpsReporter } from "./src/services/ops_reporter.js";
+import { AbuseFirewall } from "./src/services/abuse_firewall.js";
+import { createBetaRouter } from "./src/routes/beta_api.js";
+
 
 import { Scheduler } from "./src/ops/scheduler.js";
 
@@ -56,7 +64,12 @@ export async function createApp(db) {
   const alertService = new AlertService(logger);
 
   const opsEngine = new OperationsEngine(db);
-  // await opsEngine.seed(); // [FIX] Moved to bootstrap/init to ensure DB ready
+  // await opsEngine.seed(); 
+  const opsReporter = new OpsReporter(db);
+  await opsReporter.init();
+
+
+
   const adminAuth = createAdminAuth(opsEngine);
 
   // Automation
@@ -65,6 +78,71 @@ export async function createApp(db) {
 
   // 3) Express Setup
   const app = express();
+  app.set('db', db); // Make DB available globally via app.get('db')
+
+  // Abuse Firewall (Phase 21)
+  const abuseFirewall = new AbuseFirewall(db, alertService); // Pass alertService
+  await abuseFirewall.init();
+  app.set('abuseFirewall', abuseFirewall);
+
+  // Safe Mode Autopilot (Phase 22)
+  const { SafeModeAutopilot } = await import('./src/services/safe_mode_autopilot.js');
+  const safeModeAutopilot = new SafeModeAutopilot(db, alertService);
+  await safeModeAutopilot.init();
+  app.set('safeModeAutopilot', safeModeAutopilot);
+
+  // Feature Flags (Phase 23)
+  const { FeatureFlagService } = await import('./src/services/feature_flags.js');
+  const featureFlags = new FeatureFlagService(db);
+  await featureFlags.init();
+  app.set('featureFlags', featureFlags);
+
+  // Drills (Phase 24)
+  const { DrillsService } = await import('./src/services/drills.js');
+  const drills = new DrillsService(db, opsEngine, alertService, abuseFirewall, safeModeAutopilot);
+  app.set('drills', drills);
+
+  // Backups (Phase 27)
+  const { BackupService } = await import('./src/services/backup_service.js');
+  const backupService = new BackupService(db);
+  await backupService.init();
+  app.set('backupService', backupService);
+
+  // Preflight Gate (Phase 28)
+  // Moved to after OpsEngine/Ledger init below
+
+  // [Phase 26] Economic Ledger
+  const { EconomicLedger } = await import('./src/services/economic_ledger.js');
+  const ledger = new EconomicLedger(db);
+  app.set('ledger', ledger);
+
+  // Inject Ledger into OpsEngine
+  opsEngine.ledger = ledger;
+
+  // [Phase 31] Settlement Engine
+  const { AdapterRegistry } = await import('./src/settlement/adapter_registry.js');
+  const { SimulatedAdapter } = await import('./src/settlement/adapters/SimulatedAdapter.js');
+  const { ShadowAdapter } = await import('./src/settlement/adapters/ShadowAdapter.js');
+  const { EvmAdapter } = await import('./src/settlement/adapters/EvmAdapter.js'); // [NEW]
+  const { SettlementEngine } = await import('./src/settlement/settlement_engine.js');
+
+  const adapterRegistry = new AdapterRegistry();
+  adapterRegistry.register(new SimulatedAdapter());
+  adapterRegistry.register(new ShadowAdapter());
+
+  // Conditionally register EVM if enabled/configured, or just register and let it fail health check?
+  // User said: "If missing config... adapter.healthCheck() returns unhealthy". 
+  // So we register it. But we need DB injection.
+  const evmAdapter = new EvmAdapter(db);
+  // We can register multiple EVM adapters if we want (e.g. EVM:FUSE, EVM:POLYGON)
+  // For now, the class pulls env vars for *one* chain. 
+  // We register it with its name.
+  adapterRegistry.register(evmAdapter);
+
+  const settlementEngine = new SettlementEngine(db, ledger, adapterRegistry, featureFlags);
+  await settlementEngine.init();
+  app.set('settlementEngine', settlementEngine);
+
 
   // [INSTRUMENTATION] Tracing
   const { tracingMiddleware } = await import("./src/middleware/tracing.js");
@@ -91,6 +169,21 @@ export async function createApp(db) {
 
   // Make opsEngine available globally via app.get
   app.set('opsEngine', opsEngine);
+
+  // Incident builder + self-test runner (started later in bootstrap after listen)
+  const incidentBuilder = new IncidentBuilder(db);
+  const selfTestRunner = new SelfTestRunner(opsEngine, PORT, incidentBuilder);
+  app.set('selfTestRunner', selfTestRunner);
+  app.set('incidentBuilder', incidentBuilder);
+
+  // Retention Cleaner (runs every 6h for beta safety)
+  const retentionCleaner = new RetentionCleaner(db);
+  setInterval(() => {
+    retentionCleaner.run().catch(err => console.error('[Retention] Scheduled run failed', err));
+  }, 6 * 60 * 60 * 1000); // 6 hours
+
+  // Initial run after boot (delayed)
+  setTimeout(() => retentionCleaner.run().catch(() => { }), 60000);
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -123,6 +216,54 @@ export async function createApp(db) {
     }
   }));
   app.use(express.urlencoded({ extended: true })); // [FIX] Support form posts for login
+
+  // 4b) Abuse Firewall Middleware (Enhanced Phase 21)
+  app.use(async (req, res, next) => {
+    // Skip for static assets or health checks
+    if (req.path.startsWith('/health') || req.path.startsWith('/favicon')) return next();
+
+    // Context for firewall
+    const ctx = {
+      ipHash: req.ipHash || crypto.createHash('sha256').update(req.ip + process.env.IP_HASH_SALT).digest('hex'),
+      wallet: req.user?.wallet || req.body?.wallet, // heuristic, might be null
+      route: req.path,
+      now: Date.now()
+    };
+
+    // Store firewall in req for other middlewares (auth)
+    req.abuseFirewall = abuseFirewall;
+
+    if (abuseFirewall) {
+      try {
+        const { decision, reason_codes, ttl_seconds } = await abuseFirewall.decide(ctx);
+
+        if (decision === 'block') {
+          console.warn(`[FIREWALL] BLOCKED ${ctx.ipHash} on ${req.path}`);
+          return res.status(403).json({
+            ok: false,
+            error: "Access Denied (Abuse Firewall)",
+            code: "BLOCKED",
+            trace_id: req.traceId,
+            reason: reason_codes[0] // Return purpose code
+          });
+        }
+
+        if (decision === 'throttle') {
+          res.setHeader('x-throttle', '1');
+          // small jitter for non-VIPs could go here
+        }
+
+        // Async Metric Recording
+        abuseFirewall.recordMetric({ key_type: 'ip_hash', key_value: ctx.ipHash, metric: 'req' });
+        abuseFirewall.recordMetric({ key_type: 'route', key_value: req.path, metric: 'req' });
+
+      } catch (e) {
+        console.error('[Firewall] Middleware error:', e);
+        // Fail open to avoid outage
+      }
+    }
+    next();
+  });
 
   // 5) Rate Limiting
   app.use(rateLimit({ windowMs: 60_000, max: 200 }));
@@ -326,7 +467,61 @@ export async function createApp(db) {
 
   // 14.5) Admin Control Room API
   const { createAdminControlRoomRouter } = await import("./src/routes/admin_control_room_api.js");
-  app.use('/admin', verifyJWT, createAdminControlRoomRouter(opsEngine));
+
+  // Beta API (Phase 16) - Public routes for joining
+  app.use('/beta', createBetaRouter(opsEngine));
+
+  // [Phase 33] Public Status
+  const { createPublicStatusRouter } = await import('./src/routes/public_status.js');
+  app.use('/status', createPublicStatusRouter(db));
+
+  app.use('/admin', verifyJWT, await createAdminControlRoomRouter(opsEngine, { selfTestRunner, incidentBuilder, opsReporter }));
+
+  // [Phase 33] Admin Network/Fleet
+  const { createAdminNetworkRouter } = await import('./src/routes/admin_network.js');
+  app.use('/admin/network', verifyJWT, createAdminNetworkRouter(db, console));
+
+  // [Phase 34] Admin Revenue
+  const { createAdminRevenueRouter } = await import('./src/routes/admin_revenue.js');
+  app.use('/admin/revenue', verifyJWT, createAdminRevenueRouter(db));
+
+  // [Phase 34] Admin Distributors
+  const { createAdminDistributorsRouter } = await import('./src/routes/admin_distributors.js');
+  app.use('/admin/distributors', verifyJWT, createAdminDistributorsRouter(db));
+
+  // [Phase 34] Public Network Stats (alias for /status)
+  app.use('/network-stats', createPublicStatusRouter(db));
+
+  // [Phase 35] Admin Growth (regions, referrals, marketing)
+  const { createAdminGrowthRouter } = await import('./src/routes/admin_growth.js');
+  app.use('/admin/growth', verifyJWT, createAdminGrowthRouter(db));
+
+  // [Phase 35] Admin Partners
+  const { createAdminPartnersRouter } = await import('./src/routes/admin_partners.js');
+  app.use('/admin/partners', verifyJWT, createAdminPartnersRouter(db));
+
+  // [Phase 35] Admin Launch Mode
+  const { createAdminLaunchRouter } = await import('./src/routes/admin_launch.js');
+  app.use('/admin/launch', verifyJWT, createAdminLaunchRouter(db));
+
+  // [Phase 35] Public Partners
+  const { createPublicPartnersRouter } = await import('./src/routes/public_partners.js');
+  app.use('/partners', createPublicPartnersRouter(db));
+
+  // [Phase 36] Admin Reputation (network scores + tiers)
+  const { createAdminReputationRouter, createAdminReputationImpactRouter } = await import('./src/routes/admin_reputation.js');
+  app.use('/admin/network', verifyJWT, createAdminReputationRouter(db));
+  app.use('/admin/economics', verifyJWT, createAdminReputationImpactRouter(db));
+
+  // [Phase 36] Public Node Profile
+  const { createPublicNodeRouter } = await import('./src/routes/public_node.js');
+  app.use('/node', createPublicNodeRouter(db));
+
+  // [Phase 36] Public Marketplace
+  const { createPublicMarketplaceRouter } = await import('./src/routes/public_marketplace.js');
+  app.use('/network/marketplace', createPublicMarketplaceRouter(db));
+
+
 
 
   // --- GLOBAL ERROR HANDLER ---
@@ -336,7 +531,19 @@ export async function createApp(db) {
     // [INSTRUMENTATION] Log to error_events
     if (opsEngine && opsEngine.db) {
       try {
-        const stackHash = require('crypto').createHash('md5').update(err.stack || err.message).digest('hex');
+        // Normalize stack: strip line numbers, hex strings, secrets
+        const rawStack = err.stack || err.message;
+        const normalized = rawStack
+          .replace(/:\d+:\d+/g, ':0:0')         // strip exact line:col
+          .replace(/0x[0-9a-fA-F]{8,}/g, '0xREDACTED') // strip long hex
+          .replace(/eyJ[A-Za-z0-9_-]+/g, 'JWT_REDACTED'); // strip JWTs
+        const stackHash = crypto.createHash('sha256').update(normalized).digest('hex');
+
+        // Stack preview: first 10 lines, redacted
+        const stackPreview = rawStack.split('\n').slice(0, 10)
+          .map(l => l.replace(/0x[0-9a-fA-F]{8,}/g, '0xREDACTED'))
+          .join('\n');
+
         // Check dedupe in last hour
         const recent = await opsEngine.db.get("SELECT id FROM error_events WHERE stack_hash = ? AND last_seen_at > ?", [stackHash, Date.now() - 3600000]);
 
@@ -353,7 +560,7 @@ export async function createApp(db) {
             res.statusCode !== 200 ? res.statusCode : 500,
             err.message,
             stackHash,
-            (err.stack || '').substring(0, 500),
+            stackPreview,
             req.traceId || null,
             req.requestId || null,
             req.user?.wallet || null,
@@ -406,10 +613,18 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
     };
 
     const db = new UniversalDB(dbConfig);
+    await db.init();
 
-    if (process.env.RUN_MIGRATIONS === 'true') {
-      // TODO: Async migration logic
-      console.log("Migrations skipped in server boot. Use scripts/migrate.js");
+    if (dbConfig.type === 'sqlite') {
+      try {
+        // Idempotent migrations (CREATE IF NOT EXISTS / INSERT OR IGNORE)
+        migrate(db.db); // db.db is the raw better-sqlite3 handle
+        console.log("[BOOT] Migrations applied successfully");
+      } catch (e) {
+        console.warn("[BOOT] Migration warning:", e.message);
+      }
+    } else {
+      console.log("[BOOT] Postgres detected — run migrations separately");
     }
 
     const app = await createApp(db);
@@ -451,6 +666,10 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
       app.listen(PORT, HOST, () => {
         console.log(`Satelink MVP running on http://${HOST}:${PORT}`);
         console.log(`Admin user: satelink_admin`);
+
+        // Start self-test runner after listen
+        const selfTestRunner = app.get('selfTestRunner');
+        if (selfTestRunner) selfTestRunner.start();
 
         if (!isProd) {
           console.log("\n=== 🛠️  DEV TOOLS (Copy-Paste for macOS/Zsh) ===");

@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -14,13 +15,13 @@ const geistMono = Geist_Mono({
 
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
+import { LayoutShell } from "@/components/layout-shell";
+import { BetaFeedbackButton } from "@/components/beta/BetaFeedbackButton";
 
 export const metadata: Metadata = {
   title: "Satelink MVP Dashboard",
   description: "Production-grade dashboard for Satelink Network",
 };
-
-import { LayoutShell } from "@/components/layout-shell";
 
 export default function RootLayout({
   children,
@@ -36,6 +37,7 @@ export default function RootLayout({
           <LayoutShell>
             {children}
           </LayoutShell>
+          <BetaFeedbackButton />
           <Toaster position="top-right" />
         </AuthProvider>
       </body>
