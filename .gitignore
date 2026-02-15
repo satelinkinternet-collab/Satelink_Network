@@ -49,3 +49,13 @@ backups/
 .env.local
 .env.production
 .env.test
+
+# Agent and temporary files
+artifacts/
+cookies.txt
+share_bundle/
+share_bundle.zip
+server.js.bak2
+server.js.new
+*.bak*
+*.log

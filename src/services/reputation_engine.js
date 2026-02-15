@@ -27,28 +27,27 @@ export class ReputationEngine {
 
     async computeAllScores() {
         const now = Date.now();
-        const nodes = await this._getAllNodes();
+        const nodes = this._getAllNodes();
         const results = [];
 
         for (const node of nodes) {
-            const scores = await this._computeNodeScores(node.node_id || node.wallet, now);
+            const scores = this._computeNodeScores(node.node_id || node.wallet, now);
             results.push(scores);
         }
 
         return { computed: results.length, timestamp: now };
     }
 
-    async _computeNodeScores(nodeId, now) {
+    _computeNodeScores(nodeId, now) {
         const dayAgo = now - 86400000;
         const weekAgo = now - 7 * 86400000;
 
         // 1. Uptime score (0-100): % of time online in last 7 days
         let uptimeScore = 50;
         try {
-            const ut = await this.db.get(
-                "SELECT AVG(uptime_seconds) as avg_up FROM node_uptime WHERE node_wallet = ? AND epoch_id IN (SELECT epoch_id FROM node_uptime WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 7)",
-                [nodeId, nodeId]
-            );
+            const ut = this.db.prepare(
+                "SELECT AVG(uptime_seconds) as avg_up FROM node_uptime WHERE node_wallet = ? AND epoch_id IN (SELECT epoch_id FROM node_uptime WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 7)"
+            ).get([nodeId, nodeId]);
             if (ut?.avg_up != null) {
                 uptimeScore = Math.min(100, Math.max(0, (ut.avg_up / 86400) * 100));
             }
@@ -57,10 +56,9 @@ export class ReputationEngine {
         // 2. Latency score (0-100): inverse of avg latency (lower = better)
         let latencyScore = 50;
         try {
-            const lat = await this.db.get(
-                "SELECT AVG(latency_ms) as avg_lat FROM ops_traces WHERE node_id = ? AND created_at > ?",
-                [nodeId, weekAgo]
-            );
+            const lat = this.db.prepare(
+                "SELECT AVG(latency_ms) as avg_lat FROM ops_traces WHERE node_id = ? AND created_at > ?"
+            ).get([nodeId, weekAgo]);
             if (lat?.avg_lat != null) {
                 // 0ms = 100, 500ms+ = 0
                 latencyScore = Math.min(100, Math.max(0, 100 - (lat.avg_lat / 5)));
@@ -70,14 +68,12 @@ export class ReputationEngine {
         // 3. Reliability score (0-100): success rate of ops
         let reliabilityScore = 50;
         try {
-            const total = await this.db.get(
-                "SELECT COUNT(*) as c FROM ops_traces WHERE node_id = ? AND created_at > ?",
-                [nodeId, weekAgo]
-            );
-            const fails = await this.db.get(
-                "SELECT COUNT(*) as c FROM ops_traces WHERE node_id = ? AND created_at > ? AND status = 'failed'",
-                [nodeId, weekAgo]
-            );
+            const total = this.db.prepare(
+                "SELECT COUNT(*) as c FROM ops_traces WHERE node_id = ? AND created_at > ?"
+            ).get([nodeId, weekAgo]);
+            const fails = this.db.prepare(
+                "SELECT COUNT(*) as c FROM ops_traces WHERE node_id = ? AND created_at > ? AND status = 'failed'"
+            ).get([nodeId, weekAgo]);
             if (total?.c > 0) {
                 reliabilityScore = Math.min(100, Math.max(0, ((total.c - (fails?.c || 0)) / total.c) * 100));
             }
@@ -86,10 +82,9 @@ export class ReputationEngine {
         // 4. Revenue consistency (0-100): based on daily revenue variance
         let revenueScore = 50;
         try {
-            const rev = await this.db.get(
-                "SELECT COUNT(*) as ops, SUM(amount_usdt) as total FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?",
-                [nodeId, weekAgo]
-            );
+            const rev = this.db.prepare(
+                "SELECT COUNT(*) as ops, SUM(amount_usdt) as total FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?"
+            ).get([nodeId, weekAgo]);
             if (rev?.ops > 0) {
                 // More ops = higher score, normalized to 100 at 50+ ops/week
                 revenueScore = Math.min(100, Math.max(0, (rev.ops / 50) * 100));
@@ -99,19 +94,17 @@ export class ReputationEngine {
         // 5. Fraud penalty (0-100): higher = worse
         let fraudPenalty = 0;
         try {
-            const flags = await this.db.get(
-                "SELECT COUNT(*) as c FROM distributor_commissions WHERE fraud_flag = 1 AND distributor_wallet = ?",
-                [nodeId]
-            );
+            const flags = this.db.prepare(
+                "SELECT COUNT(*) as c FROM distributor_commissions WHERE fraud_flag = 1 AND distributor_wallet = ?"
+            ).get([nodeId]);
             fraudPenalty = Math.min(100, (flags?.c || 0) * 20);
         } catch (e) { /* no fraud data */ }
 
         // Check quarantine
         try {
-            const quarantined = await this.db.get(
-                "SELECT COUNT(*) as c FROM abuse_events WHERE node_id = ? AND action = 'quarantine' AND created_at > ?",
-                [nodeId, weekAgo]
-            );
+            const quarantined = this.db.prepare(
+                "SELECT COUNT(*) as c FROM abuse_events WHERE node_id = ? AND action = 'quarantine' AND created_at > ?"
+            ).get([nodeId, weekAgo]);
             if (quarantined?.c > 0) fraudPenalty = Math.min(100, fraudPenalty + 40);
         } catch (e) { /* no abuse table */ }
 
@@ -127,7 +120,7 @@ export class ReputationEngine {
         const tier = this._assignTier(composite);
 
         // Upsert into node_reputation
-        await this.db.query(`
+        this.db.prepare(`
             INSERT INTO node_reputation (node_id, uptime_score, latency_score, reliability_score, fraud_penalty_score, revenue_score, composite_score, tier, last_updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(node_id) DO UPDATE SET
@@ -139,13 +132,12 @@ export class ReputationEngine {
                 composite_score = excluded.composite_score,
                 tier = excluded.tier,
                 last_updated_at = excluded.last_updated_at
-        `, [nodeId, uptimeScore, latencyScore, reliabilityScore, fraudPenalty, revenueScore, composite, tier, now]);
+        `).run([nodeId, uptimeScore, latencyScore, reliabilityScore, fraudPenalty, revenueScore, composite, tier, now]);
 
         // Record history
-        await this.db.query(
-            "INSERT INTO reputation_history (node_id, composite_score, tier, recorded_at) VALUES (?, ?, ?, ?)",
-            [nodeId, composite, tier, now]
-        );
+        this.db.prepare(
+            "INSERT INTO reputation_history (node_id, composite_score, tier, recorded_at) VALUES (?, ?, ?, ?)"
+        ).run([nodeId, composite, tier, now]);
 
         return {
             node_id: nodeId, uptime_score: uptimeScore, latency_score: latencyScore,
@@ -162,14 +154,14 @@ export class ReputationEngine {
         return 'bronze';
     }
 
-    async _getAllNodes() {
+    _getAllNodes() {
         // Try multiple possible node tables
         try {
-            const nodes = await this.db.query("SELECT wallet as node_id FROM registered_nodes") || [];
+            const nodes = this.db.prepare("SELECT wallet as node_id FROM registered_nodes").all([]) || [];
             if (nodes.length > 0) return nodes;
         } catch (e) { /* fallback */ }
         try {
-            return await this.db.query("SELECT DISTINCT node_id FROM node_reputation") || [];
+            return this.db.prepare("SELECT DISTINCT node_id FROM node_reputation").all([]) || [];
         } catch (e) { return []; }
     }
 
@@ -177,8 +169,8 @@ export class ReputationEngine {
     // 36.2 — QUALITY-WEIGHTED ROUTING
     // ═════════════════════════════════════════════════════════
 
-    async selectNodeForOp(availableNodeIds) {
-        const enabled = await this.db.get("SELECT value FROM system_config WHERE key = 'quality_routing_enabled'");
+    selectNodeForOp(availableNodeIds) {
+        const enabled = this.db.prepare("SELECT value FROM system_config WHERE key = 'quality_routing_enabled'").get([]);
         if (enabled?.value !== 'true' || !availableNodeIds?.length) {
             // Fallback: random selection
             return availableNodeIds?.[Math.floor(Math.random() * availableNodeIds.length)] || null;
@@ -186,10 +178,9 @@ export class ReputationEngine {
 
         // Get scores for available nodes
         const placeholders = availableNodeIds.map(() => '?').join(',');
-        const nodes = await this.db.query(
-            `SELECT node_id, composite_score, fraud_penalty_score, tier FROM node_reputation WHERE node_id IN (${placeholders})`,
-            availableNodeIds
-        ) || [];
+        const nodes = this.db.prepare(
+            `SELECT node_id, composite_score, fraud_penalty_score, tier FROM node_reputation WHERE node_id IN (${placeholders})`
+        ).all(availableNodeIds) || [];
 
         if (nodes.length === 0) {
             return availableNodeIds[Math.floor(Math.random() * availableNodeIds.length)];
@@ -213,21 +204,21 @@ export class ReputationEngine {
     // 36.3 — REWARD MULTIPLIER
     // ═════════════════════════════════════════════════════════
 
-    async getRewardMultiplier(nodeId) {
-        const enabled = await this.db.get("SELECT value FROM system_config WHERE key = 'reputation_multiplier_enabled'");
+    getRewardMultiplier(nodeId) {
+        const enabled = this.db.prepare("SELECT value FROM system_config WHERE key = 'reputation_multiplier_enabled'").get([]);
         if (enabled?.value !== 'true') return 1.0;
 
-        const rep = await this.db.get("SELECT tier FROM node_reputation WHERE node_id = ?", [nodeId]);
+        const rep = this.db.prepare("SELECT tier FROM node_reputation WHERE node_id = ?").get([nodeId]);
         return ReputationEngine.MULTIPLIERS[rep?.tier || 'bronze'] || 1.0;
     }
 
-    async getReputationImpact() {
-        const tiers = await this.getTierDistribution();
+    getReputationImpact() {
+        const tiers = this.getTierDistribution();
         const M = ReputationEngine.MULTIPLIERS;
 
         // Get total daily rewards
         const dayAgo = Date.now() - 86400000;
-        const dailyRewards = (await this.db.get(
+        const dailyRewards = (this.db.prepare(
             "SELECT SUM(amount_usdt) as t FROM distributor_commissions WHERE created_at > ?", [dayAgo]
         ))?.t || 0;
 

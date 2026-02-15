@@ -83,40 +83,40 @@ export class IncidentBuilder {
             traces,
             auditLog,
             alerts
-        ] = await Promise.all([
-            this._queryRows('SELECT * FROM system_flags'),
-            this._queryRows('SELECT * FROM config_limits'),
-            this._queryRows(
-                `SELECT stack_hash, message, route, method, status_code, count, 
+        ] = [
+                this._queryRows('SELECT * FROM system_flags'),
+                this._queryRows('SELECT * FROM config_limits'),
+                this._queryRows(
+                    `SELECT stack_hash, message, route, method, status_code, count, 
                         stack_preview, first_seen_at, last_seen_at, trace_id
                  FROM error_events 
                  WHERE last_seen_at BETWEEN ? AND ?
                  ORDER BY count DESC LIMIT ?`,
-                [window_start, window_end, limit]
-            ),
-            this._queryRows(
-                `SELECT query_hash, avg_ms, p95_ms, count, last_seen_at, sample_sql, source
+                    [window_start, window_end, limit]
+                ),
+                this._queryRows(
+                    `SELECT query_hash, avg_ms, p95_ms, count, last_seen_at, sample_sql, source
                  FROM slow_queries 
                  WHERE last_seen_at BETWEEN ? AND ?
                  ORDER BY p95_ms DESC LIMIT ?`,
-                [window_start, window_end, limit]
-            ),
-            this._getTraces(window_start, window_end, seed_trace_id, limit),
-            this._queryRows(
-                `SELECT actor_wallet, action_type, target_type, target_id, created_at
+                    [window_start, window_end, limit]
+                ),
+                this._getTraces(window_start, window_end, seed_trace_id, limit),
+                this._queryRows(
+                    `SELECT actor_wallet, action_type, target_type, target_id, created_at
                  FROM admin_audit_log
                  WHERE created_at BETWEEN ? AND ?
                  ORDER BY created_at DESC LIMIT ?`,
-                [window_start, window_end, limit]
-            ),
-            this._queryRows(
-                `SELECT id, severity, category, title, status, created_at
+                    [window_start, window_end, limit]
+                ),
+                this._queryRows(
+                    `SELECT id, severity, category, title, status, created_at
                  FROM security_alerts
                  WHERE created_at BETWEEN ? AND ?
                  ORDER BY created_at DESC LIMIT ?`,
-                [window_start, window_end, limit]
-            ),
-        ]);
+                    [window_start, window_end, limit]
+                ),
+            ];
 
         // Correlation keys
         const traceIds = [...new Set(traces.map(t => t.trace_id).filter(Boolean))];
@@ -177,8 +177,7 @@ export class IncidentBuilder {
 
         // Error spike: >10 new error_events in 5min
         try {
-            const errorCount = await this.db.get(
-                'SELECT COUNT(*) as cnt FROM error_events WHERE last_seen_at > ?',
+            const errorCount = this.db.prepare('SELECT COUNT(*) as cnt FROM error_events WHERE last_seen_at > ?').get(
                 [fiveMinAgo]
             );
             if (errorCount && errorCount.cnt > 10) {
@@ -193,9 +192,10 @@ export class IncidentBuilder {
 
         // p95 latency spike: >2000ms in last 5min
         try {
-            const rows = await this.db.query(
+            const rows = this.db.prepare(
                 `SELECT duration_ms FROM request_traces 
-                 WHERE created_at > ? ORDER BY duration_ms DESC LIMIT 100`,
+                 WHERE created_at > ? ORDER BY duration_ms DESC LIMIT 100`
+            ).all(
                 [fiveMinAgo]
             );
             if (rows.length >= 5) {
@@ -226,9 +226,10 @@ export class IncidentBuilder {
         for (const spike of spikes) {
             // Dedup: only create if no open incident of same type exists in last 30min
             try {
-                const existing = await this.db.get(
+                const existing = this.db.prepare(
                     `SELECT id FROM incident_bundles 
-                     WHERE title LIKE ? AND status = 'open' AND created_at > ?`,
+                     WHERE title LIKE ? AND status = 'open' AND created_at > ?`
+                ).get(
                     [`%${spike.type}%`, Date.now() - 30 * 60_000]
                 );
                 if (existing) continue;
@@ -239,16 +240,18 @@ export class IncidentBuilder {
                     include_limits: 20
                 });
 
-                await this.db.query(
+                this.db.prepare(
                     `INSERT INTO incident_bundles (severity, title, source_kind, context_json, status, created_at)
-                     VALUES (?, ?, 'auto_spike', ?, 'open', ?)`,
+                     VALUES (?, ?, 'auto_spike', ?, 'open', ?)`
+                ).run(
                     [spike.severity, spike.title, JSON.stringify(bundle), Date.now()]
                 );
 
                 // Also create security alert
-                await this.db.query(
+                this.db.prepare(
                     `INSERT INTO security_alerts (severity, category, entity_type, entity_id, title, evidence_json, status, created_at)
-                     VALUES (?, 'infra', 'system', ?, ?, ?, 'open', ?)`,
+                     VALUES (?, 'infra', 'system', ?, ?, ?, 'open', ?)`
+                ).run(
                     [spike.severity, `spike:${spike.type}`, spike.title,
                     JSON.stringify({ type: spike.type, value: spike.value }), Date.now()]
                 );
@@ -264,23 +267,23 @@ export class IncidentBuilder {
 
     // ─── Helpers ────────────────────────────────────────────
 
-    async _queryRows(sql, params = []) {
+    _queryRows(sql, params = []) {
         try {
-            return await this.db.query(sql, params);
+            return this.db.prepare(sql).all(params);
         } catch (e) {
             console.error('[IncidentBuilder] Query error:', e.message);
             return [];
         }
     }
 
-    async _getTraces(start, end, seedTraceId, limit) {
+    _getTraces(start, end, seedTraceId, limit) {
         if (seedTraceId) {
             // Get the seed trace + surrounding traces
-            const seed = await this._queryRows(
+            const seed = this._queryRows(
                 'SELECT * FROM request_traces WHERE trace_id = ? LIMIT 1',
                 [seedTraceId]
             );
-            const around = await this._queryRows(
+            const around = this._queryRows(
                 `SELECT trace_id, route, method, status_code, duration_ms, created_at
                  FROM request_traces
                  WHERE created_at BETWEEN ? AND ?

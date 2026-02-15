@@ -9,6 +9,13 @@ export function createUsageIngestRouter(opsEngine) {
     // Map<KeyHash, ProjectID>
     const keyCache = new Map();
 
+    const db = opsEngine.db;
+    const isRaw = db && typeof db.prepare === 'function';
+    const dbGet = async (sql, params=[]) => isRaw ? db.prepare(sql).get(params) : db.get(sql, params);
+    const dbRun = async (sql, params=[]) => isRaw ? db.prepare(sql).run(params) : db.run(sql, params);
+
+
+
     router.post('/usage', async (req, res) => {
         const apiKey = req.headers['x-api-key'];
         if (!apiKey) return res.status(401).json({ error: 'Missing API Key' });
@@ -32,7 +39,7 @@ export function createUsageIngestRouter(opsEngine) {
         let projectId = keyCache.get(keyHash);
 
         if (!projectId) {
-            const keyRecord = await opsEngine.db.get(
+            const keyRecord = await dbGet(
                 "SELECT project_id, status FROM api_keys WHERE key_hash = ?",
                 [keyHash]
             );
@@ -50,7 +57,7 @@ export function createUsageIngestRouter(opsEngine) {
 
         try {
             // 1. Log Usage
-            await opsEngine.db.run(
+            await dbRun(
                 "INSERT INTO api_usage (project_id, ts, endpoint, ok, cost_usdt, meta_json) VALUES (?, ?, ?, ?, ?, ?)",
                 [projectId, ts, endpoint, 1, cost, JSON.stringify(meta || {})]
             );
@@ -60,7 +67,7 @@ export function createUsageIngestRouter(opsEngine) {
             const txRef = `builder:${projectId}:${ts}:${Math.floor(Math.random() * 1000)}`;
 
             // Assume Provider="Builder", SourceType="API"
-            await opsEngine.db.run(
+            await dbRun(
                 `INSERT INTO revenue_events (
                     provider, source_type, payer_wallet, amount_usdt, amount_sats, 
                     tx_hash, created_at

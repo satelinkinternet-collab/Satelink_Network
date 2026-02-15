@@ -7,15 +7,15 @@ export class FeatureFlagService {
         this.loadInterval = null;
     }
 
-    async init() {
-        await this.refreshCache();
+    init() {
+        this.refreshCache();
         this.loadInterval = setInterval(() => this.refreshCache(), 10000); // Refresh every 10s
         console.log('[FeatureFlags] Service initialized.');
     }
 
-    async refreshCache() {
+    refreshCache() {
         try {
-            const rows = await this.db.query("SELECT * FROM feature_flags_v2");
+            const rows = this.db.prepare("SELECT * FROM feature_flags_v2").all([]);
             for (const row of rows) {
                 this.cache.set(row.key, {
                     mode: row.mode,
@@ -52,11 +52,11 @@ export class FeatureFlagService {
         }
     }
 
-    async setFlag(key, { mode, percent, whitelist, description, updatedBy }) {
+    setFlag(key, { mode, percent, whitelist, description, updatedBy }) {
         const now = Date.now();
         const whitelistJson = JSON.stringify(whitelist || []);
 
-        await this.db.query(`
+        this.db.prepare(`
             INSERT INTO feature_flags_v2 (key, mode, percent, whitelist_json, description, updated_at, updated_by)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(key) DO UPDATE SET
@@ -66,7 +66,7 @@ export class FeatureFlagService {
                 description=COALESCE(?, description),
                 updated_at=excluded.updated_at,
                 updated_by=excluded.updated_by
-        `, [key, mode, percent || 0, whitelistJson, description, now, updatedBy, description]); // description used twice
+        `).run([key, mode, percent || 0, whitelistJson, description, now, updatedBy, description]); // description used twice
 
         // Update cache immediately
         this.cache.set(key, { mode, percent: percent || 0, whitelist: whitelist || [] });
