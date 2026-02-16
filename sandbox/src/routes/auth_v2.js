@@ -1,7 +1,15 @@
-import { validateEnv } from "../config/validateEnv.js";
+import jwt from 'jsonwebtoken';
+import { Router } from 'express';
 
-const config = validateEnv();
-const JWT_SECRET = config.jwtSecret;
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+        throw new Error("JWT_SECRET is required in production");
+    } else {
+        console.warn("[WARN] JWT_SECRET missing (non-prod). Set it to avoid auth issues.");
+    }
+}
 
 export function verifyJWT(req, res, next) {
     let authHeader = req.headers.authorization;

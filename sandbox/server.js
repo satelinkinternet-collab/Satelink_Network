@@ -18,10 +18,18 @@ import { createEntApiRouter } from "./src/routes/ent_api_v2.js";
 import { createPairApiRouter } from "./src/routes/pair_api.js";
 import { createStreamApiRouter } from "./src/routes/stream_api.js";
 
-import { validateEnv } from "./src/config/validateEnv.js";
+import validateEnv from "./src/config/validateEnv.js";
 import { getValidatedDB } from "./src/db/index.js";
 
-const config = validateEnv();
+validateEnv();
+
+const config = {
+  port: process.env.PORT || 8080,
+  isProd: process.env.NODE_ENV === "production",
+  jwtSecret: process.env.JWT_SECRET,
+  dbType: process.env.DB_TYPE || 'sqlite',
+  dbUrl: process.env.DATABASE_URL
+};
 const PORT = config.port;
 
 process.on("unhandledRejection", (err) => console.error("[CRITICAL] Unhandled:", err));
@@ -982,6 +990,7 @@ export function createApp(db) {
 
 // ─── BOOT ────────────────────────────────────────────────────
 import { fileURLToPath } from 'url';
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   (async () => {
     try {
