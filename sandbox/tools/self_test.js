@@ -22,7 +22,9 @@ const checks = [
     { pattern: "createAdminAuth", file: "sandbox/src/routes/admin_api_v2.js", shouldExist: true },
     { pattern: "DB_TYPE", file: "sandbox/src/config/validateEnv.js", shouldExist: true },
     { pattern: "getValidatedDB", file: "sandbox/src/db/index.js", shouldExist: true },
-    { pattern: "getValidatedDB", file: "sandbox/server.js", shouldExist: true }
+    { pattern: "getValidatedDB", file: "sandbox/server.js", shouldExist: true },
+    { pattern: "TriageEngine", file: "sandbox/src/ops-agent/triage.js", shouldExist: true },
+    { pattern: "TriageEngine", file: "sandbox/tools/self_heal.js", shouldExist: true }
 ];
 
 checks.forEach(check => {
