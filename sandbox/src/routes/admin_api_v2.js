@@ -1,7 +1,12 @@
 import { Router } from 'express';
+import { createAdminAuth } from "../middleware/auth.js";
 
 export function createAdminApiRouter(opsEngine) {
     const router = Router();
+
+    // [Phase A1] Strict JWT Auth for Admin API
+    const adminAuth = createAdminAuth(opsEngine);
+    router.use(adminAuth);
 
     // GET /admin-api/stats - Unified stats for admin dashboard
     router.get('/stats', async (req, res) => {

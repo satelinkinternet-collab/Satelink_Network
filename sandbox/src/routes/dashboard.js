@@ -5,22 +5,14 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     const router = Router();
 
     // --- MIDDLEWARE ---
-    const requireAdmin = (req, res, next) => {
-        const apiKey = req.headers['x-admin-key'] || req.query.adminKey;
-        if (apiKey === process.env.ADMIN_API_KEY) {
-            return next();
-        }
-        // Basic UI login check (mock for now, or just redirect to 401 page)
-        // For curl proofs, headers work. For browser, we might need a simple login param?
-        // Requirement: "Admin: ADMIN_API_KEY header OR admin session"
-        // Let's rely on header for API/Curl. For browser, maybe query param is enough for MVP.
-        res.status(401).send('Unauthorized. Pass x-admin-key header or ?adminKey= query param.');
-    };
+    // [Phase A1] Strict JWT Auth for Admin Dashboard
+    // We use the injected 'adminAuth' middleware which now enforces JWT+Role
 
     // --- ROUTES ---
 
     // 1. Admin Dashboard
-    router.get('/admin', requireAdmin, async (req, res, next) => {
+    router.use('/admin', adminAuth);
+    router.get('/admin', async (req, res, next) => {
         try {
             const now = Date.now();
             const todayStart = new Date().setHours(0, 0, 0, 0);
@@ -58,7 +50,8 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     });
 
     // 2. Logs Viewer
-    router.get('/logs', requireAdmin, async (req, res, next) => {
+    router.use('/logs', adminAuth);
+    router.get('/logs', async (req, res, next) => {
         try {
             const logs = await req.logger.getRecentErrors(200);
             res.render('logs', { logs });
@@ -104,7 +97,8 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     });
 
     // 5. Diagnostics
-    router.post('/diag/share', requireAdmin, async (req, res, next) => {
+    router.use('/diag', adminAuth);
+    router.post('/diag/share', async (req, res, next) => {
         try {
             const result = await req.diagnostics.createShareToken("Admin Generated");
             res.json({

@@ -14,7 +14,12 @@ let failures = 0;
 const checks = [
     { pattern: "insecure_dev_secret_replace_immediately", file: "sandbox/src/routes/auth_v2.js", shouldExist: false },
     { pattern: "JWT_SECRET ||", file: "sandbox/src/routes/auth_v2.js", shouldExist: false },
-    { pattern: "validateEnv", file: "sandbox/server.js", shouldExist: true }
+    { pattern: "validateEnv", file: "sandbox/server.js", shouldExist: true },
+    { pattern: "createAdminAuth", file: "sandbox/src/middleware/auth.js", shouldExist: true },
+    { pattern: "process.env.ADMIN_API_KEY", file: "sandbox/src/middleware/auth.js", shouldExist: false }, // No fallback in auth.js
+    { pattern: "adminAuth", file: "sandbox/src/routes/dashboard.js", shouldExist: true },
+    { pattern: "requireJWTAdmin", file: "sandbox/src/routes/ui.js", shouldExist: true },
+    { pattern: "createAdminAuth", file: "sandbox/src/routes/admin_api_v2.js", shouldExist: true }
 ];
 
 checks.forEach(check => {
