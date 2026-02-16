@@ -990,6 +990,11 @@ export function createApp(db) {
 
 // ─── BOOT ────────────────────────────────────────────────────
 import { fileURLToPath } from 'url';
+import 'dotenv/config'; // equivalent to require("dotenv").config()
+import validateEnv from "./src/config/validateEnv.js";
+
+// Early validation
+validateEnv();
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   (async () => {
