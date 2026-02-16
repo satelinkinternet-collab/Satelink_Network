@@ -23,7 +23,6 @@ export function validateEnv() {
         port: parseInt(process.env.PORT || "8080", 10),
         dbUrl: process.env.DATABASE_URL,
         sqlitePath: process.env.SQLITE_PATH || "satelink.db",
-        adminApiKey: adminKey,
         moonpaySecret: process.env.MOONPAY_WEBHOOK_SECRET || "",
         moonpaySigMode: process.env.MOONPAY_SIG_MODE || "raw",
         fuseAllowlist: process.env.FUSE_WEBHOOK_IP_ALLOWLIST || "",

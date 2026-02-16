@@ -178,7 +178,7 @@ export function createApp(db) {
 
     // Abuse Firewall (Phase 21)
     const abuseFirewall = new AbuseFirewall(db, alertService); // Pass alertService
-    abuseFirewall.init();
+    await abuseFirewall.init();
     app.set('abuseFirewall', abuseFirewall);
 
     // Safe Mode Autopilot (Phase 22)
