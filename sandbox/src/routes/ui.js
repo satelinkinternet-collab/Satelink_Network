@@ -1,8 +1,7 @@
-
 import { Router } from "express";
-import { createAdminAuth } from "../middleware/auth.js";
+import { requireJWT, requireRole } from "../middleware/auth.js";
 
-export function createUIRouter(opsEngine, adminAuth) {
+export function createUIRouter(opsEngine) {
     const router = Router();
 
     // --- UTILS ---
@@ -20,7 +19,7 @@ export function createUIRouter(opsEngine, adminAuth) {
 
     // --- MIDDLEWARE ---
     // [Phase A1] Strict JWT Auth Replaces Cookie Check
-    const requireJWTAdmin = createAdminAuth(opsEngine);
+    const requireJWTAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     const requireBuilderAuth = (req, res, next) => {
         // Simple cookie check for UI (Detailed verification in backend routes)

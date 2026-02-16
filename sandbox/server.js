@@ -1,6 +1,7 @@
 
 import { StressTester } from './src/services/stress_tester.js';
 import { getPermissionsForRole } from './src/routes/auth_v2.js';
+import { requireJWT, requireRole } from "./src/middleware/auth.js";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 import crypto from "crypto";
@@ -119,7 +120,7 @@ export function createApp(db) {
     const opsReporter = new OpsReporter(db);
     opsReporter.init();
 
-    const adminAuth = createAdminAuth(opsEngine);
+    const adminAuth = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     // 2b) Runtime Monitor (Phase K)
     const runtimeMonitor = new RuntimeMonitor(db, alertService);
@@ -755,7 +756,7 @@ export function createApp(db) {
     app.use("/ledger", createLedgerRouter(opsEngine, adminAuth));
 
     // 10) Dashboard Router (Old)
-    const dashRouter = createDashboardRouter(opsEngine, adminAuth);
+    const dashRouter = createDashboardRouter(opsEngine);
     app.use("/", dashRouter);
     app.use("/dashboard", dashRouter);
 
@@ -765,7 +766,7 @@ export function createApp(db) {
     app.use("/operations", opsRouter);
 
     // 12) UI Router (Rung 9)
-    app.use("/ui", createUIRouter(opsEngine, adminAuth));
+    app.use("/ui", createUIRouter(opsEngine));
 
     // 13) Heartbeat
     app.post("/heartbeat", async (req, res) => {

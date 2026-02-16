@@ -1,17 +1,17 @@
-
 import { Router } from "express";
+import { requireJWT, requireRole } from "../middleware/auth.js";
 
-export function createDashboardRouter(opsEngine, adminAuth) {
+export function createDashboardRouter(opsEngine) {
     const router = Router();
 
     // --- MIDDLEWARE ---
     // [Phase A1] Strict JWT Auth for Admin Dashboard
-    // We use the injected 'adminAuth' middleware which now enforces JWT+Role
+    const adminMiddleware = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     // --- ROUTES ---
 
     // 1. Admin Dashboard
-    router.use('/admin', adminAuth);
+    router.use('/admin', adminMiddleware);
     router.get('/admin', async (req, res, next) => {
         try {
             const now = Date.now();
@@ -50,13 +50,21 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     });
 
     // 2. Logs Viewer
-    router.use('/logs', adminAuth);
+    router.use('/logs', adminMiddleware);
     router.get('/logs', async (req, res, next) => {
         try {
             const logs = await req.logger.getRecentErrors(200);
             res.render('logs', { logs });
         } catch (e) { next(e); }
     });
+
+    // 3. Node Dashboard
+    // ... (unchanged)
+
+    // ...
+
+    // 5. Diagnostics
+    router.use('/diag', adminMiddleware);
 
     // 3. Node Dashboard
     router.get('/node/:wallet', async (req, res, next) => {
@@ -97,7 +105,7 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     });
 
     // 5. Diagnostics
-    router.use('/diag', adminAuth);
+    router.use('/diag', adminMiddleware);
     router.post('/diag/share', async (req, res, next) => {
         try {
             const result = await req.diagnostics.createShareToken("Admin Generated");

@@ -11,19 +11,24 @@ console.log("[SELF-TEST] Running static and runtime checks...");
 let failures = 0;
 
 // 1. Static Checks
-
-// 1. Static Checks
 const checks = [
     // Security (Must NOT exist)
     { pattern: /insecure_dev_secret_replace_immediately/i, file: "sandbox/src/routes/auth_v2.js", forbidden: true },
     { pattern: /JWT_SECRET \|\|/i, file: "sandbox/src/routes/auth_v2.js", forbidden: true },
     { pattern: /adminKey=/i, file: "sandbox/src/routes/dashboard.js", forbidden: true },
+    { pattern: /process\.env\.ADMIN_API_KEY/i, file: "sandbox/src/middleware/auth.js", forbidden: true },
+    { pattern: /createAdminAuth/i, file: "sandbox/src/middleware/auth.js", forbidden: true },
+    { pattern: /createAdminAuth/i, file: "sandbox/server.js", forbidden: true },
 
     // Config Enforcement (Must exist)
     { pattern: /validateEnv/i, file: "sandbox/server.js", forbidden: false },
-    { pattern: /createAdminAuth/i, file: "sandbox/src/middleware/auth.js", forbidden: false },
-    { pattern: /requireJWTAdmin/i, file: "sandbox/src/routes/ui.js", forbidden: false },
-    { pattern: /createAdminAuth/i, file: "sandbox/src/routes/admin_api_v2.js", forbidden: false },
+    { pattern: /requireJWT/i, file: "sandbox/src/middleware/auth.js", forbidden: false },
+    { pattern: /requireRole/i, file: "sandbox/src/middleware/auth.js", forbidden: false },
+    { pattern: /requireJWT/i, file: "sandbox/src/routes/dashboard.js", forbidden: false },
+    { pattern: /requireRole/i, file: "sandbox/src/routes/dashboard.js", forbidden: false },
+    { pattern: /requireJWT/i, file: "sandbox/src/routes/admin_api_v2.js", forbidden: false },
+    { pattern: /requireRole/i, file: "sandbox/src/routes/admin_api_v2.js", forbidden: false },
+    { pattern: /requireJWT/i, file: "sandbox/src/routes/ui.js", forbidden: false },
     { pattern: /DB_TYPE/, file: "sandbox/src/config/validateEnv.js", forbidden: false },
     { pattern: /getValidatedDB/, file: "sandbox/src/db/index.js", forbidden: false },
     { pattern: /getValidatedDB/, file: "sandbox/server.js", forbidden: false },
