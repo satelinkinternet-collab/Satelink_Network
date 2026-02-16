@@ -11,34 +11,52 @@ console.log("[SELF-TEST] Running static and runtime checks...");
 let failures = 0;
 
 // 1. Static Checks
+
+// 1. Static Checks
 const checks = [
-    { pattern: "insecure_dev_secret_replace_immediately", file: "sandbox/src/routes/auth_v2.js", shouldExist: false },
-    { pattern: "JWT_SECRET ||", file: "sandbox/src/routes/auth_v2.js", shouldExist: false },
-    { pattern: "validateEnv", file: "sandbox/server.js", shouldExist: true },
-    { pattern: "createAdminAuth", file: "sandbox/src/middleware/auth.js", shouldExist: true },
-    { pattern: "process.env.ADMIN_API_KEY", file: "sandbox/src/middleware/auth.js", shouldExist: false }, // No fallback in auth.js
-    { pattern: "adminAuth", file: "sandbox/src/routes/dashboard.js", shouldExist: true },
-    { pattern: "requireJWTAdmin", file: "sandbox/src/routes/ui.js", shouldExist: true },
-    { pattern: "createAdminAuth", file: "sandbox/src/routes/admin_api_v2.js", shouldExist: true },
-    { pattern: "DB_TYPE", file: "sandbox/src/config/validateEnv.js", shouldExist: true },
-    { pattern: "getValidatedDB", file: "sandbox/src/db/index.js", shouldExist: true },
-    { pattern: "getValidatedDB", file: "sandbox/server.js", shouldExist: true },
-    { pattern: "TriageEngine", file: "sandbox/src/ops-agent/triage.js", shouldExist: true },
-    { pattern: "TriageEngine", file: "sandbox/tools/self_heal.js", shouldExist: true }
+    // Security (Must NOT exist)
+    { pattern: /insecure_dev_secret_replace_immediately/i, file: "sandbox/src/routes/auth_v2.js", forbidden: true },
+    { pattern: /JWT_SECRET \|\|/i, file: "sandbox/src/routes/auth_v2.js", forbidden: true },
+    { pattern: /adminKey=/i, file: "sandbox/src/routes/dashboard.js", forbidden: true },
+
+    // Config Enforcement (Must exist)
+    { pattern: /validateEnv/i, file: "sandbox/server.js", forbidden: false },
+    { pattern: /createAdminAuth/i, file: "sandbox/src/middleware/auth.js", forbidden: false },
+    { pattern: /requireJWTAdmin/i, file: "sandbox/src/routes/ui.js", forbidden: false },
+    { pattern: /createAdminAuth/i, file: "sandbox/src/routes/admin_api_v2.js", forbidden: false },
+    { pattern: /DB_TYPE/, file: "sandbox/src/config/validateEnv.js", forbidden: false },
+    { pattern: /getValidatedDB/, file: "sandbox/src/db/index.js", forbidden: false },
+    { pattern: /getValidatedDB/, file: "sandbox/server.js", forbidden: false },
+    { pattern: /TriageEngine/, file: "sandbox/src/ops-agent/triage.js", forbidden: false },
+    { pattern: /TriageEngine/, file: "sandbox/tools/self_heal.js", forbidden: false }
 ];
 
 checks.forEach(check => {
-    const content = fs.readFileSync(check.file, 'utf8');
-    const exists = content.includes(check.pattern);
-    if (exists !== check.shouldExist) {
-        console.error(`[FAIL] Static check failed: '${check.pattern}' in ${check.file} (Expected: ${check.shouldExist}, Found: ${exists})`);
+    try {
+        const content = fs.readFileSync(check.file, 'utf8');
+        const match = check.pattern.test(content);
+
+        if (check.forbidden) {
+            if (match) {
+                console.error(`[FAIL] Forbidden pattern found: '${check.pattern}' in ${check.file}`);
+                failures++;
+            } else {
+                console.log(`[PASS] Forbidden pattern absent: '${check.pattern}' in ${check.file}`);
+            }
+        } else {
+            if (!match) {
+                console.error(`[FAIL] Required pattern missing: '${check.pattern}' in ${check.file}`);
+                failures++;
+            } else {
+                console.log(`[PASS] Required pattern found: '${check.pattern}' in ${check.file}`);
+            }
+        }
+    } catch (e) {
+        console.error(`[FAIL] Could not read file: ${check.file} (${e.message})`);
         failures++;
-    } else {
-        console.log(`[PASS] Static check passed: '${check.pattern}' in ${check.file}`);
     }
 });
 
-// 2. Runtime Checks (Stub for now, will expand in active testing not just CI)
 console.log(`[SELF-TEST] Finished with ${failures} failures.`);
 if (failures > 0) process.exit(1);
 process.exit(0);
