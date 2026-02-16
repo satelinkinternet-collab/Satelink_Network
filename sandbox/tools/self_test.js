@@ -19,7 +19,10 @@ const checks = [
     { pattern: "process.env.ADMIN_API_KEY", file: "sandbox/src/middleware/auth.js", shouldExist: false }, // No fallback in auth.js
     { pattern: "adminAuth", file: "sandbox/src/routes/dashboard.js", shouldExist: true },
     { pattern: "requireJWTAdmin", file: "sandbox/src/routes/ui.js", shouldExist: true },
-    { pattern: "createAdminAuth", file: "sandbox/src/routes/admin_api_v2.js", shouldExist: true }
+    { pattern: "createAdminAuth", file: "sandbox/src/routes/admin_api_v2.js", shouldExist: true },
+    { pattern: "DB_TYPE", file: "sandbox/src/config/validateEnv.js", shouldExist: true },
+    { pattern: "getValidatedDB", file: "sandbox/src/db/index.js", shouldExist: true },
+    { pattern: "getValidatedDB", file: "sandbox/server.js", shouldExist: true }
 ];
 
 checks.forEach(check => {

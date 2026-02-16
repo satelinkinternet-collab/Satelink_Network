@@ -19,6 +19,8 @@ import { createPairApiRouter } from "./src/routes/pair_api.js";
 import { createStreamApiRouter } from "./src/routes/stream_api.js";
 
 import { validateEnv } from "./src/config/validateEnv.js";
+import { getValidatedDB } from "./src/db/index.js";
+
 const config = validateEnv();
 const PORT = config.port;
 
@@ -979,124 +981,32 @@ export function createApp(db) {
 }
 
 // ─── BOOT ────────────────────────────────────────────────────
-if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1].endsWith("server"))) {
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   (async () => {
-    // Fail Fast Handlers
-    process.on('uncaughtException', (err) => {
-      console.error('[FATAL] Uncaught Exception:', err);
-      process.exit(1);
-    });
+    try {
+      console.log("─── SANDBOX BOOT ───");
 
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
-      process.exit(1);
-    });
+      // 1. Validated DB
+      const db = getValidatedDB(config);
 
-    const dbConfig = {
-      type: process.env.DATABASE_URL ? 'postgres' : 'sqlite',
-      connectionString: process.env.DATABASE_URL || config.sqlitePath
-    };
+      // 2. Create App
+      const app = createApp(db);
+      if (app.locals?.ready) await app.locals.ready;
 
-    const db = new UniversalDB(dbConfig);
-    await db.init();
-
-    if (dbConfig.type === 'sqlite') {
-      try {
-        // Idempotent migrations (CREATE IF NOT EXISTS / INSERT OR IGNORE)
-        migrate(db.db); // db.db is the raw better-sqlite3 handle
-        console.log("[BOOT] Migrations applied successfully");
-      } catch (e) {
-        console.warn("[BOOT] Migration warning:", e.message);
-      }
-    } else {
-      console.log("[BOOT] Postgres detected — run migrations separately");
-    }
-
-    const app = createApp(db);
-    if (app.locals?.ready) await app.locals.ready;
-
-    async function bootstrap() {
-      console.log("─── STARTUP VALIDATION ───");
-      console.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
-
-      const isProd = process.env.NODE_ENV === "production";
-      if (!process.env.JWT_SECRET && isProd) {
-        console.error("FATAL: JWT_SECRET missing in production. Failsafe shutdown.");
-        process.exit(1);
-      }
-
-      const jwtSecret = process.env.JWT_SECRET || "dev_only_secret";
-      if (jwtSecret && jwtSecret.length < 32) {
-        console.warn("WARNING: JWT_SECRET is too short (< 32 chars). For production, use a strong 256-bit secret.");
-      }
-      console.log(`JWT SECRET: ${process.env.JWT_SECRET ? 'Present' : 'Missing (Using Dev Fallback)'}`);
-
-      const opsEngine = app.get('opsEngine');
-      if (!opsEngine) {
-        console.error("Critical: OperationsEngine not found in app context");
-        process.exit(1);
-      }
-
-      try {
-        opsEngine.init();
-        console.log(`DB Type: ${dbConfig.type}`);
-        console.log(`DB Ready: ${typeof opsEngine.db.prepare === "function"}`);
-        console.log("──────────────────────────");
-      } catch (err) {
-        console.error("CRITICAL: Database initialization failed. Failsafe shutdown.");
-        console.error(err);
-        process.exit(1);
-      }
-
+      // 3. Start
       const HOST = process.env.HOST || "0.0.0.0";
       app.listen(PORT, HOST, () => {
-        console.log(`Satelink MVP running on http://${HOST}:${PORT}`);
-        console.log(`Admin user: satelink_admin`);
+        console.log(`[SANDBOX] Satelink running on http://${HOST}:${PORT}`);
+        console.log(`[SANDBOX] DB Type: ${config.dbType}`);
 
-        // Start self-test runner after listen
+        // Start self-test runner
         const selfTestRunner = app.get('selfTestRunner');
         if (selfTestRunner) selfTestRunner.start();
-
-        if (!isProd) {
-          console.log("\n=== 🛠️  DEV TOOLS (Copy-Paste for macOS/Zsh) ===");
-          console.log("# 1. Check Health & Reachability");
-          console.log(`curl -s http://localhost:${PORT}/health`);
-
-          console.log("\n# 2. Mint Admin Token");
-          console.log(`curl -s -X POST http://localhost:${PORT}/__test/auth/admin/login \\
-  -H "Content-Type: application/json" \\
-  -d '{"wallet":"0xadmin"}'`);
-
-          console.log("\n# 3. Export Token (ROBUST)");
-          console.log(`ADMIN_TOKEN=$(curl -s -X POST http://localhost:${PORT}/__test/auth/admin/login -H "Content-Type: application/json" -d '{"wallet":"0xadmin"}' | node -pe 'JSON.parse(fs.readFileSync(0,"utf8")).token')`);
-
-          console.log("\n# 4. Test Auth & View Token Claims");
-          console.log(`curl -s -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:${PORT}/auth/me`);
-
-          console.log("\n# 5. Test SSE Stream (Auto-exit after 5s)");
-          console.log(`curl --max-time 5 -N -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:${PORT}/stream/admin || true`);
-
-          console.log("\n# 6. Mint Node Token & Request Pair Code");
-          console.log(`NODE_TOKEN=$(curl -s -X POST http://localhost:${PORT}/__test/auth/node/login -H "Content-Type: application/json" -d '{"wallet":"0xnode"}' | node -pe 'JSON.parse(fs.readFileSync(0,"utf8")).token')`);
-          // Note: pair_api returns { pair_code: "..." }
-          console.log(`PAIR_CODE=$(curl -s -X POST http://localhost:${PORT}/pair/request -H "Authorization: Bearer $NODE_TOKEN" -H "Content-Type: application/json" -d '{}' | node -pe 'JSON.parse(fs.readFileSync(0,"utf8")).pair_code')`);
-          console.log(`echo "Got Pair Code: $PAIR_CODE"`);
-
-          console.log("\n# 7. Confirm Pair (Device Action)");
-          console.log(`curl -s -X POST http://localhost:${PORT}/pair/confirm -H "Content-Type: application/json" -d "{\\"code\\":\\"$PAIR_CODE\\",\\"device_id\\":\\"dev_test_01\\"}"`);
-
-          console.log("\n# 8. Check Status");
-          console.log(`curl -s "http://localhost:${PORT}/pair/status/$PAIR_CODE"`);
-          console.log("================================================\n");
-        }
       });
-    }
-
-    bootstrap().catch(err => {
-      console.error("Unexpected Bootstrap Error:", err);
+    } catch (e) {
+      console.error("[FATAL] Boot failed:", e);
       process.exit(1);
-    });
+    }
   })();
 }
-
-export default createApp;
