@@ -3,15 +3,19 @@ import "dotenv/config";
 export function validateEnv() {
     console.log("[CONFIG] Validating environment...");
 
-    const adminKey = process.env.ADMIN_API_KEY;
-    if (!adminKey) {
-        console.error("FATAL: ADMIN_API_KEY not set. Exiting.");
-        process.exit(1);
-    }
+    const isProd = process.env.NODE_ENV === "production";
 
-    if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL) {
-        console.error("FATAL: DATABASE_URL required in production. Exiting.");
-        process.exit(1);
+    if (isProd) {
+        const required = ["JWT_SECRET", "DATABASE_URL"];
+        const missing = required.filter(k => !process.env[k]);
+        if (missing.length) {
+            console.error("[FATAL] Missing required production env vars:", missing.join(", "));
+            process.exit(1);
+        }
+        if (process.env.DB_TYPE && process.env.DB_TYPE.toLowerCase() === 'sqlite') {
+            console.error("[FATAL] DB_TYPE=sqlite is forbidden in production.");
+            process.exit(1);
+        }
     }
 
     return {

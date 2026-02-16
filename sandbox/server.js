@@ -1,5 +1,14 @@
 
-import { StressTester } from './src/services/stress_tester.js';
+// import { StressTester } from './src/services/stress_tester.js';
+import { LoggerService } from './src/services/logger_service.js';
+import { DiagnosticsService } from './src/services/diagnostics_service.js';
+import { AlertService } from './src/services/alert_service.js';
+import { IncidentBuilder } from './src/services/incident_builder.js';
+import { OperationsEngine } from './src/services/operations_engine.js';
+import { OpsReporter } from './src/services/ops_reporter.js';
+import { AbuseFirewall } from './src/services/abuse_firewall.js';
+import { RuntimeMonitor } from './src/services/runtime_monitor.js';
+
 import { getPermissionsForRole } from './src/routes/auth_v2.js';
 import { requireJWT, requireRole } from "./src/middleware/auth.js";
 import { createRequire } from "module";
@@ -35,6 +44,11 @@ const PORT = config.port;
 
 process.on("unhandledRejection", (err) => console.error("[CRITICAL] Unhandled:", err));
 
+const IS_TEST =
+  process.env.NODE_ENV === "test" ||
+  process.env.npm_lifecycle_event === "test" ||
+  process.env.MOCHA === "true";
+
 console.log(`[BOOT] IS_TEST=${IS_TEST} NODE_ENV=${process.env.NODE_ENV || "undefined"} npm_lifecycle_event=${process.env.npm_lifecycle_event || "undefined"}`);
 // ─── APP FACTORY ─────────────────────────────────────────────
 export function createApp(db) {
@@ -45,6 +59,8 @@ export function createApp(db) {
     process.env.NODE_ENV === "test" ||
     process.env.npm_lifecycle_event === "test" ||
     process.env.MOCHA === "true";
+
+  const IS_TEST = isTest; // Define it for the console log below
 
   // make DB handle compatible (UniversalDB vs raw better-sqlite3)
   const rawDb = db?.db ? db.db : db;
@@ -710,7 +726,7 @@ export function createApp(db) {
     app.use('/auth', unifiedAuthRouter);
     app.use('/me', createUserSettingsRouter(db));
     // 5. Stress Tester (Phase K7)
-    const stressTester = new StressTester(db);
+    // const stressTester = new StressTester(db);
     // await stressTester.init(); // handled in router or here
 
 
@@ -992,10 +1008,6 @@ export function createApp(db) {
 // ─── BOOT ────────────────────────────────────────────────────
 import { fileURLToPath } from 'url';
 import 'dotenv/config'; // equivalent to require("dotenv").config()
-import validateEnv from "./src/config/validateEnv.js";
-
-// Early validation
-validateEnv();
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   (async () => {

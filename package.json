@@ -40,9 +40,9 @@
     "test": "npx mocha test/FullProduct.test.js test/Security.test.js test/Heartbeat.test.js test/Claims.test.js test/RevenueSplit.test.js test/Dashboard.test.js --timeout 15000",
     "migrate": "node scripts/migrate.js",
     "start": "node server.js",
-    "self:test": "node sandbox/tools/self_test.js",
-    "self:heal": "node sandbox/tools/self_heal.js",
-    "ops:triage": "node sandbox/src/ops-agent/triage.js"
+    "self:test": "node tools/self_test.js",
+    "self:heal": "node tools/self_heal.js",
+    "ops:triage": "node src/ops-agent/triage.js"
   },
   "description": "This project has a minimal setup of Hardhat 3 Beta, without any plugins.",
   "main": "debug_env.js",

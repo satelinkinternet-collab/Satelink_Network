@@ -1,8 +1,10 @@
 
 import { Router } from "express";
+import { requireJWT, requireRole } from "../middleware/auth.js";
 
-export function createUIRouter(opsEngine, adminAuth) {
+export function createUIRouter(opsEngine) {
     const router = Router();
+    const adminMiddleware = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     // --- UTILS ---
     const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
@@ -16,14 +18,6 @@ export function createUIRouter(opsEngine, adminAuth) {
         return headers + '\n' + rows;
     };
 
-    // --- MIDDLEWARE ---
-    const requireAdminCookie = (req, res, next) => {
-        const key = req.cookies['admin_session'];
-        if (key === process.env.ADMIN_API_KEY) {
-            return next();
-        }
-        res.redirect('/ui/login');
-    };
 
     const requireBuilderAuth = (req, res, next) => {
         // Simple cookie check for UI (Detailed verification in backend routes)
@@ -105,18 +99,10 @@ export function createUIRouter(opsEngine, adminAuth) {
         } catch (e) { res.redirect('/ui/builder/login'); }
     });
 
-    // --- AUTH ROUTES ---
+    // ─────────────────────────────────────────────────────────────
+    // [HARDENING] Deprecated Legacy Login
     router.get('/login', (req, res) => {
-        res.render('login', { error: null });
-    });
-
-    router.post('/login', (req, res) => {
-        const { apiKey } = req.body;
-        if (apiKey === process.env.ADMIN_API_KEY) {
-            res.cookie('admin_session', apiKey, { httpOnly: true, maxAge: 86400000 }); // 24h
-            return res.redirect('/ui/admin');
-        }
-        res.render('login', { error: "Invalid API Key" });
+        res.status(410).send("Legacy login deprecated. Use JWT-based access.");
     });
 
     router.get('/logout', (req, res) => {
@@ -171,7 +157,7 @@ export function createUIRouter(opsEngine, adminAuth) {
     });
 
     // --- ADMIN ROUTES ---
-    router.get('/admin', requireAdminCookie, async (req, res) => {
+    router.get('/admin', adminMiddleware, async (req, res) => {
         try {
             const todayStart = new Date().setHours(0, 0, 0, 0);
 
@@ -208,7 +194,7 @@ export function createUIRouter(opsEngine, adminAuth) {
         }
     });
 
-    router.get('/admin/ledger', requireAdminCookie, async (req, res) => {
+    router.get('/admin/ledger', adminMiddleware, async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = 50;
         const offset = (page - 1) * limit;
@@ -217,7 +203,7 @@ export function createUIRouter(opsEngine, adminAuth) {
         res.render('admin_ledger', { runs, formatCurrency, formatDate, page });
     });
 
-    router.get('/admin/nodes', requireAdminCookie, async (req, res) => {
+    router.get('/admin/nodes', adminMiddleware, async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = 100;
         const offset = (page - 1) * limit;
@@ -226,7 +212,7 @@ export function createUIRouter(opsEngine, adminAuth) {
         res.render('admin_nodes', { nodes, formatDate, page });
     });
 
-    router.get('/admin/withdrawals', requireAdminCookie, async (req, res) => {
+    router.get('/admin/withdrawals', adminMiddleware, async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = 50;
         const offset = (page - 1) * limit;
@@ -235,7 +221,7 @@ export function createUIRouter(opsEngine, adminAuth) {
         res.render('admin_withdrawals', { withdrawals, formatCurrency, formatDate, page });
     });
 
-    router.get('/admin/logs', requireAdminCookie, async (req, res) => {
+    router.get('/admin/logs', adminMiddleware, async (req, res) => {
         const logs = await req.logger.getRecentErrors(200); // Fixed limit for generic logs in helper
         res.render('admin_logs', { logs, formatDate });
     });

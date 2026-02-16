@@ -256,3 +256,27 @@ class TransactionAdapter {
         throw new Error("prepare() not supported in Async Transaction. Use .query() or .get()");
     }
 }
+
+export function getValidatedDB(config) {
+    const isProd = process.env.NODE_ENV === "production";
+
+    // 1. If DATABASE_URL is present, use Postgres
+    if (config.dbUrl || process.env.DATABASE_URL) {
+        return new UniversalDB({
+            type: 'postgres',
+            connectionString: config.dbUrl || process.env.DATABASE_URL
+        });
+    }
+
+    // 2. If NO DATABASE_URL, check environment
+    if (isProd) {
+        throw new Error("[FATAL] Production requires DATABASE_URL. SQLite fallback forbidden.");
+    }
+
+    // 3. Fallback to SQLite (Dev/Test only)
+    console.warn("[WARN] Using SQLite (Non-Production Fallback)");
+    return new UniversalDB({
+        type: 'sqlite',
+        connectionString: config.sqlitePath || process.env.SQLITE_PATH || 'satelink.db'
+    });
+}

@@ -18,6 +18,9 @@ export function verifyJWT(req, res, next) {
     try {
         const secret = process.env.JWT_SECRET;
         if (!secret) {
+            if (process.env.NODE_ENV === "production") {
+                throw new Error("JWT_SECRET is required in production");
+            }
             console.warn("WARNING: JWT_SECRET not set. Using insecure default for DEV.");
         }
         const decoded = jwt.verify(token, secret || 'insecure_dev_secret_replace_immediately');
@@ -52,9 +55,11 @@ export function createUnifiedAuthRouter(opsEngine) {
             const { wallet, role } = req.body;
             if (!wallet || !role) return res.status(400).json({ error: 'Wallet and Role required' });
 
+            const jwtSecretVal = process.env.JWT_SECRET;
+            const secret = jwtSecretVal || 'insecure_dev_secret_replace_immediately';
             const token = jwt.sign(
                 { wallet: wallet.toLowerCase(), role },
-                process.env.JWT_SECRET || 'insecure_dev_secret_replace_immediately',
+                secret,
                 { expiresIn: '7d', issuer: 'satelink-core' }
             );
 

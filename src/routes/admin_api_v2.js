@@ -1,7 +1,12 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../middleware/auth.js';
 
 export function createAdminApiRouter(opsEngine) {
     const router = Router();
+
+    // Step A1: Strict JWT-only auth for all admin API routes
+    router.use(requireJWT);
+    router.use(requireRole(['admin_super', 'admin_ops']));
 
     // GET /admin-api/stats - Unified stats for admin dashboard
     router.get('/stats', async (req, res) => {

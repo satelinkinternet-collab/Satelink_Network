@@ -1,26 +1,17 @@
-
 import { Router } from "express";
+import { requireJWT, requireRole } from "../middleware/auth.js";
 
-export function createDashboardRouter(opsEngine, adminAuth) {
+export function createDashboardRouter(opsEngine) {
     const router = Router();
 
-    // --- MIDDLEWARE ---
-    const requireAdmin = (req, res, next) => {
-        const apiKey = req.headers['x-admin-key'] || req.query.adminKey;
-        if (apiKey === process.env.ADMIN_API_KEY) {
-            return next();
-        }
-        // Basic UI login check (mock for now, or just redirect to 401 page)
-        // For curl proofs, headers work. For browser, we might need a simple login param?
-        // Requirement: "Admin: ADMIN_API_KEY header OR admin session"
-        // Let's rely on header for API/Curl. For browser, maybe query param is enough for MVP.
-        res.status(401).send('Unauthorized. Pass x-admin-key header or ?adminKey= query param.');
-    };
+    // Middleware injected via stack in server.js, but we can also apply it here if we want route-level control.
+    // Requirement from A1: Apply to /admin, /logs, /diag
+    const adminMiddleware = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     // --- ROUTES ---
 
     // 1. Admin Dashboard
-    router.get('/admin', requireAdmin, async (req, res, next) => {
+    router.get('/admin', adminMiddleware, async (req, res, next) => {
         try {
             const now = Date.now();
             const todayStart = new Date().setHours(0, 0, 0, 0);
@@ -58,7 +49,7 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     });
 
     // 2. Logs Viewer
-    router.get('/logs', requireAdmin, async (req, res, next) => {
+    router.get('/logs', adminMiddleware, async (req, res, next) => {
         try {
             const logs = await req.logger.getRecentErrors(200);
             res.render('logs', { logs });
@@ -104,14 +95,14 @@ export function createDashboardRouter(opsEngine, adminAuth) {
     });
 
     // 5. Diagnostics
-    router.post('/diag/share', requireAdmin, async (req, res, next) => {
+    router.post('/diag/share', adminMiddleware, async (req, res, next) => {
         try {
             const result = await req.diagnostics.createShareToken("Admin Generated");
             res.json({
                 success: true,
                 token: result.token,
                 expiresAt: result.expiresAt,
-                url: `/diag/snapshot?token=${result.token}`
+                url: `/ diag / snapshot ? token = ${result.token} `
             });
         } catch (e) { next(e); }
     });
