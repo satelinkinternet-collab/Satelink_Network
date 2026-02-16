@@ -13,8 +13,8 @@ export default function validateEnv() {
         process.exit(1);
     }
 
-    if (process.env.DB_TYPE !== 'postgres') {
-        // Enforce postgres in production (part of Step 3)
-        // But requested to keep self:test passing
+    if (process.env.DB_TYPE && process.env.DB_TYPE.toLowerCase() === 'sqlite') {
+        console.error("[FATAL] DB_TYPE=sqlite is forbidden in production. Use Postgres (DATABASE_URL).");
+        process.exit(1);
     }
 }

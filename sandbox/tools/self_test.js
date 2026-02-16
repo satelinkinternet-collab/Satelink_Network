@@ -33,7 +33,12 @@ const checks = [
     { pattern: /getValidatedDB/, file: "sandbox/src/db/index.js", forbidden: false },
     { pattern: /getValidatedDB/, file: "sandbox/server.js", forbidden: false },
     { pattern: /TriageEngine/, file: "sandbox/src/ops-agent/triage.js", forbidden: false },
-    { pattern: /TriageEngine/, file: "sandbox/tools/self_heal.js", forbidden: false }
+    { pattern: /TriageEngine/, file: "sandbox/tools/self_heal.js", forbidden: false },
+
+    // B1: Postgres Enforcement
+    { pattern: /DB_TYPE=sqlite is forbidden/i, file: "sandbox/src/config/validateEnv.js", forbidden: false },
+    { pattern: /Production requires DATABASE_URL/i, file: "sandbox/src/db/index.js", forbidden: false },
+    { pattern: /process\.env\.DATABASE_URL/, file: "sandbox/src/db/index.js", forbidden: false }
 ];
 
 checks.forEach(check => {

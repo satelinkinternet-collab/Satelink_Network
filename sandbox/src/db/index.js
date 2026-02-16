@@ -51,10 +51,18 @@ class PostgresClient {
 }
 
 export function getValidatedDB(config) {
-    if (config.dbType === 'postgres') {
-        if (!config.dbUrl) throw new Error("Missing DATABASE_URL for Postgres");
-        return new PostgresClient(config.dbUrl);
-    } else {
-        return new SQLiteClient(process.env.DB_LOCAL_PATH);
+    // 1. If DATABASE_URL is present, use Postgres (Prod or enforced Dev)
+    if (process.env.DATABASE_URL) {
+        return new PostgresClient(process.env.DATABASE_URL);
     }
+
+    // 2. If NO DATABASE_URL, check environment
+    if (process.env.NODE_ENV === 'production') {
+        // We already checked this in validateEnv, but safe double-check
+        throw new Error("[FATAL] Production requires DATABASE_URL. SQLite fallback forbidden.");
+    }
+
+    // 3. Fallback to SQLite (Dev/Test only)
+    console.warn("[WARN] Using SQLite (Non-Production Fallback)");
+    return new SQLiteClient(process.env.DB_LOCAL_PATH);
 }
