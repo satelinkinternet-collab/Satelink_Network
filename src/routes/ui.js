@@ -111,7 +111,7 @@ export function createUIRouter(opsEngine) {
     });
 
     // --- EXPORT ROUTE ---
-    router.get('/export/:type', async (req, res) => {
+    router.get('/export/:type', adminMiddleware, async (req, res) => {
         try {
             const { type } = req.params;
             const { wallet } = req.query;

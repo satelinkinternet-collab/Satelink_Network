@@ -1,3 +1,4 @@
+// import listEndpoints from 'express-list-endpoints';
 
 import { StressTester } from './src/services/stress_tester.js';
 import { requireJWT, requireRole } from "./src/middleware/auth.js";
@@ -1056,6 +1057,7 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
     }
 
     const app = createApp(db);
+    globalThis.__SL_APP__ = app;
     if (app.locals?.ready) await app.locals.ready;
 
     async function bootstrap() {
@@ -1143,3 +1145,4 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
 }
 
 export default createApp;
+

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 
+const DEV_JWT_FALLBACK = 'dev_only_secret';
+
 export function verifyJWT(req, res, next) {
     let authHeader = req.headers.authorization;
     let token = null;
@@ -16,14 +18,14 @@ export function verifyJWT(req, res, next) {
     }
 
     try {
-        const secret = process.env.JWT_SECRET;
-        if (!secret) {
+        const secret = process.env.JWT_SECRET || DEV_JWT_FALLBACK;
+        if (!process.env.JWT_SECRET) {
             if (process.env.NODE_ENV === "production") {
                 throw new Error("JWT_SECRET is required in production");
             }
-            console.warn("WARNING: JWT_SECRET not set. Using insecure default for DEV.");
+            console.warn("WARNING: JWT_SECRET not set. Using development fallback.");
         }
-        const decoded = jwt.verify(token, secret || 'insecure_dev_secret_replace_immediately');
+        const decoded = jwt.verify(token, secret);
         req.user = decoded;
         next();
     } catch (e) {
@@ -55,8 +57,7 @@ export function createUnifiedAuthRouter(opsEngine) {
             const { wallet, role } = req.body;
             if (!wallet || !role) return res.status(400).json({ error: 'Wallet and Role required' });
 
-            const jwtSecretVal = process.env.JWT_SECRET;
-            const secret = jwtSecretVal || 'insecure_dev_secret_replace_immediately';
+            const secret = process.env.JWT_SECRET || DEV_JWT_FALLBACK;
             const token = jwt.sign(
                 { wallet: wallet.toLowerCase(), role },
                 secret,
