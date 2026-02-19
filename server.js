@@ -1049,7 +1049,8 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
     });
 
     const dbConfig = {
-      type: process.env.DATABASE_URL ? 'postgres' : 'sqlite',
+      type: (process.env.DATABASE_URL && /^sqlite:/.test(process.env.DATABASE_URL)) ? 'sqlite'
+          : (process.env.DATABASE_URL ? 'postgres' : 'sqlite'),
       connectionString: process.env.DATABASE_URL || config.sqlitePath
     };
 

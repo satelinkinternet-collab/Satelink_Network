@@ -1,5 +1,15 @@
 
 import Database from "better-sqlite3";
+
+function isSqliteUrl(u) {
+  return !!u && /^sqlite:/.test(u);
+}
+
+function sqlitePathFromUrl(u) {
+  // supports sqlite:./file.db and sqlite:///abs/path.db
+  return u.replace(/^sqlite:(\/\/)?/, "");
+}
+
 import pg from "pg";
 
 const { Pool } = pg;
@@ -260,8 +270,15 @@ class TransactionAdapter {
 export function getValidatedDB(config) {
     const isProd = process.env.NODE_ENV === "production";
 
-    // 1. If DATABASE_URL is present, use Postgres
-    if (config.dbUrl || process.env.DATABASE_URL) {
+    // 1. If DATABASE_URL is present, decide by scheme
+    const dbUrl = config.dbUrl || process.env.DATABASE_URL;
+    if (isSqliteUrl(dbUrl)) {
+        // DATABASE_URL looks like sqlite -> use sqlite
+        return makeSqliteDb({
+            connectionString: sqlitePathFromUrl(dbUrl) || config.sqlitePath || process.env.SQLITE_PATH || 'satelink.db'
+        });
+    }
+    if (dbUrl) {
         return new UniversalDB({
             type: 'postgres',
             connectionString: config.dbUrl || process.env.DATABASE_URL
