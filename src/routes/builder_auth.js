@@ -75,6 +75,8 @@ export function createBuilderAuthRouter(opsEngine) {
 
     // 4. (DEV ONLY) Test Login
     router.post('/__test/auth/builder/login', async (req, res) => {
+      if (process.env.NODE_ENV === "production") return res.status(404).send("Not Found");
+
         if (process.env.NODE_ENV === "production") {
             return res.status(404).json({ ok: false });
         }

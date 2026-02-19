@@ -72,7 +72,19 @@ console.log(`[BOOT] IS_TEST=${IS_TEST} NODE_ENV=${process.env.NODE_ENV || "undef
 // ─── APP FACTORY ─────────────────────────────────────────────
 export function createApp(db) {
   const app = express();
-  app.set('opsEngine', null);
+  
+
+  // 🔒 PROD HARDENING: never allow __test routes in production
+  if (process.env.NODE_ENV === "production") {
+    app.use("/__test", (_req, res) => res.status(404).send("Not Found"));
+  }
+
+  // 🔒 PROD HARDENING: protect api-docs
+  if (process.env.NODE_ENV === "production" && process.env.ENABLE_API_DOCS !== "1") {
+    app.use("/api-docs", (_req, res) => res.status(404).send("Not Found"));
+  }
+
+app.set('opsEngine', null);
 
   const isTest =
     process.env.NODE_ENV === "test" ||

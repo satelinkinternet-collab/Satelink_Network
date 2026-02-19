@@ -22,6 +22,8 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     }
 
     router.get("/__test/deliveries", (req, res) => {
+      if (process.env.NODE_ENV === "production") return res.status(404).send("Not Found");
+
         if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_TEST_ENDPOINTS) {
             return res.status(404).json({ error: "Not found" });
         }
@@ -44,6 +46,8 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     });
 
     router.get("/__test/state", async (req, res) => {
+      if (process.env.NODE_ENV === "production") return res.status(404).send("Not Found");
+
         if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_TEST_ENDPOINTS) {
             return res.status(404).json({ error: "Not found" });
         }
