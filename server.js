@@ -176,7 +176,7 @@ app.set('opsEngine', null);
     app.set('opsEngine', opsEngine);
     // await opsEngine.seed();
     const opsReporter = new OpsReporter(db);
-    opsReporter.init();
+    await opsReporter.init();
 
     const adminAuth = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 

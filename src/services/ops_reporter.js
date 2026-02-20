@@ -29,7 +29,7 @@ export class OpsReporter {
         this.db = db;
     }
 
-    init() {
+    async init() {
         await execSql(this.db, `
             CREATE TABLE IF NOT EXISTS daily_ops_reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
