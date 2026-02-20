@@ -1,4 +1,34 @@
 
+
+function normalizeDbInterface(db) {
+  // Ensure db.exec(sql) exists for both sqlite/postgres wrappers used across the app.
+  if (db && typeof db.exec === "function") return db;
+
+  // Common wrappers:
+  // - sqlite wrappers may expose .run() or .prepare()
+  // - some adapters expose .db (raw)
+  const raw = (db && db.db) ? db.db : db;
+
+  if (raw && typeof raw.exec === "function") {
+    // if the raw object has exec, expose it at top-level too
+    db.exec = raw.exec.bind(raw);
+    return db;
+  }
+
+  if (raw && typeof raw.run === "function") {
+    db.exec = (sql) => raw.run(sql);
+    return db;
+  }
+
+  if (raw && typeof raw.prepare === "function") {
+    db.exec = (sql) => raw.prepare(sql).run();
+    return db;
+  }
+
+  throw new Error("[FATAL] DB adapter missing exec/run/prepare. Cannot run migrations.");
+}
+
+
 import Database from "better-sqlite3";
 
 function isSqliteUrl(u) {
@@ -274,7 +304,7 @@ export function getValidatedDB(config) {
     const dbUrl = config.dbUrl || process.env.DATABASE_URL;
     if (isSqliteUrl(dbUrl)) {
         // DATABASE_URL looks like sqlite -> use sqlite
-        return makeSqliteDb({
+        return isSqliteUrl({
             connectionString: sqlitePathFromUrl(dbUrl) || config.sqlitePath || process.env.SQLITE_PATH || 'satelink.db'
         });
     }
