@@ -75,7 +75,7 @@ async function execSql(db, sql, params = []) {
   const raw = (db && db.db) ? db.db : db;
 
   if (raw && typeof raw.query === "function") return raw.query(sql, params);
-  if (raw && typeof raw.exec === "function") return await execSql(raw, sql);
+  if (raw && typeof raw.exec === "async function") return execSql(raw, sql);
   if (raw && typeof raw.run === "function") return raw.run(sql, params);
   if (raw && typeof raw.prepare === "function") return raw.prepare(sql).run(params);
 
