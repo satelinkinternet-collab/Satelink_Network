@@ -1,11 +1,36 @@
 
+async function execSql(db, sql, params = []) {
+  const raw = (db && db.db) ? db.db : db;
+
+  // Postgres Pool / Client
+  if (raw && typeof raw.query === "function") {
+    return raw.query(sql, params);
+  }
+
+  // SQLite / better-sqlite3 style
+  if (raw && typeof raw.exec === "function") {
+    return raw.exec(sql);
+  }
+
+  // SQLite wrapper styles
+  if (raw && typeof raw.run === "function") {
+    return raw.run(sql, params);
+  }
+  if (raw && typeof raw.prepare === "function") {
+    return raw.prepare(sql).run(params);
+  }
+
+  throw new Error("DB has no query/exec/run/prepare");
+}
+
+
 export class OpsReporter {
     constructor(db) {
         this.db = db;
     }
 
     init() {
-        this.db.exec(`
+        await execSql(this.db, `
             CREATE TABLE IF NOT EXISTS daily_ops_reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 start_ts INTEGER,

@@ -69,6 +69,19 @@ const PORT = config.port;
 process.on("unhandledRejection", (err) => console.error("[CRITICAL] Unhandled:", err));
 
 console.log(`[BOOT] IS_TEST=${IS_TEST} NODE_ENV=${process.env.NODE_ENV || "undefined"} npm_lifecycle_event=${process.env.npm_lifecycle_event || "undefined"}`);
+
+
+async function execSql(db, sql, params = []) {
+  const raw = (db && db.db) ? db.db : db;
+
+  if (raw && typeof raw.query === "function") return raw.query(sql, params);
+  if (raw && typeof raw.exec === "function") return await execSql(raw, sql);
+  if (raw && typeof raw.run === "function") return raw.run(sql, params);
+  if (raw && typeof raw.prepare === "function") return raw.prepare(sql).run(params);
+
+  throw new Error("DB has no query/exec/run/prepare");
+}
+
 // ─── APP FACTORY ─────────────────────────────────────────────
 export function createApp(db) {
   const app = express();
@@ -120,7 +133,7 @@ app.set('opsEngine', null);
     const isTest = process.env.NODE_ENV === "test";
 
     if (isTest && typeof db.exec === "function") {
-      db.exec(`
+      await execSql(db, `
       CREATE TABLE IF NOT EXISTS registered_nodes (
         wallet TEXT PRIMARY KEY,
         last_heartbeat INTEGER DEFAULT 0,
@@ -511,7 +524,7 @@ app.set('opsEngine', null);
 
     // Minimal tables for compat logic (idempotent)
     if (typeof db.exec === "function") {
-      db.exec(`
+      await execSql(db, `
         CREATE TABLE IF NOT EXISTS test_treasury (
           id INTEGER PRIMARY KEY CHECK (id = 1),
           available REAL NOT NULL DEFAULT 0
@@ -559,7 +572,7 @@ app.set('opsEngine', null);
 
       // also ensure registered_nodes exists for other tests
       try {
-        db.exec(`
+        await execSql(db, `
           CREATE TABLE IF NOT EXISTS registered_nodes (
             wallet TEXT PRIMARY KEY,
             last_heartbeat INTEGER DEFAULT 0,
