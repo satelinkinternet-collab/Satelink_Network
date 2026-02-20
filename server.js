@@ -1055,9 +1055,10 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
     };
 
     const db = getValidatedDB(config);
-    await db.init();
-
-    if (dbConfig.type === 'sqlite') {
+    if (db && typeof db.init === "function") {
+        await db.init();
+      }
+if (dbConfig.type === 'sqlite') {
       try {
         // Idempotent migrations (CREATE IF NOT EXISTS / INSERT OR IGNORE)
         migrate(db.db); // db.db is the raw better-sqlite3 handle
