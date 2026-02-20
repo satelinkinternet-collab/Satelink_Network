@@ -132,7 +132,7 @@ app.set('opsEngine', null);
 
     const isTest = process.env.NODE_ENV === "test";
 
-    if (isTest && typeof db.exec === "function") {
+    if (isTest && typeof db.exec === "async function") {
       await execSql(db, `
       CREATE TABLE IF NOT EXISTS registered_nodes (
         wallet TEXT PRIMARY KEY,
@@ -523,7 +523,7 @@ app.set('opsEngine', null);
     // ─────────────────────────────────────────────────────────────
 
     // Minimal tables for compat logic (idempotent)
-    if (typeof db.exec === "function") {
+    if (typeof db.exec === "async function") {
       await execSql(db, `
         CREATE TABLE IF NOT EXISTS test_treasury (
           id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -563,7 +563,7 @@ app.set('opsEngine', null);
     }
 
     // 1) Bootstrap managed node + add  liquidity
-    app.post("/nodes/bootstrap-payment", requireAdminKey, (req, res) => {
+    app.postasync ("/nodes/bootstrap-payment", requireAdminKey, (req, res) => {
       const { nodeWallet, nodeType } = req.body || {};
       if (!nodeWallet) return res.status(400).json({ ok: false, error: "Missing nodeWallet" });
 
