@@ -2,6 +2,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_secret';
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'dev_only_secret') {
+    throw new Error('FATAL: JWT_SECRET must be explicitly set in production mode.');
+}
 
 export const requireJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;

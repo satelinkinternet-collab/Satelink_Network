@@ -8,6 +8,7 @@ interface IRevenueVault {
 contract ClaimsContract {
     address public owner;
     IRevenueVault public vault;
+    uint256 private _claimNonce;
     
     struct Claim {
         uint256 amount;
@@ -34,7 +35,8 @@ contract ClaimsContract {
     }
 
     function createClaim(address user, uint256 amount) external onlyOwner returns (bytes32) {
-        bytes32 claimId = keccak256(abi.encodePacked(user, amount, block.timestamp, block.prevrandao));
+        _claimNonce++;
+        bytes32 claimId = keccak256(abi.encodePacked(user, amount, block.timestamp, block.prevrandao, _claimNonce));
         uint256 expiry = block.timestamp + 48 days;
 
         claims[claimId] = Claim({

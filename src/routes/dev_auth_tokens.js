@@ -55,6 +55,4 @@ export function createDevAuthRouter(opsEngine) {
     router.post('/builder/login', (req, res, next) => { req.body.role = 'builder'; handleLogin(req, res, next); });
 
     return router;
-
-    return router;
 }

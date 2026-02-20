@@ -6,7 +6,7 @@ export function validateEnv() {
     const isProd = process.env.NODE_ENV === "production";
 
     if (isProd) {
-        const required = ["JWT_SECRET", "DATABASE_URL"];
+        const required = ["JWT_SECRET", "DATABASE_URL", "IP_HASH_SALT", "IP_SALT"];
         const missing = required.filter(k => !process.env[k]);
         if (missing.length) {
             console.error("[FATAL] Missing required production env vars:", missing.join(", "));

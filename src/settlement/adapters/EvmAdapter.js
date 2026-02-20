@@ -232,7 +232,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
             for (const tx of txs.filter(t => t.status === 'sent')) {
                 try {
                     const receipt = await this.provider.getTransactionReceipt(tx.tx_hash);
-                    if (receipt && receipt.datus === 1) { // 1 = success
+                    if (receipt && receipt.status === 1) { // 1 = success
                         await this.db.query("UPDATE settlement_evm_txs SET status='confirmed', updated_at=? WHERE id=?", [Date.now(), tx.id]);
                     } else if (receipt && receipt.status === 0) {
                         await this.db.query("UPDATE settlement_evm_txs SET status='failed', error_message='Reverted', updated_at=? WHERE id=?", [Date.now(), tx.id]);

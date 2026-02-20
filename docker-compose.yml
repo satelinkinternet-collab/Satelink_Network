@@ -2,8 +2,7 @@ version: '3.8'
 services:
   satelink:
     build: .
-    env_file:
-      - .env
+    # NOTE: Do NOT use this for production. Use docker-compose.postgres.yml instead.
     ports:
       - "8080:8080"
     environment:
@@ -14,5 +13,4 @@ services:
       - PORT=8080
     volumes:
       - ./data:/app/data
-      - ./satelink.db:/app/satelink.db
     restart: always

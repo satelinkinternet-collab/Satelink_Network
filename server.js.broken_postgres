@@ -111,7 +111,10 @@ export function createApp(db) {
     try { migrate(rawDb); } catch (e) { console.warn("[TEST] migrate:", e.message); }
   }
 
-
+  // tests need tables immediately
+  if (IS_TEST) {
+    try { migrate(rawDb); } catch (e) { /* ignore if already */ }
+  }
 
   app.locals.ready = (async () => {
     // ⬇️ MOVE YOUR ENTIRE CURRENT createApp BODY HERE
@@ -140,14 +143,14 @@ export function createApp(db) {
       );
 
       CREATE TABLE IF NOT EXISTS op_counts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id BIGSERIAL PRIMARY KEY,
         window_start INTEGER NOT NULL,
         op_type TEXT NOT NULL,
         count INTEGER NOT NULL DEFAULT 0
       );
 
       CREATE TABLE IF NOT EXISTS revenue_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id BIGSERIAL PRIMARY KEY,
         created_at INTEGER NOT NULL,
         amount REAL NOT NULL DEFAULT 0
       );
@@ -541,7 +544,7 @@ export function createApp(db) {
         INSERT OR IGNORE INTO test_epoch_stats (epoch_id, total_ops, revenue) VALUES (1, 0, 0);
 
         CREATE TABLE IF NOT EXISTS test_ledger_entries (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id BIGSERIAL PRIMARY KEY,
           epoch_id INTEGER NOT NULL,
           node_wallet TEXT NOT NULL,
           split_type TEXT NOT NULL,
@@ -549,7 +552,7 @@ export function createApp(db) {
         );
 
         CREATE TABLE IF NOT EXISTS test_payouts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id BIGSERIAL PRIMARY KEY,
           epoch_id INTEGER NOT NULL,
           node_wallet TEXT NOT NULL,
           amount REAL NOT NULL,

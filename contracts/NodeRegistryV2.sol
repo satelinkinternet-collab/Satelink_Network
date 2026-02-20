@@ -9,9 +9,19 @@ contract NodeRegistryV2 {
 
     Node[] private nodes;
     mapping(address => uint256) private indexPlusOne; // 0 means not exists
+    address public owner;
 
     event NodeRegistered(address indexed wallet);
     event NodeStatusUpdated(address indexed wallet, bool active);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
 
     function nodeCount() external view returns (uint256) {
         return nodes.length;
@@ -23,7 +33,7 @@ contract NodeRegistryV2 {
         return (n.wallet, n.active);
     }
 
-    function registerNode(address wallet) external {
+    function registerNode(address wallet) external onlyOwner {
         require(wallet != address(0), "bad wallet");
         require(indexPlusOne[wallet] == 0, "already registered");
 
@@ -34,7 +44,7 @@ contract NodeRegistryV2 {
         emit NodeStatusUpdated(wallet, true);
     }
 
-    function setActive(address wallet, bool active) external {
+    function setActive(address wallet, bool active) external onlyOwner {
         uint256 idx1 = indexPlusOne[wallet];
         require(idx1 != 0, "not registered");
         nodes[idx1 - 1].active = active;

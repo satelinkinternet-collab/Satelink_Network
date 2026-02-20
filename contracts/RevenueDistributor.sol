@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 interface INodeRegistry {
     function getNode(uint256 i) external view returns (address wallet, bool active);
 }
 
-contract RevenueDistributor {
+contract RevenueDistributor is ReentrancyGuard {
     INodeRegistry public registry;
 
     event Distributed(uint256 indexed nodeId, address indexed wallet, uint256 amount);
@@ -15,7 +17,7 @@ contract RevenueDistributor {
         registry = INodeRegistry(_registry);
     }
 
-    function distribute(uint256 nodeId) external payable {
+    function distribute(uint256 nodeId) external payable nonReentrant {
         require(msg.value > 0, "No value sent");
 
         (address wallet, bool active) = registry.getNode(nodeId);

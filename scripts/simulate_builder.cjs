@@ -1,7 +1,7 @@
 
 const { ethers } = require('ethers');
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+// using global fetch (Node 18+)
 
 const BASE_URL = 'http://localhost:8080';
 
@@ -52,6 +52,8 @@ async function run() {
     // 5. Get Project ID
     const pRes = await fetch(`${BASE_URL}/builder/projects`, { headers });
     const projects = await pRes.json();
+    console.log(`[5] Projects List: ${JSON.stringify(projects)}`);
+    if (!projects || projects.length === 0) throw new Error("No projects found for builder");
     const projectId = projects[0].id;
     console.log(`[5] Project ID: ${projectId}`);
 
