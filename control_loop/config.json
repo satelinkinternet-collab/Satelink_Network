@@ -1,0 +1,16 @@
+{
+  "baseUrl": "http://localhost:8080",
+  "healthPath": "/health",
+  "dashboards": [
+    "/dashboard/revenue-live",
+    "/dashboard/epoch-profitability"
+  ],
+  "uiChecks": [
+    "/ui/operator/0xabc123abc123abc123abc123abc123abc123abc1"
+  ],
+  "pgContainer": "satelink-pg",
+  "envFile": ".env.live",
+  "port": 8080,
+  "maxBackoffSec": 30,
+  "manageBackend": false
+}

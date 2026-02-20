@@ -75,7 +75,7 @@ async function execSql(db, sql, params = []) {
   const raw = (db && db.db) ? db.db : db;
 
   if (raw && typeof raw.query === "function") return raw.query(sql, params);
-  if (raw && typeof raw.exec === "async function") return execSql(raw, sql);
+  if (raw && typeof raw.exec === "function") return raw.exec(sql);
   if (raw && typeof raw.run === "function") return raw.run(sql, params);
   if (raw && typeof raw.prepare === "function") return raw.prepare(sql).run(params);
 
@@ -85,7 +85,7 @@ async function execSql(db, sql, params = []) {
 // ─── APP FACTORY ─────────────────────────────────────────────
 export function createApp(db) {
   const app = express();
-  
+
 
   // 🔒 PROD HARDENING: never allow __test routes in production
   if (process.env.NODE_ENV === "production") {
@@ -97,7 +97,7 @@ export function createApp(db) {
     app.use("/api-docs", (_req, res) => res.status(404).send("Not Found"));
   }
 
-app.set('opsEngine', null);
+  app.set('opsEngine', null);
 
   const isTest =
     process.env.NODE_ENV === "test" ||
@@ -132,7 +132,7 @@ app.set('opsEngine', null);
 
     const isTest = process.env.NODE_ENV === "test";
 
-    if (isTest && typeof db.exec === "async function") {
+    if (isTest && typeof db.exec === "function") {
       await execSql(db, `
       CREATE TABLE IF NOT EXISTS registered_nodes (
         wallet TEXT PRIMARY KEY,
@@ -523,7 +523,7 @@ app.set('opsEngine', null);
     // ─────────────────────────────────────────────────────────────
 
     // Minimal tables for compat logic (idempotent)
-    if (typeof db.exec === "async function") {
+    if (typeof db.exec === "function") {
       await execSql(db, `
         CREATE TABLE IF NOT EXISTS test_treasury (
           id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -563,7 +563,7 @@ app.set('opsEngine', null);
     }
 
     // 1) Bootstrap managed node + add  liquidity
-    app.postasync ("/nodes/bootstrap-payment", requireAdminKey, (req, res) => {
+    app.post("/nodes/bootstrap-payment", requireAdminKey, async (req, res) => {
       const { nodeWallet, nodeType } = req.body || {};
       if (!nodeWallet) return res.status(400).json({ ok: false, error: "Missing nodeWallet" });
 
@@ -1063,15 +1063,15 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
 
     const dbConfig = {
       type: (process.env.DATABASE_URL && /^sqlite:/.test(process.env.DATABASE_URL)) ? 'sqlite'
-          : (process.env.DATABASE_URL ? 'postgres' : 'sqlite'),
+        : (process.env.DATABASE_URL ? 'postgres' : 'sqlite'),
       connectionString: process.env.DATABASE_URL || config.sqlitePath
     };
 
     const db = getValidatedDB(config);
     if (db && typeof db.init === "function") {
-        await db.init();
-      }
-if (dbConfig.type === 'sqlite') {
+      await db.init();
+    }
+    if (dbConfig.type === 'sqlite') {
       try {
         // Idempotent migrations (CREATE IF NOT EXISTS / INSERT OR IGNORE)
         migrate(db.db); // db.db is the raw better-sqlite3 handle
