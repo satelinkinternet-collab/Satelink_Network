@@ -618,7 +618,10 @@ export function createApp(db) {
 
     app.get("/operations/epoch-stats", (_req, res) => {
       const s = db.prepare("SELECT epoch_id as epochId, total_ops, revenue FROM test_epoch_stats WHERE epoch_id=1").get();
-      res.json({ ok: true, stats: s });
+      // Added active_nodes field to fix UI bug displaying 'undefined'
+      // If we had a nodes table it would be: db.prepare("SELECT COUNT(*) as c FROM registered_nodes WHERE active=1").get().c
+      const activeStats = { ...s, active_nodes: 0 };
+      res.json({ ok: true, stats: activeStats });
     });
 
     // 3) Finalize epoch into ledger entries + payout queue

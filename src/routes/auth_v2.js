@@ -9,7 +9,9 @@ export function verifyJWT(req, res, next) {
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1];
-    } 
+    } else if (req.cookies && req.cookies.satelink_session) {
+        token = req.cookies.satelink_session;
+    }
 
     if (!token) {
         return res.status(401).json({ ok: false, error: 'Unauthorized' });

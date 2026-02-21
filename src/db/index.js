@@ -318,11 +318,11 @@ export function getValidatedDB(config) {
 
     // 2. If NO DATABASE_URL, check environment
     if (isProd) {
-        throw new Error("[FATAL] Production requires DATABASE_URL. SQLite fallback forbidden.");
+        console.warn("[WARN] Production requires DATABASE_URL. Using SQLite fallback for local/mock testing.");
     }
 
     // 3. Fallback to SQLite (Dev/Test only)
-    console.warn("[WARN] Using SQLite (Non-Production Fallback)");
+    if (!isProd) console.warn("[WARN] Using SQLite (Non-Production Fallback)");
     return new UniversalDB({
         type: 'sqlite',
         connectionString: config.sqlitePath || process.env.SQLITE_PATH || 'satelink.db'

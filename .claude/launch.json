@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "satelink-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 8080
+    },
+    {
+      "name": "satelink-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "hardhat-node",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["hardhat", "node"],
+      "port": 8545
+    },
+    {
+      "name": "postgres",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "-f", "docker-compose.postgres.yml", "up"],
+      "port": 5432
+    }
+  ]
+}

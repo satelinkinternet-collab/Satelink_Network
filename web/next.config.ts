@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         destination: 'http://localhost:8080/auth/:path*', // Proxy Auth
       },
       {
+        source: '/me/:path*',
+        destination: 'http://localhost:8080/me/:path*', // Proxy User Settings
+      },
+      {
         source: '/__test/:path*',
         destination: 'http://localhost:8080/__test/:path*', // Proxy Test Routes
       },
