@@ -10,6 +10,7 @@
     "@types/node": "^22.19.7",
     "chai": "^6.2.2",
     "hardhat": "^3.1.5",
+    "husky": "^9.1.7",
     "mocha": "^11.7.5",
     "playwright": "^1.58.2",
     "supertest": "^7.2.2",
@@ -45,7 +46,8 @@
     "start": "node server.js",
     "self:test": "node tools/self_test.js",
     "self:heal": "node tools/self_heal.js",
-    "ops:triage": "node src/ops-agent/triage.js"
+    "ops:triage": "node src/ops-agent/triage.js",
+    "prepare": "husky"
   },
   "description": "This project has a minimal setup of Hardhat 3 Beta, without any plugins.",
   "main": "debug_env.js",

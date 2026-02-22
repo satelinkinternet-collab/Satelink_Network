@@ -18,6 +18,7 @@ import "dotenv/config";
 
 import { StressTester } from './src/services/stress_tester.js';
 import { requireJWT, requireRole } from "./src/middleware/auth.js";
+import { prodGuard } from "./src/middleware/prod_guard.js";
 import { getPermissionsForRole } from './src/routes/auth_v2.js';
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -393,6 +394,9 @@ export function createApp(db) {
 
     // Initial run after boot (delayed)
     setTimeout(() => retentionCleaner.run().catch(() => { }), 60000);
+
+    // [PROD GUARD] Block /__test, /dev, /staging in production
+    app.use(prodGuard);
 
     app.use(helmet({
       contentSecurityPolicy: {
