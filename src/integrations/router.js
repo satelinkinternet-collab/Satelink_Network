@@ -21,15 +21,12 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         }
     }
 
-    router.get("/__test/deliveries", (req, res) => {
-      if (process.env.NODE_ENV === "production") return res.status(404).send("Not Found");
-
-        if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_TEST_ENDPOINTS) {
-            return res.status(404).json({ error: "Not found" });
-        }
-        const limit = parseInt(req.query.limit) || 20;
-        res.json({ ok: true, deliveries: deliveryLog.slice(0, limit) });
-    });
+    if (process.env.NODE_ENV !== 'production') {
+        router.get("/__test/deliveries", (req, res) => {
+            const limit = parseInt(req.query.limit) || 20;
+            res.json({ ok: true, deliveries: deliveryLog.slice(0, limit) });
+        });
+    }
 
     // ─── INTEGRATIONS ────────────────────────────────────────
     router.get("/integrations/health", (_req, res) => {
@@ -45,25 +42,20 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         });
     });
 
-    router.get("/__test/state", async (req, res) => {
-      if (process.env.NODE_ENV === "production") return res.status(404).send("Not Found");
+    if (process.env.NODE_ENV !== 'production') {
+        router.get("/__test/state", async (req, res) => {
+            try {
+                const events = await opsEngine.db.query("SELECT * FROM revenue_events ORDER BY id DESC LIMIT 3");
+                const rewards = await opsEngine.db.query("SELECT * FROM node_rewards ORDER BY id DESC LIMIT 5");
+                const withdrawals = await opsEngine.db.query("SELECT * FROM withdrawals ORDER BY id DESC LIMIT 3");
+                const inbox = await opsEngine.db.query("SELECT provider, event_id FROM payments_inbox ORDER BY id DESC LIMIT 10");
 
-        if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_TEST_ENDPOINTS) {
-            return res.status(404).json({ error: "Not found" });
-        }
-        try {
-            const events = await opsEngine.db.query("SELECT * FROM revenue_events ORDER BY id DESC LIMIT 3");
-            // Handle array vs sqlite stmt result (adapter returns array for SELECT)
-
-            const rewards = await opsEngine.db.query("SELECT * FROM node_rewards ORDER BY id DESC LIMIT 5");
-            const withdrawals = await opsEngine.db.query("SELECT * FROM withdrawals ORDER BY id DESC LIMIT 3");
-            const inbox = await opsEngine.db.query("SELECT provider, event_id FROM payments_inbox ORDER BY id DESC LIMIT 10");
-
-            res.json({ ok: true, events, rewards, withdrawals, inbox });
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    });
+                res.json({ ok: true, events, rewards, withdrawals, inbox });
+            } catch (e) {
+                res.status(500).json({ error: e.message });
+            }
+        });
+    }
 
     // Zero-Signup Node Stats
     router.get("/integrations/node/:wallet", async (req, res) => {

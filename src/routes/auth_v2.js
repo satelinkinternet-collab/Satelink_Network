@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 
-const DEV_JWT_FALLBACK = 'dev_only_secret';
 
 export function verifyJWT(req, res, next) {
+    // ── DEV BYPASS: skip auth when DEV_BYPASS_AUTH=true (never in production) ──
+    if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+        req.user = { wallet: '0xdevadmin', role: 'admin_super', userId: 'dev-admin', type: 'access' };
+        return next();
+    }
+
     let authHeader = req.headers.authorization;
     let token = null;
 
@@ -18,13 +23,7 @@ export function verifyJWT(req, res, next) {
     }
 
     try {
-        const secret = process.env.JWT_SECRET || DEV_JWT_FALLBACK;
-        if (!process.env.JWT_SECRET) {
-            if (process.env.NODE_ENV === "production") {
-                throw new Error("JWT_SECRET is required in production");
-            }
-            console.warn("WARNING: JWT_SECRET not set. Using development fallback.");
-        }
+        const secret = process.env.JWT_SECRET;
         const decoded = jwt.verify(token, secret);
         req.user = decoded;
         next();
@@ -57,7 +56,7 @@ export function createUnifiedAuthRouter(opsEngine) {
             const { wallet, role } = req.body;
             if (!wallet || !role) return res.status(400).json({ error: 'Wallet and Role required' });
 
-            const secret = process.env.JWT_SECRET || DEV_JWT_FALLBACK;
+            const secret = process.env.JWT_SECRET;
             const token = jwt.sign(
                 { wallet: wallet.toLowerCase(), role },
                 secret,

@@ -1,3 +1,19 @@
+import "dotenv/config";
+
+// ─── JWT_SECRET ENFORCEMENT ──────────────────────────────────
+(function validateJwtEnforcement() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.error("\n[FATAL] JWT_SECRET environment variable is not set.");
+    console.error("[FATAL] This is required in ALL environments.\n");
+    process.exit(1);
+  }
+  if (secret.length < 64) {
+    console.error(`\n[FATAL] JWT_SECRET is too short (${secret.length} chars). Minimum 64 chars required.\n`);
+    process.exit(1);
+  }
+})();
+
 // import listEndpoints from 'express-list-endpoints';
 
 import { StressTester } from './src/services/stress_tester.js';
@@ -11,7 +27,6 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
-import "dotenv/config";
 import { createAdminApiRouter } from "./src/routes/admin_api_v2.js";
 import { createNodeApiRouter } from "./src/routes/node_api_v2.js";
 import { createBuilderApiV2Router } from "./src/routes/builder_api_v2.js";
@@ -86,11 +101,6 @@ async function execSql(db, sql, params = []) {
 export function createApp(db) {
   const app = express();
 
-
-  // 🔒 PROD HARDENING: never allow __test routes in production
-  if (process.env.NODE_ENV === "production") {
-    app.use("/__test", (_req, res) => res.status(404).send("Not Found"));
-  }
 
   // 🔒 PROD HARDENING: protect api-docs
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_API_DOCS !== "1") {
@@ -388,8 +398,8 @@ export function createApp(db) {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"], // Allow inline for EJS & ethers CDN
-          styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline for Tailwind/custom
+          scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://cdn.tailwindcss.com"], // Allow inline for EJS & ethers CDN & tailwind
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Allow inline for Tailwind/custom
           imgSrc: ["'self'", "data:"],
           connectSrc: ["'self'"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -974,9 +984,10 @@ export function createApp(db) {
     app.use('/auth/embedded', createEmbeddedAuthRouter(db));
 
 
-    // ─────────────────────────────────────────────────────────────
-
-
+    // 🔒 PROD HARDENING: Final safety for /__test routes
+    if (process.env.NODE_ENV === "production") {
+      app.use("/__test", (_req, res) => res.status(404).send("Not Found"));
+    }
 
     // --- GLOBAL ERROR HANDLER ---
     app.use(async (err, req, res, next) => {
@@ -1100,11 +1111,8 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
         process.exit(1);
       }
 
-      const jwtSecret = process.env.JWT_SECRET || "dev_only_secret";
-      if (jwtSecret && jwtSecret.length < 32) {
-        console.warn("WARNING: JWT_SECRET is too short (< 32 chars). For production, use a strong 256-bit secret.");
-      }
-      console.log(`JWT SECRET: ${process.env.JWT_SECRET ? 'Present' : 'Missing (Using Dev Fallback)'}`);
+      const jwtSecret = process.env.JWT_SECRET;
+      console.log(`JWT SECRET: ${jwtSecret ? 'Present' : 'Missing'}`);
 
       const opsEngine = app.get('opsEngine');
       if (!opsEngine) {

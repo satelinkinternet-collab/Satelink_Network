@@ -8,25 +8,34 @@ import { verifyJWT } from './auth_v2.js';
 export function createSupportRouter(db) {
     const router = Router();
 
+    // GET /support — render the Support Portal UI
+    router.get('/', (req, res) => {
+        res.render('support', { success: req.query.success, error: req.query.error });
+    });
+
     // POST /support/ticket
     // Submit a support ticket with a diagnostic bundle
     router.post('/ticket', async (req, res) => {
-        const { wallet, message, bundle_json } = req.body;
+        const { wallet, message, bundle_json, subject, category } = req.body;
+        const isJson = req.headers['content-type']?.includes('application/json');
 
-        if (!wallet || !message || !bundle_json) {
-            return res.status(400).json({ ok: false, error: 'Wallet, message, and bundle are required' });
+        if (!wallet || !message) {
+            if (isJson) return res.status(400).json({ ok: false, error: 'Wallet and message are required' });
+            return res.redirect('/support?error=Wallet+and+message+are+required');
         }
 
         try {
             await db.query(`
                 INSERT INTO support_tickets (wallet, message, bundle_json, created_at)
                 VALUES (?, ?, ?, ?)
-            `, [wallet.toLowerCase(), message, JSON.stringify(bundle_json), Date.now()]);
+            `, [wallet.toLowerCase(), message + (subject ? ` [${category || 'general'}] ${subject}` : ''), JSON.stringify(bundle_json || {}), Date.now()]);
 
-            res.json({ ok: true, message: 'Support ticket submitted successfully' });
+            if (isJson) return res.json({ ok: true, message: 'Support ticket submitted successfully' });
+            res.redirect('/support?success=1');
         } catch (e) {
             console.error('[SUPPORT] Failed to submit ticket:', e);
-            res.status(500).json({ ok: false, error: 'Internal server error' });
+            if (isJson) return res.status(500).json({ ok: false, error: 'Internal server error' });
+            res.redirect('/support?error=Internal+server+error');
         }
     });
 

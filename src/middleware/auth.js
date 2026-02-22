@@ -28,14 +28,9 @@ import "dotenv/config";
     process.exit(1);
   }
 
-  if (secret.length < 32) {
-    console.error(`\n[FATAL] JWT_SECRET is too short (${secret.length} chars). Minimum 32 chars required.`);
-    console.error('[FATAL] For production use minimum 64 chars (512-bit entropy).\n');
-    process.exit(1);
-  }
-
   if (secret.length < 64) {
-    console.warn(`[WARN] JWT_SECRET is only ${secret.length} chars. Recommend 64+ chars for production.`);
+    console.error(`\n[FATAL] JWT_SECRET is too short (${secret.length} chars). Minimum 64 chars required.\n`);
+    process.exit(1);
   }
 })();
 
@@ -98,6 +93,12 @@ export function verifyRefreshToken(token) {
  * Preserves abuse firewall recording from original auth.js
  */
 export function authenticate(req, res, next) {
+  // ── DEV BYPASS: skip auth when DEV_BYPASS_AUTH=true (never in production) ──
+  if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
+    req.user = { wallet: '0xdevadmin', role: 'admin_super', userId: 'dev-admin', type: 'access' };
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -153,6 +154,8 @@ export const requireJWT = authenticate;
 export function requireRole(allowedRoles) {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
   return (req, res, next) => {
+    // DEV BYPASS: admin_super passes all role checks
+    if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') return next();
     if (!req.user || !req.user.role) {
       return res.status(403).json({ error: 'Forbidden: No role assigned' });
     }

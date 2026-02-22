@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
 import { verifyJWT } from './auth_v2.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_secret';
+const JWT_SECRET = process.env.JWT_SECRET;
 const REAUTH_TTL = 300; // 5 minutes
 
 // Helper to hash tokens

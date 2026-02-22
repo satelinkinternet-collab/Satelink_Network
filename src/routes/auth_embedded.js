@@ -153,7 +153,7 @@ export function createEmbeddedAuthRouter(db) {
                     device_id: device_public_id || 'unknown',
                     ip_hash: ipHash
                 },
-                process.env.JWT_SECRET || 'dev_only_secret',
+                process.env.JWT_SECRET,
                 { expiresIn: '7d', issuer: 'satelink-core' }
             );
 

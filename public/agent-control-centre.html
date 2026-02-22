@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Satelink — Agent Control Centre</title>
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1f2d45;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; min-height: 100vh; }
+
+  /* ── Top Bar ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-size: 20px; }
+  .title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .subtitle { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  .badge-live {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3);
+    color: var(--green); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600;
+  }
+  .dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+
+  .btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 8px; padding: 5px 12px; font-size: 12px; cursor: pointer;
+    transition: all .15s; font-weight: 500;
+  }
+  .btn:hover { background: var(--border); color: var(--text); }
+  .btn-danger { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,.2); }
+  .btn-accent { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.35); color: var(--accent); }
+  .btn-accent:hover { background: rgba(59,130,246,.25); }
+  .btn-green { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.3); color: var(--green); }
+  .btn-green:hover { background: rgba(16,185,129,.22); }
+
+  /* ── Layout ── */
+  .layout { display: flex; height: calc(100vh - 56px); overflow: hidden; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px; min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 0;
+  }
+  .sidebar-section { padding: 0 12px; margin-bottom: 4px; }
+  .sidebar-label {
+    font-size: 10px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .08em;
+    padding: 8px 8px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 8px; cursor: pointer;
+    transition: all .12s; color: var(--text-dim);
+    font-size: 12.5px; font-weight: 500;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(59,130,246,.12); color: var(--accent); }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; font-size: 10px; font-weight: 700;
+    padding: 1px 6px; border-radius: 10px;
+  }
+  .badge-p0 { background: rgba(239,68,68,.15); color: var(--red); }
+  .badge-p1 { background: rgba(245,158,11,.12); color: var(--amber); }
+  .badge-p2 { background: rgba(59,130,246,.12); color: var(--accent); }
+  .badge-ok { background: rgba(16,185,129,.12); color: var(--green); }
+
+  /* ── Main Content ── */
+  .main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  /* ── KPI Row ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .kpi-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+  .kpi-card.blue::before  { background: linear-gradient(90deg, var(--accent), transparent); }
+  .kpi-card.amber::before { background: linear-gradient(90deg, var(--amber), transparent); }
+  .kpi-card.red::before   { background: linear-gradient(90deg, var(--red), transparent); }
+  .kpi-card.purple::before{ background: linear-gradient(90deg, #8b5cf6, transparent); }
+  .kpi-value { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .kpi-sub   { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+  .kpi-delta { font-size: 10px; margin-top: 4px; font-weight: 600; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+
+  /* ── Section Header ── */
+  .section-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-hdr h2 { font-size: 13px; font-weight: 700; color: var(--text); }
+  .section-hdr span { font-size: 11px; color: var(--text-muted); }
+
+  /* ── Agent Grid ── */
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .agent-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    transition: border-color .15s, box-shadow .15s;
+    cursor: default;
+  }
+  .agent-card:hover { border-color: #2d3f5e; box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+  .agent-card.status-healthy { border-left: 3px solid var(--green); }
+  .agent-card.status-degraded { border-left: 3px solid var(--amber); }
+  .agent-card.status-down    { border-left: 3px solid var(--red); }
+  .agent-card.status-paused  { border-left: 3px solid var(--accent); }
+  .agent-card.status-unknown { border-left: 3px solid #374151; }
+
+  .agent-hdr { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+  .agent-title-row { display: flex; align-items: center; gap: 8px; }
+  .agent-icon { font-size: 18px; }
+  .agent-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .agent-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 2px 8px; border-radius: 10px;
+  }
+  .status-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .pill-healthy { background: rgba(16,185,129,.12); color: var(--green); }
+  .pill-healthy .dot { background: var(--green); animation: pulse 2s infinite; }
+  .pill-degraded { background: rgba(245,158,11,.12); color: var(--amber); }
+  .pill-degraded .dot { background: var(--amber); animation: pulse 1s infinite; }
+  .pill-down { background: rgba(239,68,68,.12); color: var(--red); }
+  .pill-down .dot { background: var(--red); animation: pulse .8s infinite; }
+  .pill-paused { background: rgba(59,130,246,.12); color: var(--accent); }
+  .pill-paused .dot { background: var(--accent); }
+  .pill-unknown { background: rgba(100,116,139,.1); color: var(--text-muted); }
+  .pill-unknown .dot { background: var(--text-muted); }
+
+  .priority-tag {
+    font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 4px;
+  }
+  .p0 { background: rgba(239,68,68,.15); color: var(--red); }
+  .p1 { background: rgba(245,158,11,.12); color: var(--amber); }
+  .p2 { background: rgba(59,130,246,.1); color: var(--accent); }
+
+  .agent-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+  .metric-item {
+    background: var(--surface2); border-radius: 6px; padding: 5px 8px;
+  }
+  .metric-key { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .metric-val { font-size: 12px; font-weight: 700; color: var(--text); font-family: 'SF Mono', monospace; }
+
+  .agent-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ── Feed Panel ── */
+  .feed-panel {
+    width: 300px; min-width: 300px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .feed-hdr {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; font-weight: 700; color: var(--text);
+  }
+  .feed-body { flex: 1; overflow-y: auto; padding: 10px 14px; }
+  .feed-item { padding: 6px 0; border-bottom: 1px solid rgba(31,45,69,.6); }
+  .feed-item:last-child { border: none; }
+  .feed-time { font-size: 10px; color: var(--text-muted); font-family: monospace; }
+  .feed-msg  { font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.4; }
+  .feed-level { font-size: 9px; font-weight: 800; padding: 1px 5px; border-radius: 4px; display: inline-block; margin-bottom: 2px; }
+  .level-INFO  { background: rgba(59,130,246,.12); color: var(--accent); }
+  .level-OK    { background: rgba(16,185,129,.12); color: var(--green); }
+  .level-WARN  { background: rgba(245,158,11,.12); color: var(--amber); }
+  .level-ERROR { background: rgba(239,68,68,.12); color: var(--red); }
+  .level-FIX   { background: rgba(139,92,246,.12); color: #a78bfa; }
+
+  /* ── Flags & Config Section ── */
+  .flags-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin-bottom: 24px; }
+  .flag-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .flag-name { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+  .flag-val { font-size: 11px; font-weight: 700; }
+  .flag-on { color: var(--green); }
+  .flag-off { color: var(--text-muted); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px; font-size: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    animation: slideIn .2s ease;
+    max-width: 320px;
+  }
+  .toast.ok  { border-color: rgba(16,185,129,.4); color: var(--green); }
+  .toast.err { border-color: rgba(239,68,68,.4); color: var(--red); }
+
+  /* ── Filter bar ── */
+  .filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .filter-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 8px; padding: 4px 12px;
+    font-size: 11px; font-weight: 600; cursor: pointer; transition: all .12s;
+  }
+  .filter-btn.active { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.4); color: var(--accent); }
+  .search-input {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 5px 12px;
+    font-size: 12px; outline: none; width: 180px;
+  }
+  .search-input:focus { border-color: rgba(59,130,246,.5); }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  /* ── URL Table ── */
+  .url-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 24px; }
+  .url-table th { background: var(--surface2); color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .url-table td { padding: 7px 12px; border-bottom: 1px solid rgba(31,45,69,.4); vertical-align: middle; }
+  .url-table tr:last-child td { border: none; }
+  .url-table tr:hover td { background: rgba(255,255,255,.02); }
+  .url-link { color: var(--accent); text-decoration: none; font-family: monospace; font-size: 11px; }
+  .url-link:hover { text-decoration: underline; }
+  .method-get  { background: rgba(16,185,129,.12); color: var(--green); font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
+  .method-post { background: rgba(245,158,11,.1); color: var(--amber); font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
+  .auth-badge { background: rgba(139,92,246,.12); color: #a78bfa; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+  .pub-badge  { background: rgba(16,185,129,.08); color: var(--green); font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+
+  /* ── Animations ── */
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+  @keyframes slideIn { from { transform: translateY(10px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display:inline-block; animation: spin 1s linear infinite; }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── TOP BAR ──────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="logo">🛰️</span>
+    <div>
+      <div class="title">Agent Control Centre</div>
+      <div class="subtitle" id="subtitle">Satelink DePIN · 10 agents · connecting…</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="badge-live"><span class="dot-live"></span>LIVE</div>
+    <span id="toast-inline" style="font-size:11px;color:var(--text-muted);"></span>
+    <button class="btn btn-accent" onclick="refreshAll()">↻ Refresh</button>
+    <button class="btn btn-danger" onclick="securityFreeze()">🔒 Freeze</button>
+  </div>
+</div>
+
+<!-- ── LAYOUT ─────────────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- ── SIDEBAR ───────────────────────────────────────────────────────── -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <div class="nav-item active" onclick="showTab('agents')"><span class="nav-icon">🤖</span>Agents<span class="nav-badge badge-ok" id="nav-healthy">—</span></div>
+      <div class="nav-item" onclick="showTab('urls')"><span class="nav-icon">🔗</span>API URLs</div>
+      <div class="nav-item" onclick="showTab('flags')"><span class="nav-icon">🚩</span>Feature Flags</div>
+      <div class="nav-item" onclick="showTab('autonomous')"><span class="nav-icon">⚡</span>Autonomous Ops</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Quick Actions</div>
+      <div class="nav-item" onclick="triggerAutoOps()"><span class="nav-icon">▶️</span>Trigger AutoOps</div>
+      <div class="nav-item" onclick="runSelfTest()"><span class="nav-icon">🧪</span>Run Self-Test</div>
+      <div class="nav-item" onclick="pauseWithdrawals()"><span class="nav-icon">⏸️</span>Pause Withdrawals</div>
+    </div>
+    <div class="sidebar-section" style="margin-top:16px;">
+      <div class="sidebar-label">Agent Priority</div>
+      <div class="nav-item" onclick="setFilter('ALL')"><span class="nav-icon">📋</span>All Agents</div>
+      <div class="nav-item" onclick="setFilter('P0')"><span class="nav-icon">🔴</span>P0 Critical<span class="nav-badge badge-p0">4</span></div>
+      <div class="nav-item" onclick="setFilter('P1')"><span class="nav-icon">🟡</span>P1 High<span class="nav-badge badge-p1">4</span></div>
+      <div class="nav-item" onclick="setFilter('P2')"><span class="nav-icon">🔵</span>P2 Standard<span class="nav-badge badge-p2">2</span></div>
+    </div>
+    <div style="padding: 16px 20px; margin-top: auto;">
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.6;">
+        <div>Base URL: <span style="color:var(--accent);font-family:monospace;" id="base-url-display">http://localhost:8080</span></div>
+        <div style="margin-top:4px;">Last refresh: <span id="last-refresh-sidebar">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MAIN ──────────────────────────────────────────────────────────── -->
+  <div class="main" id="main-content">
+
+    <!-- ── KPI ROW ── -->
+    <div class="kpi-row">
+      <div class="kpi-card green">
+        <div class="kpi-value" id="kpi-healthy" style="color:var(--green)">—</div>
+        <div class="kpi-label">Healthy Agents</div>
+        <div class="kpi-sub">of 10 total</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-value" id="kpi-down" style="color:var(--red)">—</div>
+        <div class="kpi-label">Down / Unknown</div>
+        <div class="kpi-sub">needs attention</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-value" id="kpi-nodes" style="color:var(--accent)">—</div>
+        <div class="kpi-label">Active Nodes</div>
+        <div class="kpi-delta up" id="kpi-nodes-delta"></div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-value" id="kpi-epoch" style="color:var(--amber)">—</div>
+        <div class="kpi-label">Current Epoch</div>
+        <div class="kpi-sub">finalization pending</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-value" id="kpi-settlement" style="color:#a78bfa; font-size:14px;">—</div>
+        <div class="kpi-label">Settlement Mode</div>
+        <div class="kpi-sub" id="kpi-settlement-sub"></div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-value" id="kpi-ops" style="color:var(--green)">—</div>
+        <div class="kpi-label">Ops Executed</div>
+        <div class="kpi-sub">last 24h</div>
+      </div>
+    </div>
+
+    <!-- ── AGENTS TAB ── -->
+    <div id="tab-agents">
+      <div class="section-hdr">
+        <h2>🤖 Agent Status</h2>
+        <span id="agent-count-display">Loading…</span>
+      </div>
+      <div class="filter-bar">
+        <input class="search-input" type="text" placeholder="🔍 Search agents…" oninput="filterAgents(this.value)" id="search-input"/>
+        <button class="filter-btn active" id="fb-ALL" onclick="setFilter('ALL')">All</button>
+        <button class="filter-btn" id="fb-P0" onclick="setFilter('P0')">P0 Critical</button>
+        <button class="filter-btn" id="fb-P1" onclick="setFilter('P1')">P1 High</button>
+        <button class="filter-btn" id="fb-P2" onclick="setFilter('P2')">P2 Standard</button>
+      </div>
+      <div class="agent-grid" id="agent-grid"></div>
+    </div>
+
+    <!-- ── URLS TAB ── -->
+    <div id="tab-urls" style="display:none;">
+      <div class="section-hdr">
+        <h2>🔗 All Dashboard & API URLs</h2>
+        <span>Click to open · JWT required for 🔐 routes</span>
+      </div>
+      <div id="url-table-container"></div>
+    </div>
+
+    <!-- ── FLAGS TAB ── -->
+    <div id="tab-flags" style="display:none;">
+      <div class="section-hdr">
+        <h2>🚩 Feature Flags</h2>
+        <span id="flags-count">Loading…</span>
+      </div>
+      <div class="flags-grid" id="flags-grid">
+        <div style="color:var(--text-muted);font-size:12px;">Loading feature flags…</div>
+      </div>
+    </div>
+
+    <!-- ── AUTONOMOUS TAB ── -->
+    <div id="tab-autonomous" style="display:none;">
+      <div class="section-hdr">
+        <h2>⚡ Autonomous Ops Engine</h2>
+        <span>Toggle agent behaviours · Requires admin_super role</span>
+      </div>
+      <div class="flags-grid" id="auto-grid">
+        <div style="color:var(--text-muted);font-size:12px;">Loading autonomous config…</div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- ── LIVE FEED ──────────────────────────────────────────────────────── -->
+  <div class="feed-panel">
+    <div class="feed-hdr">
+      <span>📡 Live Agent Feed</span>
+      <button class="btn" style="padding:2px 8px;font-size:10px;" onclick="clearFeed()">Clear</button>
+    </div>
+    <div class="feed-body" id="feed-body">
+      <div style="color:var(--text-muted);font-size:11px;text-align:center;margin-top:20px;">
+        <div style="font-size:24px;margin-bottom:8px;">📡</div>
+        Connecting to live feed…
+      </div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<!-- ── TOAST ─────────────────────────────────────────────────────────────── -->
+<div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const BASE = window.location.origin; // auto-detects http://localhost:8080
+document.getElementById('base-url-display').textContent = BASE;
+
+// Pull JWT from storage (set by login page)
+function getToken() {
+  return localStorage.getItem('satelink_jwt') ||
+         sessionStorage.getItem('satelink_jwt') ||
+         localStorage.getItem('jwt') ||
+         sessionStorage.getItem('jwt') || '';
+}
+
+function headers() {
+  const tok = getToken();
+  return tok ? { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' }
+             : { 'Content-Type': 'application/json' };
+}
+
+// ── Agent Definitions ────────────────────────────────────────────────────
+const AGENTS = [
+  { id:'operations_engine',  name:'Operations Engine',   icon:'⚙️',  priority:'P0', desc:'Processes paid ops, enforces rate limits, spike detection & throttling.' },
+  { id:'runtime_monitor',    name:'Runtime Monitor',      icon:'📡',  priority:'P0', desc:'Tracks system health, fires alerts on error rate & latency spikes.' },
+  { id:'safe_mode_autopilot',name:'Safe Mode Autopilot',  icon:'🛡️',  priority:'P0', desc:'Auto-freezes withdrawals on solvency failure or monitor loss.' },
+  { id:'settlement_engine',  name:'Settlement Engine',    icon:'💸',  priority:'P0', desc:'Batches USDT payouts via Fuse adapter with retry on failure.' },
+  { id:'economic_ledger',    name:'Economic Ledger',      icon:'📒',  priority:'P1', desc:'Immutable epoch finalization, hash-locked earnings records.' },
+  { id:'auto_ops_engine',    name:'Auto Ops Engine',      icon:'🤖',  priority:'P1', desc:'Autonomous reward multipliers, surge pricing, node bonuses.' },
+  { id:'sla_engine',         name:'SLA Engine',           icon:'📊',  priority:'P1', desc:'Partner SLA monitoring, uptime tracking, breach detection.' },
+  { id:'scheduler',          name:'Scheduler',            icon:'⏱️',  priority:'P1', desc:'Cron jobs: heartbeat checks, epoch finalization, backups.' },
+  { id:'self_test_runner',   name:'Self-Test Runner',     icon:'🧪',  priority:'P2', desc:'29 automated tests, self-heal triage on failures.' },
+  { id:'drills_service',     name:'Drills Service',       icon:'🔥',  priority:'P2', desc:'Chaos drills, abuse firewall stress tests, recovery checks.' },
+];
+
+// ── State ────────────────────────────────────────────────────────────────
+let agentStatuses = {};
+let agentMetrics  = {};
+let feedItems     = [];
+let currentFilter = 'ALL';
+let searchQuery   = '';
+let sseSource     = null;
+let summaryData   = null;
+
+// ── Simulated initial statuses (replaced on real API call) ───────────────
+function seedInitialStatuses() {
+  AGENTS.forEach(a => {
+    agentStatuses[a.id] = { status: 'unknown' };
+  });
+}
+
+// ── API ──────────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(BASE + path, { ...opts, headers: { ...headers(), ...(opts.headers||{}) } });
+  if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Load Summary ─────────────────────────────────────────────────────────
+async function loadSummary() {
+  try {
+    const data = await apiFetch('/admin/command/summary');
+    summaryData = data;
+    updateKPIs(data);
+    deriveAgentStatuses(data);
+    addFeedItem('OK', 'Summary refreshed successfully');
+  } catch(e) {
+    addFeedItem('WARN', 'Summary unavailable — server may be offline or JWT missing');
+    updateKPIsFromMock();
+  }
+}
+
+function updateKPIsFromMock() {
+  document.getElementById('kpi-healthy').textContent = '?';
+  document.getElementById('kpi-down').textContent = '?';
+  document.getElementById('kpi-nodes').textContent = '?';
+  document.getElementById('kpi-epoch').textContent = '?';
+  document.getElementById('kpi-settlement').textContent = 'Unknown';
+  document.getElementById('kpi-ops').textContent = '?';
+}
+
+function updateKPIs(data) {
+  const healthy = Object.values(agentStatuses).filter(s => s.status === 'healthy').length;
+  const down = AGENTS.length - healthy;
+  document.getElementById('kpi-healthy').textContent = healthy;
+  document.getElementById('kpi-down').textContent = down;
+  document.getElementById('kpi-nodes').textContent = data?.network?.active_nodes ?? data?.activeNodes ?? '—';
+  document.getElementById('kpi-epoch').textContent = data?.epoch?.current_epoch ?? data?.currentEpoch ?? '—';
+  document.getElementById('kpi-settlement').textContent = data?.settlement?.status ?? 'Simulated';
+  document.getElementById('kpi-ops').textContent = data?.ops?.total_24h ?? '—';
+  document.getElementById('nav-healthy').textContent = healthy;
+}
+
+function deriveAgentStatuses(data) {
+  const keyMap = {
+    operations_engine: ['opsEngine', 'ops'],
+    runtime_monitor: ['runtimeMonitor', 'monitor'],
+    safe_mode_autopilot: ['safeModeAutopilot', 'safeMode'],
+    settlement_engine: ['settlementEngine', 'settlement'],
+    economic_ledger: ['ledger', 'economicLedger'],
+    auto_ops_engine: ['autoOpsEngine', 'autoOps'],
+    sla_engine: ['slaEngine', 'sla'],
+    scheduler: ['scheduler'],
+    self_test_runner: ['selfTestRunner', 'selfTest'],
+    drills_service: ['drills'],
+  };
+  AGENTS.forEach(a => {
+    const keys = keyMap[a.id] || [];
+    let found = null;
+    for (const k of keys) {
+      if (data?.[k]) { found = data[k]; break; }
+      if (data?.agents?.[a.id]) { found = data.agents[a.id]; break; }
+    }
+    if (found) {
+      const { status, ok, ...rest } = found;
+      agentStatuses[a.id] = { status: status || (ok !== false ? 'healthy' : 'down') };
+      if (Object.keys(rest).length) agentMetrics[a.id] = rest;
+    } else {
+      agentStatuses[a.id] = { status: data?.system?.status === 'HEALTHY' ? 'healthy' : 'unknown' };
+    }
+  });
+  renderAgentGrid();
+}
+
+// ── Load Feature Flags ────────────────────────────────────────────────────
+async function loadFlags() {
+  try {
+    const data = await apiFetch('/admin/settings/feature-flags');
+    const flags = data?.flags || data || {};
+    renderFlags(flags);
+  } catch(e) {
+    document.getElementById('flags-grid').innerHTML = `<div style="color:var(--text-muted);font-size:12px;grid-column:1/-1;">Feature flags unavailable — requires admin JWT</div>`;
+  }
+}
+
+function renderFlags(flags) {
+  const entries = Object.entries(flags);
+  document.getElementById('flags-count').textContent = entries.length + ' flags';
+  document.getElementById('flags-grid').innerHTML = entries.map(([k,v]) => {
+    const on = v === true || v === 'true';
+    return `<div class="flag-item">
+      <span class="flag-name">${k.replace(/^FEATURE_/,'').replace(/_/g,' ')}</span>
+      <span class="flag-val ${on?'flag-on':'flag-off'}">${on?'✓ ON':'✗ OFF'}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--text-muted);">No flags found</div>';
+}
+
+// ── Load Autonomous Config ────────────────────────────────────────────────
+async function loadAutoConfig() {
+  try {
+    const data = await apiFetch('/admin/autonomous/config');
+    const cfg = data?.config || {};
+    renderAutoConfig(cfg);
+  } catch(e) {
+    document.getElementById('auto-grid').innerHTML = `<div style="color:var(--text-muted);font-size:12px;grid-column:1/-1;">Autonomous config unavailable — requires admin_super JWT</div>`;
+  }
+}
+
+function renderAutoConfig(cfg) {
+  document.getElementById('auto-grid').innerHTML = Object.entries(cfg).map(([k,v]) => {
+    const isBool = v==='true'||v==='false';
+    const on = v==='true';
+    return `<div class="flag-item">
+      <span class="flag-name">${k.replace(/_/g,' ')}</span>
+      ${isBool
+        ? `<button onclick="toggleAutoOps('${k}', ${!on})"
+             style="font-size:10px;font-weight:800;padding:2px 10px;border-radius:10px;cursor:pointer;border:none;
+             background:${on?'rgba(16,185,129,.15)':'rgba(100,116,139,.1)'};
+             color:${on?'var(--green)':'var(--text-muted)'}">
+             ${on?'ON':'OFF'}</button>`
+        : `<span style="font-family:monospace;font-size:11px;color:var(--text-dim);">${v}</span>`}
+    </div>`;
+  }).join('') || '<div style="color:var(--text-muted);">No config found</div>';
+}
+
+// ── Agent Grid ────────────────────────────────────────────────────────────
+function renderAgentGrid() {
+  const filtered = AGENTS.filter(a => {
+    const pMatch = currentFilter === 'ALL' || a.priority === currentFilter;
+    const sMatch = !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase())
+                                || a.desc.toLowerCase().includes(searchQuery.toLowerCase());
+    return pMatch && sMatch;
+  });
+
+  document.getElementById('agent-count-display').textContent =
+    `${filtered.length} of ${AGENTS.length} agents`;
+
+  document.getElementById('agent-grid').innerHTML = filtered.map(agent => {
+    const st = agentStatuses[agent.id]?.status || 'unknown';
+    const metrics = agentMetrics[agent.id] || {};
+    const pillClass = `pill-${st}`;
+    const cardClass = `status-${st}`;
+
+    const metricsHTML = Object.keys(metrics).length > 0
+      ? `<div class="agent-metrics">${Object.entries(metrics).slice(0,4).map(([k,v]) =>
+          `<div class="metric-item"><div class="metric-key">${k}</div><div class="metric-val">${v}</div></div>`
+        ).join('')}</div>` : '';
+
+    const actionsHTML = getAgentActions(agent);
+
+    return `<div class="agent-card ${cardClass}">
+      <div class="agent-hdr">
+        <div class="agent-title-row">
+          <span class="agent-icon">${agent.icon}</span>
+          <div>
+            <div class="agent-name">${agent.name}</div>
+            <span class="priority-tag ${agent.priority.toLowerCase()}">${agent.priority}</span>
+          </div>
+        </div>
+        <div class="status-pill ${pillClass}">
+          <span class="dot"></span>${st}
+        </div>
+      </div>
+      <div class="agent-desc">${agent.desc}</div>
+      ${metricsHTML}
+      ${actionsHTML}
+    </div>`;
+  }).join('');
+}
+
+function getAgentActions(agent) {
+  const actions = [];
+  if (agent.id === 'auto_ops_engine')
+    actions.push(`<button class="btn btn-accent" onclick="triggerAutoOps()">▶ Trigger Cycle</button>`);
+  if (agent.id === 'safe_mode_autopilot')
+    actions.push(`<button class="btn btn-danger" onclick="pauseWithdrawals()">⏸ Pause Withdrawals</button>`);
+  if (agent.id === 'settlement_engine')
+    actions.push(`<button class="btn btn-danger" onclick="securityFreeze()">🔒 Freeze</button>`);
+  if (agent.id === 'self_test_runner')
+    actions.push(`<button class="btn btn-green" onclick="runSelfTest()">▶ Run Tests</button>`);
+  if (actions.length === 0) return '';
+  return `<div class="agent-actions">${actions.join('')}</div>`;
+}
+
+// ── Live Feed ─────────────────────────────────────────────────────────────
+function connectFeed() {
+  if (sseSource) sseSource.close();
+  const tok = getToken();
+  const url = BASE + '/admin/command/live-feed' + (tok ? `?token=${tok}` : '');
+  const es = new EventSource(url);
+  sseSource = es;
+  es.onmessage = (e) => {
+    try {
+      const item = JSON.parse(e.data);
+      addFeedItem(item.level || 'INFO', item.message || item.msg || JSON.stringify(item));
+    } catch(_) {}
+  };
+  es.onerror = () => {
+    es.close();
+    addFeedItem('WARN', 'SSE disconnected — retrying in 5s…');
+    setTimeout(connectFeed, 5000);
+  };
+  addFeedItem('INFO', 'SSE live-feed connecting to ' + url);
+}
+
+function addFeedItem(level, msg) {
+  const time = new Date().toLocaleTimeString();
+  feedItems.unshift({ level, msg, time });
+  if (feedItems.length > 150) feedItems = feedItems.slice(0, 150);
+  renderFeed();
+}
+
+function renderFeed() {
+  const body = document.getElementById('feed-body');
+  body.innerHTML = feedItems.map(f => `
+    <div class="feed-item">
+      <span class="feed-level level-${f.level}">${f.level}</span>
+      <span class="feed-time"> ${f.time}</span>
+      <div class="feed-msg">${f.msg}</div>
+    </div>`).join('');
+}
+
+function clearFeed() { feedItems = []; renderFeed(); }
+
+// ── Actions ───────────────────────────────────────────────────────────────
+async function triggerAutoOps() {
+  try {
+    await apiFetch('/admin/autonomous/trigger', { method:'POST', body: JSON.stringify({ reason:'manual_acc_trigger' }) });
+    toast('✅ AutoOps cycle triggered', 'ok');
+    addFeedItem('OK', 'AutoOps cycle triggered manually');
+  } catch(e) { toast('❌ ' + e.message, 'err'); addFeedItem('ERROR', e.message); }
+}
+
+async function runSelfTest() {
+  addFeedItem('INFO', 'Self-test run initiated…');
+  try {
+    await apiFetch('/admin/control/self-test', { method:'POST' });
+    toast('✅ Self-test started', 'ok');
+    addFeedItem('OK', 'Self-test runner started');
+  } catch(e) { toast('❌ ' + e.message, 'err'); addFeedItem('ERROR', e.message); }
+}
+
+async function pauseWithdrawals() {
+  if (!confirm('Pause all withdrawals? This affects live users.')) return;
+  try {
+    await apiFetch('/admin/controls/pause-withdrawals', { method:'POST', body: JSON.stringify({ reason:'manual pause from ACC' }) });
+    toast('⏸ Withdrawals paused', 'ok');
+    addFeedItem('WARN', 'Withdrawals paused by operator');
+  } catch(e) { toast('❌ ' + e.message, 'err'); addFeedItem('ERROR', e.message); }
+}
+
+async function securityFreeze() {
+  if (!confirm('⚠️ SECURITY FREEZE — this halts all settlements and withdrawals. Confirm?')) return;
+  try {
+    await apiFetch('/admin/controls/security-freeze', { method:'POST', body: JSON.stringify({ reason:'manual freeze from ACC' }) });
+    toast('🔒 Security freeze activated', 'ok');
+    addFeedItem('ERROR', 'SECURITY FREEZE activated by operator');
+  } catch(e) { toast('❌ ' + e.message, 'err'); addFeedItem('ERROR', e.message); }
+}
+
+async function toggleAutoOps(key, val) {
+  try {
+    await apiFetch('/admin/autonomous/config', { method:'POST', body: JSON.stringify({ updates: { [key]: val } }) });
+    toast(`✅ ${key} → ${val}`, 'ok');
+    addFeedItem('OK', `AutoOps config: ${key} set to ${val}`);
+    loadAutoConfig();
+  } catch(e) { toast('❌ ' + e.message, 'err'); }
+}
+
+// ── Filter & Search ───────────────────────────────────────────────────────
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  const fb = document.getElementById('fb-' + f);
+  if (fb) fb.classList.add('active');
+  renderAgentGrid();
+}
+
+function filterAgents(q) { searchQuery = q; renderAgentGrid(); }
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  ['agents','urls','flags','autonomous'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if (tab === 'flags') loadFlags();
+  if (tab === 'autonomous') loadAutoConfig();
+  if (tab === 'urls') renderUrlTable();
+}
+
+// ── URL Table ─────────────────────────────────────────────────────────────
+function renderUrlTable() {
+  const URLS = [
+    // ── Frontend Pages ──
+    { method:'GET', path:'/',                     auth:false, label:'Home / Landing Page',         category:'Frontend' },
+    { method:'GET', path:'/login',                auth:false, label:'Admin Login',                  category:'Frontend' },
+    { method:'GET', path:'/admin',                auth:true,  label:'Admin Overview Dashboard',     category:'Frontend' },
+    { method:'GET', path:'/admin/ledger',         auth:true,  label:'Ledger Admin View',            category:'Frontend' },
+    { method:'GET', path:'/admin/nodes',          auth:true,  label:'Node Management',              category:'Frontend' },
+    { method:'GET', path:'/admin/withdrawals',    auth:true,  label:'Withdrawals Admin',            category:'Frontend' },
+    { method:'GET', path:'/admin/logs',           auth:true,  label:'Admin Logs View',              category:'Frontend' },
+    { method:'GET', path:'/builder/login',        auth:false, label:'Builder Portal Login',         category:'Frontend' },
+    { method:'GET', path:'/builder',              auth:true,  label:'Builder Dashboard',            category:'Frontend' },
+    { method:'GET', path:'/builder/docs',         auth:false, label:'Builder API Docs',             category:'Frontend' },
+    { method:'GET', path:'/dashboard',            auth:false, label:'Public Network Dashboard',     category:'Frontend' },
+    { method:'GET', path:'/agent-control-centre.html', auth:false, label:'🛰️ Agent Control Centre (this page)', category:'Frontend' },
+
+    // ── Public API ──
+    { method:'GET', path:'/status',               auth:false, label:'Public System Status',         category:'Public API' },
+    { method:'GET', path:'/network-stats',        auth:false, label:'Network Stats',                category:'Public API' },
+    { method:'GET', path:'/partners',             auth:false, label:'Public Partners List',         category:'Public API' },
+    { method:'GET', path:'/api-docs',             auth:false, label:'Swagger API Docs',             category:'Public API' },
+
+    // ── Admin Control Room ──
+    { method:'GET', path:'/admin/command/summary',          auth:true, label:'Command Summary (agent health)',  category:'Admin Control Room' },
+    { method:'GET', path:'/admin/command/live-feed',        auth:true, label:'Live Feed (SSE stream)',          category:'Admin Control Room' },
+    { method:'GET', path:'/admin/network/nodes',            auth:true, label:'Node List',                      category:'Admin Control Room' },
+    { method:'GET', path:'/admin/ops/executions',           auth:true, label:'Ops Executions Log',             category:'Admin Control Room' },
+    { method:'GET', path:'/admin/ops/errors',               auth:true, label:'Ops Errors',                     category:'Admin Control Room' },
+    { method:'GET', path:'/admin/revenue/overview',         auth:true, label:'Revenue Overview',               category:'Admin Control Room' },
+    { method:'GET', path:'/admin/rewards/epochs',           auth:true, label:'Epoch List',                     category:'Admin Control Room' },
+    { method:'GET', path:'/admin/rewards/earnings',         auth:true, label:'Earnings Records',               category:'Admin Control Room' },
+    { method:'GET', path:'/admin/security/alerts',          auth:true, label:'Security Alerts',                category:'Admin Control Room' },
+    { method:'GET', path:'/admin/security/audit',           auth:true, label:'Audit Log',                      category:'Admin Control Room' },
+    { method:'GET', path:'/admin/settings/feature-flags',  auth:true, label:'Feature Flags',                  category:'Admin Control Room' },
+    { method:'POST',path:'/admin/controls/pause-withdrawals', auth:true, label:'Pause Withdrawals',            category:'Admin Control Room' },
+    { method:'POST',path:'/admin/controls/security-freeze',   auth:true, label:'Security Freeze',             category:'Admin Control Room' },
+
+    // ── Autonomous ──
+    { method:'GET', path:'/admin/autonomous/config',        auth:true, label:'Auto Ops Config',               category:'Autonomous Engine' },
+    { method:'POST',path:'/admin/autonomous/config',        auth:true, label:'Update Auto Ops Config',        category:'Autonomous Engine' },
+    { method:'POST',path:'/admin/autonomous/trigger',       auth:true, label:'Trigger Auto Ops Cycle',        category:'Autonomous Engine' },
+    { method:'GET', path:'/admin/autonomous/recommendations',auth:true,label:'Auto Recommendations',          category:'Autonomous Engine' },
+
+    // ── Self-Test & Control ──
+    { method:'POST',path:'/admin/control/self-test',        auth:true, label:'Run Self-Test Suite',           category:'Self-Test & Control' },
+    { method:'GET', path:'/admin/ops/reports/daily',        auth:true, label:'Daily Ops Report',              category:'Self-Test & Control' },
+    { method:'POST',path:'/admin/ops/reports/generate',     auth:true, label:'Generate Ops Report',           category:'Self-Test & Control' },
+
+    // ── Auth ──
+    { method:'POST',path:'/auth/login',           auth:false, label:'Login (get JWT)',               category:'Auth' },
+    { method:'POST',path:'/auth/refresh',         auth:false, label:'Refresh JWT',                  category:'Auth' },
+    { method:'GET', path:'/me',                   auth:true,  label:'Current User Profile',          category:'Auth' },
+  ];
+
+  const categories = [...new Set(URLS.map(u => u.category))];
+
+  document.getElementById('url-table-container').innerHTML = categories.map(cat => `
+    <div style="margin-bottom:24px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);">${cat}</div>
+      <table class="url-table">
+        <thead><tr>
+          <th>Method</th><th>Path</th><th>Description</th><th>Auth</th><th>Open</th>
+        </tr></thead>
+        <tbody>
+          ${URLS.filter(u=>u.category===cat).map(u => `
+            <tr>
+              <td><span class="method-${u.method.toLowerCase()}">${u.method}</span></td>
+              <td><code style="font-size:11px;color:var(--text-dim);">${u.path}</code></td>
+              <td style="color:var(--text-dim);">${u.label}</td>
+              <td>${u.auth ? '<span class="auth-badge">🔐 JWT</span>' : '<span class="pub-badge">Public</span>'}</td>
+              <td>${u.method==='GET' ? `<a class="url-link" href="${BASE+u.path}" target="_blank">↗ Open</a>` : '—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`).join('');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type}`;
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display='none'; }, 4000);
+}
+
+// ── Refresh ───────────────────────────────────────────────────────────────
+async function refreshAll() {
+  const t = new Date().toLocaleTimeString();
+  document.getElementById('subtitle').textContent = `Satelink DePIN · 10 agents · refreshing…`;
+  document.getElementById('last-refresh-sidebar').textContent = t;
+  await loadSummary();
+  renderAgentGrid();
+  document.getElementById('subtitle').textContent = `Satelink DePIN · 10 agents · updated ${t}`;
+}
+
+// ── Simulate activity when offline ────────────────────────────────────────
+function simulateFeed() {
+  const msgs = [
+    ['INFO',  'Heartbeat received from node 0x3f7a…c2d1 (drift: 1.2s)'],
+    ['OK',    'Epoch 142 finalized — 18 earnings records locked'],
+    ['INFO',  'AutoOps: reward multiplier unchanged (1.0x)'],
+    ['OK',    'Settlement batch dispatched — 3 payouts pending'],
+    ['INFO',  'SLA check: partner "LinkEdge" — uptime 99.98%'],
+    ['WARN',  'Node 0x8bc1…aa02 missed 2 heartbeats'],
+    ['OK',    'Self-test #29 passed (claim expiry guard)'],
+    ['INFO',  'Scheduler tick — backup job queued'],
+    ['OK',    'RuntimeMonitor: all systems nominal'],
+    ['WARN',  'Ops spike detected on /api/ops — throttling applied'],
+    ['FIX',   'Self-heal: DB connectivity issue auto-resolved'],
+    ['INFO',  'Revenue event recorded: 0.12 USDT → node pool'],
+  ];
+  const pick = msgs[Math.floor(Math.random() * msgs.length)];
+  addFeedItem(pick[0], pick[1]);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+seedInitialStatuses();
+renderAgentGrid();
+connectFeed();
+refreshAll();
+setInterval(refreshAll, 30000);
+setInterval(simulateFeed, 3500); // simulated feed when SSE unavailable
+
+// Populate URL table on first load (hidden)
+renderUrlTable();
+</script>
+</body>
+</html>
