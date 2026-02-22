@@ -1,5 +1,2 @@
-#!/usr/bin/env sh
 # Husky pre-commit hook — run env check (blocks only on production JWT issues)
-. "$(dirname -- "$0")/_/husky.sh"
-
 bash scripts/agent-env-check.sh

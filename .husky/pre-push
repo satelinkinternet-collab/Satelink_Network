@@ -1,5 +1,2 @@
-#!/usr/bin/env sh
 # Husky pre-push hook — run full agent-check
-. "$(dirname -- "$0")/_/husky.sh"
-
 bash scripts/agent-check.sh
