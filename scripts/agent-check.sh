@@ -40,9 +40,7 @@ else
 fi
 echo
 
-echo "── Environment Check ───────────────────────────────"
 bash scripts/agent-env-check.sh 2>/dev/null || true
-echo "────────────────────────────────────────────────────"
 echo
 
 echo "── Lint ────────────────────────────────────────────"
@@ -53,16 +51,16 @@ else
 fi
 echo
 
-echo "── Tests (Smoke-first) ─────────────────────────────"
-# Prefer faster scripts if they exist
-if has_npm_script smoke; then
-  run_with_timeout 35 "npm -s run smoke"
-elif has_npm_script test:smoke; then
-  run_with_timeout 35 "npm -s run test:smoke"
-elif has_npm_script test; then
-  run_with_timeout 35 "npm -s test"
+AGENT_MODE="${AGENT_MODE:-fast}"
+echo "── Tests [mode: ${AGENT_MODE}] ─────────────────────"
+if [ "$AGENT_MODE" = "full" ]; then
+  if has_npm_script test; then
+    run_with_timeout 90 "npm -s test"
+  else
+    echo "  (no test script configured — skipping)"
+  fi
 else
-  echo "  (no test script configured — skipping)"
+  run_with_timeout 20 "bash scripts/agent-smoke.sh"
 fi
 echo
 
