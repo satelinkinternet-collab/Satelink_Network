@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy manifests first for layer-cache efficiency
 COPY package*.json ./
 
-# Install all deps (including dev) so native modules compile correctly
-RUN npm ci
+# Use install instead of ci for reliability in this env
+RUN npm install --prefer-offline --no-audit --no-fund
 
 # Copy the rest of the source
 COPY . .

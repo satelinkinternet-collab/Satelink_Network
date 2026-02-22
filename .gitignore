@@ -50,6 +50,9 @@ backups/
 .env.production
 .env.test
 
+# Claude Code internal tooling (local only, not for version control)
+.claude/
+
 # Agent and temporary files
 artifacts/
 cookies.txt
