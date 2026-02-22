@@ -1,18 +1,81 @@
 version: '3.8'
+
 services:
-  satelink:
-    build: .
-    env_file:
-      - .env
-    ports:
-      - "8080:8080"
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
+      - PORT=8080
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER:-satelink-network}
+      - JWT_TTL=${JWT_TTL:-15m}
+      - JWT_REFRESH_TTL=${JWT_REFRESH_TTL:-7d}
+      - DATABASE_URL=postgres://satelink:satelink@db:5432/satelink
+      - DB_TYPE=postgres
       - ADMIN_API_KEY=${ADMIN_API_KEY}
+      - ADMIN_KEY=${ADMIN_KEY}
       - MOONPAY_WEBHOOK_SECRET=${MOONPAY_WEBHOOK_SECRET}
       - FUSE_WEBHOOK_IP_ALLOWLIST=${FUSE_WEBHOOK_IP_ALLOWLIST}
-      - PORT=8080
+      - CORS_ORIGINS=http://localhost:3000
+      - IP_HASH_SALT=${IP_HASH_SALT:-dev-salt-change-in-prod}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ./data:/app/data
-      - ./satelink.db:/app/satelink.db
-    restart: always
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>r.ok||process.exit(1)).catch(()=>process.exit(1))" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.web
+      args:
+        # NEXT_PUBLIC_* vars must be baked in at build time (next build reads them)
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+        - INTERNAL_API_URL=http://api:8080
+    environment:
+      - NODE_ENV=development
+      # Server-side rewrite target (Docker networking: web → api service)
+      - INTERNAL_API_URL=http://api:8080
+      # Browser-visible base URL — must be localhost so the browser can reach it
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=satelink
+      - POSTGRES_PASSWORD=satelink
+      - POSTGRES_DB=satelink
+    ports:
+      - "5432:5432"
+    volumes:
+      - satelink_pg:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U satelink -d satelink" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  satelink_pg:
+    driver: local

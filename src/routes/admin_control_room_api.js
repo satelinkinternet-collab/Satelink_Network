@@ -158,7 +158,52 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     });
 
     router.get('/command/live-feed', async (req, res) => {
+        const { sseHelper } = await import("../utils/sse.js");
         try {
+            const isSSE = req.query.sse === 'true' || (req.headers.accept && req.headers.accept.includes('text/event-stream'));
+
+            if (isSSE) {
+                const conn = sseHelper.init(req, res);
+                if (!conn) return;
+
+                let lastTs = Date.now() - 60000;
+
+                const poll = setInterval(async () => {
+                    try {
+                        const [revenue, errors, audit, alerts, slowQs, incidents, heartbeats] = await Promise.all([
+                            db.query("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 WHERE created_at * 1000 > ? ORDER BY created_at DESC", [lastTs]),
+                            db.query("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at DESC", [lastTs]),
+                            db.query("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
+                            db.query("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
+                            db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at DESC", [lastTs]),
+                            db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
+                            db.query("SELECT 'heartbeat' as type, wallet as id, active as value, updatedAt * 1000 as ts, wallet as label FROM registered_nodes WHERE updatedAt * 1000 > ? ORDER BY updatedAt DESC", [lastTs]),
+                        ]);
+
+                        const updates = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents, ...heartbeats]
+                            .map(item => ({
+                                event_id: `${item.type}_${item.id}`,
+                                type: item.type,
+                                level: ['error', 'alert', 'incident'].includes(item.type) ? 'ERROR' : (item.type === 'heartbeat' ? 'INFO' : 'OK'),
+                                ts: item.ts,
+                                message: item.type === 'heartbeat' ? `Heartbeat from node ${item.label.substring(0, 8)}...` : item.label,
+                                meta: { raw_value: item.value }
+                            }))
+                            .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+                        for (const item of updates) {
+                            conn.send('message', item);
+                            if (item.ts > lastTs) lastTs = item.ts;
+                        }
+                    } catch (e) {
+                        console.error("[SSE-Feed] Error:", e.message);
+                    }
+                }, 5000);
+
+                req.on('close', () => clearInterval(poll));
+                return;
+            }
+
             const limit = parseIntParam(req.query.limit, 100);
             const feedLimit = Math.min(limit, 200);
 
@@ -170,8 +215,6 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
                 db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
                 db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles ORDER BY created_at DESC LIMIT ?", [feedLimit]),
             ]);
-
-
 
             const feed = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents]
                 .map(item => ({

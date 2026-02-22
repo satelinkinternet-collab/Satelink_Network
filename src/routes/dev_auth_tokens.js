@@ -38,10 +38,16 @@ export function createDevAuthRouter(opsEngine) {
             }
         }
 
+        const ISSUER = process.env.JWT_ISSUER || 'satelink-network';
         const token = jwt.sign(
-            { wallet: wallet.toLowerCase(), role: userRole },
+            {
+                userId: `test-${userRole}-${wallet.substring(0, 6)}`,
+                wallet: wallet.toLowerCase(),
+                role: userRole,
+                type: 'access'
+            },
             JWT_SECRET,
-            { expiresIn: '7d', issuer: 'satelink-core' }
+            { expiresIn: '7d', issuer: ISSUER, algorithm: 'HS256' }
         );
 
         res.json({ success: true, token, role: userRole });
@@ -53,8 +59,6 @@ export function createDevAuthRouter(opsEngine) {
     router.post('/admin/login', (req, res, next) => { req.body.role = 'admin_super'; handleLogin(req, res, next); });
     router.post('/node/login', (req, res, next) => { req.body.role = 'node_operator'; handleLogin(req, res, next); });
     router.post('/builder/login', (req, res, next) => { req.body.role = 'builder'; handleLogin(req, res, next); });
-
-    return router;
 
     return router;
 }

@@ -1,0 +1,50 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Web (separate build context)
+web/
+
+# System
+.DS_Store
+*.swp
+*.bak*
+
+# Test artifacts / CI
+artifacts/
+backups/
+cookies.txt
+share_bundle/
+share_bundle.zip
+
+# Temp dirs
+temp_node_modules/
+tempdir/
+mytestdir/
+cache/
+
+# SQLite WAL
+satelink.db*

@@ -16,6 +16,8 @@ export function verifyJWT(req, res, next) {
         token = authHeader.split(' ')[1];
     } else if (req.cookies && req.cookies.satelink_session) {
         token = req.cookies.satelink_session;
+    } else if (req.query.token) {
+        token = req.query.token;
     }
 
     if (!token) {

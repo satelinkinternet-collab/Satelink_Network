@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS registered_nodes (
     last_heartbeat INTEGER,
     last_nonce INTEGER DEFAULT 0,
     infra_reserved REAL DEFAULT 0,
-    updatedAt INTEGER
+    updatedAt INTEGER,
+    latency INTEGER DEFAULT 0,
+    bandwidth REAL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS epochs (

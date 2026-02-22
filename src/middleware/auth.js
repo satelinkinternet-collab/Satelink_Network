@@ -100,22 +100,28 @@ export function authenticate(req, res, next) {
   }
 
   const authHeader = req.headers.authorization;
+  let token = null;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Preserve opsEngine failure recording from original
-    if (req.app && req.app.get('opsEngine')) {
-      const opsEngine = req.app.get('opsEngine');
-      if (typeof opsEngine.recordAuthFailure === 'function') {
-        opsEngine.recordAuthFailure(req.path, req.ip);
+    const queryToken = req.query.token;
+    if (queryToken) {
+      token = queryToken;
+    } else {
+      // Preserve opsEngine failure recording from original
+      if (req.app && req.app.get('opsEngine')) {
+        const opsEngine = req.app.get('opsEngine');
+        if (typeof opsEngine.recordAuthFailure === 'function') {
+          opsEngine.recordAuthFailure(req.path, req.ip);
+        }
       }
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authorization header with Bearer token required',
+      });
     }
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Authorization header with Bearer token required',
-    });
+  } else {
+    token = authHeader.slice(7);
   }
-
-  const token = authHeader.slice(7);
 
   try {
     const decoded = verifyAccessToken(token);

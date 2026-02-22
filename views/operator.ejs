@@ -45,7 +45,7 @@
                                 <% } %>
                                     <span class="text-satelink-muted text-xs font-medium">Last Heartbeat: <%=
                                             node.last_heartbeat ? formatDate(node.last_heartbeat * 1000) : 'Never' %>
-                                            </span>
+                                    </span>
                     </div>
                 </div>
 
@@ -75,6 +75,20 @@
                         rewards[0].epoch_id : '-' ) }) %>
                         <%- include('partials/kpi_card', { title: 'Uptime Score' , value: '98.5%' , icon: 'server' ,
                             subtext: 'Current Epoch' , trend: 'up' }) %>
+        </div>
+
+        <!-- Live Node Stats Section -->
+        <div class="mb-6">
+            <h3 class="text-sm font-bold text-satelink-muted uppercase tracking-wider mb-4 flex items-center">
+                <span class="w-2 h-2 bg-satelink-success rounded-full mr-2 animate-pulse"></span>
+                Live Performance (Real-time)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <%- include('partials/kpi_card', { title: 'Network Latency' , value: (node.latency || 0) + ' ms' ,
+                    icon: 'zap' , subtext: 'Last Heartbeat' }) %>
+                    <%- include('partials/kpi_card', { title: 'Node Bandwidth' , value: (node.bandwidth || 0) + ' MB' ,
+                        icon: 'tachometer-alt' , subtext: 'Last Heartbeat' }) %>
+            </div>
         </div>
 
         <!-- Main Content Grid -->
