@@ -82,7 +82,7 @@ export function createUnifiedAuthRouter(opsEngine) {
     const authLimiter = rateLimit({
         windowMs: 60 * 1000, // 1 minute
         max: authRateLimitPerMin,
-        validate: { trustProxy: false, xForwardedForHeader: false },
+        validate: { trustProxy: false, xForwardedForHeader: false, keyGeneratorIpFallback: false },
         keyGenerator: (req, res) => {
             if (req.ipHash) return req.ipHash;
             // Use express-rate-limit's built-in ip generator if available to avoid IPv6 warning, then hash it
