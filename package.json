@@ -46,8 +46,8 @@
     "self:test": "node tools/self_test.js",
     "self:heal": "node tools/self_heal.js",
     "ops:triage": "node src/ops-agent/triage.js",
-    "deploy:settlement": "npx hardhat run scripts/deploy_settlement.js",
-    "smoke:settlement": "npx hardhat run scripts/smoke_settlement.js"
+    "deploy:settlement": "node scripts/deploy_settlement.js",
+    "smoke:settlement": "node scripts/smoke_settlement.js"
   },
   "description": "This project has a minimal setup of Hardhat 3 Beta, without any plugins.",
   "main": "debug_env.js",

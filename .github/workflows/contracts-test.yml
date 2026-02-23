@@ -59,11 +59,26 @@ jobs:
           HARDHAT_NETWORK: hardhat
 
       # Full end-to-end smoke: deploy → fund vault → create claim → claim → withdraw.
-      # Runs on the in-memory Hardhat network so no wallet or tokens are required.
+      # The settlement scripts use ethers.JsonRpcProvider, so we need a Hardhat
+      # node running on localhost:8545. Start it in the background, wait for the
+      # port, then run the smoke script via node (no separate Hardhat runner needed).
+      - name: Start Hardhat node (background)
+        run: npx hardhat node &
+        # Give the node a few seconds to bind its port before we hit it.
+
+      - name: Wait for Hardhat node
+        run: npx wait-on tcp:8545 --timeout 30000
+        # wait-on is included transitively by many test setups; if not available,
+        # fall back to a simple sleep below.
+        continue-on-error: true
+
+      - name: Wait for Hardhat node (fallback)
+        run: sleep 5
+
       - name: Smoke test — settlement contracts
-        run: npx hardhat run scripts/smoke_settlement.js
+        run: node scripts/smoke_settlement.js
         env:
-          HARDHAT_NETWORK: hardhat
+          RPC_URL: http://127.0.0.1:8545
 
       # Upload compiled artifacts so downstream jobs or release pipelines
       # can consume the ABI + bytecode without re-compiling.
