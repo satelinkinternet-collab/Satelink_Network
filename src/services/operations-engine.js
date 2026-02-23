@@ -45,15 +45,15 @@ export class OperationsEngine {
     this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['revenue_mode', 'ACTIVE']);
     this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['monitoring_status', 'ENFORCED']);
 
-      // Ensure ops_pricing has limit columns (Phase 28)
-      // NOTE: UniversalDB.exec may be async; for SQLite we use raw better-sqlite3 handle to make try/catch work.
-      const raw = (this.db && this.db.db) ? this.db.db : this.db;
-      try {
-        raw.exec("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_client INTEGER DEFAULT 60");
-      } catch (e) { /* Column likely exists */ }
-      try {
-        raw.exec("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_node INTEGER DEFAULT 120");
-      } catch (e) { /* Column likely exists */ }
+    // Ensure ops_pricing has limit columns (Phase 28)
+    // NOTE: UniversalDB.exec may be async; for SQLite we use raw better-sqlite3 handle to make try/catch work.
+    const raw = (this.db && this.db.db) ? this.db.db : this.db;
+    try {
+      raw.exec("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_client INTEGER DEFAULT 60");
+    } catch (e) { /* Column likely exists */ }
+    try {
+      raw.exec("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_node INTEGER DEFAULT 120");
+    } catch (e) { /* Column likely exists */ }
 
     // Seed pricing from OP_CONFIG if table exists
     try {
@@ -120,6 +120,13 @@ export class OperationsEngine {
       wallet TEXT,
       role TEXT,
       node_id TEXT,
+      created_at INTEGER
+    )`);
+
+    this.db.exec(`CREATE TABLE IF NOT EXISTS users (
+      email TEXT PRIMARY KEY,
+      password_hash TEXT,
+      role TEXT,
       created_at INTEGER
     )`);
   }
