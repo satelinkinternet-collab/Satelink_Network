@@ -532,8 +532,8 @@ export function createApp(db) {
     // /nodes/bootstrap-payment, /operations/*, /ledger/*, /dashboard/*
     // ─────────────────────────────────────────────────────────────
 
-    // Minimal tables for compat logic (idempotent)
-    if (typeof db.exec === "function") {
+    // Minimal tables for compat logic (idempotent) — SQLite only, NOT for Postgres
+    if (IS_TEST && typeof db.exec === "function") {
       await execSql(db, `
         CREATE TABLE IF NOT EXISTS test_treasury (
           id INTEGER PRIMARY KEY CHECK (id = 1),

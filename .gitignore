@@ -53,6 +53,10 @@ backups/
 # Claude Code internal tooling (local only, not for version control)
 .claude/
 
+# Editor / IDE configs (local only)
+.vscode/
+.continue/
+
 # Agent and temporary files
 artifacts/
 cookies.txt

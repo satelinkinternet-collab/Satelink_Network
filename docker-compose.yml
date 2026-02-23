@@ -1,12 +1,22 @@
-version: '3.8'
+# ─── PRODUCTION-ORIENTED COMPOSE ──────────────────────────────────────────────
+# For local development with hot-reload and dev settings, use:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Prerequisites: copy .env.docker to .env and fill in secrets before running.
+#   cp .env.docker .env
+# ──────────────────────────────────────────────────────────────────────────────
 
 services:
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
+    env_file:
+      # Load secrets from .env (copied from .env.docker template, not committed)
+      - path: .env
+        required: false
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=8080
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
@@ -19,8 +29,8 @@ services:
       - ADMIN_KEY=${ADMIN_KEY}
       - MOONPAY_WEBHOOK_SECRET=${MOONPAY_WEBHOOK_SECRET}
       - FUSE_WEBHOOK_IP_ALLOWLIST=${FUSE_WEBHOOK_IP_ALLOWLIST}
-      - CORS_ORIGINS=http://localhost:3000
-      - IP_HASH_SALT=${IP_HASH_SALT:-dev-salt-change-in-prod}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - IP_HASH_SALT=${IP_HASH_SALT}
     ports:
       - "8080:8080"
     depends_on:
@@ -30,7 +40,11 @@ services:
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>r.ok||process.exit(1)).catch(()=>process.exit(1))" ]
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://localhost:8080/health').then(r=>r.ok||process.exit(1)).catch(()=>process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,14 +56,14 @@ services:
       dockerfile: Dockerfile.web
       args:
         # NEXT_PUBLIC_* vars must be baked in at build time (next build reads them)
-        - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
         - INTERNAL_API_URL=http://api:8080
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       # Server-side rewrite target (Docker networking: web → api service)
       - INTERNAL_API_URL=http://api:8080
       # Browser-visible base URL — must be localhost so the browser can reach it
-      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     depends_on:
@@ -70,7 +84,9 @@ services:
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U satelink -d satelink" ]
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U satelink -d satelink"
       interval: 5s
       timeout: 3s
       retries: 10
