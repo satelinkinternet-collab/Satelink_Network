@@ -1,14 +1,5 @@
 import "dotenv/config";
-import { randomBytes } from "node:crypto";
-
-// ─── Day-1: Dev convenience — ephemeral JWT in simulate mode ─
-if (!process.env.JWT_SECRET && process.env.DEV_ALLOW_EPHEMERAL_JWT === 'true') {
-  if ((process.env.SATELINK_MODE || 'simulate').toLowerCase() !== 'live') {
-    process.env.JWT_SECRET = randomBytes(64).toString('hex');
-    if (!process.env.JWT_REFRESH_SECRET) process.env.JWT_REFRESH_SECRET = randomBytes(64).toString('hex');
-    console.warn('[BOOT] Ephemeral JWT_SECRET generated (simulate mode). NOT for production.');
-  }
-}
+import "./src/config/jwt_bootstrap.js"; // Must be before auth.js — sets ephemeral JWT in dev
 
 // ─── JWT_SECRET ENFORCEMENT ──────────────────────────────────
 (function validateJwtEnforcement() {
