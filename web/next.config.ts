@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
         destination: `${API_BASE}/admin-api/:path*`,
       },
       {
+        source: "/dashboard/:path*",
+        destination: `${API_BASE}/dashboard/:path*`,
+      },
+      {
         source: "/node-api/:path*",
         destination: `${API_BASE}/node-api/:path*`,
       },

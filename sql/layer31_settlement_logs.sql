@@ -1,21 +1,21 @@
 -- Phase 31: Settlement Logs
 
 CREATE TABLE IF NOT EXISTS settlement_shadow_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     batch_id TEXT,
     primary_json TEXT,
     shadow_json TEXT,
     diff_json TEXT,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS settlement_health_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     adapter_name TEXT,
     health_status TEXT, -- 'ok', 'degraded', 'down'
     latency_ms INTEGER,
     error_message TEXT,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- Initial System Flags for Settlement

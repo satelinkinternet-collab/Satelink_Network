@@ -15,7 +15,7 @@ export class StressTester {
 
         await this.db.query(`
             CREATE TABLE IF NOT EXISTS stress_test_runs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 type TEXT,
                 params_json TEXT,
                 duration_ms INTEGER,
@@ -23,7 +23,7 @@ export class StressTester {
                 avg_latency_ms REAL,
                 p95_latency_ms REAL,
                 errors INTEGER,
-                created_at INTEGER
+                created_at BIGINT
             )
         `);
     }

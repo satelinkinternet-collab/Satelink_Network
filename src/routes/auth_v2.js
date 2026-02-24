@@ -23,7 +23,7 @@ export function verifyJWT(req, res, next) {
     }
 
     if (!token) {
-        return res.status(401).json({ ok: false, error: 'Unauthorized' });
+        return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Unauthorized' });
     }
 
     try {
@@ -32,7 +32,7 @@ export function verifyJWT(req, res, next) {
         req.user = decoded;
         next();
     } catch (e) {
-        return res.status(401).json({ ok: false, error: 'Invalid or expired token' });
+        return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Invalid or expired token' });
     }
 }
 

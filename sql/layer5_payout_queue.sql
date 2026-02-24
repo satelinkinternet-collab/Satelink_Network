@@ -5,7 +5,7 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS payout_queue (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
 
   user_wallet TEXT NOT NULL,
   user_type TEXT NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS payout_queue (
   failure_reason TEXT,
   retry_count INTEGER DEFAULT 0,
 
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
 
   FOREIGN KEY(epoch_id) REFERENCES epochs(id)
 );

@@ -13,16 +13,22 @@ export async function readArtifact(contractName) {
 }
 
 export async function main() {
-    const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
-    console.log("Connecting to network at:", rpcUrl);
+    const network = process.env.NETWORK || "localhost";
+    let rpcUrl = "http://127.0.0.1:8545";
+    if (network === "sparknet") rpcUrl = process.env.FUSE_SPARKNET_RPC_URL || "https://rpc.fusespark.io";
+    if (network === "fuse") rpcUrl = process.env.FUSE_RPC_URL || "https://rpc.fuse.io";
+
+    console.log(`Connecting to network [${network}] at:`, rpcUrl);
     const provider = new ethers.JsonRpcProvider(rpcUrl);
 
     // Default Hardhat account 0
     const defaultPk = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-    const pk = (rpcUrl.includes("127.0") || rpcUrl.includes("localhost"))
+    const pk = (network === "localhost")
         ? defaultPk
         : (process.env.PRIVATE_KEY || defaultPk);
     const deployer = new ethers.Wallet(pk, provider);
+
+    let currentNonce = await provider.getTransactionCount(deployer.address);
 
     console.log("Deploying contracts with account:", deployer.address);
 
@@ -32,7 +38,7 @@ export async function main() {
         console.log("No USDT_ADDRESS provided in env. Deploying MockUSDT...");
         const artifactMock = await readArtifact("MockUSDT");
         const factoryMock = new ethers.ContractFactory(artifactMock.abi, artifactMock.bytecode, deployer);
-        const mockUsdt = await factoryMock.deploy();
+        const mockUsdt = await factoryMock.deploy({ nonce: currentNonce++ });
         await mockUsdt.waitForDeployment();
         usdtAddress = await mockUsdt.getAddress();
         console.log("MockUSDT deployed to:", usdtAddress);
@@ -42,14 +48,14 @@ export async function main() {
 
     const artifactVault = await readArtifact("RevenueVault");
     const factoryVault = new ethers.ContractFactory(artifactVault.abi, artifactVault.bytecode, deployer);
-    const vault = await factoryVault.deploy(usdtAddress);
+    const vault = await factoryVault.deploy(usdtAddress, { nonce: currentNonce++ });
     await vault.waitForDeployment();
     const vaultAddress = await vault.getAddress();
     console.log("RevenueVault deployed to:", vaultAddress);
 
     const artifactClaims = await readArtifact("ClaimsContract");
     const factoryClaims = new ethers.ContractFactory(artifactClaims.abi, artifactClaims.bytecode, deployer);
-    const claims = await factoryClaims.deploy(vaultAddress);
+    const claims = await factoryClaims.deploy(vaultAddress, { nonce: currentNonce++ });
     await claims.waitForDeployment();
     const claimsAddress = await claims.getAddress();
     console.log("ClaimsContract deployed to:", claimsAddress);

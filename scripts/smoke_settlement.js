@@ -10,13 +10,18 @@ async function main() {
 
   console.log("\n--- Smoke Test Execution ---");
 
-  const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+  const network = process.env.NETWORK || "localhost";
+  let rpcUrl = "http://127.0.0.1:8545";
+  if (network === "sparknet") rpcUrl = process.env.FUSE_SPARKNET_RPC_URL || "https://rpc.fusespark.io";
+  if (network === "fuse") rpcUrl = process.env.FUSE_RPC_URL || "https://rpc.fuse.io";
+
+  console.log(`Connecting to network [${network}] at:`, rpcUrl);
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
   // Default Hardhat account 0 and 1
   const defaultPkOwner = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
   const defaultPkClaimer = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-  const isLocal = rpcUrl.includes("127.0") || rpcUrl.includes("localhost");
+  const isLocal = network === "localhost";
   const pkOwner = isLocal ? defaultPkOwner : (process.env.PRIVATE_KEY || defaultPkOwner);
   const pkClaimer = isLocal ? defaultPkClaimer : (process.env.CLAIMER_PRIVATE_KEY || defaultPkClaimer);
 
@@ -33,18 +38,19 @@ async function main() {
   const claims = new ethers.Contract(claimsAddress, artifactClaims.abi, owner);
 
   // Setup vault balance
+  let currentNonce = await provider.getTransactionCount(owner.address);
   const claimAmount = ethers.parseEther("0.1");
   console.log("Approving USDT for Vault...");
-  const approveTx = await usdt.approve(vaultAddress, claimAmount);
+  const approveTx = await usdt.approve(vaultAddress, claimAmount, { nonce: currentNonce++ });
   await approveTx.wait();
 
   console.log("Depositing USDT into Vault...");
-  const depositTx = await vault.deposit(claimAmount);
+  const depositTx = await vault.deposit(claimAmount, { nonce: currentNonce++ });
   await depositTx.wait();
 
   // 2. Post sample root (createClaim)
   console.log(`Creating claim for address: ${claimer.address} for amount: ${ethers.formatEther(claimAmount)} USDT`);
-  const tx1 = await claims.createClaim(claimer.address, claimAmount);
+  const tx1 = await claims.createClaim(claimer.address, claimAmount, { nonce: currentNonce++ });
   const receipt1 = await tx1.wait();
 
   let claimId;

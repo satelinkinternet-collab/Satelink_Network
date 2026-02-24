@@ -5,17 +5,17 @@ CREATE TABLE IF NOT EXISTS balances (
 );
 
 CREATE TABLE IF NOT EXISTS claims (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     wallet TEXT NOT NULL,
     amount_usdt REAL NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS withdrawals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     wallet TEXT NOT NULL,
     amount_usdt REAL NOT NULL,
     status TEXT DEFAULT 'PENDING',
     tx_hash TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );

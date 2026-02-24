@@ -23,13 +23,13 @@ export class OperationsEngine {
     this.initialized = false;
   }
 
-  init() {
+  async init() {
     if (this.initialized) return;
     if (this.db && typeof this.db.init === 'function') {
       // For SQLite, initialization is typically synchronous or already handled.
       // We don't await here because we're moving to a synchronous model for SQLite.
     }
-    this.seed();
+    await this.seed();
     this.initialized = true;
     console.log("OperationsEngine initialized. DB ready:", typeof this.db.prepare);
   }
@@ -37,97 +37,130 @@ export class OperationsEngine {
   /**
    * Seed Initial System Data
    */
-  seed() {
-    this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['withdrawals_paused', '0']);
-    this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['security_freeze', '0']);
-    this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['safety_threshold', '0']);
-    this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['system_state', 'LIVE']);
-    this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['revenue_mode', 'ACTIVE']);
-    this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT DO NOTHING").run(['monitoring_status', 'ENFORCED']);
+  async seed() {
+    await this.db.exec(`
+      CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+      CREATE TABLE IF NOT EXISTS ops_pricing (
+        op_type TEXT PRIMARY KEY,
+        price_usdt REAL NOT NULL,
+        enabled INTEGER DEFAULT 1,
+        max_per_minute_per_client INTEGER DEFAULT 60,
+        max_per_minute_per_node INTEGER DEFAULT 120
+      );
+      CREATE TABLE IF NOT EXISTS op_weights (
+        op_type TEXT PRIMARY KEY,
+        weight REAL NOT NULL DEFAULT 1.0
+      );
+    `);
 
-    // Ensure ops_pricing has limit columns (Phase 28)
-    // NOTE: UniversalDB.exec may be async; for SQLite we use raw better-sqlite3 handle to make try/catch work.
-    const raw = (this.db && this.db.db) ? this.db.db : this.db;
-    try {
-      raw.exec("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_client INTEGER DEFAULT 60");
-    } catch (e) { /* Column likely exists */ }
-    try {
-      raw.exec("ALTER TABLE ops_pricing ADD COLUMN max_per_minute_per_node INTEGER DEFAULT 120");
-    } catch (e) { /* Column likely exists */ }
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['withdrawals_paused', '0']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['security_freeze', '0']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['safety_threshold', '0']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['system_state', 'LIVE']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['revenue_mode', 'ACTIVE']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['monitoring_status', 'ENFORCED']);
 
     // Seed pricing from OP_CONFIG if table exists
     try {
       const ops = Object.keys(OP_CONFIG);
       for (const op of ops) {
         const conf = OP_CONFIG[op];
-        this.db.prepare(`
+        await this.db.prepare(`
           INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node) 
           VALUES (?, ?, 1, ?, ?) 
           ON CONFLICT(op_type) DO UPDATE SET 
-            max_per_minute_per_client = excluded.max_per_minute_per_client,
-            max_per_minute_per_node = excluded.max_per_minute_per_node
+            max_per_minute_per_client = EXCLUDED.max_per_minute_per_client,
+            max_per_minute_per_node = EXCLUDED.max_per_minute_per_node
         `).run([op, conf.price, conf.limit || 60, conf.node_limit || 120]);
       }
     } catch (e) { console.error("Error seeding pricing:", e); }
 
-    const row = this.db.prepare("SELECT COUNT(*) as c FROM op_weights").get([]);
+    const row = await this.db.prepare("SELECT COUNT(*) as c FROM op_weights").get([]);
     if (row && row.c == 0) {
       const ops = Object.keys(OP_CONFIG);
       for (const op of ops) {
-        this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run([op, 1.0]);
+        await this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run([op, 1.0]);
       }
     }
 
-    this.db.exec(`CREATE TABLE IF NOT EXISTS user_roles (
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS user_roles (
       wallet TEXT PRIMARY KEY,
       role TEXT NOT NULL,
-      updated_at INTEGER
+      updated_at BIGINT
     )`);
 
-    this.db.exec(`CREATE TABLE IF NOT EXISTS referrals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS referrals (
+      id SERIAL PRIMARY KEY,
       referrer_wallet TEXT,
       referee_wallet TEXT,
       metadata TEXT,
       status TEXT DEFAULT 'pending',
-      created_at INTEGER
+      created_at BIGINT
     )`);
 
     // Phase 21: Full P0 Requirements
-    this.db.exec(`CREATE TABLE IF NOT EXISTS nodes (
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS nodes (
       node_id TEXT PRIMARY KEY,
       wallet TEXT,
       device_type TEXT,
       management_type TEXT DEFAULT 'self_hosted', -- 'managed' or 'self_hosted'
       status TEXT,
-      last_seen INTEGER,
-      created_at INTEGER
+      last_seen BIGINT,
+      created_at BIGINT
     )`);
 
-    this.db.exec(`CREATE TABLE IF NOT EXISTS pair_codes (
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS pair_codes (
       code TEXT PRIMARY KEY,
       wallet TEXT,
       device_id TEXT,
       status TEXT, -- pending, used, expired
-      created_at INTEGER,
-      expires_at INTEGER,
-      used_at INTEGER
+      created_at BIGINT,
+      expires_at BIGINT,
+      used_at BIGINT
     )`);
 
-    this.db.exec(`CREATE TABLE IF NOT EXISTS conversions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS conversions (
+      id SERIAL PRIMARY KEY,
       ref_code TEXT,
       wallet TEXT,
       role TEXT,
       node_id TEXT,
-      created_at INTEGER
+      created_at BIGINT
     )`);
 
-    this.db.exec(`CREATE TABLE IF NOT EXISTS users (
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS users (
       email TEXT PRIMARY KEY,
       password_hash TEXT,
       role TEXT,
-      created_at INTEGER
+      created_at BIGINT
+    )`);
+
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS user_settings (
+      wallet TEXT PRIMARY KEY,
+      ui_mode TEXT DEFAULT 'SIMPLE',
+      created_at BIGINT,
+      updated_at BIGINT
+    )`);
+
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS public_identity (
+      wallet TEXT PRIMARY KEY,
+      public_id TEXT UNIQUE,
+      created_at BIGINT
+    )`);
+
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS onboarding_state (
+      wallet TEXT PRIMARY KEY,
+      step_completed_json TEXT,
+      completed_at BIGINT
+    )`);
+
+    await this.db.exec(`CREATE TABLE IF NOT EXISTS balances (
+      wallet TEXT PRIMARY KEY,
+      amount_usdt REAL DEFAULT 0,
+      updated_at BIGINT
     )`);
   }
 

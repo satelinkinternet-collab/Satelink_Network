@@ -19,6 +19,8 @@ services:
       - NODE_ENV=development
       # Dev-safe IP salt fallback (override in .env for consistency)
       - IP_HASH_SALT=${IP_HASH_SALT:-dev-salt-change-in-prod}
+      # Required for NodeOps CreateOS integration. Must be passed from host env or .env file.
+      - NODEOPS_CREATEOS_API_KEY=${NODEOPS_CREATEOS_API_KEY}
     volumes:
       # Mount source for live iteration; data dir persists between runs
       - ./server.js:/app/server.js:ro

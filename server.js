@@ -192,12 +192,12 @@ export function createApp(db) {
 
     // 2b) Runtime Monitor (Phase K)
     const runtimeMonitor = new RuntimeMonitor(db, alertService);
-    runtimeMonitor.init();
+    await runtimeMonitor.init();
 
     // 2c) Backup Service (Phase K6)
     const { BackupService } = await import('./src/services/backup_service.js');
     const backupService = new BackupService(db);
-    backupService.init();
+    await backupService.init();
 
     // Automation
     // Moved to after M1-M5 services init below
@@ -220,13 +220,13 @@ export function createApp(db) {
     // Safe Mode Autopilot (Phase 22)
     const { SafeModeAutopilot } = await import('./src/services/safe_mode_autopilot.js');
     const safeModeAutopilot = new SafeModeAutopilot(db, alertService);
-    safeModeAutopilot.init();
+    await safeModeAutopilot.init();
     app.set('safeModeAutopilot', safeModeAutopilot);
 
     // Feature Flags (Phase 23)
     const { FeatureFlagService } = await import('./src/services/feature_flags.js');
     const featureFlags = new FeatureFlagService(db);
-    if (!isTest) featureFlags.init();
+    if (!isTest) await featureFlags.init();
     app.set('featureFlags', featureFlags);
 
     // Drills (Phase 24)
@@ -1117,7 +1117,7 @@ if (process.argv[1] && (process.argv[1].endsWith("server.js") || process.argv[1]
       }
 
       try {
-        opsEngine.init();
+        await opsEngine.init();
         console.log(`DB Type: ${dbConfig.type}`);
         console.log(`DB Ready: ${typeof opsEngine.db.prepare === "function"}`);
         console.log("──────────────────────────");
