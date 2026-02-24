@@ -1,4 +1,14 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
+
+// ─── Day-1: Dev convenience — ephemeral JWT in simulate mode ─
+if (!process.env.JWT_SECRET && process.env.DEV_ALLOW_EPHEMERAL_JWT === 'true') {
+  if ((process.env.SATELINK_MODE || 'simulate').toLowerCase() !== 'live') {
+    process.env.JWT_SECRET = randomBytes(64).toString('hex');
+    if (!process.env.JWT_REFRESH_SECRET) process.env.JWT_REFRESH_SECRET = randomBytes(64).toString('hex');
+    console.warn('[BOOT] Ephemeral JWT_SECRET generated (simulate mode). NOT for production.');
+  }
+}
 
 // ─── JWT_SECRET ENFORCEMENT ──────────────────────────────────
 (function validateJwtEnforcement() {
@@ -67,6 +77,11 @@ import { RuntimeMonitor } from "./src/services/runtime_monitor.js";
 
 import { Scheduler } from "./src/ops/scheduler.js";
 
+// Day-1 Mode System
+import { getCurrentMode } from './src/config/mode.js';
+import { createProdGuard } from './src/middleware/prod_guard.js';
+import { createGoldenPathRouter } from './src/routes/golden_path.js';
+
 // Documentation (Swagger)
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -101,6 +116,9 @@ async function execSql(db, sql, params = []) {
 export function createApp(db) {
   const app = express();
 
+
+  // Day-1: Production guard — blocks dev/test routes in LIVE mode
+  app.use(createProdGuard());
 
   // 🔒 PROD HARDENING: protect api-docs
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_API_DOCS !== "1") {
@@ -518,6 +536,7 @@ export function createApp(db) {
         service: "satelink",
         port: PORT,
         node_env: process.env.NODE_ENV,
+        mode: getCurrentMode(),
         time: Date.now(),
         pid: process.pid,
         uptime: process.uptime()
@@ -819,6 +838,9 @@ export function createApp(db) {
       // 2. /admin Alias (Redirects logic to admin router)
       app.use('/admin', verifyJWT, createAdminApiRouter(opsEngine));
     }
+
+    // Day-1: Mode status endpoint
+    app.use('/api', createGoldenPathRouter());
 
     // 8) Mount Integration Router
     app.use("/", createIntegrationRouter(opsEngine, adminAuth));
