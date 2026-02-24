@@ -172,29 +172,80 @@ export class NodeopsWaterfallService {
      * Transitions 'pending' payments (NodeOps & Operator) to 'posted' status.
      * In reality, this would submit to an EvmAdapter or Stripe webhook.
      */
-    async executePayments(periodStart, periodEnd) {
-        // Example: Move pending payments -> posted
+    async executePayments(periodStart, periodEnd, simulateFailure = false) {
         const execNow = Math.floor(Date.now() / 1000);
-        let totalProcessed = 0;
+        let postedNodeOps = 0;
+        let postedReserve = 0;
+        let postedPayouts = 0;
+
+        if (simulateFailure) {
+            return {
+                executed: 0,
+                status: 'simulated_failure',
+                details: { posted_nodeops: 0, posted_reserve: 0, posted_payouts: 0, total_posted: 0 }
+            };
+        }
 
         await this.db.transaction(async (tx) => {
-            // 1. Handle NodeOps -> Success
-            const nodeOpsRes = tx.prepare(`
-                UPDATE ledger_entries SET status = 'posted', updated_at = ?
+            // 1. Find all pending NODEOPS_PAYMENT intents for this period
+            const pendingNodeOpsRows = tx.prepare(`
+                SELECT id, operator_id FROM ledger_entries 
                 WHERE type = 'NODEOPS_PAYMENT' AND status = 'pending' AND period_end = ?
-             `).run([execNow, periodEnd]);
+            `).all([periodEnd]);
 
-            if (nodeOpsRes.changes > 0) {
-                // Free up tied dependent postings
-                tx.prepare(`
+            if (pendingNodeOpsRows.length === 0) return;
+
+            const successfulOperatorIds = [];
+
+            // 2. Mark them posted (simulate upstream success)
+            for (const row of pendingNodeOpsRows) {
+                const res = tx.prepare(`
                     UPDATE ledger_entries SET status = 'posted', updated_at = ?
-                    WHERE type IN ('RESERVE_ALLOCATION', 'OPERATOR_PAYOUT') AND status = 'pending' AND period_end = ?
-                 `).run([execNow, periodEnd]);
+                    WHERE id = ?
+                `).run([execNow, row.id]);
+
+                if (res.changes > 0) {
+                    postedNodeOps++;
+                    successfulOperatorIds.push(row.operator_id);
+                }
             }
-            totalProcessed += nodeOpsRes.changes;
+
+            // 3. Uniq operator IDs
+            const uniqueOperators = [...new Set(successfulOperatorIds)];
+
+            // 4. For successful operators, unlock RESERVE_ALLOCATION and OPERATOR_PAYOUT
+            if (uniqueOperators.length > 0) {
+                const placeholders = uniqueOperators.map(() => '?').join(',');
+                const queryArgs = [execNow, periodEnd, ...uniqueOperators];
+
+                const reserveRes = tx.prepare(`
+                    UPDATE ledger_entries SET status = 'posted', updated_at = ?
+                    WHERE type = 'RESERVE_ALLOCATION' AND status = 'pending' AND period_end = ?
+                    AND operator_id IN (${placeholders})
+                `).run(queryArgs);
+                postedReserve += reserveRes.changes;
+
+                const payoutRes = tx.prepare(`
+                    UPDATE ledger_entries SET status = 'posted', updated_at = ?
+                    WHERE type = 'OPERATOR_PAYOUT' AND status = 'pending' AND period_end = ?
+                    AND operator_id IN (${placeholders})
+                `).run(queryArgs);
+                postedPayouts += payoutRes.changes;
+            }
         });
 
-        return { executed: totalProcessed, status: 'simulated_success' };
+        const totalPosted = postedNodeOps + postedReserve + postedPayouts;
+
+        return {
+            executed: totalPosted,
+            status: 'simulated_success',
+            details: {
+                posted_nodeops: postedNodeOps,
+                posted_reserve: postedReserve,
+                posted_payouts: postedPayouts,
+                total_posted: totalPosted
+            }
+        };
     }
 
     _makeEntry(operatorId, period, type, amount, direction, status) {

@@ -31,6 +31,7 @@ An append-only log:
 Run monthly per operator:
 
 **1. Gross Inflow (`REWARD_IN`)**: The logical gross reward $R$.  
+*Note: Real gross reward is aggregated from the `epoch_earnings` table (`role = 'node_operator'`) spanning the requested billing month.*
 **2. Due Inflow (`NODEOPS_DUE`)**: Cost calculation $D$ where:  
 	$D = 0$ if `prepaid_until` >= `period_end`  
 	$D = Monthly Cost + Arrears$ otherwise.  
@@ -43,9 +44,14 @@ $Remaining_{2} = Remaining_{1} - P_{reserve}$
 
 ## Execution commands
 
-### Run Waterfall Batch
+### Run Waterfall Batch (Creates Intents)
 ```bash
-node scripts/settle_nodeops_billing.js 2024-01
+node scripts/run_monthly_settlement.js <YYYY-MM>
+```
+
+### Execute Intents (Simulate Payout)
+```bash
+node scripts/execute_payment_intents.js <YYYY-MM> [--simulate-failure]
 ```
 
 ### Verification (Tests)
