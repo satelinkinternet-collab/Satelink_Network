@@ -14,6 +14,7 @@ describe("Ledger L5 Router & Finalization Test", function () {
     before(async function () {
         db = new Database(":memory:");
         app = createApp(db);
+        if (app.locals?.ready) await app.locals.ready;
         agent = supertest(app);
 
         // Execute some ops to generate revenue

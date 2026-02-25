@@ -31,7 +31,7 @@ An append-only log:
 Run monthly per operator:
 
 **1. Gross Inflow (`REWARD_IN`)**: The logical gross reward $R$.  
-*Note: Real gross reward is aggregated from the `epoch_earnings` table (`role = 'node_operator'`) spanning the requested billing month.*
+*Note: Real gross reward is dynamically queried via `getGrossRewardUSDT`, aggregating from the `epoch_earnings` table (`role = 'node_operator'`) spanning the requested billing month.*
 **2. Due Inflow (`NODEOPS_DUE`)**: Cost calculation $D$ where:  
 	$D = 0$ if `prepaid_until` >= `period_end`  
 	$D = Monthly Cost + Arrears$ otherwise.  

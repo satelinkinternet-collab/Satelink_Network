@@ -13,6 +13,7 @@ describe("Revenue Split & Infra Reserve Test", function () {
     before(async function () {
         db = new Database(":memory:");
         app = createApp(db);
+        if (app.locals?.ready) await app.locals.ready;
         agent = supertest(app);
 
         // 1. Setup Nodes

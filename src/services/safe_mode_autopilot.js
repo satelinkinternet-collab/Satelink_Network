@@ -24,7 +24,7 @@ export class SafeModeAutopilot {
         };
     }
 
-    async init() {
+    async init(isTest = false) {
         await this.db.exec(`
             CREATE TABLE IF NOT EXISTS system_flags (
                 key TEXT PRIMARY KEY,
@@ -42,7 +42,7 @@ export class SafeModeAutopilot {
             INSERT INTO system_flags (key, value, updated_at) VALUES ('revenue_mode', 'ACTIVE', ${Date.now()}) ON CONFLICT DO NOTHING;
         `);
         console.log('[SafeMode] Autopilot initialized.');
-        setInterval(() => this.runCheck(), 60000); // Check every minute
+        if (!isTest) setInterval(() => this.runCheck(), 60000); // Check every minute
     }
 
     runCheck() {

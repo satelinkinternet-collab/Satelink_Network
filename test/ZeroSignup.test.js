@@ -11,6 +11,7 @@ describe("RUNG 2: Zero-Signup Verification", function () {
     before(async function () {
         db = new Database(":memory:");
         app = createApp(db);
+        if (app.locals?.ready) await app.locals.ready;
         agent = supertest(app);
 
         // Bootstrap a node so it exists

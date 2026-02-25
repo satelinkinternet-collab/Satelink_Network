@@ -13,6 +13,7 @@ describe("Satelink DePIN Full Product Verification (LIVE)", function () {
     before(async function () {
         db = new Database(":memory:");
         app = createApp(db);
+        if (app.locals?.ready) await app.locals.ready;
         agent = supertest(app);
 
         // Register Managed Node

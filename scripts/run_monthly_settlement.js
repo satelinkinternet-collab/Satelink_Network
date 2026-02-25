@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { getValidatedDB } from "../src/db/index.js";
 import { NodeopsWaterfallService } from "../src/services/nodeops_waterfall.js";
+import { getGrossRewardUSDT } from "../src/services/rewards.js";
 
 async function run() {
     console.log("==========================================");
@@ -33,7 +34,7 @@ async function run() {
     const config = { dbUrl: process.env.DATABASE_URL || "sqlite://satelink.db" };
     const db = getValidatedDB(config);
     await db.init();
-    
+
     const service = new NodeopsWaterfallService(db);
     await service.init(); // ensure tables exist
 
@@ -66,16 +67,7 @@ async function run() {
             grossRewardUsdt = DUMMY_GROSS_REWARD;
             rewardTypeStr = "(simulated)";
         } else {
-            const row = db.prepare(`
-                SELECT SUM(amount_usdt) as total
-                FROM epoch_earnings
-                WHERE role = 'node_operator'
-                  AND wallet_or_node_id = ?
-                  AND created_at >= ?
-                  AND created_at <= ?
-            `).get([op.operator_id, period.start, period.end]);
-            
-            grossRewardUsdt = row && row.total ? Number(row.total) : 0;
+            grossRewardUsdt = getGrossRewardUSDT(db, op.operator_id, period.start, period.end);
             rewardTypeStr = "(real)";
         }
 
@@ -83,7 +75,7 @@ async function run() {
         try {
             const result = await service.settleOperatorPeriod(op.operator_id, period, grossRewardUsdt);
             console.log(`   └─ Due: $${result.summary.due_amount} | Paying NodeOps: $${result.summary.pay_nodeops} | Reserve: $${result.summary.alloc_reserve} | Operator Payout: $${result.summary.operator_payout}`);
-            
+
             if (!sampleLedger && result.entries.length > 0) {
                 sampleLedger = result.entries;
             }
