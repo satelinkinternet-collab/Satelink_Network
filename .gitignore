@@ -66,3 +66,12 @@ server.js.bak2
 server.js.new
 *.bak*
 *.log
+
+# local artifacts
+*.swp
+*.tgz
+*_pid.txt
+server_pid.txt
+s_pid.txt
+server.js.backup_*
+test/*.backup_*

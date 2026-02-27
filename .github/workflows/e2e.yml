@@ -1,0 +1,37 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install
+        run: npm ci
+
+      - name: Run E2E
+        run: |
+          chmod +x scripts/test.sh || true
+          if [ -f scripts/test.sh ]; then
+            ./scripts/test.sh
+          elif [ -f scripts/e2e_test_runner.sh ]; then
+            chmod +x scripts/e2e_test_runner.sh
+            ./scripts/e2e_test_runner.sh
+          else
+            npx mocha --timeout 15000 test/Security.test.js
+            npx mocha --timeout 15000 test/Heartbeat.test.js
+          fi

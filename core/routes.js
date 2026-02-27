@@ -8,6 +8,9 @@ export function attachRoutes(app, db) {
         next();
     });
 
+    // Readiness check
+    app.get("/health", (req, res) => res.status(200).json({ ok: true }));
+
     // Admin protected endpoints
     app.post("/nodes/bootstrap-payment", requireAdminKey, (req, res) => res.status(200).json({ ok: true }));
     app.post("/ledger/epoch/finalize", requireAdminKey, (req, res) => res.status(200).json({ ok: true }));
