@@ -13,7 +13,13 @@ export function validateEnv() {
             console.error("[FATAL] Missing required production env vars: DATABASE_URL (for non-sqlite DBs)");
             process.exit(1);
         }
-        if (!process.env.JWT_SECRET) {
+    }
+
+    if (!process.env.JWT_SECRET) {
+        if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
+            console.error("[FATAL] Missing JWT_SECRET.");
+            process.exit(1);
+        } else {
             console.error("[WARN] Missing JWT_SECRET. Falling back to dev_only_secret - NOT SECURE FOR REAL PROD.");
         }
     }

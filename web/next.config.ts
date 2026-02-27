@@ -55,10 +55,6 @@ const nextConfig: NextConfig = {
         destination: `${API_BASE}/admin/:path*`,
       },
       {
-        source: "/admin/:path(command|network|ops|revenue|rewards|security|settings|controls|support)/:rest*",
-        destination: `${API_BASE}/admin/:path/:rest*`,
-      },
-      {
         source: "/support/:path*",
         destination: `${API_BASE}/support/:path*`,
       },

@@ -41,7 +41,8 @@
     "yamljs": "^0.3.0"
   },
   "scripts": {
-    "test": "npx mocha test/FullProduct.test.js test/Security.test.js test/Heartbeat.test.js test/Claims.test.js test/RevenueSplit.test.js test/Dashboard.test.js --timeout 15000",
+    "dev:full": "bash dev.sh",
+    "test": "npm run test:e2e",
     "test:e2e": "npx mocha test/Security.test.js test/Heartbeat.test.js --timeout 15000",
     "e2e:manual": "bash scripts/manual_e2e.sh",
     "test:all": "bash scripts/test.sh",

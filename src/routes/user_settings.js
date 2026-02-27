@@ -4,8 +4,13 @@ import crypto from 'crypto';
 import base32 from 'base32.js';
 import { verifyJWT } from './auth_v2.js';
 
-export function createUserSettingsRouter(db) {
+export function createUserSettingsRouter(rawDb) {
     const router = express.Router();
+
+    const db = {
+        get: async (sql, params = []) => rawDb.prepare(sql).get(...params),
+        query: async (sql, params = []) => rawDb.prepare(sql).run(...params)
+    };
 
     // Helper: Generate Public ID (Deterministic)
     // base32(sha256(wallet)[0..10]) -> SLK-XXXX-XXXX

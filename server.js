@@ -1,26 +1,17 @@
-import express from "express";
+import { createApp } from "./app_factory.mjs";
 import Database from "better-sqlite3";
-import { attachBaseMiddleware } from "./core/middleware.js";
-import { attachSchema } from "./core/schema.js";
-import { attachSecurity } from "./core/security.js";
-import { attachHeartbeat } from "./core/heartbeat.js";
-import { attachRoutes } from "./core/routes.js";
-import { attachUI } from "./core/ui.js";
 
-const app = express();
-const db = new Database("satelink.db");
+export { createApp };
+export default createApp;
 
-// Attach modules in strict order
-attachBaseMiddleware(app);
-attachSchema(db);
-attachSecurity(app, db);
-attachHeartbeat(app, db);
-attachRoutes(app, db);
-attachUI(app, db);
+// If we are not running under Mocha (tests), boot the server
+if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
+    const db = new Database(process.env.SQLITE_PATH || "satelink.db");
+    const app = createApp(db);
+    const PORT = process.env.PORT || 8080;
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Satelink Production Node listening on port ${PORT}`);
-    console.log(`- Health: http://localhost:${PORT}/health`);
-    console.log(`- UI:     http://localhost:${PORT}/ui`);
-});
+    app.listen(PORT, () => {
+        console.log(`Satelink Node listening on port ${PORT}`);
+        console.log(`- Health: http://localhost:${PORT}/health`);
+    });
+}

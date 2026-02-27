@@ -10,7 +10,19 @@ export function attachBaseMiddleware(app) {
 
     // Safety headers and CORS
     app.use(helmet({
-        contentSecurityPolicy: false, // UI might need specific CSP, handled in attachUI if needed
+        contentSecurityPolicy: false,
     }));
-    app.use(cors());
+
+    const originStr = process.env.CORS_ORIGINS;
+    if (originStr) {
+        app.use(cors({ origin: originStr.split(',').map(s => s.trim()) }));
+    } else if (process.env.NODE_ENV === 'development') {
+        app.use(cors());
+    } else {
+        app.use(cors({ origin: process.env.FRONTEND_URL || false }));
+    }
+
+    if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test' && !process.env.MOCHA) {
+        app.use("/__test", (req, res) => res.status(404).send("Not Found"));
+    }
 }

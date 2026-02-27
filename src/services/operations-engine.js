@@ -324,13 +324,7 @@ export class OperationsEngine {
           tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distribution_pool', 'DAO_POOL', ?, ?)").run([id, distroPool, now]);
         }
 
-        // Ensure 'management_type' column exists (Phase 29)
-        try {
-          tx.exec("ALTER TABLE nodes ADD COLUMN management_type TEXT DEFAULT 'self_hosted'");
-        } catch (e) { /* Column likely exists */ }
-        try {
-          tx.exec("ALTER TABLE registered_nodes ADD COLUMN management_type TEXT DEFAULT 'self_hosted'");
-        } catch (e) { /* Column likely exists */ }
+        // Ensure 'management_type' column exists (Moved to Phase 3 SQL Migrations)
 
         // Node rewards distribution
         const nodes = tx.prepare(`
@@ -491,7 +485,18 @@ export class OperationsEngine {
   }
 
   async forfeitExpired() {
-    return 0; // Stub
+    const now = Math.floor(Date.now() / 1000);
+    const fortyEightDays = 48 * 24 * 60 * 60;
+    const threshold = now - fortyEightDays;
+
+    const res = this.db.prepare("UPDATE epoch_earnings SET status = 'FORFEITED' WHERE status = 'CLAIMED' AND created_at < ?").run([threshold]);
+    const count = res.changes;
+
+    if (count > 0) {
+      console.log(`[Audit] Forfeited ${count} expired records from epoch_earnings`);
+    }
+
+    return count;
   }
 
   getAllEpochs() {

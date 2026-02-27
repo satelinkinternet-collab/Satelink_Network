@@ -16,12 +16,13 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        const publicPaths = ['/login', '/', '/health-ui', '/about', '/download', '/terms', '/privacy'];
+        const publicPaths = ['/login', '/', '/health-ui', '/about', '/beta/join', '/download', '/terms', '/privacy', '/403'];
         if (!loading && !user && !publicPaths.includes(pathname) && !pathname.startsWith('/preview')) {
             router.push('/login');
         }
         if (!loading && user && !canAccess(user.role as Role, pathname)) {
-            router.push('/403');
+            // we already are on a page, or router pushing to 403
+            if (pathname !== '/403') router.push('/403');
         }
     }, [user, loading, pathname, router]);
 
@@ -33,7 +34,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         );
     }
 
-    if (['/login', '/403', '/', '/health-ui', '/about', '/download', '/terms', '/privacy'].includes(pathname) || pathname.startsWith('/preview')) {
+    if (['/login', '/403', '/', '/health-ui', '/about', '/beta/join', '/download', '/terms', '/privacy'].includes(pathname) || pathname.startsWith('/preview')) {
         return <>{children}</>;
     }
 

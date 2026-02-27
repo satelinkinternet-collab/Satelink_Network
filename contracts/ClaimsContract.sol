@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 interface IRevenueVault {
     function withdraw(address to, uint256 amount) external;
 }
 
-contract ClaimsContract {
-    address public owner;
+contract ClaimsContract is AccessControl, Pausable, ReentrancyGuard {
+    bytes32 public constant CLAIM_CREATOR_ROLE = keccak256("CLAIM_CREATOR_ROLE");
     IRevenueVault public vault;
     
     struct Claim {
@@ -23,17 +27,21 @@ contract ClaimsContract {
     event Claimed(bytes32 indexed claimId, address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner");
-        _;
-    }
-
     constructor(address _vault) {
-        owner = msg.sender;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(CLAIM_CREATOR_ROLE, msg.sender);
         vault = IRevenueVault(_vault);
     }
 
-    function createClaim(address user, uint256 amount) external onlyOwner returns (bytes32) {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
+    function createClaim(address user, uint256 amount) external onlyRole(CLAIM_CREATOR_ROLE) returns (bytes32) {
         bytes32 claimId = keccak256(abi.encodePacked(user, amount, block.timestamp, block.prevrandao));
         uint256 expiry = block.timestamp + 48 days;
 
@@ -49,7 +57,7 @@ contract ClaimsContract {
     }
 
     // Phase 1: Claim (Update internal ledger only)
-    function claimReward(bytes32 claimId) external {
+    function claimReward(bytes32 claimId) external whenNotPaused {
         require(claimOwner[claimId] == msg.sender, "Not claim owner");
         
         Claim storage c = claims[claimId];
@@ -63,7 +71,7 @@ contract ClaimsContract {
     }
 
     // Phase 2: Withdraw (Move funds if liquidity exists)
-    function withdrawFunds(uint256 amount) external {
+    function withdrawFunds(uint256 amount) external whenNotPaused nonReentrant {
         require(userBalances[msg.sender] >= amount, "Insufficient balance");
         
         userBalances[msg.sender] -= amount;

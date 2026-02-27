@@ -1,3 +1,6 @@
+import { createUserSettingsRouter } from '../src/routes/user_settings.js';
+import { createUnifiedAuthRouter } from '../src/routes/auth_v2.js';
+
 export function attachRoutes(app, db) {
     const requireAdminKey = app.locals.requireAdminKey || ((req, res, next) => {
         const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
@@ -29,4 +32,8 @@ export function attachRoutes(app, db) {
     app.all(/^\/registry(\/.*)?$/, requireAdminKey, (req, res) => res.status(200).json({ ok: true }));
     // Admin-api (tests use this too)
     app.all(/^\/admin-api(\/.*)?$/, requireAdminKey, (req, res) => res.status(200).json({ ok: true }));
+
+    // Mount user settings router
+    app.use('/me', createUserSettingsRouter(db));
+    app.use(createUnifiedAuthRouter({ db }));
 }

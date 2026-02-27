@@ -29,8 +29,7 @@ export function createStagingAuthRouter(opsEngine) {
      */
     router.post('/login', requireBasicAuth, async (req, res) => {
         try {
-            // Double check environment safety
-            if (process.env.NODE_ENV !== 'production' || process.env.STAGING_MODE !== 'true') {
+            if (process.env.STAGING_MODE !== 'true') {
                 return res.status(404).json({ ok: false, error: "Not Found" });
             }
 

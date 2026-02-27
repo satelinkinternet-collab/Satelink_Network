@@ -22,7 +22,7 @@ export function useSSE<T>(endpoint: string, eventTypes: string[]) {
 
         const connect = () => {
             const token = localStorage.getItem('satelink_token');
-            const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080'}${endpoint}?token=${token || ''}`;
+            const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}${endpoint}?token=${token || ''}`;
 
             // Note: Native EventSource doesn't support headers nicely. 
             // We usually pass token in query param for SSE or use a polyfill.
