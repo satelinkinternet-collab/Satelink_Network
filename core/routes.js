@@ -125,10 +125,10 @@ export function attachRoutes(app, db) {
     app.get("/health", (req, res) => res.status(200).json({ ok: true }));
 
     // --- 7. Wildcard catch-all LAST ---
-    // The wildcard must ALWAYS be last to ensure that all valid routes, 
-    // including protected ones, have a chance to be matched, evaluated, 
+    // The wildcard must ALWAYS be last to ensure that all valid routes,
+    // including protected ones, have a chance to be matched, evaluated,
     // and correctly guarded by their respective authentication and authorization middleware.
-    // If placed earlier, it could inadvertently hijack requests meant for secure routes 
+    // If placed earlier, it could inadvertently hijack requests meant for secure routes
     // or leak existence of endpoints. Here, it safely returns 404.
     app.all('*catchall', (req, res) => {
         res.status(404).json({ ok: false, error: "Not Found" });
