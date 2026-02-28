@@ -10,54 +10,38 @@ const API_BASE =
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
-      {
-        source: "/api/:path*",
-        destination: `${API_BASE}/:path*`,
-      },
-      {
-        source: "/auth/:path*",
-        destination: `${API_BASE}/auth/:path*`,
-      },
-      {
-        source: "/me/:path*",
-        destination: `${API_BASE}/me/:path*`,
-      },
-      {
-        source: "/__test/:path*",
-        destination: `${API_BASE}/__test/:path*`,
-      },
-      {
-        source: "/admin-api/:path*",
-        destination: `${API_BASE}/admin-api/:path*`,
-      },
-      {
-        source: "/dashboard/:path*",
-        destination: `${API_BASE}/dashboard/:path*`,
-      },
-      {
-        source: "/node-api/:path*",
-        destination: `${API_BASE}/node-api/:path*`,
-      },
-      {
-        source: "/dist-api/:path*",
-        destination: `${API_BASE}/dist-api/:path*`,
-      },
-      {
-        source: "/ent-api/:path*",
-        destination: `${API_BASE}/ent-api/:path*`,
-      },
-      {
-        source: "/stream/:path*",
-        destination: `${API_BASE}/stream/:path*`,
-      },
-      {
-        source: "/admin-ctrl/:path*",
-        destination: `${API_BASE}/admin/:path*`,
-      },
-      {
-        source: "/support/:path*",
-        destination: `${API_BASE}/support/:path*`,
-      },
+      // Auth
+      { source: '/auth/:path*', destination: 'http://localhost:8080/auth/:path*' },
+      // User settings
+      { source: '/me/:path*', destination: 'http://localhost:8080/me/:path*' },
+      // Admin API (NOT admin pages — those are frontend)
+      { source: '/admin-api/:path*', destination: 'http://localhost:8080/admin-api/:path*' },
+      // Node API
+      { source: '/node-api/:path*', destination: 'http://localhost:8080/node-api/:path*' },
+      // Builder API
+      { source: '/builder-api/:path*', destination: 'http://localhost:8080/builder-api/:path*' },
+      // Distributor API
+      { source: '/dist-api/:path*', destination: 'http://localhost:8080/dist-api/:path*' },
+      // Enterprise API
+      { source: '/ent-api/:path*', destination: 'http://localhost:8080/ent-api/:path*' },
+      // Pairing
+      { source: '/pair/:path*', destination: 'http://localhost:8080/pair/:path*' },
+      // SSE Stream
+      { source: '/stream/:path*', destination: 'http://localhost:8080/stream/:path*' },
+      // Support
+      { source: '/support/:path*', destination: 'http://localhost:8080/support/:path*' },
+      // Beta
+      { source: '/beta/:path*', destination: 'http://localhost:8080/beta/:path*' },
+      // Health
+      { source: '/health', destination: 'http://localhost:8080/health' },
+      // Test routes (dev only)
+      { source: '/__test/:path*', destination: 'http://localhost:8080/__test/:path*' },
+      // Webhooks
+      { source: '/webhooks/:path*', destination: 'http://localhost:8080/webhooks/:path*' },
+      // Network stats
+      { source: '/network-stats/:path*', destination: 'http://localhost:8080/network-stats/:path*' },
+      // Partners
+      { source: '/partners/:path*', destination: 'http://localhost:8080/partners/:path*' },
     ];
   },
 };

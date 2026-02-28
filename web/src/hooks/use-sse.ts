@@ -1,5 +1,7 @@
+"use client";
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './use-auth';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 
 // Helper to parse SSE data safely
 const safeParse = (data: string) => {
@@ -20,50 +22,58 @@ export function useSSE<T>(endpoint: string, eventTypes: string[]) {
     useEffect(() => {
         if (!user || !endpoint) return;
 
-        const connect = () => {
+        const ctrl = new AbortController();
+
+        const connect = async () => {
             const token = localStorage.getItem('satelink_token');
-            const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}${endpoint}?token=${token || ''}`;
+            const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}${endpoint}`;
 
-            // Note: Native EventSource doesn't support headers nicely. 
-            // We usually pass token in query param for SSE or use a polyfill.
-            // For this MVP, we will rely on cookie if set, OR we append token to URL and 
-            // ensure backend middleware extracts it from query if header missing.
-
-            // Backend middleware check: auth_v2.js verifyJWT checks header OR query?
-            // Let's assume we need to update verifyJWT to check query.token if we use native EventSource.
-            // Or use 'event-source-polyfill' which supports headers.
-            // For MVP, passing token in URL is easiest but less secure. 
-            // Let's try native EventSource with URL params.
-
-            const es = new EventSource(url);
-            eventSourceRef.current = es;
-
-            es.onopen = () => {
-                setStatus('connected');
-                console.log(`[SSE] Connected to ${endpoint}`);
-            };
-
-            es.onerror = () => {
-                setStatus('error');
-                es.close();
-                // Retry in 5s
-                if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-                retryTimeoutRef.current = setTimeout(connect, 5000);
-            };
-
-            // Subscribe to specific events
-            eventTypes.forEach(type => {
-                es.addEventListener(type, (e) => {
-                    const parsed = safeParse(e.data);
-                    setLastEvent({ type, data: parsed });
+            try {
+                await fetchEventSource(url, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${token || ''}`,
+                        Accept: 'text/event-stream',
+                    },
+                    signal: ctrl.signal,
+                    async onopen(res) {
+                        if (res.ok && res.headers.get('content-type')?.startsWith('text/event-stream')) {
+                            setStatus('connected');
+                            console.log(`[SSE] Connected to ${endpoint}`);
+                        } else if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+                            // client error, don't retry
+                            setStatus('error');
+                            console.error(`[SSE] Error ${res.status}: ${res.statusText}`);
+                            throw new Error(`SSE error ${res.status}`);
+                        }
+                    },
+                    onmessage(msg) {
+                        // Check if msg.event matches any of eventTypes
+                        if (msg.event && eventTypes.includes(msg.event)) {
+                            const parsed = safeParse(msg.data);
+                            setLastEvent({ type: msg.event, data: parsed });
+                        }
+                    },
+                    onclose() {
+                        setStatus('connecting');
+                        console.log(`[SSE] Reconnecting to ${endpoint}...`);
+                    },
+                    onerror(err) {
+                        console.error(`[SSE] Connection error:`, err);
+                        setStatus('error');
+                        // Return undefined to retry
+                        return;
+                    }
                 });
-            });
+            } catch (err) {
+                console.error(`[SSE] Fallback check on connection close:`, err);
+            }
         };
 
         connect();
 
         return () => {
-            if (eventSourceRef.current) eventSourceRef.current.close();
+            ctrl.abort();
             if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
         };
     }, [endpoint, user, eventTypes.join(',')]);

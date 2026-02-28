@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { sseHelper } from '../utils/sse.js';
 import { SSEManager } from '../services/sse_manager.js';
+import { verifyJWT } from './auth_v2.js';
 
 const sseManager = new SSEManager();
 
@@ -31,7 +32,7 @@ export function createStreamApiRouter(opsEngine) {
      * Access: Admin only (admin_super, admin_ops, admin_readonly)
      * Emits: hello, snapshot, revenue_batch, error_batch, security_alerts, audit, ping
      */
-    router.get('/admin', async (req, res) => {
+    router.get('/admin', verifyJWT, async (req, res) => {
         if (!['admin_super', 'admin_ops', 'admin_readonly'].includes(req.user?.role)) {
             return res.status(403).json({ error: "Access denied" });
         }
@@ -211,7 +212,7 @@ export function createStreamApiRouter(opsEngine) {
      * GET /stream/node
      * Access: Node Operator (own node only)
      */
-    router.get('/node', async (req, res) => {
+    router.get('/node', verifyJWT, async (req, res) => {
         if (req.user?.role !== 'node_operator') {
             return res.status(403).json({ error: "Access denied" });
         }
@@ -263,7 +264,7 @@ export function createStreamApiRouter(opsEngine) {
      * GET /stream/builder
      * Access: Builder
      */
-    router.get('/builder', async (req, res) => {
+    router.get('/builder', verifyJWT, async (req, res) => {
         if (req.user?.role !== 'builder') {
             return res.status(403).json({ error: "Access denied" });
         }

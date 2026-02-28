@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSSE } from '@/hooks/use-sse';
 import {
     Activity, Signal, Zap, Users, Wifi, Terminal,
-    AlertCircle, Upload, Cpu, Clock, DollarSign
+    AlertCircle, Upload, Cpu, Clock, DollarSign, ShieldAlert
 } from 'lucide-react';
 import {
     AreaChart, Area, ResponsiveContainer, Tooltip,
@@ -20,7 +20,8 @@ export default function NodeDashboard() {
     const { lastEvent } = useSSE('/stream/node', ['heartbeat', 'log']);
     const [nodeStatus, setNodeStatus] = useState<any>({
         online: true, uptime: '14d 7h 23m', peers: 12, bandwidth: '1.2 TB',
-        earnings: 42.5, latency: 23, cpu: 34, lastPing: Date.now()
+        earnings: 42.5, latency: 23, cpu: 34, lastPing: Date.now(),
+        reserveLocked: '5,000.00'
     });
     const [logs, setLogs] = useState<string[]>([
         '[BOOT] Node v3.2.1 initialized', '[NET] Peer discovery: 12 peers found',
@@ -49,6 +50,13 @@ export default function NodeDashboard() {
         { label: 'Bandwidth', value: nodeStatus.bandwidth, icon: Upload, color: 'text-violet-400', bg: 'bg-violet-500/10' },
         { label: 'Earnings', value: `${nodeStatus.earnings} STK`, icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10' },
     ];
+
+    if ((user as any)?.node_type === 'NODEOPS_MANAGED' || (user as any)?.nodeType === 'NODEOPS_MANAGED' || user?.wallet) {
+        // Show Reserve locked funds
+        metrics.push({
+            label: 'Reserve Locked', value: `$${nodeStatus.reserveLocked}`, icon: ShieldAlert, color: 'text-teal-400', bg: 'bg-teal-500/10'
+        });
+    }
 
     return (
         <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto fade-in">

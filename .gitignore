@@ -75,3 +75,8 @@ server_pid.txt
 s_pid.txt
 server.js.backup_*
 test/*.backup_*
+
+# Foundry
+cache/
+lib/
+out/

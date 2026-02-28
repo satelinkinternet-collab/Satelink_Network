@@ -5,11 +5,7 @@ import { rateLimit } from 'express-rate-limit';
 
 
 export function verifyJWT(req, res, next) {
-    // ── DEV BYPASS: skip auth when DEV_BYPASS_AUTH=true (never in production) ──
-    if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
-        req.user = { wallet: '0xdevadmin', role: 'admin_super', userId: 'dev-admin', type: 'access' };
-        return next();
-    }
+    // ── DEV BYPASS REMOVED: ──
 
     let authHeader = req.headers.authorization;
     let token = null;
@@ -54,22 +50,18 @@ export function createUnifiedAuthRouter(opsEngine) {
         });
     });
 
-    // Mock Login for other roles (DEV ONLY)
-    if (process.env.NODE_ENV !== 'production') {
-        router.post('/__test/auth/login', async (req, res) => {
-            const { wallet, role } = req.body;
-            if (!wallet || !role) return res.status(400).json({ error: 'Wallet and Role required' });
-
-            const secret = process.env.JWT_SECRET;
-            const token = jwt.sign(
-                { wallet: wallet.toLowerCase(), role, userId: wallet.toLowerCase(), type: 'access' },
-                secret,
-                { expiresIn: '7d', issuer: 'satelink-core' }
-            );
-
-            res.json({ success: true, token });
+    // GET /auth/me - Alias for frontend
+    router.get('/auth/me', verifyJWT, (req, res) => {
+        if (!req.user) {
+            return res.status(401).json({ ok: false, error: "Unauthorized" });
+        }
+        return res.json({
+            ok: true,
+            user: req.user
         });
-    }
+    });
+
+    // Mock Login REMOVED
 
     // IP Hashing helper for rate limits
     const hashIp = (ip) => {
