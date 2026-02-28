@@ -120,27 +120,31 @@ export function attachRoutes(app, rawDb) {
 
     // ═══════════════════════════════════════════════════════════
     // 6. MAIN DASHBOARD API ROUTES
+    //    All need JWT auth — apply verifyJWT at mount level so
+    //    req.user is always set before route handlers run.
     // ═══════════════════════════════════════════════════════════
 
-    // /admin-api/* (frontend proxies /admin-api/:path*)
+    // /admin-api/* has its own requireJWT from middleware/auth.js internally
     safeMountRouter(app, '/admin-api', () => createAdminApiRouter(opsEngine), 'admin_api_v2');
 
-    // /node-api/* (frontend proxies /node-api/:path*)
+    // These routes read req.user.wallet — need verifyJWT
+    app.use('/node-api', verifyJWT);
     safeMountRouter(app, '/node-api', () => createNodeApiRouter(opsEngine), 'node_api_v2');
 
-    // /builder-api/* (frontend needs rewrite added)
+    app.use('/builder-api', verifyJWT);
     safeMountRouter(app, '/builder-api', () => createBuilderApiV2Router(opsEngine), 'builder_api_v2');
 
-    // /dist-api/* (frontend proxies /dist-api/:path*)
+    app.use('/dist-api', verifyJWT);
     safeMountRouter(app, '/dist-api', () => createDistApiRouter(opsEngine), 'dist_api_v2');
 
-    // /ent-api/* (frontend proxies /ent-api/:path*)
+    app.use('/ent-api', verifyJWT);
     safeMountRouter(app, '/ent-api', () => createEntApiRouter(opsEngine), 'ent_api_v2');
 
     // ═══════════════════════════════════════════════════════════
     // 7. ADMIN SUB-ROUTES (frontend proxies /admin-ctrl/* → /admin/*)
-    //    Many of these import verifyJWT internally.
+    //    Apply verifyJWT at /admin level so all sub-routes get req.user.
     // ═══════════════════════════════════════════════════════════
+    app.use('/admin', verifyJWT);
     safeMountRouter(app, '/admin', () => createAdminControlRouter(opsEngine, stubs.auditService), 'admin_control');
     safeMountRouter(app, '/admin', () => createAdminControlRoomRouter(opsEngine, {
         selfTestRunner: null,
@@ -168,6 +172,7 @@ export function attachRoutes(app, rawDb) {
     // ═══════════════════════════════════════════════════════════
     // 8. STREAMING (frontend proxies /stream/*)
     // ═══════════════════════════════════════════════════════════
+    app.use('/stream', verifyJWT);
     safeMountRouter(app, '/stream', () => createStreamApiRouter(opsEngine), 'stream_api');
 
     // ═══════════════════════════════════════════════════════════

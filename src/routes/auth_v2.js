@@ -64,7 +64,7 @@ export function createUnifiedAuthRouter(opsEngine) {
             const token = jwt.sign(
                 { wallet: wallet.toLowerCase(), role, userId: wallet.toLowerCase(), type: 'access' },
                 secret,
-                { expiresIn: '7d', issuer: 'satelink-core' }
+                { expiresIn: '7d', issuer: process.env.JWT_ISSUER || 'satelink-network' }
             );
 
             res.json({ success: true, token });
