@@ -27,7 +27,7 @@ export default function EnterpriseDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await api.get('/enterprise-api/billing');
+                const res = await api.get('/ent-api/billing');
                 if (res.data.ok) setData(res.data);
             } catch { /* Enterprise data may not exist */ }
             finally { setLoading(false); }

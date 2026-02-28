@@ -58,6 +58,14 @@ const nextConfig: NextConfig = {
         source: "/support/:path*",
         destination: `${API_BASE}/support/:path*`,
       },
+      {
+        source: "/builder-api/:path*",
+        destination: `${API_BASE}/builder-api/:path*`,
+      },
+      {
+        source: "/beta/:path*",
+        destination: `${API_BASE}/beta/:path*`,
+      },
     ];
   },
 };
