@@ -89,6 +89,13 @@ export const NAV_ITEMS: NavItem[] = [
         section: 'REVENUE'
     },
     {
+        label: 'Enterprise Demand',
+        path: '/admin/enterprise',
+        icon: FileText,
+        roles: ['admin_super', 'admin_ops', 'admin_readonly'],
+        section: 'REVENUE'
+    },
+    {
         label: 'Reward Epochs',
         path: '/admin/rewards/epochs',
         icon: Award,

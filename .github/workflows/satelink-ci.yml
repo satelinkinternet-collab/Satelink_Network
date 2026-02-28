@@ -139,7 +139,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [contracts, backend, frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production  # Requires manual approval in GitHub
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

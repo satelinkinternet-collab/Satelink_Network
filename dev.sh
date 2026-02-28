@@ -1,96 +1,104 @@
 #!/bin/bash
-set -e
+echo ""
+echo "=============================="
+echo "  Satelink Dev Launcher"
+echo "=============================="
+echo ""
 
-echo "🚀 Satelink Dev Launcher"
-echo "========================"
+# Kill existing processes on our ports
+lsof -ti:8080 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 1
 
-# Kill any existing processes on our ports
-lsof -ti:8080 | xargs kill -9 2>/dev/null || true
-lsof -ti:3000 | xargs kill -9 2>/dev/null || true
-
-# Ensure .env exists
+# Check .env
 if [ ! -f .env ]; then
-  echo "❌ .env file missing. Copy from .env.example first."
-  exit 1
+  echo "❌ .env file not found. Creating from .env.example..."
+  cp .env.example .env 2>/dev/null || echo "PORT=8080
+NODE_ENV=development
+JWT_SECRET=$(openssl rand -hex 32)
+JWT_REFRESH_SECRET=$(openssl rand -hex 32)
+SQLITE_PATH=./satelink.db
+FEATURE_REAL_SETTLEMENT=false
+FEATURE_MOONPAY=false" > .env
 fi
 
-# Ensure node_modules exist
-if [ ! -d node_modules ]; then
-  echo "📦 Installing backend deps..."
-  npm install
-fi
-if [ ! -d web/node_modules ]; then
-  echo "📦 Installing frontend deps..."
-  cd web && npm install && cd ..
-fi
+# Install deps if needed
+[ ! -d node_modules ] && echo "📦 Installing backend deps..." && npm install
+[ ! -d web/node_modules ] && echo "📦 Installing frontend deps..." && (cd web && npm install)
 
-# Start backend in background
-echo "🔧 Starting Backend on :8080..."
-node server.js &
+# Start backend
+echo "🔧 Starting backend on :8080..."
+node server.js > /tmp/satelink-backend.log 2>&1 &
 BACKEND_PID=$!
 
-# Wait for backend to be ready
+# Wait for backend ready
 echo "⏳ Waiting for backend..."
-for i in {1..30}; do
-  if curl -s http://localhost:8080/health > /dev/null 2>&1; then
-    echo "✅ Backend ready"
-    break
-  fi
+for i in $(seq 1 30); do
+  curl -s http://localhost:8080/health > /dev/null 2>&1 && break
   sleep 1
 done
 
-# Seed demo data (dev only)
-echo "🌱 Seeding demo data..."
+if ! curl -s http://localhost:8080/health > /dev/null 2>&1; then
+  echo "❌ Backend failed to start. Check /tmp/satelink-backend.log"
+  cat /tmp/satelink-backend.log | tail -20
+  exit 1
+fi
+echo "✅ Backend running on http://localhost:8080"
+
+# Seed data
+echo "🌱 Seeding test data..."
 curl -s -X POST http://localhost:8080/__test/seed/admin > /dev/null 2>&1 || true
 curl -s -X POST http://localhost:8080/__test/seed/nodes > /dev/null 2>&1 || true
 
-# Mint tokens and display them
+# Mint tokens
 echo ""
-echo "🔑 Dev Tokens (paste into browser console):"
-echo "============================================"
+echo "🔑 Login Tokens — paste into browser console at http://localhost:3000:"
+echo "────────────────────────────────────────────────────────────────────"
 
-ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/__test/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"wallet":"0xadmin_super","role":"admin_super"}' | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token' 2>/dev/null)
+for ROLE_DATA in \
+  "admin_super:0xadmin_super:Admin" \
+  "node_operator:0xnode_op_1:NodeOp" \
+  "builder:0xbuilder_1:Builder" \
+  "distributor_lco:0xdist_1:Distributor"; do
+  
+  ROLE=$(echo $ROLE_DATA | cut -d: -f1)
+  WALLET=$(echo $ROLE_DATA | cut -d: -f2)
+  LABEL=$(echo $ROLE_DATA | cut -d: -f3)
+  
+  TOKEN=$(curl -s -X POST http://localhost:8080/__test/auth/login \
+    -H "Content-Type: application/json" \
+    -d "{\"wallet\":\"${WALLET}\",\"role\":\"${ROLE}\"}" 2>/dev/null | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token' 2>/dev/null)
+  
+  if [ -n "$TOKEN" ] && [ "$TOKEN" != "undefined" ]; then
+    echo "  $LABEL: localStorage.setItem('satelink_token','$TOKEN'); location.reload()"
+  else
+    echo "  $LABEL: ⚠️ Failed to mint token"
+  fi
+done
 
-NODE_TOKEN=$(curl -s -X POST http://localhost:8080/__test/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"wallet":"0xnode_operator_1","role":"node_operator"}' | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token' 2>/dev/null)
-
-BUILDER_TOKEN=$(curl -s -X POST http://localhost:8080/__test/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"wallet":"0xbuilder_1","role":"builder"}' | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token' 2>/dev/null)
-
-DIST_TOKEN=$(curl -s -X POST http://localhost:8080/__test/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"wallet":"0xdist_1","role":"distributor_lco"}' | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).token' 2>/dev/null)
-
+echo "────────────────────────────────────────────────────────────────────"
 echo ""
-echo "Admin:       localStorage.setItem('satelink_token','$ADMIN_TOKEN')"
-echo "Node Op:     localStorage.setItem('satelink_token','$NODE_TOKEN')"
-echo "Builder:     localStorage.setItem('satelink_token','$BUILDER_TOKEN')"
-echo "Distributor: localStorage.setItem('satelink_token','$DIST_TOKEN')"
-echo ""
-echo "============================================"
 
-# Start frontend in foreground
-echo "🎨 Starting Frontend on :3000..."
-cd web && npm run dev &
+# Start frontend
+echo "🎨 Starting frontend on :3000..."
+cd web && npm run dev > /tmp/satelink-frontend.log 2>&1 &
 FRONTEND_PID=$!
+cd ..
 
+sleep 3
 echo ""
-echo "============================================"
-echo "🌐 Satelink Running!"
-echo "  Frontend:  http://localhost:3000"
-echo "  Backend:   http://localhost:8080"
-echo "  Health:    http://localhost:8080/health"
-echo "  Swagger:   http://localhost:8080/api-docs"
-echo "============================================"
+echo "=============================="
+echo "  ✅ Satelink Running!"
+echo "=============================="
+echo "  Frontend: http://localhost:3000"
+echo "  Backend:  http://localhost:8080"
+echo "  Login:    http://localhost:3000/login"
+echo "  Admin:    http://localhost:3000/admin"
+echo "  Swagger:  http://localhost:8080/api-docs"
+echo "=============================="
 echo ""
-echo "Press Ctrl+C to stop both servers"
+echo "Press Ctrl+C to stop"
+echo ""
 
-# Trap Ctrl+C to kill both
-trap "echo '🛑 Stopping...'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" SIGINT SIGTERM
-
-# Wait for either to exit
+trap "echo 'Stopping...'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0" SIGINT SIGTERM
 wait

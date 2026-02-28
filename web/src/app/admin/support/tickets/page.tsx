@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 
 interface Ticket {
@@ -28,7 +28,7 @@ export default function AdminTicketsPage() {
 
     const fetchTickets = async () => {
         try {
-            const res = await axios.get('/admin/support/tickets');
+            const res = await api.get('/admin/support/tickets');
             if (res.data.ok) setTickets(res.data.tickets);
         } catch (e: any) {
             toast.error('Failed to fetch tickets: ' + (e.response?.data?.error || e.message));
@@ -39,7 +39,7 @@ export default function AdminTicketsPage() {
 
     const resolveTicket = async (id: number) => {
         try {
-            await axios.post(`/admin/support/tickets/${id}/resolve`, { status: 'resolved' });
+            await api.post(`/admin/support/tickets/${id}/resolve`, { status: 'resolved' });
             toast.success('Ticket marked as resolved');
             fetchTickets();
             if (selectedTicket?.id === id) setSelectedTicket(null);
@@ -76,8 +76,8 @@ export default function AdminTicketsPage() {
                                 key={ticket.id}
                                 onClick={() => setSelectedTicket(ticket)}
                                 className={`p-4 rounded-xl border transition-all cursor-pointer ${selectedTicket?.id === ticket.id
-                                        ? 'bg-blue-600/20 border-blue-500'
-                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                    ? 'bg-blue-600/20 border-blue-500'
+                                    : 'bg-white/5 border-white/10 hover:border-white/20'
                                     }`}
                             >
                                 <div className="flex justify-between items-start mb-2">

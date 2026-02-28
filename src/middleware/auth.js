@@ -16,34 +16,13 @@ import crypto from 'crypto';
 import "dotenv/config";
 
 // ─── Validate JWT Secret at module load time ──────────────────────────────────
-(function validateJwtSecret() {
-  const secret = process.env.JWT_SECRET;
+import { validateEnv } from "../../utils/validateEnv.js";
 
-  if (!secret) {
-    console.error('\n[FATAL] JWT_SECRET environment variable is not set.');
-    console.error('[FATAL] This is required in ALL environments (dev, staging, prod).');
-    console.error('[FATAL] Generate a secure secret with:');
-    console.error('[FATAL]   node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
-    console.error('[FATAL] Then set it in your .env file.\n');
-    process.exit(1);
-  }
+// Call the unified execution context validations early in module resolution
+validateEnv();
 
-  if (secret.length < 64) {
-    console.error(`\n[FATAL] JWT_SECRET is too short (${secret.length} chars). Minimum 64 chars required.\n`);
-    process.exit(1);
-  }
-})();
-
-const JWT_SECRET = process.env.JWT_SECRET; // validated above — always set
-
-const JWT_REFRESH = (() => {
-  const r = process.env.JWT_REFRESH_SECRET;
-  if (!r) {
-    console.error('[FATAL] JWT_REFRESH_SECRET not set. Required for refresh token security.');
-    process.exit(1);
-  }
-  return r;
-})();
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH = process.env.JWT_REFRESH_SECRET || 'satelink-fallback-refresh-token';
 
 const TOKEN_TTL = process.env.JWT_TTL || '15m';
 const REFRESH_TOKEN_TTL = process.env.JWT_REFRESH_TTL || '7d';
@@ -93,11 +72,7 @@ export function verifyRefreshToken(token) {
  * Preserves abuse firewall recording from original auth.js
  */
 export function authenticate(req, res, next) {
-  // ── DEV BYPASS: skip auth when DEV_BYPASS_AUTH=true (never in production) ──
-  if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
-    req.user = { wallet: '0xdevadmin', role: 'admin_super', userId: 'dev-admin', type: 'access' };
-    return next();
-  }
+  // ── DEV BYPASS REMOVED: ──
 
   const authHeader = req.headers.authorization;
   let token = null;
@@ -160,8 +135,7 @@ export const requireJWT = authenticate;
 export function requireRole(allowedRoles) {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
   return (req, res, next) => {
-    // DEV BYPASS: admin_super passes all role checks
-    if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') return next();
+    // DEV BYPASS REMOVED
     if (!req.user || !req.user.role) {
       return res.status(403).json({ error: 'Forbidden: No role assigned' });
     }

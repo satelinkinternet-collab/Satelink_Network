@@ -3,13 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4.0.4",
-    "@nomicfoundation/hardhat-viem": "^3.0.2",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.7",
     "chai": "^6.2.2",
-    "hardhat": "^3.1.5",
+    "concurrently": "^9.2.1",
     "mocha": "^11.7.5",
     "playwright": "^1.58.2",
     "supertest": "^7.2.2",
@@ -41,9 +39,18 @@
     "yamljs": "^0.3.0"
   },
   "scripts": {
+    "dev": "NODE_ENV=development nodemon server.js",
+    "start": "NODE_ENV=production node server.js",
+    "lint": "eslint .",
+    "test": "mocha test/**/*.test.js",
+    "dev:all": "bash dev.sh",
+    "dev:backend": "node server.js",
+    "dev:frontend": "cd web && npm run dev",
     "dev:full": "bash dev.sh",
-    "test": "npm run test:e2e",
-    "test:e2e": "npx mocha test/Security.test.js test/Heartbeat.test.js --timeout 15000",
+    "contracts:build": "forge build",
+    "contracts:test": "forge test -vv",
+    "contracts:deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
+    "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast",
     "e2e:manual": "bash scripts/manual_e2e.sh",
     "test:all": "bash scripts/test.sh",
     "migrate": "node scripts/migrate.js",
@@ -55,10 +62,7 @@
     "smoke:settlement": "node scripts/smoke_settlement.js"
   },
   "description": "This project has a minimal setup of Hardhat 3 Beta, without any plugins.",
-  "main": "debug_env.js",
-  "directories": {
-    "test": "test"
-  },
+  "main": "server.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/satelinkinternet-collab/satelink-mvp.git"

@@ -47,7 +47,7 @@ export default function LoginPage() {
                         Login as Super Admin
                     </button>
                     <button
-                        onClick={() => handleLogin('node_operator', '0xnode_operator_1', '/node')}
+                        onClick={() => handleLogin('node_operator', '0xnode_op_1', '/node')}
                         disabled={loading}
                         className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
                     >
@@ -66,6 +66,13 @@ export default function LoginPage() {
                         className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
                     >
                         Login as Distributor
+                    </button>
+                    <button
+                        onClick={() => handleLogin('enterprise', '0xent_1', '/enterprise')}
+                        disabled={loading}
+                        className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
+                    >
+                        Login as Enterprise
                     </button>
                 </div>
             </div>

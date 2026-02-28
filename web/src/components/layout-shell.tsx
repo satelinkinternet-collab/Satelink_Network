@@ -16,7 +16,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        const publicPaths = ['/login', '/', '/health-ui', '/about', '/beta/join', '/download', '/terms', '/privacy', '/403'];
+        const publicPaths = ['/login', '/', '/health-ui', '/about', '/how-it-works', '/run-node', '/developers', '/economics', '/settlement', '/governance', '/investors', '/enterprise', '/network', '/docs', '/legal', '/beta/join', '/download', '/terms', '/privacy', '/403'];
         if (!loading && !user && !publicPaths.includes(pathname) && !pathname.startsWith('/preview')) {
             router.push('/login');
         }
@@ -34,7 +34,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         );
     }
 
-    if (['/login', '/403', '/', '/health-ui', '/about', '/beta/join', '/download', '/terms', '/privacy'].includes(pathname) || pathname.startsWith('/preview')) {
+    if (['/login', '/403', '/', '/health-ui', '/about', '/how-it-works', '/run-node', '/developers', '/economics', '/settlement', '/governance', '/investors', '/enterprise', '/network', '/docs', '/legal', '/beta/join', '/download', '/terms', '/privacy'].includes(pathname) || pathname.startsWith('/preview')) {
         return <>{children}</>;
     }
 

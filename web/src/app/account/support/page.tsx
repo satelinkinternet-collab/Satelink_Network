@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { getActiveAddress } from '@/lib/embeddedWallet';
 import { generateSupportBundle } from '@/lib/supportBundle';
-import axios from 'axios';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 
 /**
@@ -30,7 +30,7 @@ export default function SupportPage() {
         try {
             const bundle = await generateSupportBundle(message);
 
-            const res = await axios.post('/support/ticket', {
+            const res = await api.post('/support/ticket', {
                 wallet: address,
                 message,
                 bundle_json: bundle

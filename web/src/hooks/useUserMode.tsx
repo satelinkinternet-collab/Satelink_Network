@@ -10,6 +10,13 @@ export function useUserMode() {
     // Initial fetch
     useEffect(() => {
         const fetchSettings = async () => {
+            if (typeof window === 'undefined') return;
+            const token = localStorage.getItem('satelink_token');
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 const res = await api.get('/me/settings');
                 if (res.data.ok) {

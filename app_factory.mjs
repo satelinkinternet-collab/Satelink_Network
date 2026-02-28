@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { attachBaseMiddleware } from "./core/middleware.js";
 import { attachSchema } from "./core/schema.js";
@@ -16,6 +17,16 @@ export function createApp(db) {
   attachHeartbeat(app, db);
   attachRoutes(app, db);
   attachUI(app, db);
+
+  // Global Error Handler
+  app.use((err, req, res, next) => {
+    console.error("[SERVER] Unhandled Exception:", err.message);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(err.stack);
+    }
+    // Ensure API endpoints consistently return JSON
+    res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  });
 
   return app;
 }
