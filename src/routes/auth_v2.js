@@ -61,7 +61,22 @@ export function createUnifiedAuthRouter(opsEngine) {
         });
     });
 
-    // Mock Login REMOVED
+    // Mock Login for other roles (DEV ONLY) — includes JWT issuer fix
+    if (process.env.NODE_ENV !== 'production') {
+        router.post('/__test/auth/login', async (req, res) => {
+            const { wallet, role } = req.body;
+            if (!wallet || !role) return res.status(400).json({ error: 'Wallet and Role required' });
+
+            const secret = process.env.JWT_SECRET;
+            const token = jwt.sign(
+                { wallet: wallet.toLowerCase(), role, userId: wallet.toLowerCase(), type: 'access' },
+                secret,
+                { expiresIn: '7d', issuer: process.env.JWT_ISSUER || 'satelink-network' }
+            );
+
+            res.json({ success: true, token });
+        });
+    }
 
     // IP Hashing helper for rate limits
     const hashIp = (ip) => {
