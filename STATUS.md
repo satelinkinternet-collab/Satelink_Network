@@ -40,7 +40,7 @@ Branch: integration/full-product
 Status: COMPLETE ✅
 
 ## Stage 2 — Smart Contract Hardening
-Status: IN PROGRESS
+Status: COMPLETE ✅
 - [x] 2.1 Verify ClaimsContract.sol security inheritance
 - [x] 2.2 Rewrite SplitEngine.sol
 - [x] 2.3 Rewrite RevenueVault.sol
@@ -50,7 +50,7 @@ Status: IN PROGRESS
 - [x] 2.7 forge build
 - [x] 2.8 forge test
 - [x] 2.9 Deployment script
-- [ ] 2.10 CI update
+- [x] 2.10 CI update
 
 ## Stage 3 — Auth & Security Hardening
 Status: PENDING
