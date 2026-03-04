@@ -210,6 +210,34 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/revenue/summary - Revenue aggregation (today, total, by type)
+    router.get('/revenue/summary', async (req, res) => {
+        try {
+            const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+
+            const allEvents = await opsEngine.db.query("SELECT amount_usdt, event_type, created_at FROM revenue_events_v2");
+            const total = allEvents.reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
+            const today = allEvents.filter(e => e.created_at >= todayStart).reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
+
+            const byType = {};
+            for (const e of allEvents) {
+                const t = e.event_type || 'unknown';
+                byType[t] = (byType[t] || 0) + (e.amount_usdt || 0);
+            }
+
+            res.json({
+                ok: true,
+                summary: {
+                    today: today.toFixed(2),
+                    total: total.toFixed(2),
+                    byType: Object.entries(byType).map(([type, amount]) => ({ type, amount: amount.toFixed(2) }))
+                }
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/history - Revenue Trend
     router.get('/history', async (req, res) => {
         try {
