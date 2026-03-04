@@ -97,7 +97,12 @@ Status: COMPLETE
 - [x] Next.js rewrites count: 31 (≥28 required)
 
 ## Stage 5 — Frontend Dashboard Wiring
-Status: PENDING
+Status: IN PROGRESS
+- [x] 5.1 Wire /node/page.tsx to fetch initial state from /node-api/stats
+- [ ] 5.2 Wire /node/earnings/page.tsx to /node-api/earnings (replace stub)
+- [ ] 5.3 Wire /distributor/referrals/page.tsx to /dist-api/referrals (replace stub)
+- [ ] 5.4 Wire distributor chart to /dist-api/history (replace hardcoded earningsData)
+- [ ] 5.5 Wire distributor acquisitions to /dist-api/conversions (replace hardcoded)
 
 ## Stage 6 — Real-Time SSE
 Status: PENDING

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSSE } from '@/hooks/use-sse';
@@ -34,6 +35,22 @@ export default function NodeDashboard() {
         { t: 'Now', cpu: 34, bw: 220 },
     ]);
     const logRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        api.get('/node-api/stats').then(res => {
+            if (res.data?.ok) {
+                const { stats, earnings, logs: apiLogs } = res.data;
+                setNodeStatus((p: any) => ({
+                    ...p,
+                    online: stats?.active ?? p.online,
+                    earnings: parseFloat(stats?.claimable ?? p.earnings),
+                }));
+                if (apiLogs?.length) {
+                    setLogs(apiLogs.map((l: any) => l.message || String(l)));
+                }
+            }
+        }).catch(() => { /* keep mock defaults on error */ });
+    }, []);
 
     useEffect(() => {
         if (!lastEvent) return;
