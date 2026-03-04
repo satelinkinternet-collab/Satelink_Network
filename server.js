@@ -1,7 +1,7 @@
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
-import { validateEnv } from "./utils/validateEnv.js";
+import { validateEnv } from "./src/config/env.js";
 import { logger } from "./utils/logger.js";
 import { createApp } from "./app_factory.mjs";
 import Database from "better-sqlite3";
