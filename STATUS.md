@@ -99,7 +99,7 @@ Status: COMPLETE
 ## Stage 5 — Frontend Dashboard Wiring
 Status: IN PROGRESS
 - [x] 5.1 Wire /node/page.tsx to fetch initial state from /node-api/stats
-- [ ] 5.2 Wire /node/earnings/page.tsx to /node-api/earnings (replace stub)
+- [x] 5.2 Wire /node/earnings/page.tsx to /node-api/earnings (replace stub)
 - [ ] 5.3 Wire /distributor/referrals/page.tsx to /dist-api/referrals (replace stub)
 - [ ] 5.4 Wire distributor chart to /dist-api/history (replace hardcoded earningsData)
 - [ ] 5.5 Wire distributor acquisitions to /dist-api/conversions (replace hardcoded)
