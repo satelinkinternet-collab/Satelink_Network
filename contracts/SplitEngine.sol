@@ -2,8 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract SplitEngine is AccessControl {
+contract SplitEngine is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
 
     // Percentages (basis points: 10000 = 100%)
@@ -32,7 +34,7 @@ contract SplitEngine is AccessControl {
         uint256 _opsPoolShare,
         uint256 _treasuryShare,
         uint256 _infraReserveShare
-    ) external onlyRole(CONFIGURATOR_ROLE) {
+    ) external onlyRole(CONFIGURATOR_ROLE) whenNotPaused {
         require(_nodePoolShare + _opsPoolShare + _treasuryShare == 10000, "SplitEngine: total shares must equal 10000");
         require(_infraReserveShare <= 10000, "SplitEngine: infra reserve must not exceed 10000"); // Up to 100% of node pool
 

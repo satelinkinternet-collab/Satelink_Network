@@ -2,8 +2,10 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract EpochAnchor is AccessControl {
+contract EpochAnchor is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
 
     struct Epoch {
@@ -26,7 +28,7 @@ contract EpochAnchor is AccessControl {
         _grantRole(ORACLE_ROLE, _oracle);
     }
 
-    function submitEpochRoot(uint256 epochId, bytes32 merkleRoot, uint256 totalRevenue) external onlyRole(ORACLE_ROLE) {
+    function submitEpochRoot(uint256 epochId, bytes32 merkleRoot, uint256 totalRevenue) external onlyRole(ORACLE_ROLE) whenNotPaused {
         if (epochs[epochId].timestamp != 0) revert EpochAlreadyAnchored(epochId);
         if (merkleRoot == bytes32(0)) revert InvalidEpochData();
 

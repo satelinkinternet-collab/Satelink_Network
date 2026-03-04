@@ -52,6 +52,15 @@ Status: COMPLETE ✅
 - [x] 2.9 Deployment script
 - [x] 2.10 CI update
 
+### Gate Check — Stage 2 ✅
+- [x] forge build: zero errors, zero warnings
+- [x] forge test: 46/46 pass (100%) across 8 suites
+- [x] SplitEngine.calculateSplit(10000) returns (5000, 3000, 2000)
+- [x] All contracts inherit AccessControl + Pausable + ReentrancyGuard
+- [x] Zero uses of onlyOwner — all use onlyRole()
+- [x] ClaimsContract.createClaim requires CLAIM_CREATOR_ROLE
+- [x] RevenueVault.withdraw requires WITHDRAWER_ROLE
+
 ## Stage 3 — Auth & Security Hardening
 Status: PENDING
 
