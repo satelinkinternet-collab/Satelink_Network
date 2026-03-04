@@ -210,6 +210,22 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/security/alerts - Recent security events (failed auth, suspicious activity)
+    router.get('/security/alerts', async (req, res) => {
+        try {
+            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+
+            const alerts = await opsEngine.db.query(
+                `SELECT * FROM audit_logs WHERE action_type IN ('FAILED_AUTH','ROLE_CHANGE','PAUSE_WITHDRAWALS','SUSPICIOUS_TX') ORDER BY created_at DESC LIMIT ?`,
+                [limit]
+            );
+
+            res.json({ ok: true, alerts });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/revenue/summary - Revenue aggregation (today, total, by type)
     router.get('/revenue/summary', async (req, res) => {
         try {
