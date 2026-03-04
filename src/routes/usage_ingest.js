@@ -1,6 +1,7 @@
 
 import { Router } from 'express';
 import crypto from 'crypto';
+import { requireJWT, requireRole } from '../middleware/auth.js';
 
 export function createUsageIngestRouter(opsEngine) {
     const router = Router();
@@ -79,6 +80,42 @@ export function createUsageIngestRouter(opsEngine) {
         } catch (e) {
             console.error("Usage Ingest Error:", e);
             res.status(500).json({ error: 'Ingestion Failed' });
+        }
+    });
+
+    // POST /usage/record — JWT-authenticated internal usage recording
+    // Called by backend services (admin/ops) to record usage events directly
+    router.post('/record', requireJWT, requireRole(['admin_super', 'admin_ops', 'builder']), async (req, res) => {
+        const { endpoint, qty, unit_price_usdt, payer_wallet, meta } = req.body;
+
+        if (!endpoint || !qty || unit_price_usdt === undefined || !payer_wallet) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const qtyNum = parseInt(qty);
+        const priceNum = parseFloat(unit_price_usdt);
+
+        if (isNaN(qtyNum) || qtyNum < 1 || qtyNum > 1000000) return res.status(400).json({ error: 'Invalid qty (1..1e6)' });
+        if (isNaN(priceNum) || priceNum <= 0 || priceNum > 1000) return res.status(400).json({ error: 'Invalid price (0..1000)' });
+        if (qtyNum * priceNum > 10000000) return res.status(400).json({ error: 'Amount limit exceeded' });
+
+        const cost = qtyNum * priceNum;
+        const ts = Date.now();
+        const txRef = `internal:${req.user.wallet}:${ts}:${Math.floor(Math.random() * 1000)}`;
+
+        try {
+            await dbRun(
+                "INSERT INTO api_usage (project_id, ts, endpoint, ok, cost_usdt, meta_json) VALUES (?, ?, ?, ?, ?, ?)",
+                [req.user.wallet, ts, endpoint, 1, cost, JSON.stringify(meta || {})]
+            );
+            await dbRun(
+                `INSERT INTO revenue_events (provider, source_type, payer_wallet, amount_usdt, amount_sats, tx_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                ['Internal', 'usage_record', payer_wallet, cost, cost * 100000000, txRef, ts]
+            );
+            res.json({ success: true, ref: txRef });
+        } catch (e) {
+            console.error("Usage Record Error:", e);
+            res.status(500).json({ error: 'Record Failed' });
         }
     });
 
