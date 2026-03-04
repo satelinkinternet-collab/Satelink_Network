@@ -49,7 +49,7 @@ Status: IN PROGRESS
 - [x] 2.6 Foundry tests for all contracts
 - [x] 2.7 forge build
 - [x] 2.8 forge test
-- [ ] 2.9 Deployment script
+- [x] 2.9 Deployment script
 - [ ] 2.10 CI update
 
 ## Stage 3 — Auth & Security Hardening
