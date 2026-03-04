@@ -52,6 +52,33 @@ export function createNodeApiRouter(opsEngine) {
         }
     });
 
+    // GET /node-api/earnings - Paginated earnings history for the authenticated node operator
+    router.get('/earnings', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const page = parseInt(req.query.page) || 1;
+            const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+            const offset = (page - 1) * limit;
+
+            const earnings = await opsEngine.db.query(
+                "SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT ? OFFSET ?",
+                [wallet, limit, offset]
+            );
+            const countRow = await opsEngine.db.get(
+                "SELECT COUNT(*) as total FROM epoch_earnings WHERE wallet_or_node_id = ?",
+                [wallet]
+            );
+            const total = countRow?.total || 0;
+
+            const totalEarned = earnings.reduce((sum, e) => sum + (e.amount_usdt || 0), 0);
+            const claimable = earnings.filter(e => e.status === 'UNPAID').reduce((sum, e) => sum + (e.amount_usdt || 0), 0);
+
+            res.json({ ok: true, earnings, page, limit, total, totalEarned: totalEarned.toFixed(2), claimable: claimable.toFixed(2) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // POST /node/claim
     router.post('/claim', async (req, res) => {
         try {
