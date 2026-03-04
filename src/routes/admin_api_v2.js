@@ -182,6 +182,34 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/logs - Error logs with level filter and pagination
+    router.get('/logs', async (req, res) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+            const offset = (page - 1) * limit;
+            const level = req.query.level || null;
+
+            const params = level ? [level, limit, offset] : [limit, offset];
+            const sql = level
+                ? "SELECT * FROM error_logs WHERE level = ? ORDER BY ts DESC LIMIT ? OFFSET ?"
+                : "SELECT * FROM error_logs ORDER BY ts DESC LIMIT ? OFFSET ?";
+
+            const countSql = level
+                ? "SELECT COUNT(*) as total FROM error_logs WHERE level = ?"
+                : "SELECT COUNT(*) as total FROM error_logs";
+            const countParams = level ? [level] : [];
+
+            const logs = await opsEngine.db.query(sql, params);
+            const countRow = await opsEngine.db.get(countSql, countParams);
+            const total = countRow?.total || 0;
+
+            res.json({ ok: true, logs, page, limit, total });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/history - Revenue Trend
     router.get('/history', async (req, res) => {
         try {
