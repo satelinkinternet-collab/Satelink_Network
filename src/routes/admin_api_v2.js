@@ -327,6 +327,43 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/rewards/summary - Total distributed, current epoch, pending rewards
+    router.get('/rewards/summary', async (req, res) => {
+        try {
+            const totalDistributed = (await opsEngine.db.get(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'PAID'"
+            ))?.total || 0;
+
+            const pendingRewards = (await opsEngine.db.get(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'UNPAID'"
+            ))?.total || 0;
+
+            const currentEpoch = await opsEngine.db.get(
+                "SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1"
+            );
+
+            const recentEpochs = await opsEngine.db.query(
+                `SELECT e.id, e.status, e.starts_at, e.ends_at,
+                    COALESCE(SUM(ee.amount_usdt), 0) as distributed
+                 FROM epochs e
+                 LEFT JOIN epoch_earnings ee ON ee.epoch_id = e.id
+                 GROUP BY e.id ORDER BY e.id DESC LIMIT 10`
+            );
+
+            res.json({
+                ok: true,
+                summary: {
+                    totalDistributed: totalDistributed.toFixed(2),
+                    pendingRewards: pendingRewards.toFixed(2),
+                    currentEpoch: currentEpoch || null,
+                },
+                recentEpochs,
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/history - Revenue Trend
     router.get('/history', async (req, res) => {
         try {
