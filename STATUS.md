@@ -88,6 +88,14 @@ Status: COMPLETE
 - [x] 4.9 Create /dist-api/referrals endpoint
 - [x] 4.10 Verify health endpoint returns full status
 
+### Gate Check — Stage 4 ✅
+- [x] Boot: server starts cleanly with no errors
+- [x] GET /health returns {ok, service, uptime, db_status, version}
+- [x] POST /ledger/withdraw returns 401 without JWT
+- [x] GET /admin-api/stats returns 401 without JWT
+- [x] GET /node-api/earnings returns 401 without JWT
+- [x] Next.js rewrites count: 31 (≥28 required)
+
 ## Stage 5 — Frontend Dashboard Wiring
 Status: PENDING
 
