@@ -72,7 +72,7 @@ Status: IN PROGRESS
 - [x] 3.7 Add auth to distributor dashboard (src/routes/ui.js)
 - [x] 3.8 Guard /__test routes in production
 - [x] 3.9 Add requireJWT + requireRole to /usage/record
-- [ ] 3.10 Create .env.example
+- [x] 3.10 Create .env.example
 - [ ] 3.11 Remove hardcoded secrets from test files
 
 ## Stage 4 — Backend Boot & API Wiring
