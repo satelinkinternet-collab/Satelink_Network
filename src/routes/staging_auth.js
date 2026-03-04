@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { signJWT } from './auth_v2.js';
+import jwt from 'jsonwebtoken';
 
 export function createStagingAuthRouter(opsEngine) {
     const router = Router();
@@ -37,7 +37,11 @@ export function createStagingAuthRouter(opsEngine) {
             if (!wallet) return res.status(400).json({ ok: false, error: "Missing wallet" });
 
             // Allow any role for testing flexibility in staging
-            const token = signJWT({ wallet, role: role || 'user' });
+            const token = jwt.sign(
+                { wallet, role: role || 'user', type: 'access' },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d', issuer: process.env.JWT_ISSUER || 'satelink-network' }
+            );
 
             // Ensure user exists in DB
             await opsEngine.db.query(
