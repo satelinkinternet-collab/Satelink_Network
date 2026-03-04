@@ -15,22 +15,28 @@ import {
     Tooltip, ResponsiveContainer
 } from 'recharts';
 
-const earningsData = [
-    { month: 'Jan', earnings: 320 }, { month: 'Feb', earnings: 580 },
-    { month: 'Mar', earnings: 710 }, { month: 'Apr', earnings: 620 },
-    { month: 'May', earnings: 950 }, { month: 'Jun', earnings: 1130 },
-];
-
 export default function DistributorDashboard() {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [earningsData, setEarningsData] = useState<any[]>([]);
     const referralLink = `https://satelink.network/ref/${Math.random().toString(36).slice(2, 10)}`;
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await api.get('/dist-api/stats');
-                if (res.data.ok) setStats(res.data);
+                const [statsRes, historyRes] = await Promise.all([
+                    api.get('/dist-api/stats'),
+                    api.get('/dist-api/history'),
+                ]);
+                if (statsRes.data.ok) setStats(statsRes.data);
+                if (historyRes.data.ok) {
+                    setEarningsData(
+                        (historyRes.data.history || []).map((h: any) => ({
+                            month: h.date,
+                            earnings: parseFloat(h.amount) || 0,
+                        }))
+                    );
+                }
             } catch { toast.error('Failed to fetch distributor data'); }
             finally { setLoading(false); }
         };
