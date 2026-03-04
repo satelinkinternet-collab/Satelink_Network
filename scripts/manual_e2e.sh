@@ -5,7 +5,7 @@ set -euo pipefail
 PORT=${PORT:-3000}
 BASE_URL=${BASE_URL:-"http://localhost:${PORT}"}
 LOG_FILE="/tmp/satelink_e2e_server.log"
-ADMIN_KEY=${ADMIN_API_KEY:-"satelink-admin-secret"}
+ADMIN_KEY=${ADMIN_API_KEY:-"test-admin-secret"}
 RUN_MOCHA=${RUN_MOCHA:-1}
 
 echo "--- Satelink Manual E2E Runner ---"

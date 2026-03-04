@@ -89,7 +89,7 @@ export function attachRoutes(app, rawDb) {
 
     // ─── 3. Admin key middleware ─────────────────────────────────
     const requireAdminKey = app.locals.requireAdminKey || ((req, res, next) => {
-        const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+        const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
         const provided = req.get("X-Admin-Key") || req.get("x-admin-key") || "";
         if (provided !== ADMIN_API_KEY) {
             return res.status(401).json({ ok: false, error: "Unauthorized" });

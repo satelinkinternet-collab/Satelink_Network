@@ -5,7 +5,7 @@ import { createApp } from "../server.js";
 
 describe("Revenue Split & Infra Reserve Test", function () {
     let app, agent, db;
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
     let nodeManaged = "0x1111111111111111111111111111111111111111";
     let nodeEdge = "0x2222222222222222222222222222222222222222";
     let epochId;

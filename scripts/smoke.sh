@@ -2,7 +2,7 @@
 
 PORT=${PORT:-8080}
 BASE_URL="http://localhost:$PORT"
-ADMIN_KEY=${ADMIN_API_KEY:-"satelink-admin-secret"}
+ADMIN_KEY=${ADMIN_API_KEY:-"test-admin-secret"}
 
 echo "=== Satelink Smoke Test ==="
 

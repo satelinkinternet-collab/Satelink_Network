@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import fetch from 'node-fetch';
 
 const NODE_URL = process.env.NODE_URL || 'http://localhost:8080';
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'satelink-admin-secret';
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'test-admin-secret';
 
 async function log(msg) {
     console.log(`[Simulator] ${msg}`);

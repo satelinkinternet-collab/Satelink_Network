@@ -5,7 +5,7 @@ import { createApp } from "../server.js";
 
 describe("Satelink DePIN Full Product Verification (LIVE)", function () {
     let app, agent, db;
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
     let nodeWallet = "0xAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBCCCCCCCC";
     let epochId;
     let payoutId;
