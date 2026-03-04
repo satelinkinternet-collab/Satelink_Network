@@ -17,13 +17,7 @@ api.interceptors.request.use((config) => {
             }
         }
 
-        // Tmp hack for simulator testing: Auto-inject admin key for the dashboard metrics
-        if (config.url?.includes('/api/demand/metrics')) {
-            config.headers = config.headers || {};
-            config.headers['x-admin-key'] = 'satelink-admin-secret';
-            config.headers['X-Admin-Key'] = 'satelink-admin-secret';
-        }
-    }
+}
     return config;
 });
 
