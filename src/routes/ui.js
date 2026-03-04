@@ -228,10 +228,15 @@ export function createUIRouter(opsEngine) {
     });
 
 
-    // --- PUBLIC / OPERATOR ROUTES ---
-    router.get('/operator/:wallet', async (req, res) => {
+    // --- OPERATOR ROUTES ---
+    router.get('/operator/:wallet', requireJWT, requireRole(['node_operator', 'admin_super', 'admin_ops']), async (req, res) => {
         try {
             const { wallet } = req.params;
+            // Non-admins may only view their own wallet
+            const isAdmin = ['admin_super', 'admin_ops'].includes(req.user?.role);
+            if (!isAdmin && req.user?.wallet !== wallet) {
+                return res.status(403).send("Forbidden");
+            }
             let node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
 
             // Allow viewing even if not registered (Guest View)
