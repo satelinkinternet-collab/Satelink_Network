@@ -64,7 +64,7 @@ Status: COMPLETE ✅
 ## Stage 3 — Auth & Security Hardening
 Status: IN PROGRESS
 - [x] 3.1 Remove hardcoded 'satelink-admin-secret' from web/src/lib/api.ts
-- [ ] 3.2 Remove hardcoded 'satelink-admin-secret' fallback from core/security.js
+- [x] 3.2 Remove hardcoded 'satelink-admin-secret' fallback from core/security.js
 - [ ] 3.3 Remove JWT_SECRET fallback in src/config/env.js
 - [ ] 3.4 Rewrite web/src/app/login/page.tsx
 - [ ] 3.5 Create web/src/app/register/page.tsx
