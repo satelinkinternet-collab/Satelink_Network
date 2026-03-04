@@ -54,7 +54,6 @@
     "e2e:manual": "bash scripts/manual_e2e.sh",
     "test:all": "bash scripts/test.sh",
     "migrate": "node scripts/migrate.js",
-    "start": "node server.js",
     "self:test": "node tools/self_test.js",
     "self:heal": "node tools/self_heal.js",
     "ops:triage": "node src/ops-agent/triage.js",
