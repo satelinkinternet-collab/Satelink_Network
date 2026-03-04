@@ -82,7 +82,7 @@ Status: IN PROGRESS
 - [x] 4.3 Add missing Next.js rewrites (12 new)
 - [x] 4.4 Create /admin-api/ledger/runs endpoint
 - [x] 4.5 Create /admin-api/logs endpoint
-- [ ] 4.6 Create /admin-api/revenue/summary endpoint
+- [x] 4.6 Create /admin-api/revenue/summary endpoint
 - [ ] 4.7 Create /admin-api/security/alerts endpoint
 - [ ] 4.8 Create /node-api/earnings endpoint
 - [ ] 4.9 Create /dist-api/referrals endpoint
