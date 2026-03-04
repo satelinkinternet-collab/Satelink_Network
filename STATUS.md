@@ -47,7 +47,7 @@ Status: IN PROGRESS
 - [x] 2.4 Create EligibilityPolicy.sol
 - [x] 2.5 Create GovernanceTimelock.sol
 - [x] 2.6 Foundry tests for all contracts
-- [ ] 2.7 forge build
+- [x] 2.7 forge build
 - [ ] 2.8 forge test
 - [ ] 2.9 Deployment script
 - [ ] 2.10 CI update
