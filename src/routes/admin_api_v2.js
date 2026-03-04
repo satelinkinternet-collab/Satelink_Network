@@ -254,6 +254,79 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/withdrawals - List withdrawals with optional status filter
+    router.get('/withdrawals', async (req, res) => {
+        try {
+            const status = req.query.status || null;
+            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+
+            const params = status ? [status, limit, offset] : [limit, offset];
+            const sql = status
+                ? "SELECT * FROM withdrawals WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+                : "SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            const countSql = status
+                ? "SELECT COUNT(*) as total FROM withdrawals WHERE status = ?"
+                : "SELECT COUNT(*) as total FROM withdrawals";
+            const countParams = status ? [status] : [];
+
+            const withdrawals = await opsEngine.db.query(sql, params);
+            const countRow = await opsEngine.db.get(countSql, countParams);
+            res.json({ ok: true, withdrawals, total: countRow?.total || 0, page, limit });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/withdrawals/:id/approve - Approve a pending withdrawal (super admin only)
+    router.post('/withdrawals/:id/approve', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { id } = req.params;
+            const w = await opsEngine.db.get("SELECT * FROM withdrawals WHERE id = ?", [id]);
+            if (!w) return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
+            if (w.status !== 'PENDING') return res.status(400).json({ ok: false, error: `Cannot approve: status is ${w.status}` });
+
+            await opsEngine.db.query("UPDATE withdrawals SET status = 'COMPLETED' WHERE id = ?", [id]);
+            try {
+                await opsEngine.db.query(
+                    "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
+                    [req.user?.wallet || 'admin_api', 'WITHDRAWAL_APPROVED', JSON.stringify({ id, wallet: w.wallet, amount_usdt: w.amount_usdt }), Date.now()]
+                );
+            } catch (_) {}
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/withdrawals/:id/reject - Reject a pending withdrawal (super admin only)
+    router.post('/withdrawals/:id/reject', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { id } = req.params;
+            const w = await opsEngine.db.get("SELECT * FROM withdrawals WHERE id = ?", [id]);
+            if (!w) return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
+            if (w.status !== 'PENDING') return res.status(400).json({ ok: false, error: `Cannot reject: status is ${w.status}` });
+
+            await opsEngine.db.query("UPDATE withdrawals SET status = 'REJECTED' WHERE id = ?", [id]);
+            try {
+                await opsEngine.db.query(
+                    "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
+                    [req.user?.wallet || 'admin_api', 'WITHDRAWAL_REJECTED', JSON.stringify({ id, wallet: w.wallet, amount_usdt: w.amount_usdt }), Date.now()]
+                );
+            } catch (_) {}
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/history - Revenue Trend
     router.get('/history', async (req, res) => {
         try {

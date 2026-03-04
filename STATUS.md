@@ -104,7 +104,7 @@ Status: IN PROGRESS
 - [x] 5.4 Wire /admin/revenue page to GET /admin-api/revenue/summary
 - [x] 5.5 Wire /admin/security page to GET /admin-api/security/alerts
 - [x] 5.6 Wire /admin/settings page to GET /admin-api/settings (feature flags + rate limits)
-- [ ] 5.7 Wire /admin/withdrawals page to GET /admin-api/withdrawals?status=PENDING
+- [x] 5.7 Wire /admin/withdrawals page to GET /admin-api/withdrawals?status=PENDING
 - [ ] 5.8 Wire /admin/rewards page to GET /admin-api/rewards/summary
 - [ ] 5.9 Wire /node/earnings page: add claim button for UNPAID rows
 - [ ] 5.10 Wire /builder/docs page: embed Swagger UI at /api-docs
