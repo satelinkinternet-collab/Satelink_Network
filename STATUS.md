@@ -45,7 +45,7 @@ Status: IN PROGRESS
 - [x] 2.2 Rewrite SplitEngine.sol
 - [x] 2.3 Rewrite RevenueVault.sol
 - [x] 2.4 Create EligibilityPolicy.sol
-- [ ] 2.5 Create GovernanceTimelock.sol
+- [x] 2.5 Create GovernanceTimelock.sol
 - [ ] 2.6 Foundry tests for all contracts
 - [ ] 2.7 forge build
 - [ ] 2.8 forge test
