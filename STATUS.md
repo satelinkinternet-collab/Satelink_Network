@@ -104,6 +104,14 @@ Status: COMPLETE
 - [x] 5.4 Wire distributor chart to /dist-api/history (replace hardcoded earningsData)
 - [x] 5.5 Wire distributor acquisitions to /dist-api/conversions (replace hardcoded)
 
+### Gate Check — Stage 5 ✅
+- [x] GET /node-api/stats returns 401 without JWT (route registered)
+- [x] GET /node-api/earnings returns 401 without JWT (route registered)
+- [x] GET /dist-api/referrals returns 401 without JWT (route registered)
+- [x] GET /dist-api/history returns 401 without JWT (route registered)
+- [x] GET /dist-api/conversions returns 401 without JWT (route registered)
+- [x] No frontend build errors in Next.js dev server
+
 ## Stage 6 — Real-Time SSE
 Status: PENDING
 
