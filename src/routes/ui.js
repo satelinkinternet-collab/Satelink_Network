@@ -262,10 +262,14 @@ export function createUIRouter(opsEngine) {
         }
     });
 
-    router.get('/distributor/:wallet', async (req, res) => {
+    router.get('/distributor/:wallet', requireJWT, requireRole(['distributor_lco', 'distributor_influencer', 'admin_super', 'admin_ops']), async (req, res) => {
         try {
             const { wallet } = req.params;
-            // Placeholder logic for now
+            // Non-admins may only view their own wallet
+            const isAdmin = ['admin_super', 'admin_ops'].includes(req.user?.role);
+            if (!isAdmin && req.user?.wallet !== wallet) {
+                return res.status(403).send("Forbidden");
+            }
             res.render('distributor', { wallet });
         } catch (e) {
             console.error("Distributor View Error:", e);
