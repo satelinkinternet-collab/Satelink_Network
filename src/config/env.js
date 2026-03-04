@@ -13,6 +13,14 @@ export function validateEnv() {
             console.error("[FATAL] Missing required production env vars: DATABASE_URL (for non-sqlite DBs)");
             process.exit(1);
         }
+
+        // [harden-prod] Require security-critical env vars in production
+        const securityRequired = ["IP_HASH_SALT", "IP_SALT"];
+        const missingSecVars = securityRequired.filter(k => !process.env[k]);
+        if (missingSecVars.length) {
+            console.error("[FATAL] Missing required production security env vars:", missingSecVars.join(", "));
+            process.exit(1);
+        }
     }
 
     if (!process.env.JWT_SECRET) {

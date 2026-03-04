@@ -28,4 +28,24 @@ contract SplitEngine {
         infraAmount = (nodePoolAmount * INFRA_RESERVE) / 10000; // 10% of 50% = 5% of total
         netNodeAmount = nodePoolAmount - infraAmount;
     }
+
+    /**
+     * @notice Computes the full revenue split across all pools including the infra reserve sub-split.
+     * @param amount The total revenue amount to be split.
+     * @return nodePool The base allocation for the Node Pool (50%).
+     * @return opsPool The allocation for the Operations Engine (30%).
+     * @return treasury The allocation for the Protocol Treasury (20%).
+     * @return infraReserve The infrastructure reserve taken from the Node Pool.
+     * @return netNodeAmount The final net amount distributed to nodes after infra reserve.
+     */
+    function calculateFullSplit(uint256 amount) public pure returns (
+        uint256 nodePool,
+        uint256 opsPool,
+        uint256 treasury,
+        uint256 infraReserve,
+        uint256 netNodeAmount
+    ) {
+        (nodePool, opsPool, treasury) = calculateSplit(amount);
+        (infraReserve, netNodeAmount) = calculateInfraReserve(nodePool);
+    }
 }
