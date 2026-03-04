@@ -42,7 +42,7 @@
     "dev": "NODE_ENV=development nodemon server.js",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint .",
-    "test": "mocha test/**/*.test.js",
+    "test": "NODE_ENV=test ADMIN_API_KEY=test-admin-secret-012345678901234567890123456789012345678901234567890 JWT_SECRET=test-jwt-secret-012345678901234567890123456789012345678901234567890123456789 mocha test/**/*.test.js",
     "dev:all": "bash dev.sh",
     "dev:backend": "node server.js",
     "dev:frontend": "cd web && npm run dev",

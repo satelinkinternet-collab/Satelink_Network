@@ -5,7 +5,7 @@ import { createApp } from "../app_factory.mjs";
 
 describe("Security & Abuse Protection Test", function () {
   let app, agent, db;
-  const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+  const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
   const nodeWallet = "0x9999999999999999999999999999999999999999";
 
   before(async function () {

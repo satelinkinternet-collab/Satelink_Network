@@ -5,7 +5,7 @@ import { createApp } from "../server.js";
 
 describe("Claim Lifecycle & Withdraw Guard Test", function () {
     let app, agent, db;
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
     let nodeWallet = "0x7777777777777777777777777777777777777777";
     let epochId;
     let payoutId;

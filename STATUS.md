@@ -62,7 +62,7 @@ Status: COMPLETE ✅
 - [x] RevenueVault.withdraw requires WITHDRAWER_ROLE
 
 ## Stage 3 — Auth & Security Hardening
-Status: IN PROGRESS
+Status: COMPLETE ✅
 - [x] 3.1 Remove hardcoded 'satelink-admin-secret' from web/src/lib/api.ts
 - [x] 3.2 Remove hardcoded 'satelink-admin-secret' fallback from core/security.js
 - [x] 3.3 Remove JWT_SECRET fallback in src/config/env.js
@@ -73,7 +73,7 @@ Status: IN PROGRESS
 - [x] 3.8 Guard /__test routes in production
 - [x] 3.9 Add requireJWT + requireRole to /usage/record
 - [x] 3.10 Create .env.example
-- [ ] 3.11 Remove hardcoded secrets from test files
+- [x] 3.11 Remove hardcoded secrets from test files
 
 ## Stage 4 — Backend Boot & API Wiring
 Status: PENDING
