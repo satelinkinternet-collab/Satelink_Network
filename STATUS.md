@@ -68,7 +68,7 @@ Status: IN PROGRESS
 - [x] 3.3 Remove JWT_SECRET fallback in src/config/env.js
 - [x] 3.4 Rewrite web/src/app/login/page.tsx
 - [x] 3.5 Create web/src/app/register/page.tsx
-- [ ] 3.6 Add auth to operator dashboard (src/routes/ui.js)
+- [x] 3.6 Add auth to operator dashboard (src/routes/ui.js)
 - [ ] 3.7 Add auth to distributor dashboard (src/routes/ui.js)
 - [ ] 3.8 Guard /__test routes in production
 - [ ] 3.9 Add requireJWT + requireRole to /usage/record
