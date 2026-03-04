@@ -42,7 +42,7 @@ Status: COMPLETE ✅
 ## Stage 2 — Smart Contract Hardening
 Status: IN PROGRESS
 - [x] 2.1 Verify ClaimsContract.sol security inheritance
-- [ ] 2.2 Rewrite SplitEngine.sol
+- [x] 2.2 Rewrite SplitEngine.sol
 - [ ] 2.3 Rewrite RevenueVault.sol
 - [ ] 2.4 Create EligibilityPolicy.sol
 - [ ] 2.5 Create GovernanceTimelock.sol
