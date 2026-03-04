@@ -162,6 +162,26 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/ledger/runs - Distribution runs with pagination
+    router.get('/ledger/runs', async (req, res) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+            const offset = (page - 1) * limit;
+
+            const runs = await opsEngine.db.query(
+                "SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                [limit, offset]
+            );
+            const countRow = await opsEngine.db.get("SELECT COUNT(*) as total FROM distribution_runs");
+            const total = countRow?.total || 0;
+
+            res.json({ ok: true, runs, page, limit, total });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/history - Revenue Trend
     router.get('/history', async (req, res) => {
         try {
