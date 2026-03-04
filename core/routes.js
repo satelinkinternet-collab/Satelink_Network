@@ -56,6 +56,9 @@ import { createDevAuthRouter } from '../src/routes/dev_auth_tokens.js';
 import { createDevSeedRouter } from '../src/routes/dev_seed.js';
 import { createStagingAuthRouter } from '../src/routes/staging_auth.js';
 
+// ── Production guard ──────────────────────────────────────────
+import { createProdGuard } from '../src/middleware/prod_guard.js';
+
 /**
  * Safe mount helper — catches import/construction errors so one bad
  * route file doesn't crash the whole server.
@@ -81,7 +84,10 @@ export function attachRoutes(app, rawDb) {
     // Store for middleware that needs it
     app.set('opsEngine', opsEngine);
 
-    // ─── 2. Admin key middleware ─────────────────────────────────
+    // ─── 2. Production guard — blocks /__test and /dev in LIVE mode ─
+    app.use(createProdGuard());
+
+    // ─── 3. Admin key middleware ─────────────────────────────────
     const requireAdminKey = app.locals.requireAdminKey || ((req, res, next) => {
         const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
         const provided = req.get("X-Admin-Key") || req.get("x-admin-key") || "";
