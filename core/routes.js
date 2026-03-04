@@ -108,7 +108,17 @@ export function attachRoutes(app, rawDb) {
     // ═══════════════════════════════════════════════════════════
     // 3. HEALTH
     // ═══════════════════════════════════════════════════════════
-    app.get("/health", (req, res) => res.status(200).json({ ok: true }));
+    app.get("/health", (req, res) => {
+        let db_status = 'ok';
+        try { rawDb.prepare('SELECT 1').get(); } catch (e) { db_status = 'error'; }
+        res.status(200).json({
+            ok: true,
+            service: 'satelink',
+            uptime: Math.floor(process.uptime()),
+            db_status,
+            version: process.env.npm_package_version || '1.0.0'
+        });
+    });
 
     // ═══════════════════════════════════════════════════════════
     // 4. AUTH ROUTES (frontend proxies /auth/*)
