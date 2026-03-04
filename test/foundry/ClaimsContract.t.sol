@@ -18,8 +18,9 @@ contract ClaimsContractTest is Test {
         vault = new RevenueVault(address(usdt));
         claims = new ClaimsContract(address(vault));
         
-        // Transfer vault withdrawer role to claims contract so it can withdraw
+        // Grant roles
         vault.grantRole(vault.WITHDRAWER_ROLE(), address(claims));
+        vault.grantRole(vault.DEPOSITOR_ROLE(), admin);
         
         // Fund the vault
         usdt.approve(address(vault), 50000e18);
