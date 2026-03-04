@@ -1,136 +1,211 @@
+import { createOpsEngine } from './ops_engine_adapter.js';
+import { createServiceStubs } from './service_stubs.js';
+
+// ── Auth routers ──────────────────────────────────────────────
 import { createUserSettingsRouter } from '../src/routes/user_settings.js';
-import { createUnifiedAuthRouter } from '../src/routes/auth_v2.js';
+import { createUnifiedAuthRouter, verifyJWT } from '../src/routes/auth_v2.js';
+import { createEmbeddedAuthRouter } from '../src/routes/auth_embedded.js';
+import { createAuthSecurityRouter } from '../src/routes/auth_security.js';
+import { createBuilderAuthRouter } from '../src/routes/builder_auth.js';
+
+// ── Main dashboard API routers ────────────────────────────────
+import { createAdminApiRouter } from '../src/routes/admin_api_v2.js';
+import { createNodeApiRouter } from '../src/routes/node_api_v2.js';
+import { createBuilderApiV2Router } from '../src/routes/builder_api_v2.js';
+import { createDistApiRouter } from '../src/routes/dist_api_v2.js';
+import { createEntApiRouter } from '../src/routes/ent_api_v2.js';
+
+// ── Admin sub-routers ─────────────────────────────────────────
+import { createAdminAutonomousRouter } from '../src/routes/admin_autonomous.js';
+import { createAdminControlRouter } from '../src/routes/admin_control_api.js';
+import { createAdminControlRoomRouter } from '../src/routes/admin_control_room_api.js';
+import { createAdminDistributorsRouter } from '../src/routes/admin_distributors.js';
+import { createAdminEconomicsRouter } from '../src/routes/admin_economics.js';
+import { createAdminForensicsRouter } from '../src/routes/admin_forensics.js';
+import { createAdminGrowthRouter } from '../src/routes/admin_growth.js';
+import { createAdminLaunchRouter } from '../src/routes/admin_launch.js';
+import { createAdminLifecycleRouter } from '../src/routes/admin_lifecycle.js';
+import { createAdminNetworkRouter } from '../src/routes/admin_network.js';
+import { createAdminPartnersRouter } from '../src/routes/admin_partners.js';
+import { createAdminReputationRouter, createAdminReputationImpactRouter } from '../src/routes/admin_reputation.js';
+import { createAdminRevenueRouter } from '../src/routes/admin_revenue.js';
+import { createAdminSLARouter } from '../src/routes/admin_sla.js';
+import { createAdminSystemRouter } from '../src/routes/admin_system.js';
+
+// ── Functional API routers ────────────────────────────────────
+import { createBetaRouter } from '../src/routes/beta_api.js';
 import { createStreamApiRouter } from '../src/routes/stream_api.js';
-import { createPhase3Router } from '../src/routes/api_phase3.js';
-import { createEnterpriseRouter, createDemandMetricsRouter } from '../src/routes/api_enterprise.js';
-import { createBillingMiddleware } from '../src/middleware/billing.js';
-import { requireJWT, requireRole } from '../src/middleware/auth.js';
-import { closeEpoch } from './epoch_aggregator.js';
-import { getAggregatedNodeEarnings } from './node_earnings.js';
-import { getNetworkStats } from './network_stats.js';
-import { getEconomicsSummary } from './economics_stats.js';
+import { createUsageIngestRouter } from '../src/routes/usage_ingest.js';
+import { createLedgerRouter } from '../src/routes/ledger.js';
+import { createPairApiRouter } from '../src/routes/pair_api.js';
+import { createOpsRouter } from '../src/routes/ops.js';
 
-export function attachRoutes(app, db) {
-    const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
-    const requireEnterprise = [requireJWT, requireRole('enterprise')];
-    const requireNode = [requireJWT, requireRole('node_operator')];
+// ── Support / Partner / Node lifecycle ────────────────────────
+import { createSupportRouter } from '../src/routes/support.js';
+import { createPartnerPortalRouter } from '../src/routes/partner_portal.js';
+import { createNodeLifecycleRouter } from '../src/routes/node_lifecycle.js';
 
-    // --- 1. Auth middleware / routes ---
-    app.use('/me', createUserSettingsRouter(db));
-    app.use(createUnifiedAuthRouter({ db }));
+// ── Public routers ────────────────────────────────────────────
+import { createPublicStatusRouter } from '../src/routes/public_status.js';
+import { createPublicNodeRouter } from '../src/routes/public_node.js';
+import { createPublicPartnersRouter } from '../src/routes/public_partners.js';
+import { createPublicMarketplaceRouter } from '../src/routes/public_marketplace.js';
 
-    // --- 2. Generic API routes ---
-    app.use('/stream', createStreamApiRouter({ db }));
+// ── Dev/test routers ──────────────────────────────────────────
+import { createDevAuthRouter } from '../src/routes/dev_auth_tokens.js';
+import { createDevSeedRouter } from '../src/routes/dev_seed.js';
+import { createStagingAuthRouter } from '../src/routes/staging_auth.js';
 
-    // Global Stats
-    app.get("/api/network/stats", (req, res) => {
-        try {
-            const stats = getNetworkStats(db);
-            res.status(200).json(stats);
-        } catch (error) {
-            console.error("[NetworkStats] Read failed:", error);
-            res.status(500).json({ ok: false, error: "Internal Server Error" });
+/**
+ * Safe mount helper — catches import/construction errors so one bad
+ * route file doesn't crash the whole server.
+ */
+function safeMountRouter(app, path, routerFn, label) {
+    try {
+        const router = typeof routerFn === 'function' ? routerFn() : routerFn;
+        if (router && typeof router === 'function') {
+            app.use(path, router);
+        } else if (router && router.stack) {
+            app.use(path, router);
         }
-    });
+    } catch (e) {
+        console.error(`[ROUTES] Failed to mount ${label} at ${path}:`, e.message);
+    }
+}
 
-    app.get("/api/economics/summary", (req, res) => {
-        try {
-            const summary = getEconomicsSummary(db);
-            res.status(200).json(summary);
-        } catch (error) {
-            console.error("[EconomicsStats] Read failed:", error);
-            res.status(500).json({ ok: false, error: "Internal Server Error" });
+export function attachRoutes(app, rawDb) {
+    // ─── 1. Create opsEngine with async db wrapper ───────────────
+    const opsEngine = createOpsEngine(rawDb);
+    const stubs = createServiceStubs(rawDb, opsEngine);
+
+    // Store for middleware that needs it
+    app.set('opsEngine', opsEngine);
+
+    // ─── 2. Admin key middleware ─────────────────────────────────
+    const requireAdminKey = app.locals.requireAdminKey || ((req, res, next) => {
+        const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+        const provided = req.get("X-Admin-Key") || req.get("x-admin-key") || "";
+        if (provided !== ADMIN_API_KEY) {
+            return res.status(401).json({ ok: false, error: "Unauthorized" });
         }
+        next();
     });
 
-    // Usage recording
-    app.post("/usage/record", (req, res) => {
-        try {
-            const { nodeWallet, opType, opsCount, multiplier = 1.0, epochId } = req.body;
-            if (!nodeWallet || !opType || !opsCount) return res.status(400).json({ ok: false });
-            const weight = Number(opsCount) * Number(multiplier);
-            db.prepare(`
-                INSERT INTO op_counts (epoch_id, user_wallet, op_type, ops, weight, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `).run(epochId || 0, nodeWallet, opType, opsCount, weight, Date.now());
-            res.status(200).json({ ok: true, weight });
-        } catch (e) {
-            console.error("[UsageRecord]", e);
-            res.status(500).json({ ok: false });
-        }
-    });
+    // Builder auth router (has .verifyBuilder and .requireAuth properties)
+    let builderAuthRouter;
+    try {
+        builderAuthRouter = createBuilderAuthRouter(opsEngine);
+    } catch (e) {
+        console.error('[ROUTES] Failed to create builder auth router:', e.message);
+    }
 
-    const enforceBilling = createBillingMiddleware(db);
-    app.post("/operations/execute", enforceBilling('API_Gateway_Ops'), (req, res) => {
-        const { multiplier } = req.opBilling;
-        res.status(200).json({ ok: true, processed: true, multiplier, cost: req.opBilling.cost });
-    });
-    app.post("/operations/validation", enforceBilling('Validation_Ops'), (req, res) => res.status(200).json({ ok: true }));
-    app.post("/operations/routing", enforceBilling('Routing_Ops'), (req, res) => res.status(200).json({ ok: true }));
-    app.post("/operations/provisioning", enforceBilling('Provisioning_Ops'), (req, res) => res.status(200).json({ ok: true }));
-    app.post("/operations/monitoring", enforceBilling('Monitoring_Ops'), (req, res) => res.status(200).json({ ok: true }));
-
-    // Unprotected or guarded locally within ledger module
-    app.post("/ledger/withdraw", (req, res) => res.status(200).json({ ok: true }));
-
-    // --- 3. Admin routes ---
-    app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
-    app.post("/nodes/bootstrap-payment", requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.post("/ledger/epoch/finalize", requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.post("/epoch/finalize", requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.post("/withdraw/execute", requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.post("/protocol/pool/open", requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.post("/registry/sync", requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-
-    // Catch-all namespaces for admin
-    app.all(/^\/protocol(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.all(/^\/registry(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-    app.all(/^\/admin-api(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-
-    // Epoch Aggregation Engine (V1) Endpoints
-    app.post("/admin/epoch/:id/close", requireAdmin, (req, res) => {
-        try {
-            const summary = closeEpoch(db, req.params.id);
-            res.status(200).json({ ok: true, summary });
-        } catch (error) {
-            console.error("[EpochAggregator] Failed to close epoch:", error);
-            res.status(400).json({ ok: false, error: error.message });
-        }
-    });
-
-    // --- 4. Enterprise routes ---
-    app.use('/enterprise', requireEnterprise, createEnterpriseRouter(db));
-
-    // --- 5. Node routes ---
-    app.use('/api', requireNode, createPhase3Router(db));
-
-    // Satelink Node Earnings Read API
-    app.get("/api/node/:nodeId/earnings", requireNode, (req, res) => {
-        try {
-            // First assert the node actually exists
-            const nodeExists = db.prepare('SELECT 1 FROM registered_nodes WHERE wallet = ?').get(req.params.nodeId);
-            if (!nodeExists) {
-                return res.status(404).json({ ok: false, error: "Node not found" });
-            }
-
-            const earningsResponse = getAggregatedNodeEarnings(db, req.params.nodeId);
-            res.status(200).json(earningsResponse);
-        } catch (error) {
-            console.error("[NodeEarnings] Read failed:", error);
-            res.status(400).json({ ok: false, error: error.message });
-        }
-    });
-
-    // --- 6. Static routes ---
+    // ═══════════════════════════════════════════════════════════
+    // 3. HEALTH
+    // ═══════════════════════════════════════════════════════════
     app.get("/health", (req, res) => res.status(200).json({ ok: true }));
 
-    // --- 7. Wildcard catch-all LAST ---
-    // The wildcard must ALWAYS be last to ensure that all valid routes,
-    // including protected ones, have a chance to be matched, evaluated,
-    // and correctly guarded by their respective authentication and authorization middleware.
-    // If placed earlier, it could inadvertently hijack requests meant for secure routes
-    // or leak existence of endpoints. Here, it safely returns 404.
-    app.all('*catchall', (req, res) => {
-        res.status(404).json({ ok: false, error: "Not Found" });
-    });
+    // ═══════════════════════════════════════════════════════════
+    // 4. AUTH ROUTES (frontend proxies /auth/*)
+    // ═══════════════════════════════════════════════════════════
+    safeMountRouter(app, '/', () => createUnifiedAuthRouter(opsEngine), 'auth_v2');
+    safeMountRouter(app, '/', () => createEmbeddedAuthRouter(rawDb), 'auth_embedded');
+    safeMountRouter(app, '/auth', () => createAuthSecurityRouter(rawDb), 'auth_security');
+    if (builderAuthRouter) safeMountRouter(app, '/', () => builderAuthRouter, 'builder_auth');
+    safeMountRouter(app, '/staging', () => createStagingAuthRouter(opsEngine), 'staging_auth');
+
+    // ═══════════════════════════════════════════════════════════
+    // 5. USER SETTINGS (frontend proxies /me/*)
+    // ═══════════════════════════════════════════════════════════
+    app.use('/me', createUserSettingsRouter(rawDb));
+
+    // ═══════════════════════════════════════════════════════════
+    // 6. MAIN DASHBOARD API ROUTES
+    //    All need JWT auth — apply verifyJWT at mount level so
+    //    req.user is always set before route handlers run.
+    // ═══════════════════════════════════════════════════════════
+
+    // /admin-api/* has its own requireJWT from middleware/auth.js internally
+    safeMountRouter(app, '/admin-api', () => createAdminApiRouter(opsEngine), 'admin_api_v2');
+
+    // These routes read req.user.wallet — need verifyJWT
+    app.use('/node-api', verifyJWT);
+    safeMountRouter(app, '/node-api', () => createNodeApiRouter(opsEngine), 'node_api_v2');
+
+    app.use('/builder-api', verifyJWT);
+    safeMountRouter(app, '/builder-api', () => createBuilderApiV2Router(opsEngine), 'builder_api_v2');
+
+    app.use('/dist-api', verifyJWT);
+    safeMountRouter(app, '/dist-api', () => createDistApiRouter(opsEngine), 'dist_api_v2');
+
+    app.use('/ent-api', verifyJWT);
+    safeMountRouter(app, '/ent-api', () => createEntApiRouter(opsEngine), 'ent_api_v2');
+
+    // ═══════════════════════════════════════════════════════════
+    // 7. ADMIN SUB-ROUTES (frontend proxies /admin-ctrl/* → /admin/*)
+    //    Apply verifyJWT at /admin level so all sub-routes get req.user.
+    // ═══════════════════════════════════════════════════════════
+    app.use('/admin', verifyJWT);
+    safeMountRouter(app, '/admin', () => createAdminControlRouter(opsEngine, stubs.auditService), 'admin_control');
+    safeMountRouter(app, '/admin', () => createAdminControlRoomRouter(opsEngine, {
+        selfTestRunner: null,
+        incidentBuilder: null,
+        opsReporter: null,
+        auditService: stubs.auditService
+    }), 'admin_control_room');
+    safeMountRouter(app, '/admin/autonomous', () => createAdminAutonomousRouter(opsEngine.db, stubs.autoOpsEngine), 'admin_autonomous');
+    safeMountRouter(app, '/admin/distributors', () => createAdminDistributorsRouter(opsEngine.db), 'admin_distributors');
+    safeMountRouter(app, '/admin/economics', () => createAdminEconomicsRouter(
+        opsEngine.db, stubs.breakevenService, stubs.authenticityService, stubs.stabilityService
+    ), 'admin_economics');
+    safeMountRouter(app, '/admin/economics', () => createAdminReputationImpactRouter(opsEngine.db), 'admin_reputation_impact');
+    safeMountRouter(app, '/admin/forensics', () => createAdminForensicsRouter(opsEngine.db, stubs.forensicsServices), 'admin_forensics');
+    safeMountRouter(app, '/admin', () => createAdminGrowthRouter(opsEngine.db, stubs.retentionService), 'admin_growth');
+    safeMountRouter(app, '/admin/launch', () => createAdminLaunchRouter(opsEngine.db), 'admin_launch');
+    safeMountRouter(app, '/admin/network', () => createAdminLifecycleRouter(opsEngine.db), 'admin_lifecycle');
+    safeMountRouter(app, '/admin/network', () => createAdminNetworkRouter(opsEngine.db, stubs.densityService), 'admin_network');
+    safeMountRouter(app, '/admin/network', () => createAdminReputationRouter(opsEngine.db), 'admin_reputation');
+    safeMountRouter(app, '/admin/partners', () => createAdminPartnersRouter(opsEngine.db), 'admin_partners');
+    safeMountRouter(app, '/admin/partners', () => createAdminSLARouter(opsEngine.db, stubs.slaEngine), 'admin_sla');
+    safeMountRouter(app, '/admin', () => createAdminRevenueRouter(opsEngine.db, stubs.auditService), 'admin_revenue');
+    safeMountRouter(app, '/admin/system', () => createAdminSystemRouter(opsEngine, null, null, null), 'admin_system');
+
+    // ═══════════════════════════════════════════════════════════
+    // 8. STREAMING (frontend proxies /stream/*)
+    // ═══════════════════════════════════════════════════════════
+    app.use('/stream', verifyJWT);
+    safeMountRouter(app, '/stream', () => createStreamApiRouter(opsEngine), 'stream_api');
+
+    // ═══════════════════════════════════════════════════════════
+    // 9. SUPPORT (frontend proxies /support/*)
+    // ═══════════════════════════════════════════════════════════
+    safeMountRouter(app, '/support', () => createSupportRouter(opsEngine.db), 'support');
+
+    // ═══════════════════════════════════════════════════════════
+    // 10. FUNCTIONAL API ROUTES
+    // ═══════════════════════════════════════════════════════════
+    safeMountRouter(app, '/ledger', () => createLedgerRouter(opsEngine, requireAdminKey), 'ledger');
+    safeMountRouter(app, '/beta', () => createBetaRouter(opsEngine), 'beta');
+    safeMountRouter(app, '/ops', () => createOpsRouter(opsEngine, requireAdminKey), 'ops');
+    safeMountRouter(app, '/pair', () => createPairApiRouter(opsEngine), 'pair');
+    safeMountRouter(app, '/usage', () => createUsageIngestRouter(opsEngine), 'usage_ingest');
+
+    // ═══════════════════════════════════════════════════════════
+    // 11. NODE LIFECYCLE & PARTNER PORTAL
+    // ═══════════════════════════════════════════════════════════
+    safeMountRouter(app, '/node', () => createNodeLifecycleRouter(opsEngine.db), 'node_lifecycle');
+    safeMountRouter(app, '/partner', () => createPartnerPortalRouter(opsEngine.db, stubs.slaEngine), 'partner_portal');
+
+    // ═══════════════════════════════════════════════════════════
+    // 12. PUBLIC ROUTES (no auth needed)
+    // ═══════════════════════════════════════════════════════════
+    safeMountRouter(app, '/status', () => createPublicStatusRouter(opsEngine.db, null), 'public_status');
+    safeMountRouter(app, '/public/node', () => createPublicNodeRouter(opsEngine.db), 'public_node');
+    safeMountRouter(app, '/partners', () => createPublicPartnersRouter(opsEngine.db), 'public_partners');
+    safeMountRouter(app, '/network/marketplace', () => createPublicMarketplaceRouter(opsEngine.db), 'public_marketplace');
+
+    // ═══════════════════════════════════════════════════════════
+    // 13. DEV/TEST ROUTES
+    // ═══════════════════════════════════════════════════════════
+    safeMountRouter(app, '/__test/auth', () => createDevAuthRouter(opsEngine), 'dev_auth');
+    safeMountRouter(app, '/__test/seed', () => createDevSeedRouter(opsEngine), 'dev_seed');
 }
