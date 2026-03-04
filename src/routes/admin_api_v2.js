@@ -294,5 +294,45 @@ export function createAdminApiRouter(opsEngine) {
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
+    // GET /admin-api/settings - Feature flags and rate limit configs from system_config
+    router.get('/settings', async (req, res) => {
+        try {
+            const rows = await opsEngine.db.query("SELECT key, value FROM system_config");
+            const config = Object.fromEntries(rows.map(r => [r.key, r.value]));
+
+            const featureFlags = [
+                { key: 'withdrawals_paused',     label: 'Withdrawals Paused',      value: config.withdrawals_paused === '1' },
+                { key: 'beta_gate_enabled',      label: 'Beta Gate Enabled',       value: config.beta_gate_enabled === '1' },
+                { key: 'safe_mode',              label: 'Safe Mode',               value: config.safe_mode === '1' },
+                { key: 'real_settlement',        label: 'Real Settlement',         value: config.real_settlement === '1' },
+            ];
+
+            const rateLimits = [
+                { key: 'rate_limit_heartbeat',   label: 'Heartbeat (req/min)',      value: config.rate_limit_heartbeat || '60' },
+                { key: 'rate_limit_api',         label: 'API Global (req/min)',     value: config.rate_limit_api || '300' },
+                { key: 'rate_limit_withdraw',    label: 'Withdraw (req/hour)',      value: config.rate_limit_withdraw || '10' },
+            ];
+
+            res.json({ ok: true, featureFlags, rateLimits });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/settings - Update a single system_config key (super admin only)
+    router.post('/settings', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { key, value } = req.body;
+            if (!key) return res.status(400).json({ ok: false, error: 'Missing key' });
+            await opsEngine.updateSystemConfig(key, String(value));
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     return router;
 }

@@ -97,12 +97,19 @@ Status: COMPLETE
 - [x] Next.js rewrites count: 31 (≥28 required)
 
 ## Stage 5 — Frontend Dashboard Wiring
-Status: COMPLETE
-- [x] 5.1 Wire /node/page.tsx to fetch initial state from /node-api/stats
-- [x] 5.2 Wire /node/earnings/page.tsx to /node-api/earnings (replace stub)
-- [x] 5.3 Wire /distributor/referrals/page.tsx to /dist-api/referrals (replace stub)
-- [x] 5.4 Wire distributor chart to /dist-api/history (replace hardcoded earningsData)
-- [x] 5.5 Wire distributor acquisitions to /dist-api/conversions (replace hardcoded)
+Status: IN PROGRESS
+- [x] 5.1 Delete AuthContext.tsx duplicate; fix all imports to use @/hooks/use-auth
+- [x] 5.2 Wire /admin/ledger page to GET /admin-api/ledger/runs
+- [x] 5.3 Wire /admin/logs page to GET /admin-api/logs
+- [x] 5.4 Wire /admin/revenue page to GET /admin-api/revenue/summary
+- [x] 5.5 Wire /admin/security page to GET /admin-api/security/alerts
+- [x] 5.6 Wire /admin/settings page to GET /admin-api/settings (feature flags + rate limits)
+- [ ] 5.7 Wire /admin/withdrawals page to GET /admin-api/withdrawals?status=PENDING
+- [ ] 5.8 Wire /admin/rewards page to GET /admin-api/rewards/summary
+- [ ] 5.9 Wire /node/earnings page: add claim button for UNPAID rows
+- [ ] 5.10 Wire /builder/docs page: embed Swagger UI at /api-docs
+- [ ] 5.11 Wire /builder/keys page to GET /builder-api/keys
+- [ ] 5.12 Wire /builder/projects page to GET /builder-api/projects
 
 ### Gate Check — Stage 5 ✅
 - [x] GET /node-api/stats returns 401 without JWT (route registered)
