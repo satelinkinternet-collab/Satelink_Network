@@ -44,7 +44,7 @@ Status: IN PROGRESS
 - [x] 2.1 Verify ClaimsContract.sol security inheritance
 - [x] 2.2 Rewrite SplitEngine.sol
 - [x] 2.3 Rewrite RevenueVault.sol
-- [ ] 2.4 Create EligibilityPolicy.sol
+- [x] 2.4 Create EligibilityPolicy.sol
 - [ ] 2.5 Create GovernanceTimelock.sol
 - [ ] 2.6 Foundry tests for all contracts
 - [ ] 2.7 forge build
