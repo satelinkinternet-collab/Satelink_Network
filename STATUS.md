@@ -79,7 +79,7 @@ Status: COMPLETE ✅
 Status: IN PROGRESS
 - [x] 4.1 Consolidate server.js + app_factory.mjs + core/ into clean boot sequence
 - [x] 4.2 Implement real /ledger/withdraw endpoint with JWT + balance + treasury checks
-- [ ] 4.3 Add missing Next.js rewrites (12 new)
+- [x] 4.3 Add missing Next.js rewrites (12 new)
 - [ ] 4.4 Create /admin-api/ledger/runs endpoint
 - [ ] 4.5 Create /admin-api/logs endpoint
 - [ ] 4.6 Create /admin-api/revenue/summary endpoint

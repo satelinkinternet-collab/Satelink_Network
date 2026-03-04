@@ -48,6 +48,25 @@ const nextConfig: NextConfig = {
       { source: "/network-stats/:path*", destination: `${API_BASE}/network-stats/:path*` },
       // Partners
       { source: "/partners/:path*", destination: `${API_BASE}/partners/:path*` },
+      // Admin sub-APIs
+      { source: "/admin/economics/:path*", destination: `${API_BASE}/admin/economics/:path*` },
+      { source: "/admin/autonomous/:path*", destination: `${API_BASE}/admin/autonomous/:path*` },
+      { source: "/admin/forensics/:path*", destination: `${API_BASE}/admin/forensics/:path*` },
+      { source: "/admin/control/:path*", destination: `${API_BASE}/admin/control/:path*` },
+      { source: "/admin/partners/:path*", destination: `${API_BASE}/admin/partners/:path*` },
+      { source: "/admin/network/:path*", destination: `${API_BASE}/admin/network/:path*` },
+      // Partner portal
+      { source: "/partner/:path*", destination: `${API_BASE}/partner/:path*` },
+      // Operations
+      { source: "/operations/:path*", destination: `${API_BASE}/operations/:path*` },
+      // Ledger
+      { source: "/ledger/:path*", destination: `${API_BASE}/ledger/:path*` },
+      // Heartbeat
+      { source: "/heartbeat", destination: `${API_BASE}/heartbeat` },
+      // API docs
+      { source: "/api-docs", destination: `${API_BASE}/api-docs` },
+      // Usage
+      { source: "/usage/:path*", destination: `${API_BASE}/usage/:path*` },
     ];
   },
 };
