@@ -111,6 +111,7 @@ Status: IN PROGRESS
 - [x] 5.11 Wire /builder/keys page to GET /builder-api/keys
 - [x] 5.12 Wire /builder/projects page to GET /builder-api/projects
 - [x] 5.13 Wire /distributor/referrals page: code, signups count, earnings, commission rate
+- [x] 5.14 Wire /admin/growth/retention page to GET /admin/economics/retention (cohort chart + churn-risk)
 
 ### Gate Check — Stage 5 ✅
 - [x] GET /node-api/stats returns 401 without JWT (route registered)
