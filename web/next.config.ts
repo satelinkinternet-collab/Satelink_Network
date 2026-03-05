@@ -67,6 +67,10 @@ const nextConfig: NextConfig = {
       { source: "/api-docs", destination: `${API_BASE}/api-docs` },
       // Usage
       { source: "/usage/:path*", destination: `${API_BASE}/usage/:path*` },
+      // Admin Command Center REST endpoints
+      { source: "/admin/command/:path*", destination: `${API_BASE}/admin/command/:path*` },
+      // Admin Controls (pause-withdrawals, security-freeze, beta-gate, exit-safe-mode)
+      { source: "/admin/controls/:path*", destination: `${API_BASE}/admin/controls/:path*` },
     ];
   },
 };
