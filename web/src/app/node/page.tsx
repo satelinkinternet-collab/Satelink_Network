@@ -15,6 +15,7 @@ import {
     CartesianGrid, XAxis, YAxis
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { EpochCountdown } from '@/components/EpochCountdown';
 
 export default function NodeDashboard() {
     const { user } = useAuth();
@@ -144,6 +145,11 @@ export default function NodeDashboard() {
                         </CardContent>
                     </Card>
                 ))}
+            </div>
+
+            {/* ── Epoch Countdown ── */}
+            <div className="flex items-center justify-end px-1">
+                <EpochCountdown />
             </div>
 
             {/* ── Telemetry Chart ── */}
