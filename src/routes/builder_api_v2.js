@@ -84,7 +84,17 @@ export function createBuilderApiV2Router(opsEngine) {
     router.post('/keys', async (req, res) => {
         const { name } = req.body;
         const key = 'sl_live_' + crypto.randomBytes(24).toString('hex');
-        res.json({ ok: true, key, name, prefix: key.substring(0, 10) + '...' });
+        res.json({ ok: true, key, name, prefix: key.substring(0, 10) + '...', id: Date.now(), status: 'active', created_at: Date.now() });
+    });
+
+    // DELETE /builder-api/keys/:id - Revoke an API key
+    router.delete('/keys/:id', async (req, res) => {
+        try {
+            // MVP: mock revoke — in production this would update the DB
+            res.json({ ok: true, revoked: true, id: req.params.id });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     // GET /builder-api/requests - Recent activity

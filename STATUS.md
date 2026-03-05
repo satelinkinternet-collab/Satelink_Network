@@ -108,7 +108,7 @@ Status: IN PROGRESS
 - [x] 5.8 Wire /admin/rewards page to GET /admin-api/rewards/summary
 - [x] 5.9 Wire /node/earnings page: add claim button for UNPAID rows
 - [x] 5.10 Wire /builder/docs page: embed Swagger UI at /api-docs
-- [ ] 5.11 Wire /builder/keys page to GET /builder-api/keys
+- [x] 5.11 Wire /builder/keys page to GET /builder-api/keys
 - [ ] 5.12 Wire /builder/projects page to GET /builder-api/projects
 
 ### Gate Check — Stage 5 ✅
