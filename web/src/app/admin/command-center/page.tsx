@@ -16,6 +16,7 @@ import {
     useIsReadonly, formatTs, timeAgo, DataTable
 } from '@/components/admin/admin-shared';
 import { DebugToolbox } from '@/components/admin/DebugToolbox';
+import { EpochCountdown } from '@/components/EpochCountdown';
 
 interface SystemState {
     withdrawals_paused: boolean;
@@ -334,6 +335,11 @@ export default function CommandCenterPage() {
                     ))}
                 </div>
             )}
+
+            {/* Epoch Countdown */}
+            <div className="flex items-center justify-end mb-4">
+                <EpochCountdown />
+            </div>
 
             {/* Live Feed */}
             <Card className="bg-zinc-900/60 border-zinc-800/60">

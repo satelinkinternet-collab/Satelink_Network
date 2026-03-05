@@ -89,6 +89,33 @@ export function createAdminApiRouter(opsEngine) {
         res.json({ ok: true, epoch: current });
     });
 
+    // GET /epoch/current - Current epoch with countdown data for dashboard timers
+    router.get('/epoch/current', async (req, res) => {
+        try {
+            const current = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
+            if (!current) {
+                return res.json({ ok: true, epoch: null });
+            }
+            const nowSec = Math.floor(Date.now() / 1000);
+            // ends_at may be null for open-ended epochs; fallback to 24h from starts_at
+            const endsAt = current.ends_at || (current.starts_at + 86400);
+            const remainingSecs = Math.max(0, endsAt - nowSec);
+            res.json({
+                ok: true,
+                epoch: {
+                    id: current.id,
+                    starts_at: current.starts_at,
+                    ends_at: endsAt,
+                    end_time_ms: endsAt * 1000,
+                    remaining_secs: remainingSecs,
+                    status: current.status,
+                },
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin/revenue-events - Recent revenue events
     router.get('/revenue-events', async (req, res) => {
         const limit = parseInt(req.query.limit) || 50;
