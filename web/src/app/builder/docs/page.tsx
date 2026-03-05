@@ -1,29 +1,30 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import api from '@/lib/api';
 
-export default function Page() {
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<any>(null);
+// Dynamically imported to avoid SSR issues with swagger-ui-react
+export default function BuilderDocsPage() {
+  const [SwaggerUI, setSwaggerUI] = useState<React.ComponentType<any> | null>(null);
 
   useEffect(() => {
-    // Boilerplate api usage inside try-catch to satisfy requirements
-    async function load() {
-      try {
-        // We don't actually fetch since we don't know the endpoint, but we wrap it.
-        // await api.get('/dummy');
-      } catch (err) {
-        setError(err);
-      }
-    }
-    load();
+    Promise.all([
+      import('swagger-ui-react'),
+      import('swagger-ui-react/swagger-ui.css' as any),
+    ]).then(([mod]) => {
+      setSwaggerUI(() => mod.default);
+    });
   }, []);
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Builder Docs</h1>
-      <p className="text-muted-foreground">Coming Soon</p>
-      {error && <div className="text-red-500 mt-4">Error loading data.</div>}
+    <div className="min-h-screen bg-white">
+      {SwaggerUI ? (
+        <SwaggerUI
+          url="/api-docs"
+          docExpansion="list"
+          defaultModelsExpandDepth={-1}
+        />
+      ) : (
+        <div className="p-8 text-zinc-500 text-sm">Loading API docs…</div>
+      )}
     </div>
   );
 }

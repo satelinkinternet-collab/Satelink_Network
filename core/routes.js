@@ -219,6 +219,41 @@ export function attachRoutes(app, rawDb) {
     safeMountRouter(app, '/partners', () => createPublicPartnersRouter(opsEngine.db), 'public_partners');
     safeMountRouter(app, '/network/marketplace', () => createPublicMarketplaceRouter(opsEngine.db), 'public_marketplace');
 
+    // GET /api-docs — OpenAPI spec (public, no auth)
+    app.get('/api-docs', (req, res) => {
+        res.json({
+            openapi: '3.0.0',
+            info: { title: 'Satelink API', version: '1.0.0', description: 'DePIN protocol API for nodes, builders, and distributors' },
+            servers: [{ url: '/api', description: 'Satelink backend' }],
+            tags: [
+                { name: 'Node', description: 'Node operator endpoints' },
+                { name: 'Builder', description: 'Builder / API key endpoints' },
+                { name: 'Distributor', description: 'Distributor referral endpoints' },
+                { name: 'Admin', description: 'Admin management endpoints' },
+                { name: 'Health', description: 'Service health' },
+            ],
+            paths: {
+                '/health': { get: { tags: ['Health'], summary: 'Service health', responses: { 200: { description: 'ok' } } } },
+                '/node-api/stats': { get: { tags: ['Node'], summary: 'Node stats', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/node-api/earnings': { get: { tags: ['Node'], summary: 'Epoch earnings history', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/node-api/claim': { post: { tags: ['Node'], summary: 'Claim unpaid rewards', security: [{ bearerAuth: [] }], requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { signature: { type: 'string' } }, required: ['signature'] } } } }, responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/builder-api/keys': { get: { tags: ['Builder'], summary: 'List API keys', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/builder-api/projects': { get: { tags: ['Builder'], summary: 'List projects', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/dist-api/referrals': { get: { tags: ['Distributor'], summary: 'Referral list', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/dist-api/history': { get: { tags: ['Distributor'], summary: 'Earnings history chart', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/dist-api/conversions': { get: { tags: ['Distributor'], summary: 'Recent acquisitions', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/admin-api/stats': { get: { tags: ['Admin'], summary: 'Admin dashboard stats', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/admin-api/withdrawals': { get: { tags: ['Admin'], summary: 'List withdrawals', security: [{ bearerAuth: [] }], parameters: [{ name: 'status', in: 'query', schema: { type: 'string' } }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/admin-api/rewards/summary': { get: { tags: ['Admin'], summary: 'Rewards summary', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/admin-api/settings': { get: { tags: ['Admin'], summary: 'Feature flags & rate limits', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+                '/ledger/withdraw': { post: { tags: ['Node'], summary: 'Submit withdrawal request', security: [{ bearerAuth: [] }], responses: { 200: { description: 'ok' }, 401: { description: 'Unauthorized' } } } },
+            },
+            components: {
+                securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } }
+            }
+        });
+    });
+
     // ═══════════════════════════════════════════════════════════
     // 13. DEV/TEST ROUTES
     // ═══════════════════════════════════════════════════════════
