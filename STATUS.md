@@ -127,12 +127,12 @@ Status: IN PROGRESS
 - [ ] Distributor sees: Dashboard, Referrals (with table)
 
 ## Stage 6 — Real-Time SSE
-Status: IN PROGRESS
+Status: COMPLETE ✅
 - [x] 6.1 Wire Node Dashboard to real APIs: GET /node-api/status (uptime, online, earnings, telemetry, logs)
 - [x] 6.2 Implement /stream/node SSE endpoint: heartbeat + log events for live dashboard updates
 - [x] 6.3 Wire Admin Command Center to /stream/admin SSE
 - [x] 6.4 Wire treasury health widget to real treasury data
-- [ ] 6.5 Wire telemetry chart to real telemetry data
+- [x] 6.5 Wire telemetry chart to real telemetry data
 
 ## Stage 7 — Testing & Quality Gate
 Status: PENDING
