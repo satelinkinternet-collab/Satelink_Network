@@ -37,17 +37,20 @@ export default function NodeDashboard() {
     const logRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        api.get('/node-api/stats').then(res => {
+        api.get('/node-api/status').then(res => {
             if (res.data?.ok) {
-                const { stats, earnings, logs: apiLogs } = res.data;
-                setNodeStatus((p: any) => ({
-                    ...p,
-                    online: stats?.active ?? p.online,
-                    earnings: parseFloat(stats?.claimable ?? p.earnings),
-                }));
-                if (apiLogs?.length) {
-                    setLogs(apiLogs.map((l: any) => l.message || String(l)));
+                const { status, telemetry: tele, logs: apiLogs } = res.data;
+                if (status) {
+                    setNodeStatus((p: any) => ({
+                        ...p,
+                        online: status.online ?? p.online,
+                        uptime: status.uptime ?? p.uptime,
+                        earnings: status.earnings ?? p.earnings,
+                        lastPing: status.lastPing ?? p.lastPing,
+                    }));
                 }
+                if (tele?.length) setTelemetry(tele);
+                if (apiLogs?.length) setLogs(apiLogs);
             }
         }).catch(() => { /* keep mock defaults on error */ });
     }, []);
