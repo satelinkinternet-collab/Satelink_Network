@@ -79,12 +79,39 @@ export default function CommandCenterPage() {
 
     // Update from SSE
     useEffect(() => {
-        if (lastEvent?.type === 'snapshot' && lastEvent.data) {
+        if (!lastEvent) return;
+
+        if (lastEvent.type === 'snapshot' && lastEvent.data) {
             const d = lastEvent.data;
             if (d.system) setSystem(d.system);
             if (d.kpis) setKpis(d.kpis);
             if (d.alerts_open_count != null) setAlertsCount(d.alerts_open_count);
             if (d.errors_1h_count != null) setErrorsCount(d.errors_1h_count);
+        }
+
+        // Prepend new revenue events to the live feed in real-time
+        if (lastEvent.type === 'revenue_batch' && Array.isArray(lastEvent.data)) {
+            const items: FeedItem[] = lastEvent.data.map((e: any) => ({
+                type: 'revenue',
+                id: e.id,
+                value: e.amount_usdt,
+                ts: (e.created_at || 0) * 1000,
+                label: e.op_type || 'op',
+            }));
+            setFeed(prev => [...items, ...prev].slice(0, 100));
+        }
+
+        // Prepend new error events + bump error counter
+        if (lastEvent.type === 'error_batch' && Array.isArray(lastEvent.data)) {
+            const items: FeedItem[] = lastEvent.data.map((e: any) => ({
+                type: 'error',
+                id: e.id,
+                value: e.status_code,
+                ts: e.last_seen_at || Date.now(),
+                label: e.message || 'error',
+            }));
+            setFeed(prev => [...items, ...prev].slice(0, 100));
+            setErrorsCount(prev => prev + lastEvent.data.length);
         }
     }, [lastEvent]);
 
