@@ -211,6 +211,7 @@ export function createStreamApiRouter(opsEngine) {
     /**
      * GET /stream/node
      * Access: Node Operator (own node only)
+     * Emits: heartbeat (node status + earnings), log (new relay events)
      */
     router.get('/node', verifyJWT, async (req, res) => {
         if (req.user?.role !== 'node_operator') {
@@ -225,38 +226,66 @@ export function createStreamApiRouter(opsEngine) {
 
         const conn = sseHelper.init(req, res);
 
-        const pollStatus = setInterval(async () => {
-            try {
-                const node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
-                if (node) {
-                    const now = Math.floor(Date.now() / 1000);
-                    const isOnline = (now - node.last_heartbeat) < 300;
-                    conn.send('node_status', {
-                        online: isOnline,
-                        last_seen: node.last_heartbeat,
-                        ip: '127.0.0.1'
-                    });
-                }
-            } catch (e) { }
-        }, 10000);
+        const formatUptime = (lastSeen) => {
+            if (!lastSeen) return '—';
+            const s = Math.floor(Date.now() / 1000) - lastSeen;
+            if (s <= 0) return '0d 0h 0m';
+            const d = Math.floor(s / 86400);
+            const h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return `${d}d ${h}h ${m}m`;
+        };
 
-        const pollEarnings = setInterval(async () => {
+        // Seed lastLogId so we only stream NEW events
+        let lastLogId = 0;
+        try {
+            const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
+            if (node?.node_id) {
+                const latest = await opsEngine.db.get(
+                    "SELECT MAX(id) as max_id FROM revenue_events_v2 WHERE node_id = ?",
+                    [node.node_id]
+                );
+                lastLogId = latest?.max_id || 0;
+            }
+        } catch (e) { }
+
+        // heartbeat: online status + uptime + claimable earnings every 10s
+        const pollHeartbeat = setInterval(async () => {
             try {
-                const total = await opsEngine.getBalance(wallet);
-                const recent_earnings = await pollDB(
-                    `SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 5`,
+                const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
+                const unpaid = await opsEngine.db.query(
+                    "SELECT amount_usdt FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'",
                     [wallet]
                 );
-                conn.send('earnings', {
-                    unpaid_balance: total,
-                    recent_epochs: recent_earnings || []
+                const claimable = unpaid.reduce((s, e) => s + (e.amount_usdt || 0), 0);
+                conn.send('heartbeat', {
+                    online: node?.status === 'online',
+                    uptime: formatUptime(node?.last_seen),
+                    earnings: parseFloat(claimable.toFixed(2)),
+                    lastPing: node?.last_seen ? node.last_seen * 1000 : Date.now(),
                 });
             } catch (e) { }
         }, 10000);
 
+        // log: emit one 'log' event per new revenue event for this node
+        const pollLogs = setInterval(async () => {
+            try {
+                const node = await opsEngine.db.get("SELECT node_id FROM nodes WHERE wallet = ?", [wallet]);
+                if (!node?.node_id) return;
+                const events = await pollDB(
+                    "SELECT * FROM revenue_events_v2 WHERE node_id = ? AND id > ? ORDER BY id ASC LIMIT 5",
+                    [node.node_id, lastLogId]
+                );
+                for (const e of events) {
+                    conn.send('log', { message: `[RELAY] ${e.op_type} → $${e.amount_usdt}` });
+                    lastLogId = e.id;
+                }
+            } catch (e) { }
+        }, 10000);
+
         req.on('close', () => {
-            clearInterval(pollStatus);
-            clearInterval(pollEarnings);
+            clearInterval(pollHeartbeat);
+            clearInterval(pollLogs);
         });
     });
 
