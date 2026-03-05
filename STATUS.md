@@ -129,7 +129,7 @@ Status: IN PROGRESS
 ## Stage 6 — Real-Time SSE
 Status: IN PROGRESS
 - [x] 6.1 Wire Node Dashboard to real APIs: GET /node-api/status (uptime, online, earnings, telemetry, logs)
-- [ ] 6.2 Implement /stream/node SSE endpoint: heartbeat + log events for live dashboard updates
+- [x] 6.2 Implement /stream/node SSE endpoint: heartbeat + log events for live dashboard updates
 - [ ] 6.3 Wire Admin Command Center to /stream/admin SSE
 - [ ] 6.4 Wire treasury health widget to real treasury data
 - [ ] 6.5 Wire telemetry chart to real telemetry data
