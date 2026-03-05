@@ -21,7 +21,7 @@ export default function NodeDashboard() {
     const { user } = useAuth();
     const { lastEvent } = useSSE('/stream/node', ['heartbeat', 'log']);
     const [nodeStatus, setNodeStatus] = useState<any>({
-        online: true, uptime: '14d 7h 23m', peers: 12, bandwidth: '1.2 TB',
+        online: true, uptime: '—', peers: 12, bandwidth: '1.2 TB',
         earnings: 42.5, latency: 23, cpu: 34, lastPing: Date.now(),
         reserveLocked: '5,000.00'
     });

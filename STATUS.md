@@ -140,7 +140,7 @@ Status: COMPLETE ✅
 - [x] 6.10 Add epoch countdown timer: EpochCountdown component using /admin-api/epoch/current
 
 ### Gate Check — Stage 6
-- [ ] Node dashboard shows real node status (no hardcoded '14d 7h 23m' uptime)
+- [x] Node dashboard shows real node status (no hardcoded '14d 7h 23m' uptime)
 - [ ] Telemetry chart updates with real data points
 - [ ] System console shows real log entries from SSE stream
 - [ ] Admin Command Center updates in real-time without page refresh
