@@ -44,10 +44,43 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
-    // GET /admin/treasury - Treasury status
+    // GET /admin/treasury - Treasury status (legacy)
     router.get('/treasury', async (req, res) => {
         const available = await opsEngine.getTreasuryAvailable();
         res.json({ ok: true, available });
+    });
+
+    // GET /admin-api/treasury/health - Full treasury health for dashboard widget
+    router.get('/treasury/health', async (req, res) => {
+        try {
+            const available = opsEngine.getTreasuryAvailable();
+
+            // Pending claims = all UNPAID epoch earnings
+            const pendingRow = await opsEngine.db.get(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'UNPAID'"
+            );
+            const pending = pendingRow?.total || 0;
+
+            // Coverage ratio: how much of pending we can cover
+            const ratio = pending > 0 ? available / pending : 1.0;
+
+            // Withdraw status thresholds
+            let withdrawStatus = 'AVAILABLE';
+            if (ratio < 0.5) withdrawStatus = 'BLOCKED';
+            else if (ratio < 1.0) withdrawStatus = 'PARTIAL';
+
+            res.json({
+                ok: true,
+                data: {
+                    total_balance: parseFloat(available.toFixed(2)),
+                    pending_claims_total: parseFloat(pending.toFixed(2)),
+                    liquidity_ratio: parseFloat(ratio.toFixed(4)),
+                    withdraw_status: withdrawStatus,
+                },
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     // GET /epochs/current - Current epoch status
