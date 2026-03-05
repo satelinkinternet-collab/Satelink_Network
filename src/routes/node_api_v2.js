@@ -125,6 +125,47 @@ export function createNodeApiRouter(opsEngine) {
         }
     });
 
+    // GET /node-api/telemetry - Timestamped bandwidth readings for the node telemetry chart
+    router.get('/telemetry', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const hours = Math.min(parseInt(req.query.hours) || 24, 168); // default 24h, max 7d
+            const since = Math.floor(Date.now() / 1000) - hours * 3600;
+
+            const node = await opsEngine.db.get("SELECT node_id FROM nodes WHERE wallet = ?", [wallet]);
+
+            if (!node?.node_id) {
+                return res.json({ ok: true, telemetry: [], hours });
+            }
+
+            // Group ops by 1-hour buckets → bandwidth proxy (ops * 10 = MB/s)
+            const raw = await opsEngine.db.query(
+                `SELECT
+                   (created_at / 3600) AS hour_bucket,
+                   COUNT(*) AS ops,
+                   COALESCE(SUM(amount_usdt), 0) AS revenue
+                 FROM revenue_events_v2
+                 WHERE node_id = ? AND created_at > ?
+                 GROUP BY hour_bucket
+                 ORDER BY hour_bucket ASC`,
+                [node.node_id, since]
+            );
+
+            const telemetry = raw.map(r => ({
+                t: `${String(new Date(r.hour_bucket * 3600 * 1000).getUTCHours()).padStart(2, '0')}:00`,
+                ts: r.hour_bucket * 3600 * 1000,
+                bw: (r.ops || 0) * 10,      // MB/s proxy
+                cpu: 0,                       // no CPU table; placeholder
+                ops: r.ops || 0,
+                revenue: parseFloat((r.revenue || 0).toFixed(4)),
+            }));
+
+            res.json({ ok: true, telemetry, hours, node_id: node.node_id });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /node-api/earnings - Paginated earnings history for the authenticated node operator
     router.get('/earnings', async (req, res) => {
         try {
