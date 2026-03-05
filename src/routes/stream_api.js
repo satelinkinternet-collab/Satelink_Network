@@ -249,7 +249,7 @@ export function createStreamApiRouter(opsEngine) {
             }
         } catch (e) { }
 
-        // heartbeat: online status + uptime + claimable earnings every 10s
+        // heartbeat: online status + uptime + claimable earnings + telemetry point every 10s
         const pollHeartbeat = setInterval(async () => {
             try {
                 const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
@@ -258,11 +258,27 @@ export function createStreamApiRouter(opsEngine) {
                     [wallet]
                 );
                 const claimable = unpaid.reduce((s, e) => s + (e.amount_usdt || 0), 0);
+
+                // Count ops in last 10s for this node → real bw data point
+                let recentOps = 0;
+                if (node?.node_id) {
+                    const tenSecAgo = Math.floor(Date.now() / 1000) - 10;
+                    const opsRow = await opsEngine.db.get(
+                        "SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?",
+                        [node.node_id, tenSecAgo]
+                    );
+                    recentOps = opsRow?.c || 0;
+                }
+
+                const now = new Date();
+                const timeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
                 conn.send('heartbeat', {
                     online: node?.status === 'online',
                     uptime: formatUptime(node?.last_seen),
                     earnings: parseFloat(claimable.toFixed(2)),
                     lastPing: node?.last_seen ? node.last_seen * 1000 : Date.now(),
+                    telemetry_point: { t: timeLabel, cpu: 0, bw: recentOps * 10 },
                 });
             } catch (e) { }
         }, 10000);

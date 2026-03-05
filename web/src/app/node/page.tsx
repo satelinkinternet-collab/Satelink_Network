@@ -57,7 +57,15 @@ export default function NodeDashboard() {
 
     useEffect(() => {
         if (!lastEvent) return;
-        if (lastEvent.type === 'heartbeat') setNodeStatus((p: any) => ({ ...p, ...lastEvent.data, lastPing: Date.now() }));
+        if (lastEvent.type === 'heartbeat') {
+            // Extract telemetry_point before spreading into nodeStatus
+            const { telemetry_point, ...statusFields } = lastEvent.data;
+            setNodeStatus((p: any) => ({ ...p, ...statusFields, lastPing: Date.now() }));
+            // Slide the new real data point onto the chart (keep last 20)
+            if (telemetry_point) {
+                setTelemetry(prev => [...prev.slice(-19), telemetry_point]);
+            }
+        }
         if (lastEvent.type === 'log') {
             setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${lastEvent.data.message}`].slice(-50));
             setTimeout(() => logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' }), 50);
