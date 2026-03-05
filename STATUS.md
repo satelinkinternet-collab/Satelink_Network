@@ -113,13 +113,18 @@ Status: IN PROGRESS
 - [x] 5.13 Wire /distributor/referrals page: code, signups count, earnings, commission rate
 - [x] 5.14 Wire /admin/growth/retention page to GET /admin/economics/retention (cohort chart + churn-risk)
 
-### Gate Check — Stage 5 ✅
+### Gate Check — Stage 5 (5.3)
+- [x] grep -r "don't actually fetch" web/src/ returns ZERO results
 - [x] GET /node-api/stats returns 401 without JWT (route registered)
 - [x] GET /node-api/earnings returns 401 without JWT (route registered)
 - [x] GET /dist-api/referrals returns 401 without JWT (route registered)
 - [x] GET /dist-api/history returns 401 without JWT (route registered)
 - [x] GET /dist-api/conversions returns 401 without JWT (route registered)
 - [x] No frontend build errors in Next.js dev server
+- [ ] Admin sees: Command Center, Ledger (data), Logs, Revenue (chart), Security, Settings, Withdrawals, Rewards
+- [ ] Node operator sees: Node dashboard, Earnings (epoch table), Claim button
+- [ ] Builder sees: Dashboard, Docs (Swagger UI), Keys, Projects
+- [ ] Distributor sees: Dashboard, Referrals (with table)
 
 ## Stage 6 — Real-Time SSE
 Status: PENDING
