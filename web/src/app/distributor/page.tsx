@@ -15,22 +15,31 @@ import {
     Tooltip, ResponsiveContainer
 } from 'recharts';
 
-const earningsData = [
-    { month: 'Jan', earnings: 320 }, { month: 'Feb', earnings: 580 },
-    { month: 'Mar', earnings: 710 }, { month: 'Apr', earnings: 620 },
-    { month: 'May', earnings: 950 }, { month: 'Jun', earnings: 1130 },
-];
-
 export default function DistributorDashboard() {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [earningsData, setEarningsData] = useState<any[]>([]);
+    const [conversions, setConversions] = useState<any[]>([]);
     const referralLink = `https://satelink.network/ref/${Math.random().toString(36).slice(2, 10)}`;
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await api.get('/dist-api/stats');
-                if (res.data.ok) setStats(res.data);
+                const [statsRes, historyRes, convRes] = await Promise.all([
+                    api.get('/dist-api/stats'),
+                    api.get('/dist-api/history'),
+                    api.get('/dist-api/conversions'),
+                ]);
+                if (statsRes.data.ok) setStats(statsRes.data);
+                if (historyRes.data.ok) {
+                    setEarningsData(
+                        (historyRes.data.history || []).map((h: any) => ({
+                            month: h.date,
+                            earnings: parseFloat(h.amount) || 0,
+                        }))
+                    );
+                }
+                if (convRes.data.ok) setConversions(convRes.data.conversions || []);
             } catch { toast.error('Failed to fetch distributor data'); }
             finally { setLoading(false); }
         };
@@ -147,25 +156,28 @@ export default function DistributorDashboard() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="divide-y divide-zinc-800/40">
-                        {[
-                            { user: '0xab12…f309', plan: 'Enterprise', value: '$280', time: '2h ago' },
-                            { user: '0xcd45…a721', plan: 'Builder', value: '$120', time: '5h ago' },
-                            { user: '0xef78…b842', plan: 'Node Pro', value: '$85', time: '1d ago' },
-                            { user: '0x9a01…c563', plan: 'Enterprise', value: '$280', time: '2d ago' },
-                        ].map((acq, i) => (
-                            <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-zinc-800/20 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-zinc-700/50 flex items-center justify-center">
-                                        <span className="text-[10px] font-bold text-violet-400">{acq.user[2]?.toUpperCase()}</span>
+                        {conversions.length === 0 && (
+                            <p className="text-zinc-500 text-sm py-4 text-center px-4">No conversions yet.</p>
+                        )}
+                        {conversions.slice(0, 8).map((c: any, i: number) => {
+                            const wallet = c.referee_wallet || '0x????';
+                            const short = `${wallet.slice(0, 6)}…${wallet.slice(-4)}`;
+                            const date = c.created_at ? new Date(c.created_at * 1000).toLocaleDateString() : '—';
+                            return (
+                                <div key={i} className="px-4 py-3 flex items-center justify-between hover:bg-zinc-800/20 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-zinc-700/50 flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-violet-400">{wallet[2]?.toUpperCase()}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-zinc-200 font-mono">{short}</p>
+                                            <p className="text-[11px] text-zinc-500">{c.role || 'user'} • {date}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-zinc-200 font-mono">{acq.user}</p>
-                                        <p className="text-[11px] text-zinc-500">{acq.plan} • {acq.time}</p>
-                                    </div>
+                                    <span className="text-[11px] text-zinc-500 font-mono">{wallet.slice(-6)}</span>
                                 </div>
-                                <span className="text-sm font-bold text-emerald-400">{acq.value}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </CardContent>
             </Card>

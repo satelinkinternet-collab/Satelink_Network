@@ -4,12 +4,12 @@ CREATE TABLE IF NOT EXISTS payments_inbox (
     event_id TEXT NOT NULL,
     status TEXT NOT NULL,
     payload_json TEXT,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY (provider, event_id)
 );
 
 CREATE TABLE IF NOT EXISTS revenue_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     amount REAL NOT NULL DEFAULT 0,
     amount_usdt REAL DEFAULT 0,
     token TEXT DEFAULT 'USDT',
@@ -21,5 +21,5 @@ CREATE TABLE IF NOT EXISTS revenue_events (
     tx_ref TEXT,
     epoch_id INTEGER,
     on_chain_tx TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );

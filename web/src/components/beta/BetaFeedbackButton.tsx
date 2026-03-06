@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from 'sonner';
@@ -22,20 +23,16 @@ export function BetaFeedbackButton() {
             const page_url = window.location.href;
             const wallet = localStorage.getItem('wallet_address') || 'anon';
 
-            const res = await fetch('http://localhost:8080/beta/feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    wallet,
-                    category,
-                    severity,
-                    message,
-                    page_url,
-                    trace_id: null
-                })
+            const res = await api.post('/beta/feedback', {
+                wallet,
+                category,
+                severity,
+                message,
+                page_url,
+                trace_id: null
             });
 
-            if (res.ok) {
+            if (res.status === 200 || res.status === 201) {
                 toast.success("Feedback received. Thank you!");
                 setOpen(false);
                 setMessage('');

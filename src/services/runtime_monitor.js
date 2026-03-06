@@ -10,7 +10,16 @@ export class RuntimeMonitor {
         this.consecutiveHighHeap = 0; // minutes
     }
 
-    init() {
+    async init() {
+        await this.db.exec(`
+            CREATE TABLE IF NOT EXISTS runtime_metrics (
+                id SERIAL PRIMARY KEY,
+                heap_used_mb REAL,
+                rss_mb REAL,
+                event_loop_lag_ms REAL,
+                created_at BIGINT
+            )
+        `);
         console.log("[Runtime] Monitor initialized.");
     }
 

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
-import { LayoutShell } from "@/components/layout-shell";
+import { AppShell } from "@/components/layout/AppShell";
 import { BetaFeedbackButton } from "@/components/beta/BetaFeedbackButton";
 import { BackupNudge } from "@/components/auth/BackupNudge";
 import { SigningGuard } from "@/components/auth/SigningGuard";
@@ -36,9 +36,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-950 text-zinc-100`}
       >
         <AuthProvider>
-          <LayoutShell>
+          <AppShell>
             {children}
-          </LayoutShell>
+          </AppShell>
           <BackupNudge />
           <BetaFeedbackButton />
           <SigningGuard />

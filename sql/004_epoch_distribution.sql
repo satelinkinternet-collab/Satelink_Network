@@ -8,13 +8,13 @@ CREATE TABLE IF NOT EXISTS node_uptime (
 );
 
 CREATE TABLE IF NOT EXISTS node_rewards (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     epoch_id INTEGER NOT NULL,
     node_wallet TEXT NOT NULL,
     node_class TEXT NOT NULL,
     amount_usdt REAL NOT NULL,
     status TEXT DEFAULT 'UNCLAIMED',
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     UNIQUE(epoch_id, node_wallet)
 );
 
@@ -23,12 +23,12 @@ CREATE TABLE IF NOT EXISTS distribution_runs (
     total_revenue REAL,
     platform_fee REAL,
     node_pool REAL,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 -- Legacy compat tables
 CREATE TABLE IF NOT EXISTS reward_ledger (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     epoch_id INTEGER NOT NULL,
     node_wallet TEXT NOT NULL,
     amount REAL NOT NULL,
@@ -38,13 +38,13 @@ CREATE TABLE IF NOT EXISTS reward_ledger (
 );
 
 CREATE TABLE IF NOT EXISTS payout_queue (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     ledger_id INTEGER NOT NULL,
     node_wallet TEXT NOT NULL,
     amount REAL NOT NULL,
     withdrawn_amount REAL DEFAULT 0,
     status TEXT DEFAULT 'PENDING',
     claim_id TEXT,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL
 );

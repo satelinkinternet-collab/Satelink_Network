@@ -3,13 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4.0.4",
-    "@nomicfoundation/hardhat-viem": "^3.0.2",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.19.7",
     "chai": "^6.2.2",
-    "hardhat": "^3.1.5",
+    "concurrently": "^9.2.1",
     "mocha": "^11.7.5",
     "playwright": "^1.58.2",
     "supertest": "^7.2.2",
@@ -20,11 +18,12 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/defender-sdk": "^2.7.1",
     "base32.js": "^0.1.0",
     "better-sqlite3": "^12.6.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.3.1",
     "ejs": "^4.0.1",
     "ethers": "^6.16.0",
     "express": "^5.2.1",
@@ -40,18 +39,29 @@
     "yamljs": "^0.3.0"
   },
   "scripts": {
-    "test": "npx mocha test/FullProduct.test.js test/Security.test.js test/Heartbeat.test.js test/Claims.test.js test/RevenueSplit.test.js test/Dashboard.test.js --timeout 15000",
+    "dev": "NODE_ENV=development nodemon server.js",
+    "start": "NODE_ENV=production node server.js",
+    "lint": "eslint .",
+    "test": "NODE_ENV=test ADMIN_API_KEY=test-admin-secret-012345678901234567890123456789012345678901234567890 JWT_SECRET=test-jwt-secret-012345678901234567890123456789012345678901234567890123456789 mocha test/**/*.test.js",
+    "dev:all": "bash dev.sh",
+    "dev:backend": "node server.js",
+    "dev:frontend": "cd web && npm run dev",
+    "dev:full": "bash dev.sh",
+    "contracts:build": "forge build",
+    "contracts:test": "forge test -vv",
+    "contracts:deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
+    "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast",
+    "e2e:manual": "bash scripts/manual_e2e.sh",
+    "test:all": "bash scripts/test.sh",
     "migrate": "node scripts/migrate.js",
-    "start": "node server.js",
     "self:test": "node tools/self_test.js",
     "self:heal": "node tools/self_heal.js",
-    "ops:triage": "node src/ops-agent/triage.js"
+    "ops:triage": "node src/ops-agent/triage.js",
+    "deploy:settlement": "node scripts/deploy_settlement.js",
+    "smoke:settlement": "node scripts/smoke_settlement.js"
   },
   "description": "This project has a minimal setup of Hardhat 3 Beta, without any plugins.",
-  "main": "debug_env.js",
-  "directories": {
-    "test": "test"
-  },
+  "main": "server.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/satelinkinternet-collab/satelink-mvp.git"

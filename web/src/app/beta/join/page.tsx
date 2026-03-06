@@ -1,6 +1,7 @@
 
 "use client";
 import { useState } from 'react';
+import api from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,13 +36,8 @@ export default function BetaJoinPage() {
             // We'll assume fetch to /beta/join is proxied by Next.js or direct.
             // Let's try direct fetch to port 8080 from client (assuming CORS is open)
 
-            const res = await fetch('http://localhost:8080/beta/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ wallet, invite_code: inviteCode })
-            });
-
-            const data = await res.json();
+            const res = await api.post('/beta/join', { wallet, invite_code: inviteCode });
+            const data = res.data;
             if (data.ok) {
                 toast.success("Welcome to Beta!");
                 setStep(2);

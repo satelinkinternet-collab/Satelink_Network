@@ -4,7 +4,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS op_weights (
   op_type TEXT PRIMARY KEY,
   weight REAL NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at BIGINT NOT NULL
 );
 
 -- Seed Day-1 minimal weights (safe to rerun)

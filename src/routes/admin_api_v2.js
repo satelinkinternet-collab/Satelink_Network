@@ -44,16 +44,76 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
-    // GET /admin/treasury - Treasury status
+    // GET /admin/treasury - Treasury status (legacy)
     router.get('/treasury', async (req, res) => {
         const available = await opsEngine.getTreasuryAvailable();
         res.json({ ok: true, available });
+    });
+
+    // GET /admin-api/treasury/health - Full treasury health for dashboard widget
+    router.get('/treasury/health', async (req, res) => {
+        try {
+            const available = opsEngine.getTreasuryAvailable();
+
+            // Pending claims = all UNPAID epoch earnings
+            const pendingRow = await opsEngine.db.get(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'UNPAID'"
+            );
+            const pending = pendingRow?.total || 0;
+
+            // Coverage ratio: how much of pending we can cover
+            const ratio = pending > 0 ? available / pending : 1.0;
+
+            // Withdraw status thresholds
+            let withdrawStatus = 'AVAILABLE';
+            if (ratio < 0.5) withdrawStatus = 'BLOCKED';
+            else if (ratio < 1.0) withdrawStatus = 'PARTIAL';
+
+            res.json({
+                ok: true,
+                data: {
+                    total_balance: parseFloat(available.toFixed(2)),
+                    pending_claims_total: parseFloat(pending.toFixed(2)),
+                    liquidity_ratio: parseFloat(ratio.toFixed(4)),
+                    withdraw_status: withdrawStatus,
+                },
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     // GET /epochs/current - Current epoch status
     router.get('/epochs/current', async (req, res) => {
         const current = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
         res.json({ ok: true, epoch: current });
+    });
+
+    // GET /epoch/current - Current epoch with countdown data for dashboard timers
+    router.get('/epoch/current', async (req, res) => {
+        try {
+            const current = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
+            if (!current) {
+                return res.json({ ok: true, epoch: null });
+            }
+            const nowSec = Math.floor(Date.now() / 1000);
+            // ends_at may be null for open-ended epochs; fallback to 24h from starts_at
+            const endsAt = current.ends_at || (current.starts_at + 86400);
+            const remainingSecs = Math.max(0, endsAt - nowSec);
+            res.json({
+                ok: true,
+                epoch: {
+                    id: current.id,
+                    starts_at: current.starts_at,
+                    ends_at: endsAt,
+                    end_time_ms: endsAt * 1000,
+                    remaining_secs: remainingSecs,
+                    status: current.status,
+                },
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     // GET /admin/revenue-events - Recent revenue events
@@ -162,6 +222,208 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // GET /admin-api/ledger/runs - Distribution runs with pagination
+    router.get('/ledger/runs', async (req, res) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+            const offset = (page - 1) * limit;
+
+            const runs = await opsEngine.db.query(
+                "SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                [limit, offset]
+            );
+            const countRow = await opsEngine.db.get("SELECT COUNT(*) as total FROM distribution_runs");
+            const total = countRow?.total || 0;
+
+            res.json({ ok: true, runs, page, limit, total });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/logs - Error logs with level filter and pagination
+    router.get('/logs', async (req, res) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+            const offset = (page - 1) * limit;
+            const level = req.query.level || null;
+
+            const params = level ? [level, limit, offset] : [limit, offset];
+            const sql = level
+                ? "SELECT * FROM error_logs WHERE level = ? ORDER BY ts DESC LIMIT ? OFFSET ?"
+                : "SELECT * FROM error_logs ORDER BY ts DESC LIMIT ? OFFSET ?";
+
+            const countSql = level
+                ? "SELECT COUNT(*) as total FROM error_logs WHERE level = ?"
+                : "SELECT COUNT(*) as total FROM error_logs";
+            const countParams = level ? [level] : [];
+
+            const logs = await opsEngine.db.query(sql, params);
+            const countRow = await opsEngine.db.get(countSql, countParams);
+            const total = countRow?.total || 0;
+
+            res.json({ ok: true, logs, page, limit, total });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/security/alerts - Recent security events (failed auth, suspicious activity)
+    router.get('/security/alerts', async (req, res) => {
+        try {
+            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+
+            const alerts = await opsEngine.db.query(
+                `SELECT * FROM audit_logs WHERE action_type IN ('FAILED_AUTH','ROLE_CHANGE','PAUSE_WITHDRAWALS','SUSPICIOUS_TX') ORDER BY created_at DESC LIMIT ?`,
+                [limit]
+            );
+
+            res.json({ ok: true, alerts });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/revenue/summary - Revenue aggregation (today, total, by type)
+    router.get('/revenue/summary', async (req, res) => {
+        try {
+            const todayStart = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+
+            const allEvents = await opsEngine.db.query("SELECT amount_usdt, event_type, created_at FROM revenue_events_v2");
+            const total = allEvents.reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
+            const today = allEvents.filter(e => e.created_at >= todayStart).reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
+
+            const byType = {};
+            for (const e of allEvents) {
+                const t = e.event_type || 'unknown';
+                byType[t] = (byType[t] || 0) + (e.amount_usdt || 0);
+            }
+
+            res.json({
+                ok: true,
+                summary: {
+                    today: today.toFixed(2),
+                    total: total.toFixed(2),
+                    byType: Object.entries(byType).map(([type, amount]) => ({ type, amount: amount.toFixed(2) }))
+                }
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/withdrawals - List withdrawals with optional status filter
+    router.get('/withdrawals', async (req, res) => {
+        try {
+            const status = req.query.status || null;
+            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+            const page = parseInt(req.query.page) || 1;
+            const offset = (page - 1) * limit;
+
+            const params = status ? [status, limit, offset] : [limit, offset];
+            const sql = status
+                ? "SELECT * FROM withdrawals WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+                : "SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            const countSql = status
+                ? "SELECT COUNT(*) as total FROM withdrawals WHERE status = ?"
+                : "SELECT COUNT(*) as total FROM withdrawals";
+            const countParams = status ? [status] : [];
+
+            const withdrawals = await opsEngine.db.query(sql, params);
+            const countRow = await opsEngine.db.get(countSql, countParams);
+            res.json({ ok: true, withdrawals, total: countRow?.total || 0, page, limit });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/withdrawals/:id/approve - Approve a pending withdrawal (super admin only)
+    router.post('/withdrawals/:id/approve', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { id } = req.params;
+            const w = await opsEngine.db.get("SELECT * FROM withdrawals WHERE id = ?", [id]);
+            if (!w) return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
+            if (w.status !== 'PENDING') return res.status(400).json({ ok: false, error: `Cannot approve: status is ${w.status}` });
+
+            await opsEngine.db.query("UPDATE withdrawals SET status = 'COMPLETED' WHERE id = ?", [id]);
+            try {
+                await opsEngine.db.query(
+                    "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
+                    [req.user?.wallet || 'admin_api', 'WITHDRAWAL_APPROVED', JSON.stringify({ id, wallet: w.wallet, amount_usdt: w.amount_usdt }), Date.now()]
+                );
+            } catch (_) {}
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/withdrawals/:id/reject - Reject a pending withdrawal (super admin only)
+    router.post('/withdrawals/:id/reject', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { id } = req.params;
+            const w = await opsEngine.db.get("SELECT * FROM withdrawals WHERE id = ?", [id]);
+            if (!w) return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
+            if (w.status !== 'PENDING') return res.status(400).json({ ok: false, error: `Cannot reject: status is ${w.status}` });
+
+            await opsEngine.db.query("UPDATE withdrawals SET status = 'REJECTED' WHERE id = ?", [id]);
+            try {
+                await opsEngine.db.query(
+                    "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
+                    [req.user?.wallet || 'admin_api', 'WITHDRAWAL_REJECTED', JSON.stringify({ id, wallet: w.wallet, amount_usdt: w.amount_usdt }), Date.now()]
+                );
+            } catch (_) {}
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/rewards/summary - Total distributed, current epoch, pending rewards
+    router.get('/rewards/summary', async (req, res) => {
+        try {
+            const totalDistributed = (await opsEngine.db.get(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'PAID'"
+            ))?.total || 0;
+
+            const pendingRewards = (await opsEngine.db.get(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'UNPAID'"
+            ))?.total || 0;
+
+            const currentEpoch = await opsEngine.db.get(
+                "SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1"
+            );
+
+            const recentEpochs = await opsEngine.db.query(
+                `SELECT e.id, e.status, e.starts_at, e.ends_at,
+                    COALESCE(SUM(ee.amount_usdt), 0) as distributed
+                 FROM epochs e
+                 LEFT JOIN epoch_earnings ee ON ee.epoch_id = e.id
+                 GROUP BY e.id ORDER BY e.id DESC LIMIT 10`
+            );
+
+            res.json({
+                ok: true,
+                summary: {
+                    totalDistributed: totalDistributed.toFixed(2),
+                    pendingRewards: pendingRewards.toFixed(2),
+                    currentEpoch: currentEpoch || null,
+                },
+                recentEpochs,
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // GET /admin-api/history - Revenue Trend
     router.get('/history', async (req, res) => {
         try {
@@ -200,6 +462,46 @@ export function createAdminApiRouter(opsEngine) {
 
             res.json({ ok: true, distribution });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+    });
+
+    // GET /admin-api/settings - Feature flags and rate limit configs from system_config
+    router.get('/settings', async (req, res) => {
+        try {
+            const rows = await opsEngine.db.query("SELECT key, value FROM system_config");
+            const config = Object.fromEntries(rows.map(r => [r.key, r.value]));
+
+            const featureFlags = [
+                { key: 'withdrawals_paused',     label: 'Withdrawals Paused',      value: config.withdrawals_paused === '1' },
+                { key: 'beta_gate_enabled',      label: 'Beta Gate Enabled',       value: config.beta_gate_enabled === '1' },
+                { key: 'safe_mode',              label: 'Safe Mode',               value: config.safe_mode === '1' },
+                { key: 'real_settlement',        label: 'Real Settlement',         value: config.real_settlement === '1' },
+            ];
+
+            const rateLimits = [
+                { key: 'rate_limit_heartbeat',   label: 'Heartbeat (req/min)',      value: config.rate_limit_heartbeat || '60' },
+                { key: 'rate_limit_api',         label: 'API Global (req/min)',     value: config.rate_limit_api || '300' },
+                { key: 'rate_limit_withdraw',    label: 'Withdraw (req/hour)',      value: config.rate_limit_withdraw || '10' },
+            ];
+
+            res.json({ ok: true, featureFlags, rateLimits });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/settings - Update a single system_config key (super admin only)
+    router.post('/settings', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { key, value } = req.body;
+            if (!key) return res.status(400).json({ ok: false, error: 'Missing key' });
+            await opsEngine.updateSystemConfig(key, String(value));
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     return router;

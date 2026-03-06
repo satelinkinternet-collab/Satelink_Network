@@ -84,7 +84,60 @@ export function createBuilderApiV2Router(opsEngine) {
     router.post('/keys', async (req, res) => {
         const { name } = req.body;
         const key = 'sl_live_' + crypto.randomBytes(24).toString('hex');
-        res.json({ ok: true, key, name, prefix: key.substring(0, 10) + '...' });
+        res.json({ ok: true, key, name, prefix: key.substring(0, 10) + '...', id: Date.now(), status: 'active', created_at: Date.now() });
+    });
+
+    // DELETE /builder-api/keys/:id - Revoke an API key
+    router.delete('/keys/:id', async (req, res) => {
+        try {
+            // MVP: mock revoke — in production this would update the DB
+            res.json({ ok: true, revoked: true, id: req.params.id });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /builder-api/projects - List builder projects with usage stats
+    router.get('/projects', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const projects = await opsEngine.db.query(
+                "SELECT * FROM builder_projects WHERE builder_wallet = ? ORDER BY created_at DESC",
+                [wallet]
+            );
+            // Attach usage counts from revenue_events_v2
+            const usage = await opsEngine.db.query(
+                "SELECT client_id, COUNT(*) as requests, COALESCE(SUM(amount_usdt), 0) as spend_usdt FROM revenue_events_v2 WHERE client_id = ? GROUP BY client_id",
+                [wallet]
+            );
+            const usageMap = Object.fromEntries(usage.map(u => [u.client_id, u]));
+            const enriched = projects.map(p => ({
+                ...p,
+                requests: usageMap[wallet]?.requests || 0,
+                spend_usdt: usageMap[wallet]?.spend_usdt || 0,
+            }));
+            res.json({ ok: true, projects: enriched });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /builder-api/projects - Create a new project
+    router.post('/projects', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const { name } = req.body;
+            if (!name?.trim()) return res.status(400).json({ ok: false, error: 'Name required' });
+            const now = Date.now();
+            const result = await opsEngine.db.query(
+                "INSERT INTO builder_projects (builder_wallet, name, status, created_at) VALUES (?, ?, 'active', ?) RETURNING id",
+                [wallet, name.trim(), now]
+            );
+            const id = result[0]?.id;
+            res.json({ ok: true, project: { id, builder_wallet: wallet, name: name.trim(), status: 'active', created_at: now, requests: 0, spend_usdt: 0 } });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     // GET /builder-api/requests - Recent activity

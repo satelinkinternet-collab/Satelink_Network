@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS sla_plans (
     target_success_rate REAL NOT NULL,  -- e.g. 0.98, 0.995, 0.999
     target_p95_latency_ms INTEGER NOT NULL,
     monthly_fee_usdt REAL DEFAULT 0,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 -- Q1: Tenant Limits
@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS tenant_limits (
     max_daily_ops INTEGER NOT NULL DEFAULT 1000,
     max_daily_spend_usdt REAL NOT NULL DEFAULT 50.0,
     allowed_op_types_json TEXT DEFAULT '["*"]',
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT,
     FOREIGN KEY(partner_id) REFERENCES partner_registry(partner_id),
     FOREIGN KEY(plan_id) REFERENCES sla_plans(id)
 );
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS tenant_sla_daily (
     success_rate REAL DEFAULT 1.0,
     p95_latency_ms REAL DEFAULT 0,
     budget_remaining_pct REAL DEFAULT 100.0,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY(day_yyyymmdd, partner_id)
 );
 
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS tenant_op_slo_daily (
     p95_latency_ms REAL DEFAULT 0,
     success_rate REAL DEFAULT 1.0,
     total_ops INTEGER DEFAULT 0,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY(day_yyyymmdd, partner_id, op_type)
 );
 
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS sla_reports (
     partner_id TEXT NOT NULL,
     month_yyyymm TEXT NOT NULL,
     report_json TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_sla_reports_partner_month
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS sla_credits (
     amount_usdt REAL NOT NULL,
     reason TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'simulated', -- simulated | applied
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 -- ============================================================

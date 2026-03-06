@@ -1,7 +1,7 @@
 -- Phase 32: EVM Settlement Tables
 
 CREATE TABLE IF NOT EXISTS settlement_evm_txs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     batch_id TEXT NOT NULL,
     item_id TEXT NOT NULL,
     chain_name TEXT NOT NULL,
@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS settlement_evm_txs (
     status TEXT NOT NULL,            -- prepared|sent|confirmed|failed|replaced|cancelled
     error_code TEXT,
     error_message TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
     FOREIGN KEY(batch_id) REFERENCES payout_batches_v2(id)
 );
 
@@ -26,5 +26,5 @@ CREATE INDEX IF NOT EXISTS idx_evm_txs_updated ON settlement_evm_txs(updated_at)
 CREATE TABLE IF NOT EXISTS settlement_evm_nonce_lock (
     chain_name TEXT PRIMARY KEY,
     last_nonce INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    updated_at BIGINT NOT NULL
 );

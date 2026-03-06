@@ -18,7 +18,7 @@ export default function RunbookPage() {
         // Wait, I can read it in the Admin API!
 
         fetch('/admin/system/runbook-content', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('satelink_token')}` }
         })
             .then(res => res.json())
             .then(data => {

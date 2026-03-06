@@ -5,7 +5,7 @@ import { createApp } from "../server.js";
 
 describe("Ledger L5 Router & Finalization Test", function () {
     let app, agent, db;
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
     let opsEngine;
     let node1 = "0x1111111111111111111111111111111111111111";
     let node2 = "0x2222222222222222222222222222222222222222";
@@ -14,6 +14,7 @@ describe("Ledger L5 Router & Finalization Test", function () {
     before(async function () {
         db = new Database(":memory:");
         app = createApp(db);
+        if (app.locals?.ready) await app.locals.ready;
         agent = supertest(app);
 
         // Execute some ops to generate revenue

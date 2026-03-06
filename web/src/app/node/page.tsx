@@ -2,25 +2,28 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSSE } from '@/hooks/use-sse';
 import {
     Activity, Signal, Zap, Users, Wifi, Terminal,
-    AlertCircle, Upload, Cpu, Clock, DollarSign
+    AlertCircle, Upload, Cpu, Clock, DollarSign, ShieldAlert
 } from 'lucide-react';
 import {
     AreaChart, Area, ResponsiveContainer, Tooltip,
     CartesianGrid, XAxis, YAxis
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { EpochCountdown } from '@/components/EpochCountdown';
 
 export default function NodeDashboard() {
     const { user } = useAuth();
     const { lastEvent } = useSSE('/stream/node', ['heartbeat', 'log']);
     const [nodeStatus, setNodeStatus] = useState<any>({
-        online: true, uptime: '14d 7h 23m', peers: 12, bandwidth: '1.2 TB',
-        earnings: 42.5, latency: 23, cpu: 34, lastPing: Date.now()
+        online: true, uptime: '—', peers: 12, bandwidth: '1.2 TB',
+        earnings: 42.5, latency: 23, cpu: 34, lastPing: Date.now(),
+        reserveLocked: '5,000.00'
     });
     const [logs, setLogs] = useState<string[]>([
         '[BOOT] Node v3.2.1 initialized', '[NET] Peer discovery: 12 peers found',
@@ -35,8 +38,35 @@ export default function NodeDashboard() {
     const logRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        api.get('/node-api/status').then(res => {
+            if (res.data?.ok) {
+                const { status, telemetry: tele, logs: apiLogs } = res.data;
+                if (status) {
+                    setNodeStatus((p: any) => ({
+                        ...p,
+                        online: status.online ?? p.online,
+                        uptime: status.uptime ?? p.uptime,
+                        earnings: status.earnings ?? p.earnings,
+                        lastPing: status.lastPing ?? p.lastPing,
+                    }));
+                }
+                if (tele?.length) setTelemetry(tele);
+                if (apiLogs?.length) setLogs(apiLogs);
+            }
+        }).catch(() => { /* keep mock defaults on error */ });
+    }, []);
+
+    useEffect(() => {
         if (!lastEvent) return;
-        if (lastEvent.type === 'heartbeat') setNodeStatus((p: any) => ({ ...p, ...lastEvent.data, lastPing: Date.now() }));
+        if (lastEvent.type === 'heartbeat') {
+            // Extract telemetry_point before spreading into nodeStatus
+            const { telemetry_point, ...statusFields } = lastEvent.data;
+            setNodeStatus((p: any) => ({ ...p, ...statusFields, lastPing: Date.now() }));
+            // Slide the new real data point onto the chart (keep last 20)
+            if (telemetry_point) {
+                setTelemetry(prev => [...prev.slice(-19), telemetry_point]);
+            }
+        }
         if (lastEvent.type === 'log') {
             setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${lastEvent.data.message}`].slice(-50));
             setTimeout(() => logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' }), 50);
@@ -49,6 +79,13 @@ export default function NodeDashboard() {
         { label: 'Bandwidth', value: nodeStatus.bandwidth, icon: Upload, color: 'text-violet-400', bg: 'bg-violet-500/10' },
         { label: 'Earnings', value: `${nodeStatus.earnings} STK`, icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10' },
     ];
+
+    if ((user as any)?.node_type === 'NODEOPS_MANAGED' || (user as any)?.nodeType === 'NODEOPS_MANAGED' || user?.wallet) {
+        // Show Reserve locked funds
+        metrics.push({
+            label: 'Reserve Locked', value: `$${nodeStatus.reserveLocked}`, icon: ShieldAlert, color: 'text-teal-400', bg: 'bg-teal-500/10'
+        });
+    }
 
     return (
         <div className="space-y-6 p-4 sm:p-6 lg:p-8 max-w-[1440px] mx-auto fade-in">
@@ -108,6 +145,11 @@ export default function NodeDashboard() {
                         </CardContent>
                     </Card>
                 ))}
+            </div>
+
+            {/* ── Epoch Countdown ── */}
+            <div className="flex items-center justify-end px-1">
+                <EpochCountdown />
             </div>
 
             {/* ── Telemetry Chart ── */}

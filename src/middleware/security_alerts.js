@@ -6,6 +6,9 @@ import crypto from 'crypto';
  */
 
 const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
+if (process.env.NODE_ENV === 'production' && IP_SALT === 'satelink_default_salt_change_me') {
+    throw new Error('FATAL: IP_HASH_SALT must be explicitly set in production mode.');
+}
 
 // In-memory rate tracking (reset on restart — good enough for MVP)
 const rateLimitHits = new Map();   // clientId -> { count, firstSeen }

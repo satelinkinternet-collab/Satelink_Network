@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-    Activity, Cpu, Zap, TrendingUp, Shield, Clock, AlertTriangle,
+    Activity, Cpu, Zap, TrendingUp, Shield, ShieldAlert, Clock, AlertTriangle,
     Pause, Play, Lock, Unlock, RefreshCw
 } from 'lucide-react';
 import api from '@/lib/api';
@@ -16,6 +16,7 @@ import {
     useIsReadonly, formatTs, timeAgo, DataTable
 } from '@/components/admin/admin-shared';
 import { DebugToolbox } from '@/components/admin/DebugToolbox';
+import { EpochCountdown } from '@/components/EpochCountdown';
 
 interface SystemState {
     withdrawals_paused: boolean;
@@ -79,12 +80,39 @@ export default function CommandCenterPage() {
 
     // Update from SSE
     useEffect(() => {
-        if (lastEvent?.type === 'snapshot' && lastEvent.data) {
+        if (!lastEvent) return;
+
+        if (lastEvent.type === 'snapshot' && lastEvent.data) {
             const d = lastEvent.data;
             if (d.system) setSystem(d.system);
             if (d.kpis) setKpis(d.kpis);
             if (d.alerts_open_count != null) setAlertsCount(d.alerts_open_count);
             if (d.errors_1h_count != null) setErrorsCount(d.errors_1h_count);
+        }
+
+        // Prepend new revenue events to the live feed in real-time
+        if (lastEvent.type === 'revenue_batch' && Array.isArray(lastEvent.data)) {
+            const items: FeedItem[] = lastEvent.data.map((e: any) => ({
+                type: 'revenue',
+                id: e.id,
+                value: e.amount_usdt,
+                ts: (e.created_at || 0) * 1000,
+                label: e.op_type || 'op',
+            }));
+            setFeed(prev => [...items, ...prev].slice(0, 100));
+        }
+
+        // Prepend new error events + bump error counter
+        if (lastEvent.type === 'error_batch' && Array.isArray(lastEvent.data)) {
+            const items: FeedItem[] = lastEvent.data.map((e: any) => ({
+                type: 'error',
+                id: e.id,
+                value: e.status_code,
+                ts: e.last_seen_at || Date.now(),
+                label: e.message || 'error',
+            }));
+            setFeed(prev => [...items, ...prev].slice(0, 100));
+            setErrorsCount(prev => prev + lastEvent.data.length);
         }
     }, [lastEvent]);
 
@@ -307,6 +335,11 @@ export default function CommandCenterPage() {
                     ))}
                 </div>
             )}
+
+            {/* Epoch Countdown */}
+            <div className="flex items-center justify-end mb-4">
+                <EpochCountdown />
+            </div>
 
             {/* Live Feed */}
             <Card className="bg-zinc-900/60 border-zinc-800/60">

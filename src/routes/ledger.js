@@ -1,4 +1,5 @@
 import express from "express";
+import { requireJWT, requireRole } from '../middleware/auth.js';
 
 export const createLedgerRouter = (opsEngine, adminAuth) => {
     const router = express.Router();
@@ -75,13 +76,30 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
         }
     });
 
-    // Withdraw Funds (Moves USDT)
-    router.post("/withdraw", async (req, res) => {
+    // Withdraw Funds (Moves USDT) — JWT-gated with balance + treasury checks
+    router.post("/withdraw", requireJWT, requireRole(['node_operator', 'admin_super', 'admin_ops']), async (req, res) => {
         try {
-            const { nodeWallet, amount } = req.body;
-            if (!nodeWallet || !amount) return res.status(400).json({ error: "Missing fields" });
-            const result = await opsEngine.withdrawFunds(nodeWallet, Number(amount));
-            // Ensure result has withdrawn property if test expects it
+            const { amount } = req.body;
+            const nodeWallet = req.user.wallet;
+            if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+                return res.status(400).json({ ok: false, error: "Invalid or missing amount" });
+            }
+            const amountNum = Number(amount);
+
+            // (b) Verify wallet balance
+            const balance = await opsEngine.getBalance(nodeWallet);
+            if (balance < amountNum) {
+                return res.status(400).json({ ok: false, error: "Insufficient balance", balance });
+            }
+
+            // (c) Check treasury liquidity
+            const treasury = await opsEngine.getTreasuryAvailable();
+            if (treasury < amountNum) {
+                return res.status(503).json({ ok: false, error: "Insufficient treasury liquidity" });
+            }
+
+            // (d) Create withdrawal record with PENDING status + (e) trigger settlement
+            const result = await opsEngine.withdrawFunds(nodeWallet, amountNum);
             return res.json({ ok: true, withdrawn: result.amount, ...result });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });

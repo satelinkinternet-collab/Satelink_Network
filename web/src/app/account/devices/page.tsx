@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useReAuth } from '@/hooks/use-reauth';
-import axios from 'axios';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ export default function DevicesPage() {
 
     const fetchDevices = async () => {
         try {
-            const res = await axios.get('/auth/account/devices'); // Path confirmed in backend
+            const res = await api.get('/auth/account/devices'); // Path confirmed in backend
             if (res.data.ok) {
                 setDevices(res.data.devices);
             }
@@ -53,7 +53,7 @@ export default function DevicesPage() {
             // For now assuming /auth/account/devices/revoke
             // I'll implement this endpoint right after this file creation.
             // Using POST /auth/account/devices/revoke
-            await axios.post('/auth/account/devices/revoke', {
+            await api.post('/auth/account/devices/revoke', {
                 deviceTimestamp: Date.now() // placeholder payload
             }, {
                 headers: { 'x-reauth-token': token },

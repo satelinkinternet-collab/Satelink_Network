@@ -20,7 +20,7 @@ export default function ReputationDashboard() {
 
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('admin_token');
+            const token = localStorage.getItem('satelink_token');
             const res = await fetch('/api/admin/network/reputation', { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             if (data.ok) { setNodes(data.nodes || []); setTiers(data.tiers || {}); }
@@ -32,7 +32,7 @@ export default function ReputationDashboard() {
 
     const triggerCompute = async () => {
         setComputing(true);
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('satelink_token');
         await fetch('/api/admin/network/reputation/compute', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         await fetchData();
         setComputing(false);

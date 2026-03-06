@@ -6,6 +6,16 @@ import { ethers } from 'ethers';
 const MAX_BATCH_ITEMS = 20;
 const MAX_BATCH_TOTAL_USDT = 50.0; // Restrictive default
 
+// Conditional import for Defender to avoid breaking non-prod environments
+let DefenderRelayProvider, DefenderRelaySigner;
+try {
+    const { RelaySigner, RelayProvider } = require('@openzeppelin/defender-sdk').ethers;
+    DefenderRelayProvider = RelayProvider;
+    DefenderRelaySigner = RelaySigner;
+} catch (e) {
+    // Optional dependency, handled below
+}
+
 export class EvmAdapter extends BaseSettlementAdapter {
     constructor(db, config = {}) {
         super();
@@ -13,8 +23,18 @@ export class EvmAdapter extends BaseSettlementAdapter {
         // Config injected or loaded from env
         this.enabled = process.env.SETTLEMENT_EVM_ENABLED === '1';
         this.chainName = process.env.SETTLEMENT_EVM_CHAIN_NAME || 'UNKNOWN';
+
+        // Driver toggle: 'local' (private key) vs 'defender' (relayer API keys)
+        this.driver = process.env.SETTLEMENT_EVM_DRIVER || 'local';
+
+        // Local driver config
         this.rpcUrl = process.env.SETTLEMENT_EVM_RPC_URL;
         this.privateKey = process.env.SETTLEMENT_EVM_SIGNER_PRIVATE_KEY;
+
+        // Defender driver config
+        this.defenderApiKey = process.env.DEFENDER_KEY || process.env.RELAYER_API_KEY;
+        this.defenderApiSecret = process.env.DEFENDER_SECRET || process.env.RELAYER_API_SECRET;
+
         this.nativeSymbol = process.env.SETTLEMENT_EVM_NATIVE_SYMBOL || 'ETH';
 
         // Token Map
@@ -26,9 +46,19 @@ export class EvmAdapter extends BaseSettlementAdapter {
         }
 
         // Initialize Provider & Signer if enabled
-        if (this.enabled && this.rpcUrl && this.privateKey) {
-            this.provider = new ethers.JsonRpcProvider(this.rpcUrl);
-            this.wallet = new ethers.Wallet(this.privateKey, this.provider);
+        if (this.enabled) {
+            if (this.driver === 'defender' && this.defenderApiKey && this.defenderApiSecret && DefenderRelayProvider) {
+                const credentials = { apiKey: this.defenderApiKey, apiSecret: this.defenderApiSecret };
+                this.provider = new DefenderRelayProvider(credentials);
+                this.wallet = new DefenderRelaySigner(credentials, this.provider, { speed: 'fast' });
+                console.log(`[EvmAdapter] Initialized with Defender Relayer driver for chain ${this.chainName}`);
+            } else if (this.driver === 'local' && this.rpcUrl && this.privateKey) {
+                this.provider = new ethers.JsonRpcProvider(this.rpcUrl);
+                this.wallet = new ethers.Wallet(this.privateKey, this.provider);
+                console.log(`[EvmAdapter] Initialized with Local driver for chain ${this.chainName}`);
+            } else {
+                console.warn(`[EvmAdapter] Enabled but driver ${this.driver} is missing configuration or dependencies.`);
+            }
         }
     }
 
@@ -232,7 +262,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
             for (const tx of txs.filter(t => t.status === 'sent')) {
                 try {
                     const receipt = await this.provider.getTransactionReceipt(tx.tx_hash);
-                    if (receipt && receipt.datus === 1) { // 1 = success
+                    if (receipt && receipt.status === 1) { // 1 = success
                         await this.db.query("UPDATE settlement_evm_txs SET status='confirmed', updated_at=? WHERE id=?", [Date.now(), tx.id]);
                     } else if (receipt && receipt.status === 0) {
                         await this.db.query("UPDATE settlement_evm_txs SET status='failed', error_message='Reverted', updated_at=? WHERE id=?", [Date.now(), tx.id]);

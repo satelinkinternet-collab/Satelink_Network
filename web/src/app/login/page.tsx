@@ -1,99 +1,43 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-        getActiveAddress,
-        createAndStoreWallet,
-        signMessage,
-        getDevicePublicId
-    } from '@/lib/embeddedWallet';
-import { connectMetaMask, signMessageMetaMask } from '@/lib/metaMask';
-import axios from 'axios';
+import Link from 'next/link';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 
-/**
- * Phase 37 & F — Login Page
- * Supports:
- * 1. Silent Embedded Wallet (Create/Get -> Sign)
- * 2. External Wallet (MetaMask -> Sign)
- */
+const ROLE_REDIRECTS: Record<string, string> = {
+    admin_super: '/admin',
+    admin_ops: '/admin',
+    node_operator: '/node',
+    builder: '/builder',
+    distributor_lco: '/distributor',
+    distributor_influencer: '/distributor',
+    enterprise: '/enterprise',
+};
+
 export default function LoginPage() {
     const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState<'initial' | 'generating' | 'signing'>('initial');
 
-    // Shared Auth Flow (Nonce -> Sign -> JWT)
-    const authenticate = async (address: string, signer: (msg: string) => Promise<string | null>) => {
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
         setLoading(true);
         try {
-            // 2. Start Auth (Get Nonce)
-            setStep('signing');
-            const startRes = await axios.post('/auth/embedded/start', { address });
-            if (!startRes.data.ok) throw new Error(startRes.data.error);
-
-            const { nonce, message_template } = startRes.data;
-            const message = message_template
-                .replace('${nonce}', nonce)
-                .replace('${address}', address)
-                .replace('${timestamp}', startRes.data.created_at || Date.now());
-
-            // 3. Sign Message
-            const signature = await signer(message);
-            if (!signature) {
-                setStep('initial');
-                setLoading(false);
-                return; // User rejected or failed
-            }
-
-            // 4. Finish Auth (Verify & JWT)
-            const finishRes = await axios.post('/auth/embedded/finish', {
-                address,
-                signature,
-                device_public_id: getDevicePublicId()
-            });
-
-            if (finishRes.data.ok) {
-                toast.success('Authenticated successfully');
-                router.push('/admin/command-center');
+            const res = await api.post('/login', { email, password });
+            if (res.data?.ok && res.data?.token) {
+                localStorage.setItem('satelink_token', res.data.token);
+                const role = res.data.user?.role ?? 'node_operator';
+                toast.success('Logged in successfully');
+                router.push(ROLE_REDIRECTS[role] ?? '/');
             } else {
-                throw new Error(finishRes.data.error);
+                throw new Error(res.data?.error || 'Login failed');
             }
         } catch (error: any) {
-            console.error('Login failed:', error);
-            toast.error(error.response?.data?.error || error.message || 'Login failed');
-            setStep('initial');
-            setLoading(false);
-        }
-    };
-
-    const handleContinue = async () => {
-        setLoading(true);
-        try {
-            // 1. Get or Generate Embedded Wallet
-            setStep('generating');
-            let address = await getActiveAddress();
-            if (!address) {
-                address = await createAndStoreWallet();
-                toast.success('Secure device wallet created');
-            }
-            // Use embedded signer
-            await authenticate(address, (msg) => signMessage(msg));
-        } catch (error: any) {
-            console.error('Embedded init failed:', error);
-            toast.error('Failed to initialize secure wallet');
-            setLoading(false);
-            setStep('initial');
-        }
-    };
-
-    const handleConnectMetaMask = async () => {
-        setLoading(true);
-        const address = await connectMetaMask();
-        if (address) {
-            // Use MetaMask signer
-            await authenticate(address, (msg) => signMessageMetaMask(address, msg));
-        } else {
+            const msg = error.response?.data?.error || error.message || 'Login failed';
+            toast.error(msg);
             setLoading(false);
         }
     };
@@ -106,47 +50,52 @@ export default function LoginPage() {
                         <div className="w-8 h-8 bg-black rounded-lg transform rotate-45"></div>
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome to Satelink</h1>
-                    <p className="text-white/50 text-sm">Decentralized connectivity starting with your device.</p>
+                    <p className="text-white/50 text-sm">Sign in to your account to continue.</p>
                 </div>
 
-                <div className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                        <label htmlFor="email" className="block text-sm text-white/60 mb-1">Email</label>
+                        <input
+                            id="email"
+                            type="email"
+                            required
+                            autoComplete="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/40 transition-colors"
+                            placeholder="you@example.com"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="password" className="block text-sm text-white/60 mb-1">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            required
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/40 transition-colors"
+                            placeholder="••••••••••"
+                        />
+                    </div>
                     <button
-                        onClick={handleContinue}
+                        type="submit"
                         disabled={loading}
-                        className="w-full py-4 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+                        className="w-full py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all disabled:opacity-50"
                     >
-                        {loading ? (
-                            <span className="flex items-center gap-2">
-                                <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></span>
-                                {step === 'generating' ? 'Initializing...' : 'Authorizing...'}
-                            </span>
-                        ) : (
-                            <>
-                                Continue
-                                <span className="group-hover:translate-x-1 transition-transform">→</span>
-                            </>
-                        )}
+                        {loading ? 'Signing in…' : 'Sign In'}
                     </button>
+                </form>
 
-                    <button
-                        onClick={handleConnectMetaMask}
-                        disabled={loading}
-                        className="w-full py-4 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/70"
-                    >
-                        I already have a wallet
-                    </button>
-                </div>
-
-                <div className="mt-10 pt-8 border-t border-white/5 text-center">
-                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-medium">
-                        Non-Custodial • Device Bound • End-to-End Encrypted
-                    </p>
-                </div>
+                <p className="text-center text-sm text-white/40 mt-6">
+                    Don&apos;t have an account?{' '}
+                    <Link href="/register" className="text-white/70 hover:text-white underline transition-colors">
+                        Register
+                    </Link>
+                </p>
             </div>
-
-            <p className="mt-8 text-white/40 text-xs">
-                By continuing, you agree to our Terms of Service.
-            </p>
         </div>
     );
 }

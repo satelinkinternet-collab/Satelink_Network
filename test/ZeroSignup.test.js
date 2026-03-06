@@ -5,12 +5,13 @@ import { createApp } from "../server.js";
 
 describe("RUNG 2: Zero-Signup Verification", function () {
     let app, agent, db;
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
     let nodeWallet = "0xZeroSignupUserWalletAddress123456789";
 
     before(async function () {
         db = new Database(":memory:");
         app = createApp(db);
+        if (app.locals?.ready) await app.locals.ready;
         agent = supertest(app);
 
         // Bootstrap a node so it exists
