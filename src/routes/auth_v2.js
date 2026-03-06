@@ -95,7 +95,7 @@ export function createUnifiedAuthRouter(opsEngine) {
     };
 
     // POST /auth/register - Permissionless onboarding
-    router.post('/register', authLimiter, async (req, res) => {
+    router.post('/auth/register', authLimiter, async (req, res) => {
         const { email, password, username } = req.body;
 
         if (!email || typeof email !== 'string' || !email.includes('@')) {
@@ -116,27 +116,26 @@ export function createUnifiedAuthRouter(opsEngine) {
             }
 
             // Ensure schema exists robustly at runtime
-            await opsEngine.db.query(
-                "CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
+            opsEngine.db.exec(
+                "CREATE TABLE IF NOT EXISTS auth_users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
             );
 
             // Check if user exists (generic error response for UX vs Security balance as per requirements)
-            const existingUser = await opsEngine.db.get("SELECT email FROM users WHERE email = ?", [normalizedEmail]);
+            const existingUser = opsEngine.db.prepare("SELECT email FROM auth_users WHERE email = ?").get(normalizedEmail);
             if (existingUser) {
                 return res.status(400).json({ ok: false, error: 'Email already used' });
             }
 
             // Insert into new users schema
-            await opsEngine.db.query(
-                "INSERT INTO users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
-                [normalizedEmail, pwdHash, role, now]
-            );
+            opsEngine.db.prepare(
+                "INSERT INTO auth_users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)"
+            ).run(normalizedEmail, pwdHash, role, now);
 
             // Insert into legacy user_roles for compatibility with existing RBAC
-            await opsEngine.db.query(
-                "INSERT OR REPLACE INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?)",
-                [normalizedEmail, role, now]
-            );
+            opsEngine.db.exec("CREATE TABLE IF NOT EXISTS user_roles (wallet TEXT PRIMARY KEY, role TEXT, updated_at INTEGER)");
+            opsEngine.db.prepare(
+                "INSERT OR REPLACE INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?)"
+            ).run(normalizedEmail, role, now);
 
             // Generate JWT (matching structure from src/middleware/auth.js and /me endpoint)
             const secret = process.env.JWT_SECRET;
@@ -182,15 +181,14 @@ export function createUnifiedAuthRouter(opsEngine) {
             }
 
             // Ensure schema exists robustly at runtime
-            await opsEngine.db.query(
-                "CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
+            opsEngine.db.exec(
+                "CREATE TABLE IF NOT EXISTS auth_users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
             );
 
             // Check user (timing attack prevention is minimal here, standard quick hash comparison)
-            const user = await opsEngine.db.get(
-                "SELECT email, role FROM users WHERE email = ? AND password_hash = ?",
-                [normalizedEmail, pwdHash]
-            );
+            const user = opsEngine.db.prepare(
+                "SELECT email, role FROM auth_users WHERE email = ? AND password_hash = ?"
+            ).get(normalizedEmail, pwdHash);
 
             if (!user) {
                 // Return generic error as requested
