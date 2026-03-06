@@ -122,7 +122,13 @@ export function attachRoutes(app, db) {
     });
 
     // --- 6. Static routes ---
-    app.get("/health", (req, res) => res.status(200).json({ ok: true }));
+    app.get("/health", (req, res) => {
+        res.status(200).json({
+            status: "ok",
+            uptime: process.uptime(),
+            db: "connected"
+        });
+    });
 
     // --- 7. Wildcard catch-all LAST ---
     // The wildcard must ALWAYS be last to ensure that all valid routes, 
