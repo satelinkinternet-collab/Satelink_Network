@@ -1,46 +1,47 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-interface IERC20 {
-    function transfer(address recipient, uint256 amount) external returns (bool);
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IRevenueVault.sol";
 
-contract RevenueVault {
-    address public owner;
-    IERC20 public usdt;
+contract RevenueVault is IRevenueVault, AccessControl, Pausable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+
+    IERC20 public immutable usdt;
     uint256 public totalDeposited;
 
     event Deposited(address indexed from, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner");
-        _;
-    }
 
     constructor(address _usdt) {
-        owner = msg.sender;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
         usdt = IERC20(_usdt);
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "New owner is zero address");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
+    function pause() external onlyRole(ADMIN_ROLE) {
+        _pause();
     }
 
-    function deposit(uint256 amount) external {
-        require(usdt.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+    function unpause() external onlyRole(ADMIN_ROLE) {
+        _unpause();
+    }
+
+    function deposit(uint256 amount) external whenNotPaused {
+        usdt.safeTransferFrom(msg.sender, address(this), amount);
         totalDeposited += amount;
         emit Deposited(msg.sender, amount);
     }
 
-    function withdraw(address to, uint256 amount) external onlyOwner {
-        require(usdt.balanceOf(address(this)) >= amount, "Insufficient funds");
-        require(usdt.transfer(to, amount), "Transfer failed");
+    function withdraw(address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) whenNotPaused nonReentrant {
+        usdt.safeTransfer(to, amount);
         emit Withdrawn(to, amount);
     }
 }

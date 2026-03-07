@@ -2,12 +2,12 @@
 
 -- A) Chart of Accounts
 CREATE TABLE IF NOT EXISTS economic_accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     account_key TEXT UNIQUE NOT NULL, -- TREASURY_USDT, USER:0x123...
     account_type TEXT NOT NULL,       -- treasury, user, node, revenue, expense, liability
     label TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'USDT',
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_eco_acc_key ON economic_accounts(account_key);
@@ -23,7 +23,7 @@ INSERT OR IGNORE INTO economic_accounts (account_key, account_type, label, creat
 
 -- B) Ledger Entries (Double-Entry Lines)
 CREATE TABLE IF NOT EXISTS economic_ledger_entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     txn_id TEXT NOT NULL,
     line_no INTEGER NOT NULL,
     account_key TEXT NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS economic_ledger_entries (
     reference_type TEXT,      -- epoch, payout_batch, revenue_event
     reference_id TEXT,
     created_by TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     UNIQUE(txn_id, line_no)
 );
 
@@ -44,12 +44,12 @@ CREATE INDEX IF NOT EXISTS idx_eco_ent_acc ON economic_ledger_entries(account_ke
 
 -- C) Chain (Tamper-Evident)
 CREATE TABLE IF NOT EXISTS economic_ledger_chain (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     ledger_entry_id INTEGER NOT NULL UNIQUE,
     txn_id TEXT NOT NULL,
     hash_prev TEXT NOT NULL,
     hash_current TEXT NOT NULL, -- sha256(canonical_json(entry) + hash_prev)
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     FOREIGN KEY(ledger_entry_id) REFERENCES economic_ledger_entries(id)
 );
 
@@ -59,5 +59,5 @@ CREATE INDEX IF NOT EXISTS idx_eco_chain_txn ON economic_ledger_chain(txn_id);
 CREATE TABLE IF NOT EXISTS economic_account_balances (
     account_key TEXT PRIMARY KEY,
     balance_usdt REAL NOT NULL DEFAULT 0,
-    updated_at INTEGER NOT NULL
+    updated_at BIGINT NOT NULL
 );

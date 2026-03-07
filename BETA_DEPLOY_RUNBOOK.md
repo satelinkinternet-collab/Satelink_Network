@@ -79,14 +79,32 @@ cd satelink
 ```
 
 ### D. Configure Backend (Production)
+
+> ⚠️ **JWT_SECRET minimum length: 64 characters**
+> `server.js` enforces this at startup — the process will refuse to boot with a shorter secret.
+
+Generate a compliant secret (choose one method):
 ```bash
-# Create production .env
+# Option A — openssl (recommended, no Node.js required)
+openssl rand -hex 32
+# Output is 64 hex chars, e.g.: a3f2c1...  (64 chars exactly)
+
+# Option B — Node.js crypto
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# Output is 128 hex chars (also valid — exceeds 64 char minimum)
+```
+
+```bash
+# Create production .env — paste YOUR generated secret below
 cat > .env << 'EOF'
 NODE_ENV=production
 HOST=0.0.0.0
 PORT=8080
-# GENERATE A REAL SECRET!
-JWT_SECRET=production_secret_change_me_immediately_to_32_chars
+# PASTE YOUR 64-CHAR (minimum) HEX SECRET HERE — do NOT use this placeholder!
+JWT_SECRET=REPLACE_WITH_OUTPUT_OF_openssl_rand_hex_32
+# Optional but recommended - separate secret for refresh tokens
+JWT_REFRESH_SECRET=REPLACE_WITH_DIFFERENT_openssl_rand_hex_32
+JWT_ISSUER=satelink-network
 EOF
 ```
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 
 type UserMode = 'SIMPLE' | 'ADVANCED';
 
@@ -10,8 +10,15 @@ export function useUserMode() {
     // Initial fetch
     useEffect(() => {
         const fetchSettings = async () => {
+            if (typeof window === 'undefined') return;
+            const token = localStorage.getItem('satelink_token');
+            if (!token) {
+                setLoading(false);
+                return;
+            }
+
             try {
-                const res = await axios.get('/me/settings');
+                const res = await api.get('/me/settings');
                 if (res.data.ok) {
                     setMode(res.data.settings.ui_mode);
                     // Also store public ID in local storage for easy access if needed, 
@@ -37,7 +44,7 @@ export function useUserMode() {
         localStorage.setItem('satelink_ui_mode', newMode);
 
         try {
-            await axios.post('/me/settings', { ui_mode: newMode });
+            await api.post('/me/settings', { ui_mode: newMode });
         } catch (e) {
             console.error('Failed to save mode preference', e);
             // Revert? simpler to just let it be for now or show toaster

@@ -25,7 +25,7 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
 
     // ─── Roles ────────────────────────────────────────────────────────────────
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
-    bytes32 public constant ADMIN_ROLE       = keccak256("ADMIN_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ─── USDT Token ───────────────────────────────────────────────────────────
     IERC20 public immutable usdt;
@@ -34,12 +34,12 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
     uint256 public constant BP_DENOMINATOR = 10_000;
 
     struct SplitConfig {
-        uint256 nodeOperatorBP;    // 5000 = 50%
-        uint256 platformBP;        // 3000 = 30%
-        uint256 distributionBP;    // 2000 = 20%
+        uint256 nodeOperatorBP; // 5000 = 50%
+        uint256 platformBP; // 3000 = 30%
+        uint256 distributionBP; // 2000 = 20%
         // Platform sub-split
-        uint256 coreTreasuryBP;    // 7000 of platform = 21% total
-        uint256 builderRewardsBP;  // 3000 of platform = 9% total
+        uint256 coreTreasuryBP; // 7000 of platform = 21% total
+        uint256 builderRewardsBP; // 3000 of platform = 9% total
     }
 
     SplitConfig public splitConfig;
@@ -52,7 +52,7 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
 
     // ─── Infra Reserve (10% of managed node revenue) ──────────────────────────
     uint256 public constant INFRA_RESERVE_BP = 1_000; // 10%
-    address public infraReserve;
+    address public immutable infraReserve;
 
     // ─── Accounting ───────────────────────────────────────────────────────────
     uint256 public totalDistributed;
@@ -100,22 +100,25 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
         if (_usdt == address(0)) revert ZeroAddress();
         if (_nodeOperatorPool == address(0)) revert ZeroAddress();
         if (_coreTreasury == address(0)) revert ZeroAddress();
+        if (_builderRewardsPool == address(0)) revert ZeroAddress();
+        if (_distributionPool == address(0)) revert ZeroAddress();
+        if (_infraReserve == address(0)) revert ZeroAddress();
 
         usdt = IERC20(_usdt);
 
-        nodeOperatorPool   = _nodeOperatorPool;
-        coreTreasury       = _coreTreasury;
+        nodeOperatorPool = _nodeOperatorPool;
+        coreTreasury = _coreTreasury;
         builderRewardsPool = _builderRewardsPool;
-        distributionPool   = _distributionPool;
-        infraReserve       = _infraReserve;
+        distributionPool = _distributionPool;
+        infraReserve = _infraReserve;
 
         // Default 50/30/20 split
         splitConfig = SplitConfig({
-            nodeOperatorBP:   5_000,
-            platformBP:       3_000,
-            distributionBP:   2_000,
-            coreTreasuryBP:   7_000, // of platform portion
-            builderRewardsBP: 3_000  // of platform portion
+            nodeOperatorBP: 5_000,
+            platformBP: 3_000,
+            distributionBP: 2_000,
+            coreTreasuryBP: 7_000, // of platform portion
+            builderRewardsBP: 3_000 // of platform portion
         });
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -133,11 +136,12 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
      * @param epochId The epoch this distribution covers
      * @param isManagedNode If true, 10% infra reserve is taken before split
      */
-    function distribute(
-        uint256 amount,
-        uint256 epochId,
-        bool isManagedNode
-    ) external onlyRole(DISTRIBUTOR_ROLE) nonReentrant whenNotPaused {
+    function distribute(uint256 amount, uint256 epochId, bool isManagedNode)
+        external
+        onlyRole(DISTRIBUTOR_ROLE)
+        nonReentrant
+        whenNotPaused
+    {
         if (amount == 0) revert ZeroAmount();
 
         uint256 balance = usdt.balanceOf(msg.sender);
@@ -156,57 +160,49 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
         }
 
         // Calculate shares
-        uint256 nodeOperatorShare  = (distributable * splitConfig.nodeOperatorBP) / BP_DENOMINATOR;
-        uint256 platformShare      = (distributable * splitConfig.platformBP) / BP_DENOMINATOR;
-        uint256 distributionShare  = distributable - nodeOperatorShare - platformShare; // remainder avoids dust
+        uint256 nodeOperatorShare = (distributable * splitConfig.nodeOperatorBP) / BP_DENOMINATOR;
+        uint256 platformShare = (distributable * splitConfig.platformBP) / BP_DENOMINATOR;
+        uint256 distributionShare = distributable - nodeOperatorShare - platformShare; // remainder avoids dust
 
         // Platform sub-split
-        uint256 coreTreasuryShare    = (platformShare * splitConfig.coreTreasuryBP) / BP_DENOMINATOR;
-        uint256 builderRewardsShare  = platformShare - coreTreasuryShare;
+        uint256 coreTreasuryShare = (platformShare * splitConfig.coreTreasuryBP) / BP_DENOMINATOR;
+        uint256 builderRewardsShare = platformShare - coreTreasuryShare;
 
         // Transfer all shares
-        usdt.safeTransfer(nodeOperatorPool,   nodeOperatorShare);
-        usdt.safeTransfer(coreTreasury,       coreTreasuryShare);
+        usdt.safeTransfer(nodeOperatorPool, nodeOperatorShare);
+        usdt.safeTransfer(coreTreasury, coreTreasuryShare);
         usdt.safeTransfer(builderRewardsPool, builderRewardsShare);
-        usdt.safeTransfer(distributionPool,   distributionShare);
+        usdt.safeTransfer(distributionPool, distributionShare);
 
         // Record epoch distribution
         epochDistributions[epochId] = EpochDistribution({
-            epochId:           epochId,
-            totalAmount:       amount,
+            epochId: epochId,
+            totalAmount: amount,
             nodeOperatorShare: nodeOperatorShare,
-            platformShare:     platformShare,
+            platformShare: platformShare,
             distributionShare: distributionShare,
-            timestamp:         block.timestamp,
-            txHash:            bytes32(0) // filled by off-chain indexer
+            timestamp: block.timestamp,
+            txHash: bytes32(0) // filled by off-chain indexer
         });
 
         totalDistributed += amount;
         epochCount++;
 
-        emit Distributed(
-            epochId,
-            amount,
-            nodeOperatorShare,
-            platformShare,
-            distributionShare,
-            block.timestamp
-        );
+        emit Distributed(epochId, amount, nodeOperatorShare, platformShare, distributionShare, block.timestamp);
     }
 
     // ─── Admin ────────────────────────────────────────────────────────────────
 
-    function updateSplitConfig(
-        uint256 nodeOperatorBP,
-        uint256 platformBP,
-        uint256 distributionBP
-    ) external onlyRole(ADMIN_ROLE) {
+    function updateSplitConfig(uint256 nodeOperatorBP, uint256 platformBP, uint256 distributionBP)
+        external
+        onlyRole(ADMIN_ROLE)
+    {
         if (nodeOperatorBP + platformBP + distributionBP != BP_DENOMINATOR) {
             revert SplitMismatch(nodeOperatorBP + platformBP + distributionBP);
         }
-        splitConfig.nodeOperatorBP  = nodeOperatorBP;
-        splitConfig.platformBP      = platformBP;
-        splitConfig.distributionBP  = distributionBP;
+        splitConfig.nodeOperatorBP = nodeOperatorBP;
+        splitConfig.platformBP = platformBP;
+        splitConfig.distributionBP = distributionBP;
         emit SplitConfigUpdated(nodeOperatorBP, platformBP, distributionBP);
     }
 
@@ -216,16 +212,24 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
         address _builderRewardsPool,
         address _distributionPool
     ) external onlyRole(ADMIN_ROLE) {
-        if (_nodeOperatorPool == address(0) || _coreTreasury == address(0)) revert ZeroAddress();
-        nodeOperatorPool   = _nodeOperatorPool;
-        coreTreasury       = _coreTreasury;
+        if (_nodeOperatorPool == address(0)) revert ZeroAddress();
+        if (_coreTreasury == address(0)) revert ZeroAddress();
+        if (_builderRewardsPool == address(0)) revert ZeroAddress();
+        if (_distributionPool == address(0)) revert ZeroAddress();
+        nodeOperatorPool = _nodeOperatorPool;
+        coreTreasury = _coreTreasury;
         builderRewardsPool = _builderRewardsPool;
-        distributionPool   = _distributionPool;
+        distributionPool = _distributionPool;
         emit DestinationsUpdated();
     }
 
-    function pause() external onlyRole(ADMIN_ROLE) { _pause(); }
-    function unpause() external onlyRole(ADMIN_ROLE) { _unpause(); }
+    function pause() external onlyRole(ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(ADMIN_ROLE) {
+        _unpause();
+    }
 
     // ─── Recovery ─────────────────────────────────────────────────────────────
 

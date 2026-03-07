@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS payout_batches_v2 (
     fee_amount DECIMAL(20, 8),
     currency TEXT DEFAULT 'USDT',
     item_count INTEGER,
-    created_at INTEGER,
-    updated_at INTEGER,
+    created_at BIGINT,
+    updated_at BIGINT,
     completed_at INTEGER,
     tx_hash TEXT,
     meta_json TEXT
@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS payout_items_v2 (
     amount DECIMAL(20, 8) NOT NULL,
     status TEXT DEFAULT 'pending',
     external_ref TEXT, -- formatting might differ per item
-    created_at INTEGER,
-    updated_at INTEGER,
+    created_at BIGINT,
+    updated_at BIGINT,
     FOREIGN KEY(batch_id) REFERENCES payout_batches_v2(id)
 );
 

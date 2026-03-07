@@ -50,6 +50,13 @@ backups/
 .env.production
 .env.test
 
+# Claude Code internal tooling (local only, not for version control)
+.claude/
+
+# Editor / IDE configs (local only)
+.vscode/
+.continue/
+
 # Agent and temporary files
 artifacts/
 cookies.txt
@@ -59,3 +66,19 @@ server.js.bak2
 server.js.new
 *.bak*
 *.log
+
+# local artifacts
+*.swp
+*.tgz
+*_pid.txt
+server_pid.txt
+s_pid.txt
+server.js.backup_*
+test/*.backup_*
+
+# Foundry
+cache/
+lib/
+out/
+broadcast/
+cache/

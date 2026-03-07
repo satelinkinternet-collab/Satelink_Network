@@ -1,0 +1,64 @@
+name: Safe-Zone Checks
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  run-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Create test .env
+      run: |
+        cat > .env << 'EOF'
+        PORT=8080
+        NODE_ENV=development
+        SATELINK_MODE=simulation
+        JWT_SECRET=ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        JWT_REFRESH_SECRET=ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
+        SQLITE_PATH=./test_safezone.db
+        FEATURE_REAL_SETTLEMENT=false
+        FEATURE_MOONPAY=false
+        EOF
+
+    - name: Start server (Background)
+      run: |
+        node server.js &
+        echo $! > server.pid
+        sleep 8
+      env:
+        PORT: 8080
+        NODE_ENV: development
+        SATELINK_MODE: simulation
+        JWT_SECRET: ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        JWT_REFRESH_SECRET: ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
+        SQLITE_PATH: ./test_safezone.db
+        FEATURE_REAL_SETTLEMENT: "false"
+        FEATURE_MOONPAY: "false"
+
+    - name: Run Smoke Safe-Zone
+      run: node scripts/smoke_safezone.js
+      env:
+        API_BASE_URL: http://localhost:8080
+
+    - name: Run Readiness Gate
+      run: node scripts/readiness_gate.js
+      env:
+        API_BASE_URL: http://localhost:8080
+
+    - name: Shutdown server
+      if: always()
+      run: kill $(cat server.pid) || true

@@ -13,7 +13,7 @@ export function useAuth(): LegacyAuthState {
     useEffect(() => {
         const readToken = () => {
             const value =
-                localStorage.getItem("admin_token") ||
+                localStorage.getItem("satelink_token") ||
                 localStorage.getItem("satelink_token") ||
                 localStorage.getItem("auth_token") ||
                 "";

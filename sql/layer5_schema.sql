@@ -5,17 +5,17 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS epochs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   epoch_type TEXT NOT NULL,
   epoch_key TEXT NOT NULL,
   start_ts INTEGER NOT NULL,
   end_ts INTEGER NOT NULL,
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
   UNIQUE(epoch_type, epoch_key)
 );
 
 CREATE TABLE IF NOT EXISTS reward_ledger (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
 
   user_wallet TEXT NOT NULL,
   user_type TEXT NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS reward_ledger (
   payout_queue_id INTEGER,
   note TEXT,
 
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
 
   FOREIGN KEY(epoch_id) REFERENCES epochs(id)
 );

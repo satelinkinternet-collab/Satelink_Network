@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 export default function ReferralsPage() {
     const [data, setData] = useState<any>(null);
@@ -8,9 +9,9 @@ export default function ReferralsPage() {
     useEffect(() => {
         (async () => {
             try {
-                const token = localStorage.getItem('admin_token');
-                const res = await fetch('/api/admin/growth/referrals', { headers: { Authorization: `Bearer ${token}` } });
-                const d = await res.json();
+                const token = localStorage.getItem('satelink_token');
+                const res = await api.get('/admin-api/growth/referrals');
+                const d = res.data;
                 if (d.ok) setData(d);
             } catch (e) { console.error(e); }
             setLoading(false);

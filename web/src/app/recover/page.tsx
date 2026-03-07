@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { importKeystore, signMessage } from '@/lib/embeddedWallet';
-import axios from 'axios';
+import api from '@/lib/api';
 import { toast } from 'sonner';
 
 /**
@@ -31,7 +31,7 @@ export default function RecoverPage() {
 
             // 2. Immediate Login (Start/Finish)
             toast.loading('Authenticating...');
-            const startRes = await axios.post('/auth/embedded/start', { address });
+            const startRes = await api.post('/auth/embedded/start', { address });
             if (!startRes.data.ok) throw new Error(startRes.data.error);
 
             const { nonce, message_template, created_at } = startRes.data;
@@ -41,7 +41,7 @@ export default function RecoverPage() {
                 .replace('${timestamp}', created_at || Date.now());
 
             const signature = await signMessage(message);
-            const finishRes = await axios.post('/auth/embedded/finish', { address, signature });
+            const finishRes = await api.post('/auth/embedded/finish', { address, signature });
 
             if (finishRes.data.ok) {
                 toast.dismiss();

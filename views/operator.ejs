@@ -45,17 +45,19 @@
                                 <% } %>
                                     <span class="text-satelink-muted text-xs font-medium">Last Heartbeat: <%=
                                             node.last_heartbeat ? formatDate(node.last_heartbeat * 1000) : 'Never' %>
-                                            </span>
+                                    </span>
                     </div>
                 </div>
 
                 <!-- CTAs -->
                 <div class="flex space-x-3">
                     <button onclick="document.getElementById('claim-modal').classList.remove('hidden')"
+                        title="Transfers earned rewards from the Node Pool to your Claimable Balance."
                         class="bg-satelink-success hover:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md shadow-emerald-500/20 transition-all transform hover:scale-105 flex items-center">
                         <%- include('partials/icon', { name: 'coins' , className: 'w-5 h-5 mr-2' }) %> Claim Rewards
                     </button>
                     <button onclick="document.getElementById('withdraw-modal').classList.remove('hidden')"
+                        title="Transfers Claimable Balance to your Wallet (Subject to Treasury Liquidity routing)."
                         class="bg-white border border-satelink-border hover:bg-gray-50 text-gray-700 font-bold py-2.5 px-6 rounded-lg transition-colors flex items-center shadow-sm">
                         <%- include('partials/icon', { name: 'arrow-right-from-bracket' , className: 'w-5 h-5 mr-2' })
                             %> Withdraw
@@ -75,6 +77,20 @@
                         rewards[0].epoch_id : '-' ) }) %>
                         <%- include('partials/kpi_card', { title: 'Uptime Score' , value: '98.5%' , icon: 'server' ,
                             subtext: 'Current Epoch' , trend: 'up' }) %>
+        </div>
+
+        <!-- Live Node Stats Section -->
+        <div class="mb-6">
+            <h3 class="text-sm font-bold text-satelink-muted uppercase tracking-wider mb-4 flex items-center">
+                <span class="w-2 h-2 bg-satelink-success rounded-full mr-2 animate-pulse"></span>
+                Live Performance (Real-time)
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <%- include('partials/kpi_card', { title: 'Network Latency' , value: (node.latency || 0) + ' ms' ,
+                    icon: 'zap' , subtext: 'Last Heartbeat' }) %>
+                    <%- include('partials/kpi_card', { title: 'Node Bandwidth' , value: (node.bandwidth || 0) + ' MB' ,
+                        icon: 'tachometer-alt' , subtext: 'Last Heartbeat' }) %>
+            </div>
         </div>
 
         <!-- Main Content Grid -->
@@ -115,8 +131,15 @@
                         <tbody class="divide-y divide-gray-100">
                             <% if(rewards.length===0) { %>
                                 <tr>
-                                    <td colspan="4" class="px-6 py-12 text-center text-satelink-muted italic">No rewards
-                                        found.</td>
+                                    <td colspan="4" class="px-6 py-12 text-center text-satelink-muted italic">
+                                        <div class="flex flex-col items-center">
+                                            <i class="fas fa-gift text-3xl mb-3 opacity-50"></i>
+                                            <p class="font-bold text-gray-700">No revenue yet — generate workload or
+                                                wait for epoch close</p>
+                                            <p class="text-xs mt-2 opacity-75">When an epoch finalizes with processed AI
+                                                or RPC requests, rewards will appear here.</p>
+                                        </div>
+                                    </td>
                                 </tr>
                                 <% } %>
                                     <% rewards.forEach(r=> { %>
@@ -201,7 +224,11 @@
                 <div class="overflow-y-auto flex-1 custom-scrollbar">
                     <div class="divide-y divide-gray-100">
                         <% if(withdrawals.length===0) { %>
-                            <div class="p-8 text-center text-satelink-muted italic">No withdrawal history.</div>
+                            <div class="p-8 text-center text-satelink-muted italic flex flex-col items-center">
+                                <i class="fas fa-folder-open text-3xl mb-3 opacity-50"></i>
+                                <p>No withdrawal history.</p>
+                                <p class="text-xs mt-1 opacity-75">Withdrawals will appear here once requested.</p>
+                            </div>
                             <% } %>
                                 <% withdrawals.forEach(w=> { %>
                                     <div class="p-4 hover:bg-gray-50 transition-colors">
@@ -238,7 +265,8 @@
                 <h3 class="text-xl font-bold text-gray-900 mb-2">Claim Rewards</h3>
                 <p class="text-gray-500 mb-6 text-sm">You are about to claim <strong class="text-gray-900">
                         <%= balance %>
-                    </strong> to your registered wallet. Please sign the transaction in your wallet to proceed.</p>
+                    </strong> from the Node Pool to your personal Claimable Balance. Please sign the transaction in your
+                    wallet to proceed.</p>
 
                 <button disabled
                     class="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-lg cursor-not-allowed mb-3 flex items-center justify-center border border-gray-200">
@@ -257,7 +285,8 @@
                     <%- include('partials/icon', { name: 'arrow-right-from-bracket' , className: 'w-8 h-8' }) %>
                 </div>
                 <h3 class="text-xl font-bold text-gray-900 mb-2">Withdraw Funds</h3>
-                <p class="text-gray-500 mb-6 text-sm">Withdrawal requests are processed within 24 hours.</p>
+                <p class="text-gray-500 mb-6 text-sm">Withdrawal requests are processed within 24 hours. They are
+                    subject to platform liquidity gating and will be delivered directly to your on-chain wallet.</p>
                 <button disabled
                     class="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-lg cursor-not-allowed mb-3 flex items-center justify-center border border-gray-200">
                     <%- include('partials/icon', { name: 'lock' , className: 'w-4 h-4 mr-2' }) %> Initiate Withdrawal

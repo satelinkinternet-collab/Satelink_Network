@@ -20,12 +20,7 @@ export function createUIRouter(opsEngine) {
 
 
     const requireBuilderAuth = (req, res, next) => {
-        // DEV BYPASS: skip auth in non-production when DEV_BYPASS_AUTH is set
-        if (process.env.DEV_BYPASS_AUTH === 'true' && process.env.ALLOW_DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production') {
-            req.cookies = req.cookies || {};
-            req.cookies['builder_session'] = 'dev-bypass';
-            return next();
-        }
+        // DEV BYPASS REMOVED
         // Simple cookie check for UI (Detailed verification in backend routes)
         if (req.cookies['builder_session']) return next();
         res.redirect('/ui/builder/login');
@@ -40,7 +35,7 @@ export function createUIRouter(opsEngine) {
     router.get('/builder', requireBuilderAuth, async (req, res) => {
         try {
             const cookie = req.cookies['builder_session'];
-            const wallet = cookie === 'dev-bypass' ? '0xdevbuilder' : JSON.parse(cookie.split('.')[0]).wallet;
+            const wallet = JSON.parse(cookie.split('.')[0]).wallet;
 
             // KPIs
             const projects = await opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active'", [wallet]);
@@ -70,7 +65,7 @@ export function createUIRouter(opsEngine) {
     router.get('/builder/projects', requireBuilderAuth, async (req, res) => {
         try {
             const cookie = req.cookies['builder_session'];
-            const wallet = cookie === 'dev-bypass' ? '0xdevbuilder' : JSON.parse(cookie.split('.')[0]).wallet;
+            const wallet = JSON.parse(cookie.split('.')[0]).wallet;
             const projects = await opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active' ORDER BY created_at DESC", [wallet]);
             res.render('builder', { wallet, projects, activeTab: 'projects' }); // Reuse builder.ejs or create builder_projects.ejs? Prompt implies separate or modal. Let's assume builder.ejs serves as hub.
             // Actually, prompt says "Projects: list + create project modal". 

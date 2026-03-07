@@ -32,28 +32,28 @@ const VAULT_ABI = [
 ];
 
 export class FuseService extends EventEmitter {
-  #provider  = null;
-  #signer    = null;
-  #usdt      = null;
-  #vault     = null;
-  #decimals  = 6;   // USDT uses 6 decimals
+  #provider = null;
+  #signer = null;
+  #usdt = null;
+  #vault = null;
+  #decimals = 6;   // USDT uses 6 decimals
   #connected = false;
 
   constructor() {
     super();
     this.network = {
-      name:    'Fuse',
+      name: 'Fuse',
       chainId: parseInt(process.env.FUSE_CHAIN_ID || '122'),
-      rpcUrl:  process.env.FUSE_RPC_URL || 'https://rpc.fuse.io',
+      rpcUrl: process.env.FUSE_RPC_URL || 'https://rpc.fuse.io',
     };
   }
 
   // ─── Initialization ────────────────────────────────────────────────────────
 
   async connect() {
-    const usdtAddress  = process.env.FUSE_USDT_CONTRACT;
+    const usdtAddress = process.env.FUSE_USDT_CONTRACT;
     const vaultAddress = process.env.REVENUE_VAULT_CONTRACT;
-    const signerKey    = process.env.SETTLEMENT_EVM_SIGNER_PRIVATE_KEY;
+    const signerKey = process.env.SETTLEMENT_EVM_SIGNER_PRIVATE_KEY;
 
     if (!usdtAddress || usdtAddress.includes('REPLACE')) {
       throw new Error('[FuseService] FUSE_USDT_CONTRACT not configured. Check .env');
@@ -72,8 +72,8 @@ export class FuseService extends EventEmitter {
       );
     }
 
-    this.#signer   = new ethers.Wallet(signerKey, this.#provider);
-    this.#usdt     = new ethers.Contract(usdtAddress, USDT_ABI, this.#signer);
+    this.#signer = new ethers.Wallet(signerKey, this.#provider);
+    this.#usdt = new ethers.Contract(usdtAddress, USDT_ABI, this.#signer);
     this.#decimals = await this.#usdt.decimals();
 
     if (vaultAddress && !vaultAddress.includes('REPLACE')) {
@@ -105,11 +105,39 @@ export class FuseService extends EventEmitter {
   async getGasPrice() {
     const feeData = await this.#provider.getFeeData();
     return {
-      gasPrice:     ethers.formatUnits(feeData.gasPrice || 0n, 'gwei'),
+      gasPrice: ethers.formatUnits(feeData.gasPrice || 0n, 'gwei'),
       maxFeePerGas: feeData.maxFeePerGas
         ? ethers.formatUnits(feeData.maxFeePerGas, 'gwei')
         : null,
     };
+  }
+
+  async getVaultBalance() {
+    this._assertConnected();
+    const vaultAddress = process.env.REVENUE_VAULT_CONTRACT;
+    if (!vaultAddress) throw new Error('[FuseService] REVENUE_VAULT_CONTRACT not set');
+
+    // We get the raw balance string format
+    const balance = await this.#usdt.balanceOf(vaultAddress);
+    return balance.toString();
+  }
+
+  async submitEpochRoot(epochId, merkleRoot, totalRevenueRaw) {
+    this._assertConnected();
+    const epochAnchorAddress = process.env.EPOCH_ANCHOR_CONTRACT;
+    if (!epochAnchorAddress) throw new Error('[FuseService] EPOCH_ANCHOR_CONTRACT not set');
+
+    const ANCHOR_ABI = ['function submitEpochRoot(uint256,bytes32,uint256) external'];
+    const anchorContract = new ethers.Contract(epochAnchorAddress, ANCHOR_ABI, this.#signer);
+
+    const gasEstimate = await anchorContract.submitEpochRoot.estimateGas(epochId, merkleRoot, totalRevenueRaw);
+    const gasLimit = (gasEstimate * 120n) / 100n; // 20% buffer
+
+    console.log(`[FuseService] Submitting Epoch ${epochId} root: ${merkleRoot}`);
+    const tx = await anchorContract.submitEpochRoot(epochId, merkleRoot, totalRevenueRaw, { gasLimit });
+
+    await tx.wait(1);
+    return tx;
   }
 
   // ─── Settlement ────────────────────────────────────────────────────────────
@@ -142,7 +170,7 @@ export class FuseService extends EventEmitter {
     console.log(`[FuseService] Settling ${amountUsdt} USDT → ${toAddress}`);
 
     const gasEstimate = await this.#usdt.transfer.estimateGas(toAddress, amountRaw);
-    const gasLimit    = (gasEstimate * 120n) / 100n; // 20% buffer
+    const gasLimit = (gasEstimate * 120n) / 100n; // 20% buffer
 
     const tx = await this.#usdt.transfer(toAddress, amountRaw, { gasLimit });
     console.log(`[FuseService] Tx submitted: ${tx.hash}`);
@@ -157,17 +185,17 @@ export class FuseService extends EventEmitter {
     }
 
     const result = {
-      txHash:       receipt.hash,
-      blockNumber:  receipt.blockNumber,
+      txHash: receipt.hash,
+      blockNumber: receipt.blockNumber,
       confirmations,
-      gasUsed:      receipt.gasUsed.toString(),
-      to:           toAddress,
-      amount:       amountUsdt,
-      amountRaw:    amountRaw.toString(),
-      timestamp:    Date.now(),
-      network:      'fuse',
-      chainId:      this.network.chainId,
-      status:       'confirmed',
+      gasUsed: receipt.gasUsed.toString(),
+      to: toAddress,
+      amount: amountUsdt,
+      amountRaw: amountRaw.toString(),
+      timestamp: Date.now(),
+      network: 'fuse',
+      chainId: this.network.chainId,
+      status: 'confirmed',
     };
 
     console.log(`[FuseService] Settlement confirmed: ${tx.hash} (block ${receipt.blockNumber})`);
@@ -182,7 +210,7 @@ export class FuseService extends EventEmitter {
   async settleBatch(recipients) {
     this._assertConnected();
     const results = [];
-    const errors  = [];
+    const errors = [];
 
     for (const { address, amountUsdt, settlementId } of recipients) {
       try {
@@ -225,14 +253,14 @@ export class FuseService extends EventEmitter {
         : 0n;
 
       return {
-        connected:     this.#connected,
-        blockNumber:   block,
-        chainId:       this.network.chainId,
+        connected: this.#connected,
+        blockNumber: block,
+        chainId: this.network.chainId,
         signerAddress: this.#signer?.address,
-        usdtBalance:   this._fromUsdt(signerBalance),
-        rpcUrl:        this.network.rpcUrl,
-        status:        'healthy',
-        isStub:        false,
+        usdtBalance: this._fromUsdt(signerBalance),
+        rpcUrl: this.network.rpcUrl,
+        status: 'healthy',
+        isStub: false,
       };
     } catch (err) {
       return { connected: false, status: 'unhealthy', error: err.message, isStub: false };
@@ -241,8 +269,8 @@ export class FuseService extends EventEmitter {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  _toUsdt(amount)  { return ethers.parseUnits(amount.toString(), this.#decimals); }
-  _fromUsdt(raw)   { return parseFloat(ethers.formatUnits(raw, this.#decimals)); }
+  _toUsdt(amount) { return ethers.parseUnits(amount.toString(), this.#decimals); }
+  _fromUsdt(raw) { return parseFloat(ethers.formatUnits(raw, this.#decimals)); }
 
   _assertConnected() {
     if (!this.#connected) throw new Error('[FuseService] Not connected. Call connect() first.');
