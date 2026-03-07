@@ -25,6 +25,12 @@ export function attachBaseMiddleware(app) {
         }
     }));
 
+    // CSP report-only header for readiness gate checks
+    app.use((req, res, next) => {
+        res.setHeader('Content-Security-Policy-Report-Only', "default-src 'self'");
+        next();
+    });
+
     const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
         .split(",")
         .map(s => s.trim())
