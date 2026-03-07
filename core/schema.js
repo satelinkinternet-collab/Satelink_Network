@@ -43,7 +43,14 @@ export function attachSchema(db) {
   ensure(`CREATE TABLE IF NOT EXISTS registered_nodes (
     wallet TEXT PRIMARY KEY,
     is_flagged INTEGER DEFAULT 0,
-    last_nonce INTEGER DEFAULT -1
+    last_nonce INTEGER DEFAULT -1,
+    last_heartbeat INTEGER,
+    active INTEGER DEFAULT 1,
+    node_type TEXT DEFAULT 'self_hosted',
+    latency REAL DEFAULT 0,
+    bandwidth REAL DEFAULT 0,
+    infra_reserved REAL DEFAULT 0,
+    updatedAt INTEGER
   )`);
 
   ensure(`CREATE TABLE IF NOT EXISTS enterprise_clients (

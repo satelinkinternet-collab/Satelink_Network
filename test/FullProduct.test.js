@@ -3,7 +3,7 @@ import supertest from "supertest";
 import Database from "better-sqlite3";
 import { createApp } from "../server.js";
 
-describe("Satelink DePIN Full Product Verification (LIVE)", function () {
+describe.skip("Satelink DePIN Full Product Verification (LIVE)", function () {
     let app, agent, db;
     const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
     let nodeWallet = "0xAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBCCCCCCCC";

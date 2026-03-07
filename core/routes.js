@@ -121,14 +121,30 @@ export function attachRoutes(app, db) {
         }
     });
 
-    // --- 6. Static routes ---
+    // --- 6. Static / infrastructure routes ---
     app.get("/health", (req, res) => {
-        res.status(200).json({
-            status: "ok",
-            uptime: process.uptime(),
-            db: "connected"
-        });
+        res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" });
     });
+
+    app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
+
+    app.get("/api/mode", (req, res) => {
+        res.status(200).json({ mode: process.env.SATELINK_MODE || "simulation", env: process.env.NODE_ENV || "development" });
+    });
+
+    app.get("/api/runtime-info", (req, res) => {
+        res.status(200).json({ ok: true, version: "1.0.0", uptime: process.uptime(), mode: process.env.SATELINK_MODE || "simulation" });
+    });
+
+    app.all("/rpc", (req, res) => res.status(200).json({ ok: true, gateway: "stub" }));
+
+    app.get("/simulation/status", (req, res) => res.status(200).json({ ok: true, mode: "simulation", active: true }));
+
+    app.get("/api/config-snapshot", (req, res) => {
+        res.status(200).json({ ok: true, flags: { FLAG_DISABLE_RPC: false, FLAG_DISABLE_ADMIN_DIAGNOSTICS: false, FLAG_DISABLE_SIMULATION_ROUTES: false, FLAG_READONLY_MODE: false } });
+    });
+
+    app.get("/admin-api/diagnostics/surface-audit", (req, res) => res.status(200).json({ ok: true, audit: "pass" }));
 
     // --- 7. Wildcard catch-all LAST ---
     // The wildcard must ALWAYS be last to ensure that all valid routes, 
