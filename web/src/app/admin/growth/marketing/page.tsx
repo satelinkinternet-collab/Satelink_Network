@@ -8,7 +8,7 @@ export default function MarketingDashboard() {
     useEffect(() => {
         (async () => {
             try {
-                const token = localStorage.getItem('admin_token');
+                const token = localStorage.getItem('satelink_token');
                 const res = await fetch('/api/admin/growth/marketing', { headers: { Authorization: `Bearer ${token}` } });
                 const d = await res.json();
                 if (d.ok) setData(d);

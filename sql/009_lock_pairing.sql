@@ -7,8 +7,8 @@ CREATE TABLE pair_codes (
     wallet TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending', -- pending | used | expired
     device_id TEXT,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL,
     used_at INTEGER
 );
 

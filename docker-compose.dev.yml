@@ -1,0 +1,53 @@
+# ─── DEV OVERRIDE COMPOSE ─────────────────────────────────────────────────────
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# This file OVERRIDES production settings for local development only.
+# It must NOT be used in CI or on servers.
+#
+# Prerequisites:
+#   cp .env.docker .env   # then fill in JWT_SECRET (64+ char hex) and other values
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  api:
+    # Re-use same Dockerfile.api but inject dev env on top
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=development
+      # Dev-safe IP salt fallback (override in .env for consistency)
+      - IP_HASH_SALT=${IP_HASH_SALT:-dev-salt-change-in-prod}
+      # Required for NodeOps CreateOS integration. Must be passed from host env or .env file.
+      - NODEOPS_CREATEOS_API_KEY=${NODEOPS_CREATEOS_API_KEY}
+    volumes:
+      # Mount source for live iteration; data dir persists between runs
+      - ./server.js:/app/server.js:ro
+      - ./src:/app/src:ro
+      - ./scripts:/app/scripts:ro
+      - ./views:/app/views:ro
+      - ./public:/app/public:ro
+      - ./docs:/app/docs:ro
+      - ./data:/app/data
+    # No restart: unless-stopped in dev — fail fast so you notice errors
+    restart: "no"
+
+  web:
+    environment:
+      - NODE_ENV=development
+    # No restart in dev
+    restart: "no"
+
+  db:
+    # Dev: also expose a clear pgdata volume name so it's easy to nuke
+    volumes:
+      - satelink_pg_dev:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    # Keep restart off so you see failures clearly
+    restart: "no"
+
+volumes:
+  # Separate volume for dev DB — keeps prod and dev data isolated
+  satelink_pg_dev:
+    driver: local

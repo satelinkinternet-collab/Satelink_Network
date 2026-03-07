@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-    Activity, Cpu, Zap, TrendingUp, Shield, Clock, AlertTriangle,
+    Activity, Cpu, Zap, TrendingUp, Shield, ShieldAlert, Clock, AlertTriangle,
     Pause, Play, Lock, Unlock, RefreshCw
 } from 'lucide-react';
 import api from '@/lib/api';

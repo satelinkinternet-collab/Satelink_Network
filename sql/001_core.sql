@@ -14,11 +14,13 @@ CREATE TABLE IF NOT EXISTS registered_nodes (
     last_heartbeat INTEGER,
     last_nonce INTEGER DEFAULT 0,
     infra_reserved REAL DEFAULT 0,
-    updatedAt INTEGER
+    updatedAt INTEGER,
+    latency INTEGER DEFAULT 0,
+    bandwidth REAL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS epochs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     starts_at INTEGER NOT NULL,
     ends_at INTEGER,
     status TEXT DEFAULT 'OPEN'
@@ -35,29 +37,29 @@ CREATE TABLE IF NOT EXISTS op_counts (
     op_type TEXT NOT NULL,
     ops REAL DEFAULT 0,
     weight REAL DEFAULT 1.0,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY (epoch_id, user_wallet, op_type)
 );
 
 CREATE TABLE IF NOT EXISTS rate_limits (
     node_wallet TEXT NOT NULL,
     op_type TEXT NOT NULL,
-    window_start INTEGER NOT NULL,
+    window_start BIGINT NOT NULL,
     count INTEGER DEFAULT 0,
     PRIMARY KEY (node_wallet, op_type)
 );
 
 CREATE TABLE IF NOT EXISTS heartbeat_security_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     node_wallet TEXT NOT NULL,
     event_type TEXT NOT NULL,
     details TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS auth_failures (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     path TEXT NOT NULL,
     ip TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );

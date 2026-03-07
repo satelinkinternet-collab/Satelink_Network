@@ -5,14 +5,14 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS protocol_pools (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
 
   epoch_id INTEGER NOT NULL,
   token TEXT NOT NULL,
   total_amount REAL NOT NULL,
 
   status TEXT NOT NULL,      -- open | finalized
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
 
   UNIQUE(epoch_id, token),
   FOREIGN KEY(epoch_id) REFERENCES epochs(id)
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS protocol_pools (
 
 -- Ops metering per epoch (raw counts, no rewards yet)
 CREATE TABLE IF NOT EXISTS op_counts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
 
   epoch_id INTEGER NOT NULL,
   user_wallet TEXT NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS op_counts (
   ops INTEGER NOT NULL DEFAULT 0,
   weight REAL NOT NULL,
 
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
 
   UNIQUE(epoch_id, user_wallet, op_type),
   FOREIGN KEY(epoch_id) REFERENCES epochs(id)

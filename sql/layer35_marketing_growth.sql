@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS region_activation (
     active_nodes_count INTEGER DEFAULT 0,
     revenue_cap_usdt_daily REAL DEFAULT 100.0,
     rewards_cap_usdt_daily REAL DEFAULT 50.0,
-    created_at INTEGER,
-    updated_at INTEGER
+    created_at BIGINT,
+    updated_at BIGINT
 );
 
 -- Seed initial global region
@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS partner_registry (
     revenue_share_percent REAL DEFAULT 10.0,
     total_revenue REAL DEFAULT 0,
     total_ops INTEGER DEFAULT 0,
-    created_at INTEGER,
-    updated_at INTEGER
+    created_at BIGINT,
+    updated_at BIGINT
 );
 
 -- 3. Distributor extensions for tiered referrals

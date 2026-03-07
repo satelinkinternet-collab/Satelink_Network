@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useUserMode } from '../../hooks/useUserMode';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import axios from 'axios';
+import api from '@/lib/api';
 
 const STEPS = [
     {
@@ -33,8 +33,12 @@ export function OnboardingTour() {
     // simpler hack: perform check on mount
     useEffect(() => {
         const checkOnboarding = async () => {
+            if (typeof window === 'undefined') return;
+            const token = localStorage.getItem('satelink_token');
+            if (!token) return;
+
             try {
-                const res = await axios.get('/me/settings');
+                const res = await api.get('/me/settings');
                 if (res.data.ok) {
                     const onboarding = res.data.settings.onboarding;
                     // If not complete, open it
@@ -60,7 +64,7 @@ export function OnboardingTour() {
     const handleNext = async () => {
         const stepId = STEPS[currentStepIndex].id;
         try {
-            await axios.post('/me/onboarding/step', { step_id: stepId });
+            await api.post('/me/onboarding/step', { step_id: stepId });
         } catch (e) { console.error('Failed to save step', e); }
 
         if (currentStepIndex < STEPS.length - 1) {

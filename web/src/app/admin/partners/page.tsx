@@ -21,7 +21,7 @@ export default function PartnersPage() {
 
     const fetchPartners = async () => {
         try {
-            const token = localStorage.getItem('admin_token');
+            const token = localStorage.getItem('satelink_token');
             const res = await fetch('/api/admin/partners', { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             if (data.ok) setPartners(data.partners || []);
@@ -32,7 +32,7 @@ export default function PartnersPage() {
     useEffect(() => { fetchPartners(); }, []);
 
     const registerPartner = async () => {
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('satelink_token');
         const res = await fetch('/api/admin/partners/register', {
             method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify(newPartner)
@@ -44,7 +44,7 @@ export default function PartnersPage() {
     };
 
     const action = async (endpoint: string, partner_id: string) => {
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('satelink_token');
         await fetch(`/api/admin/partners/${endpoint}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ partner_id })

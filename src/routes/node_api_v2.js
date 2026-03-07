@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import { ethers } from 'ethers';
+import { requireJWT, requireRole } from '../middleware/auth.js';
 
 export function createNodeApiRouter(opsEngine) {
     const router = Router();
+
+    // S0-008: Enforce JWT + node_operator role on all routes
+    router.use(requireJWT);
+    router.use(requireRole(['node_operator', 'admin_super', 'admin_ops']));
 
     // GET /node/stats - Unified stats for node operator dashboard
     router.get('/stats', async (req, res) => {

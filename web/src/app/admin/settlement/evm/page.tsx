@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import api from '@/lib/api';
 
 export default function EvmSettlementPage() {
     const searchParams = useSearchParams();
@@ -16,11 +17,8 @@ export default function EvmSettlementPage() {
         if (!batchId) return;
         setLoading(true);
         try {
-            const token = localStorage.getItem('admin_token');
-            const res = await fetch(`http://localhost:8080/admin/settlement/evm/batch/${batchId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const json = await res.json();
+            const res = await api.get(`/admin-api/settlement/evm/batch/${batchId}`);
+            const json = res.data;
             if (json.ok) setTxs(json.data);
             else setError(json.error);
         } catch (err: any) {
@@ -38,12 +36,8 @@ export default function EvmSettlementPage() {
         if (!batchId) return;
         setReconciling(true);
         try {
-            const token = localStorage.getItem('admin_token');
-            const res = await fetch(`http://localhost:8080/admin/settlement/evm/reconcile/${batchId}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const json = await res.json();
+            const res = await api.post(`/admin-api/settlement/evm/reconcile/${batchId}`);
+            const json = res.data;
             if (json.ok) {
                 alert(`Reconciled: ${json.data.previous} -> ${json.data.current}`);
                 fetchTxs();
@@ -60,16 +54,8 @@ export default function EvmSettlementPage() {
     const handleRetry = async (itemId: string) => {
         if (!confirm("Are you sure you want to retry this item?")) return;
         try {
-            const token = localStorage.getItem('admin_token');
-            const res = await fetch(`http://localhost:8080/admin/settlement/evm/retry-item`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ batch_id: batchId, item_id: itemId })
-            });
-            const json = await res.json();
+            const res = await api.post(`/admin-api/settlement/evm/retry-item`, { batch_id: batchId, item_id: itemId });
+            const json = res.data;
             if (json.ok) {
                 alert("Retry requested");
                 fetchTxs();
@@ -139,9 +125,9 @@ export default function EvmSettlementPage() {
                                             <td className="p-4 text-blue-400 font-medium">{tx.amount_atomic} (atomic)</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${tx.status === 'confirmed' ? 'bg-green-900/30 text-green-400' :
-                                                        tx.status === 'sent' ? 'bg-yellow-900/30 text-yellow-400' :
-                                                            tx.status === 'failed' ? 'bg-red-900/30 text-red-400' :
-                                                                'bg-gray-800 text-gray-400'
+                                                    tx.status === 'sent' ? 'bg-yellow-900/30 text-yellow-400' :
+                                                        tx.status === 'failed' ? 'bg-red-900/30 text-red-400' :
+                                                            'bg-gray-800 text-gray-400'
                                                     }`}>
                                                     {tx.status}
                                                 </span>

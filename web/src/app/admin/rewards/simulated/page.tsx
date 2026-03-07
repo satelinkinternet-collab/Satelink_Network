@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,23 +25,8 @@ export default function SimulatedPayoutsPage() {
             // I'll assume we can filter by status in the backend.
             // If not, I'll update the backend to allow status filter.
 
-            const res = await fetch('/api/proxy?path=/admin-api/ledger/payouts&status=SIMULATED');
-            // Wait, /admin-api is usually the prefix.
-            // ledger.js is likely mounted under /admin-api/ledger or similar?
-            // In server.js: app.use('/admin-api', ... createAdminApiRouter ... operations-engine methods are widely used there.
-            // But ledger.js was seen in previous contexts.
-
-            // I'll stick to a safe approach: Add a specific route in admin_control_room_api.js for full control?
-            // Actually, I'll try to fetch from /admin/beta/payouts if I create it?
-            // Or just generic query if I have a generic SQL runner (unsafe).
-
-            // Let's assume I need to ADD the endpoint.
-            // I'll update admin_control_room_api.js to add `GET /rewards/simulated`.
-
-            // For now, I'll just write the frontend code assuming the endpoint exists at `/admin/rewards/simulated-list`
-
-            const res2 = await fetch('/api/proxy?path=/admin/rewards/simulated-list');
-            const data = await res2.json();
+            const res2 = await api.get('/admin-api/withdrawals', { params: { status: 'SIMULATED' } });
+            const data = res2.data;
             if (data.ok) setPayouts(data.payouts);
         } catch (e) {
             console.error(e);

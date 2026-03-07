@@ -4,8 +4,13 @@ import crypto from 'crypto';
 import base32 from 'base32.js';
 import { verifyJWT } from './auth_v2.js';
 
-export function createUserSettingsRouter(db) {
+export function createUserSettingsRouter(rawDb) {
     const router = express.Router();
+
+    const db = {
+        get: async (sql, params = []) => rawDb.prepare(sql).get(...params),
+        query: async (sql, params = []) => rawDb.prepare(sql).run(...params)
+    };
 
     // Helper: Generate Public ID (Deterministic)
     // base32(sha256(wallet)[0..10]) -> SLK-XXXX-XXXX
@@ -20,6 +25,9 @@ export function createUserSettingsRouter(db) {
     // GET /me/settings
     router.get('/settings', verifyJWT, async (req, res) => {
         try {
+            if (!req.user || !req.user.wallet) {
+                return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Authentication required' });
+            }
             const wallet = req.user.wallet;
 
             // 1. Get/Create Settings
@@ -62,13 +70,17 @@ export function createUserSettingsRouter(db) {
             });
         } catch (e) {
             console.error('[SETTINGS] Get failed:', e);
-            res.status(500).json({ ok: false, error: 'Internal server error' });
+            res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: 'Internal server error' });
         }
     });
 
     // POST /me/settings
     router.post('/settings', verifyJWT, async (req, res) => {
         try {
+            if (!req.user || !req.user.wallet) {
+                return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Authentication required' });
+            }
+
             const { ui_mode } = req.body;
             if (!['SIMPLE', 'ADVANCED'].includes(ui_mode)) {
                 return res.status(400).json({ ok: false, error: 'Invalid ui_mode' });
@@ -83,7 +95,7 @@ export function createUserSettingsRouter(db) {
             res.json({ ok: true });
         } catch (e) {
             console.error('[SETTINGS] Update failed:', e);
-            res.status(500).json({ ok: false, error: 'Internal server error' });
+            res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', error: 'Internal server error' });
         }
     });
 

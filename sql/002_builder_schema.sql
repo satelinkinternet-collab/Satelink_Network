@@ -2,31 +2,31 @@
 
 CREATE TABLE IF NOT EXISTS builders (
   wallet TEXT PRIMARY KEY,
-  created_at INTEGER NOT NULL
+  created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS builder_projects (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   builder_wallet TEXT NOT NULL,
   name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active',
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
   FOREIGN KEY(builder_wallet) REFERENCES builders(wallet)
 );
 
 CREATE TABLE IF NOT EXISTS api_keys (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL,
   key_hash TEXT NOT NULL,
   key_prefix TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'active',
-  created_at INTEGER NOT NULL,
+  created_at BIGINT NOT NULL,
   revoked_at INTEGER,
   FOREIGN KEY(project_id) REFERENCES builder_projects(id)
 );
 
 CREATE TABLE IF NOT EXISTS api_usage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL,
   ts INTEGER NOT NULL,
   endpoint TEXT NOT NULL,

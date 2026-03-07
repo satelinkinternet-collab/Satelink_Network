@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS node_cost_overrides (
     node_id TEXT PRIMARY KEY,
     cost_usdt_day REAL NOT NULL,
     updated_by TEXT,
-    updated_at INTEGER
+    updated_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS node_econ_daily (
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS node_econ_daily (
     cost_usdt REAL,
     net_usdt REAL,
     margin_pct REAL,
-    created_at INTEGER,
+    created_at BIGINT,
     PRIMARY KEY (day_yyyymmdd, node_id)
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS retention_daily (
     cohort_size INTEGER,
     active_count INTEGER,
     retention_rate REAL, -- 0.0 to 1.0
-    created_at INTEGER,
+    created_at BIGINT,
     PRIMARY KEY (day_yyyymmdd, cohort_type, cohort_day_yyyymmdd)
 );
 
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS usage_authenticity_daily (
     duplicate_request_id_rate REAL,
     op_entropy_score REAL,
     authenticity_score REAL, -- 0-100
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- M4: Revenue Stability Index
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS revenue_stability_daily (
     surge_dependency REAL,
     node_distribution_fairness REAL,
     stability_score REAL, -- 0-100
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- M5: Node Density Strategy
@@ -69,6 +69,6 @@ CREATE TABLE IF NOT EXISTS region_density_daily (
     ops_per_node REAL,
     revenue_per_node REAL,
     node_to_ops_ratio REAL,
-    created_at INTEGER,
+    created_at BIGINT,
     PRIMARY KEY (day_yyyymmdd, region_code)
 );
