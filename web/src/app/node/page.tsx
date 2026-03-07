@@ -38,7 +38,7 @@ export default function NodeDashboard() {
                 const res = await api.get('/node/stats');
                 if (res.data.ok) {
                     const { stats, earnings, withdrawals, logs: apiLogs } = res.data;
-                    setNodeStatus(prev => ({
+                    setNodeStatus((prev: any) => ({
                         ...prev,
                         online: stats.active,
                         lastPing: stats.lastHeartbeat ? stats.lastHeartbeat * 1000 : Date.now(),
@@ -51,7 +51,7 @@ export default function NodeDashboard() {
                     // Build uptime display from uptime array
                     if (stats.uptime?.length > 0) {
                         const avgUptime = stats.uptime.reduce((sum: number, u: any) => sum + (u.uptime_pct || 0), 0) / stats.uptime.length;
-                        setNodeStatus(prev => ({ ...prev, uptime: `${avgUptime.toFixed(1)}%` }));
+                        setNodeStatus((prev: any) => ({ ...prev, uptime: `${avgUptime.toFixed(1)}%` }));
                     }
 
                     // Map earnings to telemetry chart data

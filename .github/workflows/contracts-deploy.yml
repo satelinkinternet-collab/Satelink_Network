@@ -18,32 +18,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
+          submodules: recursive
 
-      - name: Install deps
-        run: npm ci
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
-      - name: Hardhat compile
-        run: npx hardhat compile
+      - name: Build contracts
+        run: forge build
 
-      # This is a scaffold. We do not need to provide a private key here.
-      # The deploy script can be invoked, but actual transaction signing
-      # for admin operations will be routed through the Relayer using Defender API keys.
-      - name: Trigger Deployment via Defender API
+      - name: Deploy contracts
         run: |
-          echo "Deploying to ${{ inputs.network }}..."
-          # Example command when actual deploy script is ready:
-          # npx hardhat run scripts/deploy_settlement.js --network ${{ inputs.network }}
+          if [ "${{ inputs.network }}" = "fuse_mainnet" ]; then
+            forge script script/Deploy.s.sol \
+              --rpc-url https://rpc.fuse.io \
+              --broadcast --slow
+          else
+            forge script script/Deploy.s.sol \
+              --rpc-url https://rpc.fusespark.io \
+              --broadcast --slow
+          fi
         env:
-          # Only API tokens provided here (no Private Keys)
-          DEFENDER_KEY: ${{ secrets.DEFENDER_KEY }}
-          DEFENDER_SECRET: ${{ secrets.DEFENDER_SECRET }}
-          # Need these for the relayer driver or network config
-          FUSE_MAINNET_RPC_URL: ${{ secrets.FUSE_MAINNET_RPC_URL }}
-          FUSE_SPARKNET_RPC_URL: ${{ secrets.FUSE_SPARKNET_RPC_URL }}
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
