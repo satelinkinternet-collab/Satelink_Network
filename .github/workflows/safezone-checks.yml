@@ -25,7 +25,7 @@ jobs:
       run: |
         cat > .env << 'EOF'
         PORT=8080
-        NODE_ENV=test
+        NODE_ENV=development
         SATELINK_MODE=simulation
         JWT_SECRET=ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         JWT_REFRESH_SECRET=ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
@@ -41,7 +41,7 @@ jobs:
         sleep 8
       env:
         PORT: 8080
-        NODE_ENV: test
+        NODE_ENV: development
         SATELINK_MODE: simulation
         JWT_SECRET: ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         JWT_REFRESH_SECRET: ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
