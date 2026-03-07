@@ -1,7 +1,7 @@
 -- Admin Control Room - Monitoring Schema
 
 CREATE TABLE IF NOT EXISTS admin_audit_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     actor_wallet TEXT,
     action_type TEXT,
     target_type TEXT,
@@ -9,14 +9,14 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
     before_json TEXT, -- snapshot of state before change
     after_json TEXT,  -- snapshot of state after change
     ip_hash TEXT,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS system_flags (
     key TEXT PRIMARY KEY,
     value TEXT,
     updated_by TEXT,
-    updated_at INTEGER
+    updated_at BIGINT
 );
 
 -- Seed System Flags
@@ -25,7 +25,7 @@ INSERT OR IGNORE INTO system_flags (key, value, updated_by, updated_at) VALUES (
 INSERT OR IGNORE INTO system_flags (key, value, updated_by, updated_at) VALUES ('revenue_mode', 'ACTIVE', 'system', strftime('%s','now'));
 
 CREATE TABLE IF NOT EXISTS error_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     service TEXT,        -- api/web/worker
     route TEXT,
     method TEXT,
@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_error_events_stack_hash ON error_events(stack_has
 CREATE INDEX IF NOT EXISTS idx_error_events_last_seen ON error_events(last_seen_at);
 
 CREATE TABLE IF NOT EXISTS request_traces (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     trace_id TEXT UNIQUE,
     request_id TEXT,
     route TEXT,
@@ -57,14 +57,14 @@ CREATE TABLE IF NOT EXISTS request_traces (
     client_id TEXT,
     node_id TEXT,
     ip_hash TEXT,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_request_traces_trace_id ON request_traces(trace_id);
 CREATE INDEX IF NOT EXISTS idx_request_traces_created_at ON request_traces(created_at);
 
 CREATE TABLE IF NOT EXISTS slow_queries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     query_hash TEXT,
     avg_ms REAL,
     p95_ms REAL,
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS slow_queries (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_slow_queries_hash ON slow_queries(query_hash);
 
 CREATE TABLE IF NOT EXISTS security_alerts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     severity TEXT,       -- low/med/high/critical
     category TEXT,       -- abuse/fraud/auth/integrity/infra
     entity_type TEXT,    -- node/builder/distributor/system
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS security_alerts (
     evidence_json TEXT,
     status TEXT DEFAULT 'open', -- open/triaged/closed
     assigned_to TEXT,
-    created_at INTEGER,
+    created_at BIGINT,
     resolved_by TEXT,
     resolved_at INTEGER,
     resolution_notes TEXT
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS config_limits (
     key TEXT PRIMARY KEY,
     value TEXT,
     updated_by TEXT,
-    updated_at INTEGER
+    updated_at BIGINT
 );
 
 -- Seed Config Limits
@@ -114,13 +114,13 @@ INSERT OR IGNORE INTO config_limits (key, value, updated_by, updated_at) VALUES 
 -- ═══════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS self_test_runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,            -- backend_smoke, api_contract, sse_health, db_integrity, browser_smoke
     status TEXT NOT NULL,          -- pass, fail, error, skipped
     duration_ms INTEGER,
     output_json TEXT,              -- JSON result payload
     error_message TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_self_test_runs_created ON self_test_runs(created_at, status);
@@ -130,7 +130,7 @@ CREATE INDEX IF NOT EXISTS idx_self_test_runs_created ON self_test_runs(created_
 -- ═══════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS incident_bundles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     severity TEXT NOT NULL,        -- low, med, high, critical
     title TEXT NOT NULL,
     source_kind TEXT,              -- self_test, manual, alert
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS incident_bundles (
     task_spec_json TEXT,
     resolved_by TEXT,
     resolved_at INTEGER,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_incident_bundles_status ON incident_bundles(status, severity, created_at);

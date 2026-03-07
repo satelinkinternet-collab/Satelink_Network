@@ -2,15 +2,15 @@
 CREATE TABLE IF NOT EXISTS user_settings (
     wallet TEXT PRIMARY KEY,
     ui_mode TEXT DEFAULT 'SIMPLE', -- 'SIMPLE', 'ADVANCED'
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
 );
 
 -- Phase J2: Address Masking + Human IDs
 CREATE TABLE IF NOT EXISTS public_identity (
     wallet TEXT PRIMARY KEY,
     public_id TEXT NOT NULL, -- "SLK-XXXX-XXXX"
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     UNIQUE(public_id)
 );
 

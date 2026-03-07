@@ -1,20 +1,30 @@
 import axios from 'axios';
 
-const getBaseUrl = () => {
-    // In production or via proxy, we want relative paths so Next.js rewrites handle it.
-    // If NEXT_PUBLIC_API_BASE_URL is set, use it. Otherwise, default to '' (truly relative).
-    return process.env.NEXT_PUBLIC_API_BASE_URL || '';
-};
-
 const api = axios.create({
-    baseURL: getBaseUrl(),
+    baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
 });
 
 // Request interceptor to add JWT token
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('satelink_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== "undefined") {
+        const token = window.localStorage.getItem("satelink_token");
+        if (token) {
+            if (config.headers && typeof config.headers.set === 'function') {
+                config.headers.set('Authorization', `Bearer ${token}`);
+            } else {
+                config.headers = config.headers || {};
+                config.headers['Authorization'] = `Bearer ${token}`;
+            }
+        }
+
+        // Admin endpoints require the admin key from environment, never hardcoded
+        if (config.url?.includes('/api/demand/metrics')) {
+            const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY;
+            if (adminKey) {
+                config.headers = config.headers || {};
+                config.headers['X-Admin-Key'] = adminKey;
+            }
+        }
     }
     return config;
 });

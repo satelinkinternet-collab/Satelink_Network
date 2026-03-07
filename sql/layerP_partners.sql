@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS partner_webhooks (
     secret_hash TEXT NOT NULL, -- HMAC secret (hashed)
     events_json TEXT NOT NULL, -- ["op_completed", "op_failed"]
     enabled INTEGER DEFAULT 1,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT,
     FOREIGN KEY(partner_id) REFERENCES partners(id)
 );
 
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS webhook_delivery_attempts (
     last_attempt_at INTEGER,
     next_retry_at INTEGER,
     error_message TEXT,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     FOREIGN KEY(webhook_id) REFERENCES partner_webhooks(id)
 );
 

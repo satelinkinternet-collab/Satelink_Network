@@ -94,23 +94,23 @@ export default function EnforcementPage() {
     };
 
     const columns = [
-        { header: 'Type', accessorKey: 'entity_type', cell: (row: any) => <Badge variant="outline">{row.entity_type}</Badge> },
-        { header: 'ID', accessorKey: 'entity_id', cell: (row: any) => <span className="font-mono text-xs">{row.entity_id}</span> },
+        { label: 'Type', key: 'entity_type', render: (row: any) => <Badge variant="outline">{row.entity_type}</Badge> },
+        { label: 'ID', key: 'entity_id', render: (row: any) => <span className="font-mono text-xs">{row.entity_id}</span> },
         {
-            header: 'Decision', accessorKey: 'decision', cell: (row: any) => (
+            label: 'Decision', key: 'decision', render: (row: any) => (
                 <Badge className={row.decision === 'block' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-yellow-500/10 text-yellow-500'}>
                     {row.decision}
                 </Badge>
             )
         },
         {
-            header: 'Reason', accessorKey: 'reason_codes_json', cell: (row: any) => {
+            label: 'Reason', key: 'reason_codes_json', render: (row: any) => {
                 try { return JSON.parse(row.reason_codes_json).join(', '); } catch { return row.reason_codes_json; }
             }
         },
-        { header: 'Expires', accessorKey: 'expires_at', cell: (row: any) => row.expires_at > Date.now() ? timeAgo(row.expires_at) : <span className="text-zinc-500">Expired</span> },
+        { label: 'Expires', key: 'expires_at', render: (row: any) => row.expires_at > Date.now() ? timeAgo(row.expires_at) : <span className="text-zinc-500">Expired</span> },
         {
-            header: 'Actions', accessorKey: 'id', cell: (row: any) => (
+            label: 'Actions', key: 'id', render: (row: any) => (
                 !readonly && row.decision === 'block' && row.expires_at > Date.now() && (
                     <Button variant="ghost" size="sm" onClick={() => setConfirmUnblock(row)} className="text-red-400 h-6">
                         Unblock

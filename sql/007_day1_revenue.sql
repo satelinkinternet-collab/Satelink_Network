@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS epoch_earnings (
     wallet_or_node_id TEXT NOT NULL,
     amount_usdt REAL NOT NULL,
     status TEXT NOT NULL DEFAULT 'UNPAID', -- UNPAID, CLAIMED, PAID
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY (epoch_id, role, wallet_or_node_id)
 );
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS epoch_earnings (
 -- but here we'll define a robust schema for NEW setups.
 
 CREATE TABLE IF NOT EXISTS revenue_events_v2 (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     epoch_id INTEGER,
     op_type TEXT NOT NULL,
     node_id TEXT NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS revenue_events_v2 (
     amount_usdt REAL NOT NULL,
     status TEXT NOT NULL DEFAULT 'success',
     request_id TEXT, -- idempotency key
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     metadata_hash TEXT,
     UNIQUE(client_id, op_type, request_id)
 );

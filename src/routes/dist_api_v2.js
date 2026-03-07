@@ -1,7 +1,12 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../middleware/auth.js';
 
 export function createDistApiRouter(opsEngine) {
     const router = Router();
+
+    // S0-008: Enforce JWT + distributor role on all routes
+    router.use(requireJWT);
+    router.use(requireRole(['distributor', 'admin_super', 'admin_ops']));
 
     // GET /dist-api/stats
     router.get('/stats', async (req, res) => {

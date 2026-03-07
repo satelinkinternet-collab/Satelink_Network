@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 
 export default function FleetPage() {
     const [summary, setSummary] = useState<any>(null);
@@ -12,16 +13,16 @@ export default function FleetPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('admin_token');
+            const token = localStorage.getItem('satelink_token');
             const headers = { 'Authorization': `Bearer ${token}` };
 
             const [resSum, resFlaky] = await Promise.all([
-                fetch('http://localhost:8080/admin/network/fleet/summary', { headers }),
-                fetch('http://localhost:8080/admin/network/fleet/flaky', { headers })
+                api.get('/admin-api/network/fleet/summary'),
+                api.get('/admin-api/network/fleet/flaky')
             ]);
 
-            const jsonSum = await resSum.json();
-            const jsonFlaky = await resFlaky.json();
+            const jsonSum = resSum.data;
+            const jsonFlaky = resFlaky.data;
 
             if (jsonSum.ok) setSummary(jsonSum);
             else setError(jsonSum.error || 'Failed to fetch summary');
@@ -41,16 +42,11 @@ export default function FleetPage() {
     const handleQuarantine = async (nodeId: string) => {
         if (!confirm(`Quarantine node ${nodeId}?`)) return;
         try {
-            const token = localStorage.getItem('admin_token');
-            const res = await fetch('http://localhost:8080/admin/network/quarantine', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ node_id: nodeId, duration_m: 60 })
+            const res = await api.post('/admin-api/network/quarantine', {
+                node_id: nodeId,
+                duration_m: 60
             });
-            const json = await res.json();
+            const json = res.data;
             if (json.ok) alert(json.message);
             else alert(json.error);
         } catch (e: any) {

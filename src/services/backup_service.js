@@ -15,17 +15,17 @@ export class BackupService {
         }
     }
 
-    init() {
+    async init() {
         console.log("[BackupService] Initialized. Backup dir:", this.backupDir);
-        this.db.exec(`
+        await this.db.exec(`
             CREATE TABLE IF NOT EXISTS backup_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 path TEXT NOT NULL,
                 size_bytes INTEGER,
                 checksum TEXT,
                 duration_ms INTEGER,
                 status TEXT,
-                created_at INTEGER
+                created_at BIGINT
             )
         `);
     }

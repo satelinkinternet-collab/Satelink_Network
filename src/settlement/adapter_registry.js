@@ -1,8 +1,15 @@
 
+import { ShadowAdapter } from './adapters/ShadowAdapter.js';
+import { NodeOpsAdapter } from './adapters/NodeOpsAdapter.js';
+
 export class AdapterRegistry {
     constructor() {
         this.adapters = new Map();
         this.activeAdapterName = 'SIMULATED'; // Default
+
+        // Register adapters internally if we want them available immediately
+        // Alternatively, the main app can register them. 
+        // For standard ones, let's allow manual or auto-registration.
     }
 
     register(instance) {

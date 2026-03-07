@@ -2,13 +2,13 @@
 
 -- 1. Pair Codes Table
 CREATE TABLE IF NOT EXISTS pair_codes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, -- or SERIAL for PG, universal DB handles this? SQLite uses AUTOINCREMENT
+    id SERIAL PRIMARY KEY, -- or SERIAL for PG, universal DB handles this? SQLite uses AUTOINCREMENT
     code TEXT UNIQUE NOT NULL,
     wallet TEXT,
     status TEXT DEFAULT 'pending', -- pending | used | expired
     device_id TEXT,
-    created_at INTEGER,
-    expires_at INTEGER
+    created_at BIGINT,
+    expires_at BIGINT
 );
 
 -- 2. Nodes Table (Refined from registered_nodes)
@@ -21,17 +21,17 @@ CREATE TABLE IF NOT EXISTS nodes (
     device_type TEXT DEFAULT 'undefined', -- android | docker | nodeops
     status TEXT DEFAULT 'pending', -- pending | active | offline
     last_seen INTEGER,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- 3. Audit Logs
 CREATE TABLE IF NOT EXISTS audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     actor_wallet TEXT,
     action_type TEXT NOT NULL,
     target_id TEXT,
     metadata TEXT, -- JSON string
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- Indexes for performance

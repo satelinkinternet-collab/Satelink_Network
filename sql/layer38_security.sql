@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS reauth_tokens (
     wallet TEXT NOT NULL,
     token_hash TEXT NOT NULL,
     scope TEXT NOT NULL,
-    expires_at INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
+    expires_at BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
     used_at INTEGER
 );
 
@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_reauth_wallet ON reauth_tokens(wallet);
 
 -- Phase I3: Device Trust List
 CREATE TABLE IF NOT EXISTS trusted_devices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     wallet TEXT NOT NULL,
     device_public_id TEXT NOT NULL,
     label TEXT,

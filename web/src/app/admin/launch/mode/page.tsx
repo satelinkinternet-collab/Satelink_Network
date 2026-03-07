@@ -8,7 +8,7 @@ export default function LaunchModePage() {
 
     const fetchStatus = async () => {
         try {
-            const token = localStorage.getItem('admin_token');
+            const token = localStorage.getItem('satelink_token');
             const res = await fetch('/api/admin/launch/mode', { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             if (data.ok) setStatus(data);
@@ -20,7 +20,7 @@ export default function LaunchModePage() {
 
     const toggle = async () => {
         setToggling(true);
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('satelink_token');
         await fetch('/api/admin/launch/mode/toggle', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         await fetchStatus();
         setToggling(false);

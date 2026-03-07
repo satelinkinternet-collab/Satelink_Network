@@ -1,7 +1,7 @@
 -- 006_diagnostics.sql — Observability and Diagnostics
 
 CREATE TABLE IF NOT EXISTS error_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     ts INTEGER NOT NULL,
     level TEXT NOT NULL, -- 'error', 'warn', 'info'
     source TEXT NOT NULL, -- 'server', 'webhook', 'distribution'
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS error_logs (
 );
 
 CREATE TABLE IF NOT EXISTS webhook_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     ts INTEGER NOT NULL,
     provider TEXT NOT NULL,
     event_id TEXT,
@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS webhook_logs (
 
 CREATE TABLE IF NOT EXISTS diag_share_tokens (
     token TEXT PRIMARY KEY,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL,
     note TEXT
 );
 

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS pricing_rules (
     surge_threshold INTEGER DEFAULT 1000, -- ops/minute
     surge_multiplier DECIMAL(5, 2) DEFAULT 1.0,
     version INTEGER DEFAULT 1,
-    updated_at INTEGER
+    updated_at BIGINT
 );
 
 -- Initial seed data
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS distributor_commissions (
     amount_usdt DECIMAL(20, 8) NOT NULL,
     status TEXT DEFAULT 'accrued', -- accrued, paid, cancelled
     fraud_flag BOOLEAN DEFAULT 0,
-    created_at INTEGER
+    created_at BIGINT
 );
 CREATE INDEX IF NOT EXISTS idx_commissions_wallet ON distributor_commissions(distributor_wallet);
 
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS unit_economics_daily (
     total_nodes_active INTEGER DEFAULT 0,
     burn_rate DECIMAL(20, 8) DEFAULT 0,
     avg_margin_percent DECIMAL(10, 2) DEFAULT 0,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- 6. Phase 34 Hardening: Extend revenue_events_v2 with billing detail columns

@@ -20,14 +20,14 @@ export class AbuseFirewall {
         // Ensure required tables exist (boot-safe)
         await this.db.exec(`
       CREATE TABLE IF NOT EXISTS enforcement_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         entity_type TEXT NOT NULL,
         entity_id TEXT NOT NULL,
         decision TEXT NOT NULL,
         reason_codes_json TEXT,
         ttl_seconds INTEGER NOT NULL,
-        created_at INTEGER NOT NULL,
-        expires_at INTEGER NOT NULL,
+        created_at BIGINT NOT NULL,
+        expires_at BIGINT NOT NULL,
         created_by TEXT NOT NULL
       );
 

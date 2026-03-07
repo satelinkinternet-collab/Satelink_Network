@@ -24,9 +24,25 @@ export class SafeModeAutopilot {
         };
     }
 
-    init() {
+    async init(isTest = false) {
+        await this.db.exec(`
+            CREATE TABLE IF NOT EXISTS system_flags (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at BIGINT
+            );
+            CREATE TABLE IF NOT EXISTS diagnostics_results (
+                id SERIAL PRIMARY KEY,
+                check_name TEXT,
+                status TEXT,
+                created_at BIGINT
+            );
+            INSERT INTO system_flags (key, value, updated_at) VALUES ('safe_mode_enabled', '0', ${Date.now()}) ON CONFLICT DO NOTHING;
+            INSERT INTO system_flags (key, value, updated_at) VALUES ('system_state', 'NORMAL', ${Date.now()}) ON CONFLICT DO NOTHING;
+            INSERT INTO system_flags (key, value, updated_at) VALUES ('revenue_mode', 'ACTIVE', ${Date.now()}) ON CONFLICT DO NOTHING;
+        `);
         console.log('[SafeMode] Autopilot initialized.');
-        setInterval(() => this.runCheck(), 60000); // Check every minute
+        if (!isTest) setInterval(() => this.runCheck(), 60000); // Check every minute
     }
 
     runCheck() {

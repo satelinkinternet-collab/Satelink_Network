@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS feature_flags_v2 (
     percent INTEGER DEFAULT 0, -- 0-100
     whitelist_json TEXT DEFAULT '[]', -- JSON array of wallets/ids
     description TEXT,
-    updated_at INTEGER,
+    updated_at BIGINT,
     updated_by TEXT
 );
 

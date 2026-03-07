@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import api from '@/lib/api';
 
 export default function LaunchChecklistPage() {
     const [checks, setChecks] = useState<any[]>([]);
@@ -12,12 +13,9 @@ export default function LaunchChecklistPage() {
     // Let's assume Preflight covers most, and we add fleet health here.
 
     useEffect(() => {
-        const token = localStorage.getItem('admin_token');
-        fetch('http://localhost:8080/admin/preflight/status', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-            .then(res => res.json())
-            .then(json => {
+        api.get('/admin-api/preflight/status')
+            .then(res => {
+                const json = res.data;
                 if (json.ok) setChecks(json.data.checks);
                 setLoading(false);
             })
@@ -33,7 +31,7 @@ export default function LaunchChecklistPage() {
                 <h1 className="text-3xl font-bold mb-8">Launch Readiness Checklist</h1>
 
                 <div className={`p-6 rounded-xl border mb-8 ${hasBlockers ? 'bg-red-900/20 border-red-500/50' :
-                        allPass ? 'bg-green-900/20 border-green-500/50' : 'bg-yellow-900/20 border-yellow-500/50'
+                    allPass ? 'bg-green-900/20 border-green-500/50' : 'bg-yellow-900/20 border-yellow-500/50'
                     }`}>
                     <h2 className="text-2xl font-bold flex items-center gap-2">
                         {hasBlockers ? "🔴 BLOCKED" : allPass ? "🟢 READY FOR LAUNCH" : "🟡 WARNINGS"}
@@ -52,8 +50,8 @@ export default function LaunchChecklistPage() {
                                 <p className="text-sm text-gray-500">{check.details}</p>
                             </div>
                             <div className={`px-3 py-1 rounded text-sm font-bold ${check.status === 'PASS' ? 'bg-green-900/30 text-green-400' :
-                                    check.status === 'FAIL' ? 'bg-red-900/30 text-red-400' :
-                                        'bg-yellow-900/30 text-yellow-400'
+                                check.status === 'FAIL' ? 'bg-red-900/30 text-red-400' :
+                                    'bg-yellow-900/30 text-yellow-400'
                                 }`}>
                                 {check.status}
                             </div>

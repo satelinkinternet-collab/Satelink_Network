@@ -19,7 +19,7 @@ export default function RegionsPage() {
 
     const fetchRegions = async () => {
         try {
-            const token = localStorage.getItem('admin_token');
+            const token = localStorage.getItem('satelink_token');
             const res = await fetch('/api/admin/growth/regions', { headers: { Authorization: `Bearer ${token}` } });
             const data = await res.json();
             if (data.ok) setRegions(data.regions || []);
@@ -30,7 +30,7 @@ export default function RegionsPage() {
     useEffect(() => { fetchRegions(); }, []);
 
     const updateRegion = async (code: string) => {
-        const token = localStorage.getItem('admin_token');
+        const token = localStorage.getItem('satelink_token');
         await fetch(`/api/admin/growth/regions/${code}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify(form)

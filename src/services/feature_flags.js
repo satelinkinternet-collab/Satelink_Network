@@ -7,15 +7,26 @@ export class FeatureFlagService {
         this.loadInterval = null;
     }
 
-    init() {
-        this.refreshCache();
+    async init() {
+        await this.db.exec(`
+            CREATE TABLE IF NOT EXISTS feature_flags_v2 (
+                key TEXT PRIMARY KEY,
+                mode TEXT NOT NULL DEFAULT 'OFF',
+                percent INTEGER NOT NULL DEFAULT 0,
+                whitelist_json TEXT,
+                description TEXT,
+                updated_at BIGINT,
+                updated_by TEXT
+            )
+        `);
+        await this.refreshCache();
         this.loadInterval = setInterval(() => this.refreshCache(), 10000); // Refresh every 10s
         console.log('[FeatureFlags] Service initialized.');
     }
 
-    refreshCache() {
+    async refreshCache() {
         try {
-            const rows = this.db.prepare("SELECT * FROM feature_flags_v2").all([]);
+            const rows = await this.db.prepare("SELECT * FROM feature_flags_v2").all([]);
             for (const row of rows) {
                 this.cache.set(row.key, {
                     mode: row.mode,

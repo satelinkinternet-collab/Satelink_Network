@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS node_setup_sessions (
     owner_wallet TEXT NOT NULL,
     pairing_code TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'pending', -- pending, paired, expired
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL
 );
 
 -- 2. Node Ownership (Secure Binding)
@@ -20,21 +20,21 @@ CREATE TABLE IF NOT EXISTS node_ownership (
 
 -- 3. Diagnostic Bundles (Redacted Logs)
 CREATE TABLE IF NOT EXISTS node_diag_bundles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     node_id TEXT NOT NULL,
     bundle_json TEXT NOT NULL, -- Redacted JSON
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_diag_node ON node_diag_bundles(node_id);
 
 -- 4. Remediation Suggestions
 CREATE TABLE IF NOT EXISTS node_remediation_suggestions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     node_id TEXT NOT NULL,
     suggestion_json TEXT NOT NULL, -- { action: "restart", reason: "High CPU" }
     severity TEXT NOT NULL, -- low, medium, critical
     status TEXT NOT NULL DEFAULT 'open', -- open, done, dismissed
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_remed_node ON node_remediation_suggestions(node_id);
 
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS node_release_policy (
     channel TEXT PRIMARY KEY, -- stable, beta, nightly
     min_version TEXT NOT NULL,
     build_hash TEXT,
-    updated_at INTEGER NOT NULL,
+    updated_at BIGINT NOT NULL,
     updated_by TEXT
 );
 

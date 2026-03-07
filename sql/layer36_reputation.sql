@@ -12,12 +12,12 @@ CREATE TABLE IF NOT EXISTS node_reputation (
     revenue_score REAL DEFAULT 50.0,
     composite_score REAL DEFAULT 50.0,
     tier TEXT NOT NULL DEFAULT 'bronze' CHECK(tier IN ('bronze','silver','gold','platinum')),
-    last_updated_at INTEGER
+    last_updated_at BIGINT
 );
 
 -- 2. Reputation History (for sparklines)
 CREATE TABLE IF NOT EXISTS reputation_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     node_id TEXT NOT NULL,
     composite_score REAL NOT NULL,
     tier TEXT NOT NULL,
