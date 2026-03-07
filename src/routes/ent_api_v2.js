@@ -1,7 +1,12 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../middleware/auth.js';
 
 export function createEntApiRouter(opsEngine) {
     const router = Router();
+
+    // S0-008: Enforce JWT + enterprise role on all routes
+    router.use(requireJWT);
+    router.use(requireRole(['enterprise', 'admin_super', 'admin_ops']));
 
     // GET /ent-api/stats
     router.get('/stats', async (req, res) => {

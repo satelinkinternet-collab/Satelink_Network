@@ -16,12 +16,8 @@ export function validateEnv() {
     }
 
     if (!process.env.JWT_SECRET) {
-        if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
-            console.error("[FATAL] Missing JWT_SECRET.");
-            process.exit(1);
-        } else {
-            console.error("[WARN] Missing JWT_SECRET. Falling back to dev_only_secret - NOT SECURE FOR REAL PROD.");
-        }
+        console.error("[FATAL] Missing JWT_SECRET. Set it in .env or environment. No fallbacks allowed.");
+        process.exit(1);
     }
 
     return {

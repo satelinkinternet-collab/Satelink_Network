@@ -9,14 +9,10 @@ export function attachSecurity(app, db) {
     };
 
     const requireAdminKey = (req, res, next) => {
-        let expectedKey = ADMIN_API_KEY;
+        const expectedKey = ADMIN_API_KEY;
         if (!expectedKey) {
-            const env = process.env.NODE_ENV;
-            if (env === 'development' || env === 'test' || process.env.MOCHA) {
-                expectedKey = "satelink-admin-secret";
-            } else {
-                return res.status(500).send("ADMIN_KEY not configured");
-            }
+            console.error("[SECURITY] ADMIN_API_KEY not set. Rejecting admin request.");
+            return res.status(500).json({ ok: false, error: "ADMIN_API_KEY not configured" });
         }
 
         const provided = req.get("X-Admin-Key") || req.get("x-admin-key") || "";

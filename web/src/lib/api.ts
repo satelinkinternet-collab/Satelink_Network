@@ -17,11 +17,13 @@ api.interceptors.request.use((config) => {
             }
         }
 
-        // Tmp hack for simulator testing: Auto-inject admin key for the dashboard metrics
+        // Admin endpoints require the admin key from environment, never hardcoded
         if (config.url?.includes('/api/demand/metrics')) {
-            config.headers = config.headers || {};
-            config.headers['x-admin-key'] = 'satelink-admin-secret';
-            config.headers['X-Admin-Key'] = 'satelink-admin-secret';
+            const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY;
+            if (adminKey) {
+                config.headers = config.headers || {};
+                config.headers['X-Admin-Key'] = adminKey;
+            }
         }
     }
     return config;
