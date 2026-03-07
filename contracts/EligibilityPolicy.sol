@@ -18,15 +18,20 @@ contract EligibilityPolicy is AccessControl {
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
 
     // ─── Role Types ────────────────────────────────────────────────────────────
-    enum Role { NODE_OPERATOR, DISTRIBUTOR, INFLUENCER, OPERATIONS }
+    enum Role {
+        NODE_OPERATOR,
+        DISTRIBUTOR,
+        INFLUENCER,
+        OPERATIONS
+    }
 
     // ─── Policy Configuration ──────────────────────────────────────────────────
     struct RolePolicy {
-        uint256 minUptimeBps;           // minimum uptime in basis points (e.g. 8000 = 80%)
-        uint256 minOpsPerEpoch;         // minimum operations per epoch
+        uint256 minUptimeBps; // minimum uptime in basis points (e.g. 8000 = 80%)
+        uint256 minOpsPerEpoch; // minimum operations per epoch
         uint256 eligibilityWindowEpochs; // how many consecutive epochs must pass criteria
-        uint256 claimExpiryDays;        // days after epoch to claim (e.g. 48)
-        bool    active;                 // is this role currently accepting participants
+        uint256 claimExpiryDays; // days after epoch to claim (e.g. 48)
+        bool active; // is this role currently accepting participants
     }
 
     mapping(Role => RolePolicy) public policies;
@@ -34,8 +39,8 @@ contract EligibilityPolicy is AccessControl {
     // ─── Eligibility State ─────────────────────────────────────────────────────
     struct EligibilityRecord {
         uint256 epochId;
-        bool    eligible;
-        uint256 score;          // 0-10000 bps quality score
+        bool eligible;
+        uint256 score; // 0-10000 bps quality score
         uint256 checkedAt;
     }
 
@@ -43,8 +48,17 @@ contract EligibilityPolicy is AccessControl {
     mapping(address => mapping(Role => mapping(uint256 => EligibilityRecord))) public records;
 
     // ─── Events ────────────────────────────────────────────────────────────────
-    event PolicyUpdated(Role indexed role, uint256 minUptimeBps, uint256 minOpsPerEpoch, uint256 windowEpochs, uint256 claimExpiryDays, bool active);
-    event EligibilityChecked(address indexed account, Role indexed role, uint256 indexed epochId, bool eligible, uint256 score);
+    event PolicyUpdated(
+        Role indexed role,
+        uint256 minUptimeBps,
+        uint256 minOpsPerEpoch,
+        uint256 windowEpochs,
+        uint256 claimExpiryDays,
+        bool active
+    );
+    event EligibilityChecked(
+        address indexed account, Role indexed role, uint256 indexed epochId, bool eligible, uint256 score
+    );
     event RoleDeactivated(Role indexed role);
     event RoleActivated(Role indexed role);
 
@@ -60,10 +74,10 @@ contract EligibilityPolicy is AccessControl {
 
         // Default policies per the Unified Master Reference
         policies[Role.NODE_OPERATOR] = RolePolicy({
-            minUptimeBps: 8000,         // 80% minimum uptime
-            minOpsPerEpoch: 1,          // at least 1 op per epoch
+            minUptimeBps: 8000, // 80% minimum uptime
+            minOpsPerEpoch: 1, // at least 1 op per epoch
             eligibilityWindowEpochs: 1, // eligible per-epoch
-            claimExpiryDays: 48,        // 48-day claim window
+            claimExpiryDays: 48, // 48-day claim window
             active: true
         });
 
@@ -144,25 +158,18 @@ contract EligibilityPolicy is AccessControl {
      * @param eligible Whether the account meets the role criteria
      * @param score    Quality score in basis points (0-10000)
      */
-    function recordEligibility(
-        address account,
-        Role role,
-        uint256 epochId,
-        bool eligible,
-        uint256 score
-    ) external onlyRole(ORACLE_ROLE) {
+    function recordEligibility(address account, Role role, uint256 epochId, bool eligible, uint256 score)
+        external
+        onlyRole(ORACLE_ROLE)
+    {
         if (!policies[role].active) revert PolicyNotActive(role);
         if (records[account][role][epochId].checkedAt != 0) {
             revert EpochAlreadyChecked(account, role, epochId);
         }
         if (score > 10000) revert InvalidBps(score);
 
-        records[account][role][epochId] = EligibilityRecord({
-            epochId: epochId,
-            eligible: eligible,
-            score: score,
-            checkedAt: block.timestamp
-        });
+        records[account][role][epochId] =
+            EligibilityRecord({epochId: epochId, eligible: eligible, score: score, checkedAt: block.timestamp});
 
         emit EligibilityChecked(account, role, epochId, eligible, score);
     }

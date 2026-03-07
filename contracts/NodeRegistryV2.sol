@@ -13,25 +13,29 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  *      Now: Role-based access — REGISTRAR_ROLE required for registration
  */
 contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
-
     // ─── Roles ────────────────────────────────────────────────────────────────
-    bytes32 public constant REGISTRAR_ROLE  = keccak256("REGISTRAR_ROLE");
-    bytes32 public constant OPERATOR_ROLE   = keccak256("OPERATOR_ROLE");
-    bytes32 public constant PAUSER_ROLE     = keccak256("PAUSER_ROLE");
-    bytes32 public constant ADMIN_ROLE      = keccak256("ADMIN_ROLE");
+    bytes32 public constant REGISTRAR_ROLE = keccak256("REGISTRAR_ROLE");
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ─── Node State ───────────────────────────────────────────────────────────
-    enum NodeStatus { INACTIVE, ACTIVE, SUSPENDED, DECOMMISSIONED }
+    enum NodeStatus {
+        INACTIVE,
+        ACTIVE,
+        SUSPENDED,
+        DECOMMISSIONED
+    }
 
     struct Node {
-        bytes32  nodeId;
-        address  owner;
-        string   nodeType;       // "router" | "edge" | "vps" | "managed"
-        string   region;
-        uint256  registeredAt;
-        uint256  activatedAt;
+        bytes32 nodeId;
+        address owner;
+        string nodeType; // "router" | "edge" | "vps" | "managed"
+        string region;
+        uint256 registeredAt;
+        uint256 activatedAt;
         NodeStatus status;
-        bytes    metadata;       // ABI-encoded extra data
+        bytes metadata; // ABI-encoded extra data
     }
 
     // ─── Storage ──────────────────────────────────────────────────────────────
@@ -67,9 +71,9 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
         _grantRole(PAUSER_ROLE, admin);
         _grantRole(REGISTRAR_ROLE, admin);
 
-        _validNodeTypes["router"]  = true;
-        _validNodeTypes["edge"]    = true;
-        _validNodeTypes["vps"]     = true;
+        _validNodeTypes["router"] = true;
+        _validNodeTypes["edge"] = true;
+        _validNodeTypes["vps"] = true;
         _validNodeTypes["managed"] = true;
     }
 
@@ -93,14 +97,14 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
         if (nodesByOwner[owner].length >= MAX_NODES_PER_OWNER) revert MaxNodesPerOwnerExceeded(owner);
 
         nodes[nodeId] = Node({
-            nodeId:       nodeId,
-            owner:        owner,
-            nodeType:     nodeType,
-            region:       region,
+            nodeId: nodeId,
+            owner: owner,
+            nodeType: nodeType,
+            region: region,
             registeredAt: block.timestamp,
-            activatedAt:  0,
-            status:       NodeStatus.INACTIVE,
-            metadata:     metadata
+            activatedAt: 0,
+            status: NodeStatus.INACTIVE,
+            metadata: metadata
         });
 
         nodesByOwner[owner].push(nodeId);
@@ -119,7 +123,7 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
         if (node.registeredAt == 0) revert NodeNotFound(nodeId);
 
         bool isOperator = hasRole(OPERATOR_ROLE, msg.sender);
-        bool isOwner    = (node.owner == msg.sender);
+        bool isOwner = (node.owner == msg.sender);
 
         require(isOperator || isOwner, "NodeRegistryV2: unauthorized");
 
@@ -143,9 +147,7 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
     /**
      * @notice Suspend a node (admin/operator only) — stronger than deactivate
      */
-    function suspendNode(bytes32 nodeId, string calldata reason)
-        external onlyRole(OPERATOR_ROLE)
-    {
+    function suspendNode(bytes32 nodeId, string calldata reason) external onlyRole(OPERATOR_ROLE) {
         Node storage node = nodes[nodeId];
         if (node.registeredAt == 0) revert NodeNotFound(nodeId);
         if (node.status == NodeStatus.ACTIVE) totalActive--;
@@ -156,9 +158,7 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
     /**
      * @notice Permanently decommission a node
      */
-    function decommissionNode(bytes32 nodeId)
-        external onlyRole(ADMIN_ROLE)
-    {
+    function decommissionNode(bytes32 nodeId) external onlyRole(ADMIN_ROLE) {
         Node storage node = nodes[nodeId];
         if (node.registeredAt == 0) revert NodeNotFound(nodeId);
         if (node.status == NodeStatus.ACTIVE) totalActive--;
@@ -172,10 +172,7 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
     function updateMetadata(bytes32 nodeId, bytes calldata metadata) external whenNotPaused {
         Node storage node = nodes[nodeId];
         if (node.registeredAt == 0) revert NodeNotFound(nodeId);
-        require(
-            node.owner == msg.sender || hasRole(OPERATOR_ROLE, msg.sender),
-            "NodeRegistryV2: unauthorized"
-        );
+        require(node.owner == msg.sender || hasRole(OPERATOR_ROLE, msg.sender), "NodeRegistryV2: unauthorized");
         node.metadata = metadata;
         emit NodeMetadataUpdated(nodeId);
     }
@@ -200,8 +197,13 @@ contract NodeRegistryV2 is AccessControl, Pausable, ReentrancyGuard {
 
     // ─── Admin ────────────────────────────────────────────────────────────────
 
-    function pause() external onlyRole(PAUSER_ROLE) { _pause(); }
-    function unpause() external onlyRole(PAUSER_ROLE) { _unpause(); }
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(PAUSER_ROLE) {
+        _unpause();
+    }
 
     function addValidNodeType(string calldata nodeType) external onlyRole(ADMIN_ROLE) {
         _validNodeTypes[nodeType] = true;

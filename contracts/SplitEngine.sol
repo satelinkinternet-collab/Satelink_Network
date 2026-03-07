@@ -12,9 +12,9 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract SplitEngine is AccessControl {
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
 
-    uint256 public nodePoolBps;   // default 5000 = 50%
-    uint256 public opsPoolBps;    // default 3000 = 30%
-    uint256 public treasuryBps;   // default 2000 = 20%
+    uint256 public nodePoolBps; // default 5000 = 50%
+    uint256 public opsPoolBps; // default 3000 = 30%
+    uint256 public treasuryBps; // default 2000 = 20%
     uint256 public infraReserveBps; // default 1000 = 10% (of node pool)
 
     uint256 public constant BPS_DENOMINATOR = 10000;
@@ -24,11 +24,7 @@ contract SplitEngine is AccessControl {
     uint256 public constant MAX_POOL_BPS = 7000;
 
     event SplitConfigUpdated(
-        uint256 nodePoolBps,
-        uint256 opsPoolBps,
-        uint256 treasuryBps,
-        uint256 infraReserveBps,
-        address indexed updatedBy
+        uint256 nodePoolBps, uint256 opsPoolBps, uint256 treasuryBps, uint256 infraReserveBps, address indexed updatedBy
     );
     event RevenueSplit(uint256 total, uint256 nodePool, uint256 opsPool, uint256 treasury);
 
@@ -55,22 +51,10 @@ contract SplitEngine is AccessControl {
         uint256 _treasuryBps,
         uint256 _infraReserveBps
     ) external onlyRole(GOVERNOR_ROLE) {
-        require(
-            _nodePoolBps + _opsPoolBps + _treasuryBps == BPS_DENOMINATOR,
-            "SplitEngine: pools must sum to 10000"
-        );
-        require(
-            _nodePoolBps >= MIN_POOL_BPS && _nodePoolBps <= MAX_POOL_BPS,
-            "SplitEngine: nodePool out of bounds"
-        );
-        require(
-            _opsPoolBps >= MIN_POOL_BPS && _opsPoolBps <= MAX_POOL_BPS,
-            "SplitEngine: opsPool out of bounds"
-        );
-        require(
-            _treasuryBps >= MIN_POOL_BPS && _treasuryBps <= MAX_POOL_BPS,
-            "SplitEngine: treasury out of bounds"
-        );
+        require(_nodePoolBps + _opsPoolBps + _treasuryBps == BPS_DENOMINATOR, "SplitEngine: pools must sum to 10000");
+        require(_nodePoolBps >= MIN_POOL_BPS && _nodePoolBps <= MAX_POOL_BPS, "SplitEngine: nodePool out of bounds");
+        require(_opsPoolBps >= MIN_POOL_BPS && _opsPoolBps <= MAX_POOL_BPS, "SplitEngine: opsPool out of bounds");
+        require(_treasuryBps >= MIN_POOL_BPS && _treasuryBps <= MAX_POOL_BPS, "SplitEngine: treasury out of bounds");
         require(_infraReserveBps <= 3000, "SplitEngine: infraReserve too high");
 
         nodePoolBps = _nodePoolBps;
@@ -93,7 +77,11 @@ contract SplitEngine is AccessControl {
     /**
      * @notice Calculate infrastructure reserve deduction from the node pool share.
      */
-    function calculateInfraReserve(uint256 nodePoolAmount) public view returns (uint256 infraAmount, uint256 netNodeAmount) {
+    function calculateInfraReserve(uint256 nodePoolAmount)
+        public
+        view
+        returns (uint256 infraAmount, uint256 netNodeAmount)
+    {
         infraAmount = (nodePoolAmount * infraReserveBps) / BPS_DENOMINATOR;
         netNodeAmount = nodePoolAmount - infraAmount;
     }

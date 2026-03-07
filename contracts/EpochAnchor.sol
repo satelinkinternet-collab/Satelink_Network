@@ -30,12 +30,8 @@ contract EpochAnchor is AccessControl {
         if (epochs[epochId].timestamp != 0) revert EpochAlreadyAnchored(epochId);
         if (merkleRoot == bytes32(0)) revert InvalidEpochData();
 
-        epochs[epochId] = Epoch({
-            epochId: epochId,
-            merkleRoot: merkleRoot,
-            totalRevenue: totalRevenue,
-            timestamp: block.timestamp
-        });
+        epochs[epochId] =
+            Epoch({epochId: epochId, merkleRoot: merkleRoot, totalRevenue: totalRevenue, timestamp: block.timestamp});
 
         if (epochId > latestEpochId) {
             latestEpochId = epochId;

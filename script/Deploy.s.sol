@@ -56,22 +56,19 @@ contract DeployAll is Script {
         console.log("7. ClaimsContract:", address(claimsContract));
 
         // ── 8. ClaimsWithdrawals (epoch-gated withdrawals) ──
-        ClaimsWithdrawals claimsWithdrawals = new ClaimsWithdrawals(
-            address(anchor),
-            address(vault)
-        );
+        ClaimsWithdrawals claimsWithdrawals = new ClaimsWithdrawals(address(anchor), address(vault));
         console.log("8. ClaimsWithdrawals:", address(claimsWithdrawals));
 
         // ── 9. RevenueDistributor (50/30/20 splits) ──
         // For testnet, deployer address acts as all pool wallets
         RevenueDistributor distributor = new RevenueDistributor(
             address(usdt),
-            deployer,  // nodeOperatorPool
-            deployer,  // coreTreasury
-            deployer,  // builderRewardsPool
-            deployer,  // distributionPool
-            deployer,  // infraReserve
-            deployer   // admin
+            deployer, // nodeOperatorPool
+            deployer, // coreTreasury
+            deployer, // builderRewardsPool
+            deployer, // distributionPool
+            deployer, // infraReserve
+            deployer // admin
         );
         console.log("9. RevenueDistributor:", address(distributor));
 
