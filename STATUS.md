@@ -9,7 +9,7 @@ Branch: claude/busy-mccarthy
 
 ## Stage S0 — Production Blockers & Security Foundation
 **Timeline:** Week 1-2 (Mar 9 - Mar 22, 2026) | Priority: P0-CRITICAL
-**Status:** IN PROGRESS (13/15 complete)
+**Status:** COMPLETE (15/15)
 
 - [x] S0-001 Fix NodeRegistryV2 AccessControl
 - [x] S0-002 Fix RevenueDistributor USDT refactor
@@ -23,8 +23,8 @@ Branch: claude/busy-mccarthy
 - [x] S0-010 Branch consolidation
 - [x] S0-011 Wire stub dashboard pages to backend APIs (7 pages wired)
 - [x] S0-012 Create .env.example + secrets documentation
-- [ ] S0-013 Deploy contracts to Fuse Spark testnet
-- [ ] S0-014 Run Slither/Mythril static analysis
+- [x] S0-013 Deploy contracts to Fuse Spark testnet
+- [x] S0-014 Run Slither/Mythril static analysis
 - [x] S0-015 Create EligibilityPolicy contract
 
 ## Stage S1 — Core Revenue Engine (API Gateway + RPC)

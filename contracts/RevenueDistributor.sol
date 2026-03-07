@@ -52,7 +52,7 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
 
     // ─── Infra Reserve (10% of managed node revenue) ──────────────────────────
     uint256 public constant INFRA_RESERVE_BP = 1_000; // 10%
-    address public infraReserve;
+    address public immutable infraReserve;
 
     // ─── Accounting ───────────────────────────────────────────────────────────
     uint256 public totalDistributed;
@@ -100,6 +100,9 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
         if (_usdt == address(0)) revert ZeroAddress();
         if (_nodeOperatorPool == address(0)) revert ZeroAddress();
         if (_coreTreasury == address(0)) revert ZeroAddress();
+        if (_builderRewardsPool == address(0)) revert ZeroAddress();
+        if (_distributionPool == address(0)) revert ZeroAddress();
+        if (_infraReserve == address(0)) revert ZeroAddress();
 
         usdt = IERC20(_usdt);
 
@@ -216,7 +219,10 @@ contract RevenueDistributor is AccessControl, ReentrancyGuard, Pausable {
         address _builderRewardsPool,
         address _distributionPool
     ) external onlyRole(ADMIN_ROLE) {
-        if (_nodeOperatorPool == address(0) || _coreTreasury == address(0)) revert ZeroAddress();
+        if (_nodeOperatorPool == address(0)) revert ZeroAddress();
+        if (_coreTreasury == address(0)) revert ZeroAddress();
+        if (_builderRewardsPool == address(0)) revert ZeroAddress();
+        if (_distributionPool == address(0)) revert ZeroAddress();
         nodeOperatorPool   = _nodeOperatorPool;
         coreTreasury       = _coreTreasury;
         builderRewardsPool = _builderRewardsPool;

@@ -9,8 +9,8 @@ import "./EpochAnchor.sol";
 import "./RevenueVault.sol";
 
 contract ClaimsWithdrawals is AccessControl, ReentrancyGuard {
-    EpochAnchor public epochAnchor;
-    RevenueVault public revenueVault;
+    EpochAnchor public immutable epochAnchor;
+    RevenueVault public immutable revenueVault;
     
     uint256 public constant CLAIM_DEADLINE = 48 days;
 
