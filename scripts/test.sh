@@ -10,4 +10,4 @@ node --check core/heartbeat.js
 node --check core/routes.js
 
 echo "Running unit/E2E tests..."
-npm run test:e2e
+npm test

@@ -60,7 +60,7 @@ jobs:
           cat > .env << EOF
           PORT=8080
           NODE_ENV=test
-          JWT_SECRET=ci_test_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          JWT_SECRET=ci_test_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           JWT_REFRESH_SECRET=ci_test_refresh_secret_key_64chars_long_bbbbbbbbbbbbbbbbbbbbb
           SQLITE_PATH=./test_satelink.db
           FEATURE_REAL_SETTLEMENT=false
