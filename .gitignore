@@ -82,3 +82,20 @@ lib/
 out/
 broadcast/
 cache/
+
+# Added by Satelink Stabilization Plan
+node_modules
+*.log
+cache
+tempdir
+backups
+.env
+dist
+build
+coverage
+*.tmp
+*.bak
+.DS_Store
+*.pid
+*.seed
+
