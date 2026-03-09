@@ -1,0 +1,53 @@
+services:
+  api:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - SQLITE_PATH=/data/satelink.db
+      - DATABASE_URL=postgresql://satelink:satelink@postgres:5432/satelink
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev_secret_keys_only_for_local_use
+    volumes:
+      - ../../data:/data
+      - ../../apps/api:/usr/src/app/apps/api
+    depends_on:
+      - postgres
+      - redis
+
+  dashboard:
+    build:
+      context: ../../
+      dockerfile: apps/dashboard/Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NODE_ENV=development
+    volumes:
+      - ../../apps/dashboard:/usr/src/app/apps/dashboard
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=satelink
+      - POSTGRES_PASSWORD=satelink
+      - POSTGRES_DB=satelink
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_dev_data:

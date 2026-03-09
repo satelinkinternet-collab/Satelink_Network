@@ -1,29 +1,33 @@
-.PHONY: boot stop reset-db smoke logs docker-up docker-down
+# Satelink Network - Developer Makefile
 
-boot:
-	@echo "Booting environment..."
-	./ops/scripts/boot-satelink.sh
+.PHONY: setup dev stop restart logs clean help
+
+help:
+	@echo "Available commands:"
+	@echo "  make setup   - Prepare the local environment (install deps, create .env)"
+	@echo "  make dev     - Start the full development stack in Docker"
+	@echo "  make stop    - Stop all running services"
+	@echo "  make restart - Restart the development stack"
+	@echo "  make logs    - Stream logs from all services"
+	@echo "  make clean   - Remove containers, volumes, and cached images"
+
+setup:
+	@bash scripts/dev-setup.sh
+
+dev: setup
+	docker compose -f infra/docker/docker-compose.dev.yml up --build -d
+	@echo "Satelink is starting..."
+	@echo "API: http://localhost:8080"
+	@echo "Dashboard: http://localhost:3000"
 
 stop:
-	@echo "Stopping environment..."
-	./ops/scripts/stop-satelink.sh
+	docker compose -f infra/docker/docker-compose.dev.yml stop
 
-reset-db:
-	@echo "Resetting development database..."
-	./ops/scripts/reset-dev-db.sh
-
-smoke:
-	@echo "Running smoke tests..."
-	./ops/scripts/smoke-test.sh
+restart:
+	docker compose -f infra/docker/docker-compose.dev.yml restart
 
 logs:
-	@echo "Tailing all logs..."
-	tail -f logs/*.log
+	docker compose -f infra/docker/docker-compose.dev.yml logs -f
 
-docker-up:
-	@echo "Starting Docker environment..."
-	docker-compose -f ops/docker/docker-compose.dev.yml up --build -d
-
-docker-down:
-	@echo "Stopping Docker environment..."
-	docker-compose -f ops/docker/docker-compose.dev.yml down
+clean:
+	docker compose -f infra/docker/docker-compose.dev.yml down -v --rmi local
