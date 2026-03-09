@@ -29,7 +29,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     }
 
     // ─── INTEGRATIONS ────────────────────────────────────────
-    router.get("/integrations/health", (_req, res) => {
+    router.get("/services/integrations/health", (_req, res) => {
         res.json({
             status: "ok",
             timestamp: Date.now(),
@@ -58,7 +58,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     }
 
     // Zero-Signup Node Stats
-    router.get("/integrations/node/:wallet", async (req, res) => {
+    router.get("/services/integrations/node/:wallet", async (req, res) => {
         try {
             const { wallet } = req.params;
             const node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
@@ -81,7 +81,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         }
     });
 
-    router.get("/integrations/nodeops/ping", async (_req, res) => {
+    router.get("/services/integrations/nodeops/ping", async (_req, res) => {
         try {
             const result = await nodeOpsPing();
             res.json(result);
@@ -218,7 +218,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     });
 
     // ─── MANUAL REVENUE ──────────────────────────────────────
-    router.post("/integrations/manual/revenue", async (req, res) => {
+    router.post("/services/integrations/manual/revenue", async (req, res) => {
         const { amount_usdt, payer_wallet, source_type } = req.body || {};
         if (!amount_usdt) return res.status(400).json({ error: "Missing amount_usdt" });
         try {

@@ -1,13 +1,29 @@
-# Multi-stage Dockerfile
-FROM node:20-slim AS builder
-WORKDIR /app
+FROM node:20-alpine AS builder
+
+WORKDIR /usr/src/app
+
+# Dependencies required for native modules (e.g. better-sqlite3)
+RUN apk add --no-cache python3 make g++ 
+
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
+
 COPY . .
 
-FROM node:20-slim
-WORKDIR /app
-COPY --from=builder /app /app
-EXPOSE 8080
-ENV NODE_ENV=production
-CMD ["node", "server.js"]
+# Removing unnecessary development files in final build if any
+RUN rm -rf tests script
+
+FROM node:20-alpine AS release
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app ./
+
+# Setup a non-root user
+RUN addgroup -S satelink && adduser -S satelink -G satelink
+RUN mkdir -p /usr/src/app/data && chown -R satelink:satelink /usr/src/app
+
+USER satelink
+
+EXPOSE 8080 8081
+CMD ["npm", "run", "start"]

@@ -1,11 +1,11 @@
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
-import { validateEnv } from "./utils/validateEnv.js";
-import { logger } from "./utils/logger.js";
+import { validateEnv } from "./src/utils/validateEnv.js";
+import { logger } from "./src/monitoring/logger.js";
 import { createApp } from "./app_factory.mjs";
 import Database from "better-sqlite3";
-import { DepositDetector } from "./src/services/deposit_detector.js";
+import { DepositDetector } from "./src/settlement/deposit_detector.js";
 
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
