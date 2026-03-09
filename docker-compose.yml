@@ -1,97 +1,91 @@
-# ─── PRODUCTION-ORIENTED COMPOSE ──────────────────────────────────────────────
-# For local development with hot-reload and dev settings, use:
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-#
-# Prerequisites: copy .env.docker to .env and fill in secrets before running.
-#   cp .env.docker .env
-# ──────────────────────────────────────────────────────────────────────────────
+version: '3.8'
 
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    env_file:
-      # Load secrets from .env (copied from .env.docker template, not committed)
-      - path: .env
-        required: false
+  satelink-core:
+    build: .
+    container_name: satelink-core
     environment:
       - NODE_ENV=production
       - PORT=8080
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - JWT_ISSUER=${JWT_ISSUER:-satelink-network}
-      - JWT_TTL=${JWT_TTL:-15m}
-      - JWT_REFRESH_TTL=${JWT_REFRESH_TTL:-7d}
-      - DATABASE_URL=postgres://satelink:satelink@db:5432/satelink
-      - DB_TYPE=postgres
-      - ADMIN_API_KEY=${ADMIN_API_KEY}
-      - ADMIN_KEY=${ADMIN_KEY}
-      - MOONPAY_WEBHOOK_SECRET=${MOONPAY_WEBHOOK_SECRET}
-      - FUSE_WEBHOOK_IP_ALLOWLIST=${FUSE_WEBHOOK_IP_ALLOWLIST}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
-      - IP_HASH_SALT=${IP_HASH_SALT}
+      - LOG_LEVEL=info
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
-      - ./data:/app/data
+      - satelink-data:/usr/src/app/data
     restart: unless-stopped
     healthcheck:
-      test:
-        - "CMD"
-        - "node"
-        - "-e"
-        - "fetch('http://localhost:8080/health').then(r=>r.ok||process.exit(1)).catch(()=>process.exit(1))"
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - database
+      - redis
 
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile.web
-      args:
-        # NEXT_PUBLIC_* vars must be baked in at build time (next build reads them)
-        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
-        - INTERNAL_API_URL=http://api:8080
+  satelink-gateway:
+    build: .
+    container_name: satelink-gateway
+    command: npm run gateway
     environment:
       - NODE_ENV=production
-      # Server-side rewrite target (Docker networking: web → api service)
-      - INTERNAL_API_URL=http://api:8080
-      # Browser-visible base URL — must be localhost so the browser can reach it
-      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      - PORT=8081
+      - LOG_LEVEL=info
     ports:
-      - "3000:3000"
-    depends_on:
-      api:
-        condition: service_healthy
+      - "8081:8081"
+    volumes:
+      - satelink-data:/usr/src/app/data
     restart: unless-stopped
+    depends_on:
+      - satelink-core
 
-  db:
-    image: postgres:16-alpine
+  satelink-node-worker:
+    build: .
+    container_name: satelink-node-worker
+    command: npm run worker
     environment:
-      - POSTGRES_USER=satelink
-      - POSTGRES_PASSWORD=satelink
-      - POSTGRES_DB=satelink
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - WORKER_INTERVAL_MS=10000
+    volumes:
+      - satelink-data:/usr/src/app/data
+    restart: unless-stopped
+    depends_on:
+      - database
+      - redis
+
+  database:
+    # We provision a PostgreSQL database as requested for production readiness.
+    # The application currently uses better-sqlite3 heavily, but this establishes
+    # the container architecture for the upcoming migration.
+    image: postgres:15-alpine
+    container_name: satelink-db
+    environment:
+      POSTGRES_USER: satelink
+      POSTGRES_PASSWORD: satelinkpassword
+      POSTGRES_DB: satelink_prod
     ports:
       - "5432:5432"
     volumes:
-      - satelink_pg:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test:
-        - "CMD-SHELL"
-        - "pg_isready -U satelink -d satelink"
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
+      test: [ "CMD-SHELL", "pg_isready -U satelink" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: satelink-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  satelink_pg:
-    driver: local
+  satelink-data:
+  postgres-data:
