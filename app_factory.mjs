@@ -1,11 +1,11 @@
 import "dotenv/config";
 import express from "express";
-import { attachBaseMiddleware } from "./core/middleware.js";
-import { attachSchema } from "./core/schema.js";
-import { attachSecurity } from "./core/security.js";
-import { attachHeartbeat } from "./core/heartbeat.js";
-import { attachRoutes } from "./core/routes.js";
-import { attachUI } from "./core/ui.js";
+import { attachBaseMiddleware } from "./src/gateway/middleware.js";
+import { attachSchema } from "./src/core/schema.js";
+import { attachSecurity } from "./src/security/security.js";
+import { attachHeartbeat } from "./src/nodes/heartbeat.js";
+import { attachRoutes } from "./src/gateway/routes.js";
+import { attachUI } from "./src/gateway/ui.js";
 
 export function createApp(db) {
   const app = express();
