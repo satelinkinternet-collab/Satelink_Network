@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Prevent node_modules commits
+if git diff --cached --name-only | grep -q "node_modules"; then
+  echo "❌ node_modules cannot be committed"
+  exit 1
+fi
+
+echo "✔ Pre-commit check passed"
