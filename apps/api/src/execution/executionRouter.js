@@ -3,6 +3,7 @@ import { CapacityManager } from './capacityManager.js';
 import { ProviderFallback } from './providerFallback.js';
 import { ProfitProtection } from '../economics/profitProtection.js';
 import { JobQueue } from '../queue/job_queue.js';
+import { getOpsPrice } from '../core/config/ops_pricing.js';
 import client from 'prom-client';
 
 // Prometheus Metrics
@@ -27,7 +28,11 @@ export class ExecutionRouter {
         const { type, payload, reward } = job;
 
         // 0. Profit Protection Guard (Dynamic)
-        const userPrice = reward || 0.005;
+        const actualReward = reward || getOpsPrice(type);
+        if (!actualReward || actualReward <= 0) {
+            throw new Error('Cannot determine reward for job type');
+        }
+        const userPrice = actualReward;
         const nodeReward = userPrice * 0.6;
         const providerCost = 0.001;
 
