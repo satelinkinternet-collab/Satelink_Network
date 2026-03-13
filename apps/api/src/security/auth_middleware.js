@@ -22,7 +22,8 @@ import { validateEnv } from "../utils/validateEnv.js";
 validateEnv();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH = process.env.JWT_REFRESH_SECRET || 'satelink-fallback-refresh-token';
+const JWT_REFRESH = process.env.JWT_REFRESH_SECRET;
+if (!JWT_REFRESH) throw new Error('FATAL: JWT_REFRESH_SECRET environment variable is required');
 
 const TOKEN_TTL = process.env.JWT_TTL || '15m';
 const REFRESH_TOKEN_TTL = process.env.JWT_REFRESH_TTL || '7d';

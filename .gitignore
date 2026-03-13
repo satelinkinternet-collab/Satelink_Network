@@ -28,6 +28,8 @@ yarn-debug.log*
 
 # Database
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 satelink.db
@@ -42,6 +44,10 @@ test.db
 .claude/
 *.swp
 *.bak
+
+# Secrets and Tokens
+token.txt
+*.token
 
 # Temporary and Artifacts
 artifacts/
