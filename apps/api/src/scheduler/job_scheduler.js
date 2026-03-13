@@ -16,7 +16,7 @@ export class JobScheduler {
         this.router = new ExecutionRouter(db);
         this.opsEngine = new OperationsEngine(db, null, null);
         this.matchingEngine = new JobMatchingEngine(db);
-        this.escrow = new JobEscrow(db);
+        this.escrow = new JobEscrow(db, this.opsEngine);
 
         this.isRunning = false;
         this.pollIntervalMs = 1000;
