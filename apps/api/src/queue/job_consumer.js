@@ -8,6 +8,7 @@ export class JobConsumer {
         this.concurrency = opts.concurrency || 5;
         this.running = false;
         this.opsEngine = opts.opsEngine;
+        this.escrow = opts.escrow || null;
         this.visibilityTimeout = opts.visibilityTimeout || 30000; // 30s
     }
 
@@ -39,7 +40,6 @@ export class JobConsumer {
                 const jobs = await JobQueue.pullNext(this.consumerName, 1);
 
                 if (jobs.length === 0) {
-                    // Backoff slightly if no jobs
                     await new Promise(r => setTimeout(r, 500));
                     continue;
                 }
@@ -63,13 +63,13 @@ export class JobConsumer {
         }, 'job_claimed');
 
         try {
-            // 1. Simulate/Execute Workflow
-            // In a real system, this would call a router or specific executor
+            // 1. Execute workload
             const result = await this._executeWorkload(job);
 
-            // 2. Integration with OpsEngine (Revenue/Accounting)
+            // 2. Record revenue FIRST (before escrow release) to prevent double-spend
+            let revenueRecorded = false;
             if (this.opsEngine) {
-                await this.opsEngine.execute({
+                const revenueResult = await this.opsEngine.execute({
                     job_id: job.job_id,
                     client_id: job.client_id,
                     node_id: this.consumerName,
@@ -77,9 +77,23 @@ export class JobConsumer {
                     status: 'COMPLETED',
                     duration: Date.now() - startTime
                 });
+                revenueRecorded = revenueResult?.ok !== false;
+            } else {
+                revenueRecorded = true;
             }
 
-            // 3. Acknowledge and Remove from Stream
+            // 3. Only release escrow AFTER confirmed revenue recording
+            if (revenueRecorded && this.escrow) {
+                try {
+                    await this.escrow.releaseFunds(job.job_id, this.consumerName);
+                } catch (escrowErr) {
+                    logger.error({ job_id: job.job_id, err: escrowErr.message }, 'Escrow release failed after revenue recorded');
+                }
+            } else if (!revenueRecorded) {
+                logger.error({ job_id: job.job_id }, 'Revenue recording failed — escrow remains locked (refundable)');
+            }
+
+            // 4. Acknowledge and remove from stream
             await JobQueue.acknowledge(job.sourceStream, job.streamId);
 
             logger.info({
@@ -93,7 +107,6 @@ export class JobConsumer {
                 error: error.message
             }, 'job_execution_failed');
 
-            // Handle Retries / DLQ
             await this._handleFailure(job, error.message);
         }
     }
@@ -107,21 +120,10 @@ export class JobConsumer {
             this.executionRouter = new ExecutionRouter(db);
         }
 
-        const result = await this.executionRouter.routeExecution(job);
-
-        if (job.payload?.force_fail) {
-            throw new Error('Simulated execution failure');
-        }
-
-        return result;
+        return await this.executionRouter.routeExecution(job);
     }
 
     async _handleFailure(job, reason) {
-        // Basic retry logic: if x-delivery-count > 5, move to DLQ
-        // For simplicity in this demo, we'll check a simulated counter or move immediately for fatal errors
-        // In production, we'd use XPENDING to check delivery counts
-
-        // Let's assume for this implementation we move to DLQ immediately if requested or after a threshold
         await JobQueue.moveToDLQ(job, reason);
     }
 }
