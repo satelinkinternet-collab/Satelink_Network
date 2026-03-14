@@ -8,6 +8,17 @@ export function attachHeartbeat(app, db) {
             return res.status(400).json({ error: "Missing fields" });
         }
 
+        // Timestamp freshness check — reject stale (>60s) or future-dated (>5s) heartbeats
+        const MAX_AGE_MS = 60000;
+        const MAX_FUTURE_MS = 5000;
+        const age = Date.now() - Number(timestamp);
+        if (age > MAX_AGE_MS) {
+            return res.status(400).json({ error: "Stale heartbeat", age_ms: age });
+        }
+        if (age < -MAX_FUTURE_MS) {
+            return res.status(400).json({ error: "Future-dated heartbeat", age_ms: age });
+        }
+
         // Ensure row exists in registered_nodes
         try {
             db.prepare(
@@ -55,10 +66,31 @@ export function attachHeartbeat(app, db) {
             return res.status(409).json({ error: "Replay or lower nonce" });
         }
 
-        // On success: update last_nonce
+        // On success: update last_nonce and persist node stats
         try {
             db.prepare("UPDATE registered_nodes SET last_nonce = ? WHERE wallet = ?").run(Number(nonce), nodeWallet);
         } catch (e) { }
+
+        // Persist CPU/memory stats for health monitoring
+        try {
+            db.prepare(`
+                INSERT INTO node_stats (wallet, cpu, memory, uptime, recorded_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(wallet) DO UPDATE SET
+                    cpu = excluded.cpu,
+                    memory = excluded.memory,
+                    uptime = excluded.uptime,
+                    recorded_at = excluded.recorded_at
+            `).run(
+                nodeWallet,
+                stats.cpu || 0,
+                stats.memory || 0,
+                stats.uptime || 0,
+                Date.now()
+            );
+        } catch (e) {
+            // node_stats table may not exist yet — non-fatal
+        }
 
         return res.status(200).json({ status: "ok" });
     });

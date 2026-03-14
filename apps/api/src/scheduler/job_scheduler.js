@@ -164,9 +164,50 @@ export class JobScheduler {
     }
 
     async _dispatch(job, node) {
-        // In real execution, this sends the HTTP request or WebSocket payload to the node.
-        // For testing we simulate a successful network call.
-        return new Promise(resolve => setTimeout(() => resolve({ success: true }), 50));
+        const endpoint = node.api_endpoint || node.endpoint;
+        if (!endpoint) {
+            return { success: false, error: 'Node has no api_endpoint' };
+        }
+
+        const timeout_ms = job.timeout_ms || 30000;
+        const body = {
+            job_id: job.id,
+            type: job.type,
+            payload: job.payload || {},
+            reward: job.reward || 0,
+            timeout_ms
+        };
+
+        // HMAC signature for node verification
+        const hmac = crypto.createHmac('sha256', process.env.JOB_SIGNING_SECRET || 'dev-signing-key');
+        hmac.update(JSON.stringify(body));
+        const signature = hmac.digest('hex');
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout_ms);
+
+        try {
+            const response = await fetch(`${endpoint}/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Job-Signature': signature
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+
+            if (!response.ok) {
+                return { success: false, error: `Node returned ${response.status}` };
+            }
+
+            const data = await response.json();
+            return { success: data.status === 'accepted', execution_id: data.execution_id };
+        } catch (err) {
+            clearTimeout(timer);
+            return { success: false, error: err.name === 'AbortError' ? 'dispatch_timeout' : err.message };
+        }
     }
 
     async _handleFailure(job, reason) {
