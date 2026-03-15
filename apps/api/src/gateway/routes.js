@@ -36,6 +36,7 @@ import { createAiRouter } from './routes/ai_api.js';
 import { createJobSubmitRouter } from './routes/job_submit.js';
 import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
+import { createPublicMarketplaceRouter } from './routes/public_marketplace.js';
 
 client.collectDefaultMetrics();
 
@@ -92,6 +93,9 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             res.status(500).json({ ok: false, error: error.message });
         }
     });
+
+    // ── Public Marketplace ──
+    app.use('/network/marketplace', createPublicMarketplaceRouter(db));
 
     // ── Legacy / Marketplace Compatibility ──
     app.use("/rpc", createRpcRouter(db));

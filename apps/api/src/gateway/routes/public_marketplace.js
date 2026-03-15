@@ -108,5 +108,48 @@ export function createPublicMarketplaceRouter(db) {
         }
     });
 
+    // GET /network/marketplace/sla/plans — public SLA tier definitions
+    router.get('/sla/plans', (req, res) => {
+        try {
+            let plans = [];
+            try {
+                plans = db.prepare('SELECT id, name, target_success_rate, target_p95_latency_ms FROM sla_plans ORDER BY target_success_rate ASC').all();
+            } catch (e) { /* table may not exist */ }
+
+            res.json({
+                ok: true,
+                plans: plans.length > 0 ? plans : [
+                    { id: 'free', name: 'Free Tier', target_success_rate: 95.0, target_p95_latency_ms: 2000 },
+                    { id: 'developer', name: 'Developer', target_success_rate: 99.0, target_p95_latency_ms: 500 },
+                    { id: 'enterprise', name: 'Enterprise', target_success_rate: 99.9, target_p95_latency_ms: 200 }
+                ]
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /network/marketplace/profitability — revenue attribution by workload type
+    router.get('/profitability', (req, res) => {
+        try {
+            let attribution = [];
+            try {
+                attribution = db.prepare(`
+                    SELECT workload_type,
+                           SUM(revenue_usdt) as total_revenue,
+                           SUM(job_count) as total_jobs,
+                           ROUND(SUM(revenue_usdt) / MAX(SUM(job_count), 1), 6) as avg_revenue_per_job
+                    FROM revenue_attribution
+                    GROUP BY workload_type
+                    ORDER BY total_revenue DESC
+                `).all();
+            } catch (e) { /* table may not exist yet */ }
+
+            res.json({ ok: true, profitability: attribution });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     return router;
 }
