@@ -38,16 +38,43 @@ export class JobScheduler {
     }
 
     async _getSystemLoad() {
-        // Mock method to get current load %, perhaps from the number of active jobs or Redis depth
-        return 65;
+        try {
+            // 1. Queue depth component (0-50% of load)
+            let queueDepth = 0;
+            try { queueDepth = await JobQueue.getLength(); } catch (e) { /* Redis may be down */ }
+            const queueLoad = Math.min(queueDepth / 10000, 1.0) * 50; // 10K jobs = 50% load
+
+            // 2. Node utilization component (0-50% of load)
+            let activeNodes = 0, totalCapacity = 0, activeJobs = 0;
+            try {
+                const stats = this.db.prepare(`
+                    SELECT COUNT(*) as node_count,
+                           COALESCE(SUM(max_jobs), 0) as total_cap,
+                           COALESCE(SUM(active_jobs), 0) as active
+                    FROM node_capacity
+                `).get();
+                activeNodes = stats.node_count;
+                totalCapacity = stats.total_cap;
+                activeJobs = stats.active;
+            } catch (e) { /* table may not exist */ }
+
+            const nodeLoad = totalCapacity > 0
+                ? (activeJobs / totalCapacity) * 50
+                : 25; // default 25% if no capacity data
+
+            return Math.round(queueLoad + nodeLoad);
+        } catch (e) {
+            return 50; // safe default on error
+        }
     }
 
     async _checkNodeCapacity(nodeId) {
-        // Query the node's current load
-        // Stub implementation, would realistically check real-time metrics
         try {
-            const row = this.db.prepare("SELECT current_load FROM node_metrics WHERE node_id = ?").get([nodeId]);
-            return row ? row.current_load : 0;
+            const row = this.db.prepare("SELECT active_jobs, max_jobs FROM node_capacity WHERE node_id = ?").get(nodeId);
+            if (row) {
+                return Math.round((row.active_jobs / Math.max(row.max_jobs, 1)) * 100);
+            }
+            return 0;
         } catch (e) {
             return 50; // default safe load if table not ready
         }
