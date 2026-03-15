@@ -75,14 +75,17 @@ export class WorkloadExecutor {
      * RPC job: forwards JSON-RPC call to chain_rpc_url, returns result.
      */
     private async executeRPC(job: Job, signal: AbortSignal): Promise<any> {
+        // Use chain-specific RPC URL from job payload, fall back to constructor default
+        const targetUrl = job.payload.chain_rpc_url || this.chainRpcUrl;
+
         const rpcPayload = {
             jsonrpc: '2.0',
-            id: 1,
+            id: job.payload.id || 1,
             method: job.payload.method || 'eth_blockNumber',
             params: job.payload.params || []
         };
 
-        const resp = await axios.post(this.chainRpcUrl, rpcPayload, { signal });
+        const resp = await axios.post(targetUrl, rpcPayload, { signal });
         if (resp.data.error) {
             throw new Error(`RPC error: ${resp.data.error.message}`);
         }
