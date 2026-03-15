@@ -231,23 +231,37 @@ export class OperationsEngine {
       finalPrice = pricing.price_usdt || 0;
     }
 
-    // 5. Record Revenue Event (Phase 34 Hardened — full billing columns)
+    // 5. Record Revenue Event + Ledger Write (Atomic Transaction)
+    // Both the revenue event and ledger entry are written in a single transaction.
+    // If either fails, both are rolled back — no orphaned revenue events.
     const epochId = this.initEpoch();
     const billingAmount = finalPrice;
     const unitCost = dynamicRule?.base_price_usdt || pricing.price_usdt || 0;
 
-    const res = this.db.prepare(`
-        INSERT INTO revenue_events_v2 
-        (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at, metadata_hash,
-         price_version, surge_multiplier, unit_cost, unit_count)
-        VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1)
-    `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
-      priceVersion, surgeMultiplier, unitCost]);
+    let res;
+    const recordRevenue = this.db.transaction(() => {
+      res = this.db.prepare(`
+          INSERT INTO revenue_events_v2
+          (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at, metadata_hash,
+           price_version, surge_multiplier, unit_cost, unit_count)
+          VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1)
+      `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
+        priceVersion, surgeMultiplier, unitCost]);
+    });
 
-    // [Phase 26] Economic Ledger Recording
     if (this.ledger && billingAmount > 0) {
-      try {
-        await this.ledger.createTxn({
+      // Wrap revenue INSERT + ledger double-entry in one transaction
+      const recordRevenueWithLedger = this.db.transaction(() => {
+        res = this.db.prepare(`
+            INSERT INTO revenue_events_v2
+            (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at, metadata_hash,
+             price_version, surge_multiplier, unit_cost, unit_count)
+            VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1)
+        `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
+          priceVersion, surgeMultiplier, unitCost]);
+
+        // Ledger double-entry within the same transaction
+        this.ledger.createTxnSync({
           event_type: 'revenue',
           reference_type: 'revenue_event',
           reference_id: request_id,
@@ -258,9 +272,12 @@ export class OperationsEngine {
             { account_key: 'PLATFORM_REVENUE_USDT', direction: 'credit', amount_usdt: billingAmount }
           ]
         });
-      } catch (e) {
-        console.error("Ledger Write Failed for Revenue:", e.message);
-      }
+      });
+
+      recordRevenueWithLedger();
+    } else {
+      // No ledger available — record revenue event alone
+      recordRevenue();
     }
 
     // [Phase Q4] Record execution for circuit breaker counters
