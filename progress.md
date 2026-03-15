@@ -249,3 +249,32 @@ Tests cover:
 - Demand buffer: backpressure, rate limiting, op_type validation
 - Revenue attribution: workload counting, profitability aggregation
 Commit: 4471d72
+
+---
+
+## Stage 8 — Production Launch Sequence
+**Status: COMPLETE**
+
+### Task 8.1 — Production Environment Config Validation
+Status: COMPLETE
+Files: apps/api/src/utils/validateEnv.js
+Verification: PASSED — blocks dev secrets in production, requires all secrets, validates adapter config, collect-all-errors pattern
+Commit: 3cd52e7
+
+### Task 8.2 — Deep Health Check Endpoint
+Status: COMPLETE
+Files: apps/api/src/gateway/routes.js
+Verification: PASSED — /health/deep checks database, Redis, active nodes, memory; returns 503 on critical failure
+Commit: 46704b3
+
+### Task 8.3 — Graceful Shutdown Handler
+Status: COMPLETE
+Files: apps/api/server.js
+Verification: PASSED — SIGTERM/SIGINT handlers, ordered teardown, 10s force-exit, uncaught exception handling
+Commit: 73629fe
+
+### Task 8.4 — Production Readiness Checklist
+Status: COMPLETE
+Files: apps/api/src/utils/production_checklist.js, apps/api/src/gateway/routes.js
+Verification: PASSED — 17 checks across 8 categories, /ops/readiness admin endpoint, 503 on critical failures
+Commit: d7b6cc9
