@@ -30,8 +30,8 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
     const app = createApp(db);
     const PORT = process.env.PORT || 8080;
 
-    app.listen(PORT, async () => {
-        logger.info(`🚀 Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: process.env.DB_TYPE });
+    const server = app.listen(PORT, async () => {
+        logger.info(`Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: process.env.DB_TYPE });
 
         // Start Deposit Detector if Real Settlement is enabled
         if (process.env.FEATURE_REAL_SETTLEMENT === 'true') {
@@ -45,5 +45,52 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         } else {
             logger.info("Simulated mode - Deposit Detector offline.");
         }
+    });
+
+    // ── Graceful Shutdown ────────────────────────────────────────────
+    let shuttingDown = false;
+
+    async function gracefulShutdown(signal) {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        logger.info(`Received ${signal}. Starting graceful shutdown...`);
+
+        // 1. Stop accepting new connections
+        server.close(() => {
+            logger.info('HTTP server closed');
+        });
+
+        // 2. Allow in-flight requests to complete (max 10s)
+        const forceExit = setTimeout(() => {
+            logger.warn('Forced shutdown after timeout');
+            process.exit(1);
+        }, 10_000);
+
+        try {
+            // 3. Close database connection
+            try { db.close(); } catch (e) { /* already closed */ }
+            logger.info('Database connection closed');
+
+            clearTimeout(forceExit);
+            logger.info('Graceful shutdown complete');
+            process.exit(0);
+        } catch (e) {
+            logger.error('Error during shutdown', { error: e.message });
+            clearTimeout(forceExit);
+            process.exit(1);
+        }
+    }
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Handle uncaught errors
+    process.on('uncaughtException', (err) => {
+        logger.error('Uncaught Exception', { error: err.message, stack: err.stack });
+        gracefulShutdown('uncaughtException');
+    });
+
+    process.on('unhandledRejection', (reason) => {
+        logger.error('Unhandled Rejection', { error: String(reason) });
     });
 }
