@@ -413,14 +413,24 @@ export class OperationsEngine {
 
   initEpoch() {
     const now = Math.floor(Date.now() / 1000);
-    const existing = this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get([]);
-    if (existing) {
-      this.currentEpochId = existing.id;
-      return existing.id;
-    }
+    const epochDuration = parseInt(process.env.EPOCH_DURATION) || 3600;
+    const epochSlot = Math.floor(now / epochDuration);
 
-    const res = this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-    this.currentEpochId = res.lastInsertRowid;
+    // Atomic UPSERT: INSERT or ignore if epoch for this slot already exists.
+    // This eliminates the race condition where concurrent requests could create
+    // duplicate OPEN epochs between the SELECT and INSERT.
+    this.db.prepare(
+      `INSERT INTO epochs (starts_at, status, epoch_slot)
+       VALUES (?, 'OPEN', ?)
+       ON CONFLICT (epoch_slot) DO NOTHING`
+    ).run([now, epochSlot]);
+
+    // Always fetch the canonical epoch for this slot
+    const epoch = this.db.prepare(
+      `SELECT id FROM epochs WHERE epoch_slot = ?`
+    ).get([epochSlot]);
+
+    this.currentEpochId = epoch.id;
     return this.currentEpochId;
   }
 
