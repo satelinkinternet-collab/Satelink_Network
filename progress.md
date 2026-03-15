@@ -120,3 +120,32 @@ Status: COMPLETE
 Files: apps/api/src/core/config/economics.js, apps/api/src/core/operations_engine.js
 Verification: PASSED — single source of truth, surge capped at 3x
 Commit: 9d42dfd
+
+---
+
+## Stage 4 — Workload Execution Layer
+**Status: COMPLETE**
+
+### Task 4.1 — Enable RPC Infrastructure Workloads
+Status: COMPLETE
+Files: apps/api/src/workloads/rpc_gateway/rpc_gateway.js, agents/node-agent/src/executor.ts
+Verification: PASSED — chain RPC URL whitelist (6 chains), JSON-RPC 2.0 validation, $0.0003 pricing, executor uses chain_rpc_url from payload
+Commit: 0b6e73a
+
+### Task 4.2 — Enable AI Inference Workloads
+Status: COMPLETE
+Files: apps/api/src/gateway/routes/ai_api.js
+Verification: PASSED — model registry with per-model pricing/timeouts, 32KB prompt limit, GET /models endpoint
+Commit: a1539cf
+
+### Task 4.3 — Enable Webhook Delivery Workloads
+Status: COMPLETE
+Files: apps/api/src/workloads/webhook_delivery/webhook_worker.js
+Verification: PASSED — SSRF protection (private IP blocking), 64KB payload limit, retry policy validation, $0.001 pricing
+Commit: 804b9bf
+
+### Task 4.4 — Enable Automation Job Execution
+Status: COMPLETE
+Files: apps/api/src/workloads/automation_jobs/automation_scheduler.js
+Verification: PASSED — step validation with SSRF protection, max 10 steps, per-step pricing ($0.01), one-shot /run endpoint
+Commit: ac9c241
