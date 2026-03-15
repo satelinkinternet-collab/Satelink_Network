@@ -52,6 +52,54 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Health & Metrics ──
     app.get("/health", (req, res) => res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" }));
+
+    // Deep health check — verifies all subsystems
+    app.get("/health/deep", async (req, res) => {
+        const checks = {};
+        let allHealthy = true;
+
+        // Database
+        try {
+            db.prepare('SELECT 1').get();
+            checks.database = { status: 'ok' };
+        } catch (e) {
+            checks.database = { status: 'error', error: e.message };
+            allHealthy = false;
+        }
+
+        // Redis / Job Queue
+        try {
+            const length = await JobQueue.getLength();
+            checks.redis = { status: 'ok', queue_depth: length };
+        } catch (e) {
+            checks.redis = { status: 'error', error: e.message };
+            // Redis failure is degraded, not critical
+        }
+
+        // Node capacity
+        try {
+            const row = db.prepare("SELECT COUNT(*) as cnt FROM registered_nodes WHERE active = 1").get();
+            checks.nodes = { status: 'ok', active_count: row?.cnt || 0 };
+        } catch (e) {
+            checks.nodes = { status: 'unknown', error: e.message };
+        }
+
+        // Memory
+        const mem = process.memoryUsage();
+        checks.memory = {
+            status: mem.heapUsed / 1024 / 1024 > 512 ? 'warn' : 'ok',
+            heap_mb: Math.round(mem.heapUsed / 1024 / 1024),
+            rss_mb: Math.round(mem.rss / 1024 / 1024)
+        };
+
+        const httpStatus = allHealthy ? 200 : 503;
+        res.status(httpStatus).json({
+            ok: allHealthy,
+            uptime: process.uptime(),
+            env: process.env.NODE_ENV,
+            checks
+        });
+    });
     app.get("/metrics", async (req, res) => {
         res.set('Content-Type', client.register.contentType);
         res.end(await client.register.metrics());
