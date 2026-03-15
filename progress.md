@@ -149,3 +149,44 @@ Status: COMPLETE
 Files: apps/api/src/workloads/automation_jobs/automation_scheduler.js
 Verification: PASSED — step validation with SSRF protection, max 10 steps, per-step pricing ($0.01), one-shot /run endpoint
 Commit: ac9c241
+
+---
+
+## Stage 5 — Infrastructure Market Layer
+**Status: COMPLETE**
+
+### Task 5.1 — Wire Demand API into Route Layer
+Status: COMPLETE
+Files: apps/api/src/gateway/routes.js
+Verification: PASSED — /v1/demand routes mounted, DemandRouter drain loop started, JobQueue bridge adapter
+Commit: e93cc4c
+
+### Task 5.2 — Build Marketplace Supply/Demand Display Endpoints
+Status: COMPLETE
+Files: apps/api/src/gateway/routes/public_marketplace.js
+Verification: PASSED — /pricing, /supply, /demand endpoints with graceful DB fallbacks
+Commit: e795eeb
+
+### Task 5.3 — Implement Workload-to-Node Matching Algorithm
+Status: COMPLETE
+Files: apps/api/src/queue/node_capacity_manager.js
+Verification: PASSED — matchWorkload() with composite scoring (capacity 30%, reputation 30%, latency 25%, affinity 15%)
+Commit: 924322f
+
+### Task 5.4 — Add Per-Workload Revenue Attribution
+Status: COMPLETE
+Files: apps/api/src/workloads/workload_metrics.js
+Verification: PASSED — revenue_attribution table, recordAttribution() UPSERT, getAttribution(), getProfitability()
+Commit: 1e0dbbd
+
+### Task 5.5 — Expose SLA Plans and Profitability to Marketplace
+Status: COMPLETE
+Files: apps/api/src/gateway/routes/public_marketplace.js, apps/api/src/gateway/routes.js
+Verification: PASSED — /sla/plans with fallback defaults, /profitability endpoint, marketplace router mounted
+Commit: a0f64f4
+
+### Task 5.6 — Wire SLA Engine into Operations Engine
+Status: COMPLETE
+Files: apps/api/src/gateway/routes/rpc.js, apps/api/src/scheduler/job_scheduler.js
+Verification: PASSED — SLAEngine injected at both OperationsEngine construction sites, graceful fallback
+Commit: 803f148
