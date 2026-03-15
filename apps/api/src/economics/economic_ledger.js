@@ -117,6 +117,92 @@ export class EconomicLedger {
         return { txnId };
     }
 
+    /**
+     * Synchronous version of createTxn for use inside an outer db.transaction().
+     * Uses this.db directly so all writes participate in the caller's transaction.
+     */
+    createTxnSync({ event_type, reference_type, reference_id, memo, created_by, lines }) {
+        if (!lines || lines.length < 2) throw new Error("Transaction must have at least 2 lines");
+
+        let sumDebit = 0;
+        let sumCredit = 0;
+        for (const line of lines) {
+            if (line.amount_usdt < 0) throw new Error("Amounts must be non-negative");
+            if (line.direction === 'debit') sumDebit += line.amount_usdt;
+            else if (line.direction === 'credit') sumCredit += line.amount_usdt;
+            else throw new Error(`Invalid direction: ${line.direction}`);
+        }
+
+        if (Math.abs(sumDebit - sumCredit) > 0.000001) {
+            throw new Error(`Unbalanced Txn: Debit ${sumDebit} != Credit ${sumCredit}`);
+        }
+
+        const txnId = `txn_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+        const now = Date.now();
+
+        // Ensure accounts exist
+        for (const line of lines) {
+            if (line.account_type && line.label) {
+                this.db.prepare(`
+                    INSERT OR IGNORE INTO economic_accounts (account_key, account_type, label, created_at)
+                    VALUES (?, ?, ?, ?)
+                `).run([line.account_key, line.account_type, line.label, now]);
+            }
+        }
+
+        // Insert lines & chain
+        let lineNo = 1;
+        for (const line of lines) {
+            const res = this.db.prepare(`
+                INSERT INTO economic_ledger_entries
+                (txn_id, line_no, account_key, direction, amount_usdt, memo, event_type, reference_type, reference_id, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run([txnId, lineNo, line.account_key, line.direction, line.amount_usdt, memo, event_type, reference_type, reference_id, created_by, now]);
+
+            const entryId = res.lastInsertRowid;
+
+            const lastChain = this.db.prepare("SELECT hash_current FROM economic_ledger_chain ORDER BY id DESC LIMIT 1").get([]);
+            const prevHash = lastChain ? lastChain.hash_current : 'GENESIS';
+
+            const canonical = JSON.stringify({
+                txn_id: txnId, line_no: lineNo, account_key: line.account_key,
+                direction: line.direction, amount_usdt: line.amount_usdt,
+                event_type, reference_type, reference_id, created_at: now
+            });
+
+            const currentHash = crypto.createHash('sha256').update(canonical + prevHash).digest('hex');
+
+            this.db.prepare(`
+                INSERT INTO economic_ledger_chain
+                (ledger_entry_id, txn_id, hash_prev, hash_current, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            `).run([entryId, txnId, prevHash, currentHash, now]);
+
+            lineNo++;
+        }
+
+        // Update balance cache
+        const keys = new Set(lines.map(l => l.account_key));
+        for (const key of keys) {
+            const usage = this.db.prepare(`
+                SELECT
+                    SUM(CASE WHEN direction='debit' THEN amount_usdt ELSE 0 END) as debits,
+                    SUM(CASE WHEN direction='credit' THEN amount_usdt ELSE 0 END) as credits
+                FROM economic_ledger_entries WHERE account_key = ?
+            `).get([key]);
+
+            const bal = (usage?.debits || 0) - (usage?.credits || 0);
+
+            this.db.prepare(`
+                INSERT INTO economic_account_balances (account_key, balance_usdt, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(account_key) DO UPDATE SET balance_usdt=excluded.balance_usdt, updated_at=excluded.updated_at
+            `).run([key, bal, now]);
+        }
+
+        return { txnId };
+    }
+
     getAccount(key) {
         return this.db.prepare("SELECT * FROM economic_accounts WHERE account_key = ?").get([key]);
     }
