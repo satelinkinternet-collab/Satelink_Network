@@ -68,9 +68,12 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             allHealthy = false;
         }
 
-        // Redis / Job Queue
+        // Redis / Job Queue (3s timeout to prevent hanging when Redis is down)
         try {
-            const length = await JobQueue.getLength();
+            const length = await Promise.race([
+                JobQueue.getLength(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('redis_timeout')), 3000))
+            ]);
             checks.redis = { status: 'ok', queue_depth: length };
         } catch (e) {
             checks.redis = { status: 'error', error: e.message };
