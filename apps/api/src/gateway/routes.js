@@ -62,6 +62,12 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/v1/webhook', createWebhookRouter(db));
     app.use('/v1/ai', createAiRouter(db));
 
+    // ── Demand Layer (submit → buffer → router → pipeline) ──
+    const demandPipeline = { push_job: (job) => JobQueue.enqueue(job) };
+    const { router: demandApiRouter, demandRouter: demandDrainLoop } = createDemandRouter(db, demandPipeline);
+    app.use('/v1/demand', demandApiRouter);
+    demandDrainLoop.start();
+
     const buffer = new DemandBuffer();
     const acquisitionEngine = new WorkloadAcquisitionEngine(buffer);
     acquisitionEngine.start();
