@@ -5,6 +5,8 @@ import { ethers } from 'ethers';
 // CONSTANTS
 const MAX_BATCH_ITEMS = 20;
 const MAX_BATCH_TOTAL_USDT = 50.0; // Restrictive default
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [2000, 4000, 8000]; // Exponential backoff
 
 // Conditional import for Defender to avoid breaking non-prod environments
 let DefenderRelayProvider, DefenderRelaySigner;
@@ -64,6 +66,65 @@ export class EvmAdapter extends BaseSettlementAdapter {
 
     getName() {
         return `EVM:${this.chainName}`;
+    }
+
+    /**
+     * Local nonce manager: fetch from chain, check DB for pending txs to avoid collisions.
+     */
+    async _acquireNonce() {
+        const onChainNonce = await this.wallet.getNonce('pending');
+        // Check DB for max nonce we've used that is still 'sent' (not confirmed/failed)
+        try {
+            const row = this.db.prepare(
+                `SELECT MAX(nonce) as max_nonce FROM settlement_evm_txs
+                 WHERE chain_name = ? AND status = 'sent'`
+            ).get([this.chainName]);
+            if (row?.max_nonce != null && row.max_nonce >= onChainNonce) {
+                return row.max_nonce + 1;
+            }
+        } catch (e) {
+            // Table may not exist yet
+        }
+        return onChainNonce;
+    }
+
+    /**
+     * Gas price oracle: fetch current gas price from Fuse RPC with fallback.
+     */
+    async _getGasPrice() {
+        try {
+            const feeData = await this.provider.getFeeData();
+            return feeData.maxFeePerGas || feeData.gasPrice || ethers.parseUnits('10', 'gwei');
+        } catch (e) {
+            console.warn('[EvmAdapter] Gas oracle failed, using fallback:', e.message);
+            return ethers.parseUnits('10', 'gwei');
+        }
+    }
+
+    /**
+     * Retry wrapper with exponential backoff for transient failures.
+     */
+    async _withRetry(fn, context = '') {
+        for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                return await fn();
+            } catch (e) {
+                const isLast = attempt === MAX_RETRY_ATTEMPTS;
+                if (isLast) throw e;
+
+                const isTransient = e.message?.includes('TIMEOUT') ||
+                    e.message?.includes('nonce') ||
+                    e.message?.includes('replacement fee too low') ||
+                    e.code === 'NETWORK_ERROR' ||
+                    e.code === 'SERVER_ERROR';
+
+                if (!isTransient) throw e;
+
+                const delay = RETRY_DELAYS_MS[attempt] || 8000;
+                console.warn(`[EvmAdapter] ${context} attempt ${attempt + 1} failed: ${e.message}. Retrying in ${delay}ms...`);
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
     }
 
     async estimateBatch(batch) {
@@ -148,81 +209,76 @@ export class EvmAdapter extends BaseSettlementAdapter {
         // In a real system, we'd use a nonce manager service. 
         // Here, we grab current nonce + count of pending.
 
-        let startNonce = await this.wallet.getNonce();
-        // Check DB for any 'sent' but unconfirmed txs to ensure we don't reuse nonce?
-        // Actually, ethers getNonce() handles pending if using correct provider.
-
-        // However, better robustness: maintain local nonce counter in DB.
-        // Let's rely on sequential execution for this MVP batch.
+        // Nonce management: acquire starting nonce from chain + DB
+        let currentNonce = await this._acquireNonce();
+        const gasPrice = await this._getGasPrice();
 
         for (const item of batch.items) {
-            // Check if exists
-            const existing = await this.db.get("SELECT * FROM settlement_evm_txs WHERE batch_id=? AND item_id=?", [batch.id, item.id]);
+            // Idempotency: check if already processed
+            let existing;
+            try {
+                existing = this.db.prepare(
+                    "SELECT * FROM settlement_evm_txs WHERE batch_id=? AND item_id=?"
+                ).get([batch.id, item.id]);
+            } catch (e) { /* table may not exist */ }
 
             if (existing && (existing.status === 'sent' || existing.status === 'confirmed')) {
                 results.push({ item_id: item.id, status: existing.status, tx_hash: existing.tx_hash });
                 continue;
             }
 
-            // Prepare payload
             let txHash = null;
             let status = 'failed';
 
             try {
-                // Send TX
-                let txResponse;
-                const nonce = startNonce++; // Simplistic nonce increment
+                // Send TX with retry for transient failures
+                const nonce = currentNonce++;
 
-                if (batch.currency === this.nativeSymbol) {
-                    const amountWei = ethers.parseEther(item.amount.toString());
-                    txResponse = await this.wallet.sendTransaction({
-                        to: item.wallet,
-                        value: amountWei,
-                        nonce: nonce
-                    });
-                } else {
-                    const token = this.tokenMap[batch.currency];
-                    const contract = new ethers.Contract(token.address, [
-                        "function transfer(address to, uint256 value) returns (bool)"
-                    ], this.wallet);
-                    const amountUnits = ethers.parseUnits(item.amount.toString(), token.decimals);
-                    txResponse = await contract.transfer(item.wallet, amountUnits, { nonce: nonce });
-                }
+                const txResponse = await this._withRetry(async () => {
+                    if (batch.currency === this.nativeSymbol) {
+                        const amountWei = ethers.parseEther(item.amount.toString());
+                        return this.wallet.sendTransaction({
+                            to: item.wallet,
+                            value: amountWei,
+                            nonce,
+                            gasPrice
+                        });
+                    } else {
+                        const token = this.tokenMap[batch.currency];
+                        const contract = new ethers.Contract(token.address, [
+                            "function transfer(address to, uint256 value) returns (bool)"
+                        ], this.wallet);
+                        const amountUnits = ethers.parseUnits(item.amount.toString(), token.decimals);
+                        return contract.transfer(item.wallet, amountUnits, { nonce, gasPrice });
+                    }
+                }, `Item ${item.id}`);
 
                 txHash = txResponse.hash;
                 status = 'sent';
 
-                // Insert/Update DB
+                // Persist to DB
                 if (existing) {
-                    await this.db.query("UPDATE settlement_evm_txs SET status=?, tx_hash=?, updated_at=?, nonce=? WHERE id=?",
-                        ['sent', txHash, Date.now(), nonce, existing.id]);
+                    this.db.prepare(
+                        "UPDATE settlement_evm_txs SET status=?, tx_hash=?, updated_at=?, nonce=? WHERE id=?"
+                    ).run(['sent', txHash, Date.now(), nonce, existing.id]);
                 } else {
-                    await this.db.query(`
+                    this.db.prepare(`
                         INSERT INTO settlement_evm_txs (batch_id, item_id, chain_name, asset_symbol, to_address, amount_atomic, nonce, tx_hash, status, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [batch.id, item.id, this.chainName, batch.currency, item.wallet, item.amount.toString(), nonce, txHash, 'sent', Date.now(), Date.now()]);
+                    `).run([batch.id, item.id, this.chainName, batch.currency, item.wallet, item.amount.toString(), nonce, txHash, 'sent', Date.now(), Date.now()]);
                 }
 
-                // Wait for 1 confirmation (MVP blocking, or we return 'sent' and let status check handle it)
-                // To keep engine simple, let's wait for 1 connfirmation if it's fast (testnet). 
-                // But generally, we should return 'submitted' and have a poller.
-                // Given the Requirement "running -> completed only when all items confirmed", we can return 'processing' status to engine.
-
-                // For MVP: let's NOT wait here, just return sent. Engine polls? 
-                // Engine doesn't have a poller yet.
-                // Engine loop calls createBatch. createBatch can block?? No, that timeouts.
-                // The engine needs `getBatchStatus` to pull updates.
-
             } catch (e) {
-                console.error(`[EvmAdapter] Item ${item.id} failed:`, e);
-                // Log failure
+                console.error(`[EvmAdapter] Item ${item.id} failed after retries:`, e.message);
                 if (existing) {
-                    await this.db.query("UPDATE settlement_evm_txs SET status='failed', error_message=?, updated_at=? WHERE id=?", [e.message, Date.now(), existing.id]);
+                    this.db.prepare(
+                        "UPDATE settlement_evm_txs SET status='failed', error_message=?, updated_at=? WHERE id=?"
+                    ).run([e.message, Date.now(), existing.id]);
                 } else {
-                    await this.db.query(`
+                    this.db.prepare(`
                         INSERT INTO settlement_evm_txs (batch_id, item_id, chain_name, asset_symbol, to_address, amount_atomic, status, error_message, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?)
-                    `, [batch.id, item.id, this.chainName, batch.currency, item.wallet, item.amount.toString(), e.message, Date.now(), Date.now()]);
+                    `).run([batch.id, item.id, this.chainName, batch.currency, item.wallet, item.amount.toString(), e.message, Date.now(), Date.now()]);
                 }
             }
         }
@@ -262,7 +318,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
             for (const tx of txs.filter(t => t.status === 'sent')) {
                 try {
                     const receipt = await this.provider.getTransactionReceipt(tx.tx_hash);
-                    if (receipt && receipt.datus === 1) { // 1 = success
+                    if (receipt && receipt.status === 1) { // 1 = success
                         await this.db.query("UPDATE settlement_evm_txs SET status='confirmed', updated_at=? WHERE id=?", [Date.now(), tx.id]);
                     } else if (receipt && receipt.status === 0) {
                         await this.db.query("UPDATE settlement_evm_txs SET status='failed', error_message='Reverted', updated_at=? WHERE id=?", [Date.now(), tx.id]);
