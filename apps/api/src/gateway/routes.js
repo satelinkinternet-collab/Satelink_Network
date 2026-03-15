@@ -37,6 +37,7 @@ import { createJobSubmitRouter } from './routes/job_submit.js';
 import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
 import { createPublicMarketplaceRouter } from './routes/public_marketplace.js';
+import { readinessHandler } from '../utils/production_checklist.js';
 
 client.collectDefaultMetrics();
 
@@ -100,6 +101,9 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             checks
         });
     });
+    // Production readiness checklist (admin-only)
+    app.get("/ops/readiness", requireAdmin, readinessHandler(db));
+
     app.get("/metrics", async (req, res) => {
         res.set('Content-Type', client.register.contentType);
         res.end(await client.register.metrics());
