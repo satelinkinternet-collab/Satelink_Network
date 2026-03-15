@@ -92,6 +92,55 @@ export function attachHeartbeat(app, db) {
             // node_stats table may not exist yet — non-fatal
         }
 
+        // Track last heartbeat timestamp for watchdog
+        try {
+            db.prepare(`
+                UPDATE registered_nodes SET last_heartbeat_at = ?, active = 1 WHERE wallet = ?
+            `).run(Date.now(), nodeWallet);
+        } catch (e) {
+            // Column may not exist yet — non-fatal
+        }
+
         return res.status(200).json({ status: "ok" });
     });
+}
+
+/**
+ * Heartbeat Watchdog — runs on interval, deactivates nodes that missed heartbeats.
+ * Nodes with last_heartbeat_at older than STALE_THRESHOLD_MS are marked inactive.
+ */
+const STALE_THRESHOLD_MS = 120_000; // 2 minutes without heartbeat
+const WATCHDOG_INTERVAL_MS = 30_000; // check every 30 seconds
+
+export function startHeartbeatWatchdog(db) {
+    // Ensure column exists
+    try {
+        db.prepare('ALTER TABLE registered_nodes ADD COLUMN last_heartbeat_at INTEGER').run();
+    } catch (e) { /* column already exists */ }
+    try {
+        db.prepare('ALTER TABLE registered_nodes ADD COLUMN active INTEGER DEFAULT 1').run();
+    } catch (e) { /* column already exists */ }
+
+    const timer = setInterval(() => {
+        try {
+            const cutoff = Date.now() - STALE_THRESHOLD_MS;
+            const result = db.prepare(`
+                UPDATE registered_nodes
+                SET active = 0
+                WHERE active = 1
+                  AND last_heartbeat_at IS NOT NULL
+                  AND last_heartbeat_at < ?
+                  AND is_flagged = 0
+            `).run(cutoff);
+
+            if (result.changes > 0) {
+                console.log(`[HeartbeatWatchdog] Deactivated ${result.changes} stale node(s)`);
+            }
+        } catch (e) {
+            // Non-fatal — watchdog is best-effort
+        }
+    }, WATCHDOG_INTERVAL_MS);
+
+    console.log('[HeartbeatWatchdog] Started — checking every 30s, threshold 120s');
+    return timer;
 }
