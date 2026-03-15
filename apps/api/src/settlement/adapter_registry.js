@@ -5,11 +5,11 @@ import { NodeOpsAdapter } from './adapters/NodeOpsAdapter.js';
 export class AdapterRegistry {
     constructor() {
         this.adapters = new Map();
-        this.activeAdapterName = 'SIMULATED'; // Default
-
-        // Register adapters internally if we want them available immediately
-        // Alternatively, the main app can register them. 
-        // For standard ones, let's allow manual or auto-registration.
+        // Default adapter: 'evm' in production, 'SIMULATED' in dev/test
+        const env = process.env.NODE_ENV || 'development';
+        const configuredAdapter = process.env.SETTLEMENT_ADAPTER;
+        this.activeAdapterName = configuredAdapter
+            || (env === 'production' ? 'EVM:FUSE' : 'SIMULATED');
     }
 
     register(instance) {
