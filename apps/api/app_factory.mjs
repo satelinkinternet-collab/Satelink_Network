@@ -3,7 +3,7 @@ import express from "express";
 import { attachBaseMiddleware } from "./src/security/middleware.js";
 import { attachSchema } from "./src/core/schema.js";
 import { attachSecurity } from "./src/security/security.js";
-import { attachHeartbeat } from "./src/nodes/heartbeat.js";
+import { attachHeartbeat, startHeartbeatWatchdog } from "./src/nodes/heartbeat.js";
 import { attachRoutes } from "./src/gateway/routes.js";
 import { attachUI } from "./src/gateway/ui.js";
 
@@ -15,6 +15,7 @@ export function createApp(db) {
   attachSchema(db);
   attachSecurity(app, db);
   attachHeartbeat(app, db);
+  startHeartbeatWatchdog(db);
   attachRoutes(app, db);
   attachUI(app, db);
 
