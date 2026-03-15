@@ -135,6 +135,8 @@ export function startHeartbeatWatchdog(db) {
 
             if (result.changes > 0) {
                 console.log(`[HeartbeatWatchdog] Deactivated ${result.changes} stale node(s)`);
+                // Reassign jobs from deactivated nodes
+                reassignOrphanedJobs(db);
             }
         } catch (e) {
             // Non-fatal — watchdog is best-effort
@@ -143,4 +145,36 @@ export function startHeartbeatWatchdog(db) {
 
     console.log('[HeartbeatWatchdog] Started — checking every 30s, threshold 120s');
     return timer;
+}
+
+/**
+ * Reassign jobs that were dispatched to nodes that are now inactive.
+ * Moves them back to QUEUED status so the scheduler picks them up again.
+ */
+function reassignOrphanedJobs(db) {
+    try {
+        // Find jobs assigned to inactive nodes and reset them
+        const result = db.prepare(`
+            UPDATE job_queue_log
+            SET status = 'QUEUED', route = 'REASSIGNED'
+            WHERE status = 'DISPATCHED'
+              AND route IN (
+                  SELECT wallet FROM registered_nodes WHERE active = 0
+              )
+        `).run();
+
+        if (result.changes > 0) {
+            console.log(`[HeartbeatWatchdog] Reassigned ${result.changes} orphaned job(s) from inactive nodes`);
+        }
+    } catch (e) {
+        // job_queue_log table may not have the expected columns — non-fatal
+    }
+
+    // Also reset active_jobs count for inactive nodes in capacity tracking
+    try {
+        db.prepare(`
+            UPDATE node_capacity SET active_jobs = 0
+            WHERE node_id IN (SELECT wallet FROM registered_nodes WHERE active = 0)
+        `).run();
+    } catch (e) { /* non-fatal */ }
 }
