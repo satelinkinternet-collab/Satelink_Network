@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { REVENUE_SPLIT, MAX_SURGE_MULTIPLIER, applySplit, capSurge } from "./config/economics.js";
 
 const OP_CONFIG = {
   'api_relay_execution': { price: 0.01, limit: 100, node_limit: 200 },
@@ -223,7 +224,7 @@ export class OperationsEngine {
       if (dynamicRule.surge_enabled) {
         const load = this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?").get([minuteAgo]);
         if (load.c > dynamicRule.surge_threshold) {
-          surgeMultiplier = dynamicRule.surge_multiplier;
+          surgeMultiplier = capSurge(dynamicRule.surge_multiplier);
           finalPrice = finalPrice * surgeMultiplier;
         }
       }
@@ -321,9 +322,7 @@ export class OperationsEngine {
       const totalRevenue = revRow?.total || 0;
 
       if (totalRevenue > 0) {
-        const nodePool = totalRevenue * 0.50;
-        const platformFee = totalRevenue * 0.30;
-        const distroPool = totalRevenue * 0.20;
+        const { nodePool, platformFee, distributionPool: distroPool } = applySplit(totalRevenue);
 
         // Record immutable splits
         tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, ?)").run([id, platformFee, now]);
@@ -469,9 +468,7 @@ export class OperationsEngine {
     const revRow = this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE epoch_id = ?").get([epochId]);
     const totalRevenue = revRow.total || 0;
 
-    const platformFee = totalRevenue * 0.30;
-    const nodePool = totalRevenue * 0.50;
-    const reserve = totalRevenue * 0.20;
+    const { nodePool, platformFee, distributionPool: reserve } = applySplit(totalRevenue);
 
     const sum = platformFee + nodePool + reserve;
     const diff = Math.abs(totalRevenue - sum);
