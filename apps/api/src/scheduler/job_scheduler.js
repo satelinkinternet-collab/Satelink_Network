@@ -3,6 +3,7 @@ import { ProfitabilityEngine } from '../economics/profitability_engine.js';
 import { PricingEngine } from '../economics/pricing_engine.js';
 import { ExecutionRouter } from '../execution/executionRouter.js';
 import { OperationsEngine } from '../core/operations_engine.js';
+import { SLAEngine } from '../monitoring/sla_engine.js';
 import { JobMatchingEngine } from './job_matching_engine.js';
 import { JobEscrow } from '../settlement/job_escrow.js';
 import crypto from 'crypto';
@@ -15,6 +16,7 @@ export class JobScheduler {
         this.pricing = new PricingEngine(db);
         this.router = new ExecutionRouter(db);
         this.opsEngine = new OperationsEngine(db, null, null);
+        try { this.opsEngine.slaEngine = new SLAEngine(db); } catch (e) { /* SLA tables may not exist */ }
         this.matchingEngine = new JobMatchingEngine(db);
         this.escrow = new JobEscrow(db, this.opsEngine);
 
