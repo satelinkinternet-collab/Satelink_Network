@@ -190,3 +190,44 @@ Status: COMPLETE
 Files: apps/api/src/gateway/routes/rpc.js, apps/api/src/scheduler/job_scheduler.js
 Verification: PASSED — SLAEngine injected at both OperationsEngine construction sites, graceful fallback
 Commit: 803f148
+
+---
+
+## Stage 6 — Autonomous Network Controls
+**Status: COMPLETE**
+
+### Task 6.1 — Node Auto-Deactivation on Heartbeat Timeout
+Status: COMPLETE
+Files: apps/api/src/nodes/heartbeat.js, apps/api/app_factory.mjs
+Verification: PASSED — HeartbeatWatchdog deactivates nodes after 120s silence, tracks last_heartbeat_at
+Commit: 4b368c4
+
+### Task 6.2 — Job Reassignment on Node Failure
+Status: COMPLETE
+Files: apps/api/src/nodes/heartbeat.js
+Verification: PASSED — reassignOrphanedJobs() moves DISPATCHED jobs back to QUEUED, resets capacity
+Commit: 329c27e
+
+### Task 6.3 — Per-Node Circuit Breaker
+Status: COMPLETE
+Files: apps/api/src/nodes/node_circuit_breaker.js
+Verification: PASSED — CLOSED/OPEN/HALF_OPEN states, 5 failures/min threshold, DB persistence
+Commit: 4efe88e
+
+### Task 6.4 — Alert Severity Escalation
+Status: COMPLETE
+Files: apps/api/src/monitoring/ops/alerts.js
+Verification: PASSED — auto-escalation (info→warn 5x, warn→error 3x, error→critical 2x), critical bypass
+Commit: dfafdd0
+
+### Task 6.5 — Dynamic System Load Measurement
+Status: COMPLETE
+Files: apps/api/src/scheduler/job_scheduler.js
+Verification: PASSED — real metrics from queue depth + node utilization, replaced hardcoded 65%
+Commit: 9f9fd21
+
+### Task 6.6 — Auto-Remediation for Common Failures
+Status: COMPLETE
+Files: apps/api/src/monitoring/auto_remediation.js
+Verification: PASSED — queue overflow → pause, high failure rate → flag, memory pressure → GC
+Commit: ee23f7a
