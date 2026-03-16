@@ -18,7 +18,7 @@ export default function RecommendationsPage() {
 
     const fetchRecs = async () => {
         try {
-            const res = await fetch('/api/admin/ops/recommendations?status=pending');
+            const res = await fetch('/api/admin/autonomous/recommendations?status=pending');
             const data = await res.json();
             setRecs(data.recommendations || []);
         } catch (err) {
@@ -31,7 +31,7 @@ export default function RecommendationsPage() {
     const handleAction = async (id: string, action: 'accept' | 'reject') => {
         setProcessing(id);
         try {
-            await fetch(`/api/admin/ops/recommendations/${id}/${action}`, { method: 'POST' });
+            await fetch(`/api/admin/autonomous/recommendations/${id}/${action}`, { method: 'POST' });
             await fetchRecs();
         } catch (err) {
             console.error(err);
@@ -41,7 +41,7 @@ export default function RecommendationsPage() {
     };
 
     const triggerAnalysis = async () => {
-        await fetch('/api/admin/trigger', { method: 'POST' });
+        await fetch('/api/admin/autonomous/trigger', { method: 'POST' });
         setTimeout(fetchRecs, 1000); // Wait for job
     };
 

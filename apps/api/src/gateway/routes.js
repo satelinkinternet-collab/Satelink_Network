@@ -68,6 +68,7 @@ import { createAdminSLARouter } from './routes/admin_sla.js';
 import { createDistApiRouter } from './routes/dist_api_v2.js';
 import { createEntApiRouter } from './routes/ent_api_v2.js';
 import { createPublicPartnersRouter } from './routes/public_partners.js';
+import { createAdminAutonomousRouter } from './routes/admin_autonomous.js';
 
 client.collectDefaultMetrics();
 
@@ -167,11 +168,11 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Authentication Routes ──
     app.use(createUnifiedAuthRouter({ db }));
-    app.use(createEmbeddedAuthRouter(db));
+    app.use('/auth/embedded', createEmbeddedAuthRouter(db));
     app.use(createBuilderAuthRouter({ db }));
 
     // Dev-only test auth (auto-disabled in production via internal guard)
-    app.use('/__test', createDevAuthRouter({ db }));
+    app.use('/__test/auth', createDevAuthRouter({ db }));
 
     // ── User & Settings ──
     app.use('/me', createUserSettingsRouter(db));
@@ -181,10 +182,12 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── Node Operator Routes ──
     app.use('/v1/node', createNodeNetworkRouter(db));
     app.use('/node', requireJWT, createNodeApiRouter({ db }));
+    app.use('/api/node', requireJWT, createNodeApiRouter({ db })); // Alias for frontend /api/node/* calls
     app.use('/v1/node/lifecycle', requireJWT, createNodeLifecycleRouter(db));
 
     // ── Builder / Developer Routes ──
     app.use('/builder-api', requireJWT, createBuilderApiRouter({ db }, requireJWT));
+    app.use('/api/builder', requireJWT, createBuilderApiRouter({ db }, requireJWT)); // Alias for frontend /api/builder/* calls
 
     // ── Distributor & Enterprise Routes ──
     app.use('/dist-api', requireJWT, createDistApiRouter({ db }));
@@ -192,9 +195,26 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Public Routes (no auth required) ──
     app.use('/api/network', createPublicNodeRouter(db));
+    app.use('/api/network/marketplace', createPublicMarketplaceRouter(db)); // Alias for frontend
     app.use('/api/marketplace', createPublicMarketplaceRouter(db));
     app.use('/api/status', createPublicStatusRouter(db));
     app.use('/api/partners', createPublicPartnersRouter(db));
+
+    // ── Economics summary (used by RevenueSplitChart) ──
+    app.get('/api/economics/summary', async (req, res) => {
+        try {
+            const summary = getEconomicsSummary(db);
+            res.json({ ok: true, ...summary });
+        } catch (e) {
+            res.json({ ok: true, total_revenue: 0, node_share: 0, platform_share: 0, distribution_share: 0 });
+        }
+    });
+
+    // ── Settlement mode (used by useSettlementMode hook) ──
+    app.get('/settlement/mode', (req, res) => {
+        const mode = process.env.FEATURE_REAL_SETTLEMENT === 'true' ? 'live' : 'simulated';
+        res.json({ ok: true, mode, adapter: mode === 'live' ? 'evm' : 'simulated' });
+    });
 
     // ── Growth & Revenue ──
     app.use('/v1', createGrowthRouter(db).router);
@@ -215,13 +235,36 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/api/admin/reputation', requireAdmin, createAdminReputationRouter(db));
     app.use('/api/admin/lifecycle', requireAdmin, createAdminLifecycleRouter(db));
     app.use('/api/admin/network', requireAdmin, createAdminNetworkRouter(db));
+    // Aliases: frontend calls /api/admin/network/reputation and /api/admin/network/releases
+    app.use('/api/admin/network/reputation', requireAdmin, createAdminReputationRouter(db));
+    app.use('/api/admin/network', requireAdmin, createAdminLifecycleRouter(db));
     app.use('/api/admin/partners', requireAdmin, createAdminPartnersRouter(db));
     app.use('/api/admin/launch', requireAdmin, createAdminLaunchRouter(db));
     app.use('/api/admin/ledger', requireAdmin, createLedgerRouter(opsEngine, (req, res, next) => next()));
+    // Ledger execute endpoint (used by workload generator and admin dashboard)
+    app.post('/api/admin/ledger/execute', requireAdmin, async (req, res) => {
+        try {
+            const result = await opsEngine.executeOp(req.body);
+            res.json(result);
+        } catch (e) {
+            res.status(e.message.includes('Rate limit') ? 429 : 500).json({ ok: false, error: e.message });
+        }
+    });
+    // Ledger events endpoint (used by admin dashboard)
+    app.get('/api/admin/ledger/events', requireAdmin, async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit) || 50;
+            const rows = db.prepare?.("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT ?")?.all(limit) || [];
+            res.json({ ok: true, events: rows });
+        } catch (e) {
+            res.json({ ok: true, events: [] });
+        }
+    });
     app.use('/api/admin/economics', requireAdmin, createAdminEconomicsRouter(db, null, null, null));
     app.use('/api/admin/forensics', requireAdmin, createAdminForensicsRouter(db, {}));
     app.use('/api/admin/growth', requireAdmin, createAdminGrowthRouter(db, null));
     app.use('/api/admin/sla', requireAdmin, createAdminSLARouter(db, null));
+    app.use('/api/admin/autonomous', requireAdmin, createAdminAutonomousRouter(db, null));
 
     // ── Admin Control Room (comprehensive admin — handles 72+ routes) ──
     const controlRoomRouter = createAdminControlRoomRouter(opsEngine, {});
