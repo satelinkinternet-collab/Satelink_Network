@@ -1,3 +1,5 @@
+import { withdrawRateLimitMiddleware } from '../settlement/withdraw_service.js';
+
 export function attachSecurity(app, db) {
     const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
@@ -46,6 +48,11 @@ export function attachSecurity(app, db) {
         }
         next();
     });
+
+    // Withdrawal rate limit guard — applies to all withdrawal endpoints
+    app.post('/withdraw', withdrawRateLimitMiddleware);
+    app.post('/node/me/withdraw', withdrawRateLimitMiddleware);
+    app.post('/v1/settlement/withdraw', withdrawRateLimitMiddleware);
 
     // Treasury guard
     app.use((req, res, next) => {
