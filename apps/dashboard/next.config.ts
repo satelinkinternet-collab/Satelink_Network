@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       'auth', 'me', 'admin-api', 'node-api', 'builder-api', 'dist-api',
       'ent-api', 'pair', 'stream', 'support', 'beta', 'webhooks',
       'network-stats', 'partners', '__test', 'api', 'v1', 'rpc', 'node',
+      'treasury', 'network', 'heartbeat', 'exchange', 'marketplace',
+      'connectors', 'compute', 'capacity', 'amm', 'protocol', 'watchdog',
     ];
     return [
       ...apiPrefixes.map(prefix => ({
@@ -20,6 +22,7 @@ const nextConfig: NextConfig = {
         destination: `${API_BASE}/${prefix}/:path*`,
       })),
       { source: '/health', destination: `${API_BASE}/health` },
+      { source: '/metrics', destination: `${API_BASE}/metrics` },
       { source: '/metrics/json', destination: `${API_BASE}/metrics/json` },
     ];
   },
