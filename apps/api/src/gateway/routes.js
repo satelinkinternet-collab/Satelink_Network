@@ -195,7 +195,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/support', requireJWT, createSupportRouter(db));
 
     // ── Node Operator Routes ──
-    app.use('/v1/node', createNodeNetworkRouter(db));
+    app.use('/v1/node', createNodeNetworkRouter(db, opsEngine));
     app.use('/node', requireJWT, createNodeApiRouter({ db }));
     app.use('/api/node', requireJWT, createNodeApiRouter({ db })); // Alias for frontend /api/node/* calls
     app.use('/v1/node/lifecycle', requireJWT, createNodeLifecycleRouter(db));
