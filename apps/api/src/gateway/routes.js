@@ -101,6 +101,28 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         }
     });
 
+    // ── Network health (used by dashboard useNetworkHealth hook) ──
+    app.get("/api/network/health", async (req, res) => {
+        try {
+            const online = db.prepare?.("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1")?.get()?.c || 0;
+            const jailed = db.prepare?.("SELECT COUNT(*) as c FROM registered_nodes WHERE is_flagged = 1")?.get()?.c || 0;
+            const total = db.prepare?.("SELECT COUNT(*) as c FROM registered_nodes")?.get()?.c || 0;
+            res.json({ ok: true, data: { status: 'healthy', nodeHealth: { online, jailed, slashed: 0, total }, alerts: 0 } });
+        } catch (e) {
+            res.json({ ok: true, data: { status: 'degraded', nodeHealth: { online: 0, jailed: 0, slashed: 0, total: 0 }, alerts: 0 } });
+        }
+    });
+
+    // ── Network stats (alias for dashboard) ──
+    app.get("/api/network/stats", async (req, res) => {
+        try {
+            const stats = getNetworkStats(db);
+            res.json({ ok: true, ...stats });
+        } catch (e) {
+            res.json({ ok: true, nodes_online: 0, total_nodes: 0, uptime: process.uptime() });
+        }
+    });
+
     // ── New Distributed Job Queue Ingestion Layer ──
     app.use('/v1/jobs', createJobSubmitRouter(db));
     app.use('/v1/workload/rpc', createRpcGateway(db));
@@ -184,10 +206,11 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── RPC ──
     app.use("/rpc", createRpcRouter(db));
 
-    // ── Admin Control Room (settlement, system config, comprehensive admin) ──
-    app.use('/api/admin/command', requireAdmin, createAdminControlRoomRouter(opsEngine, {}));
+    // ── Beta Program (no admin required) ──
+    app.use('/beta', createBetaRouter({ db }));
+    app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
 
-    // ── Admin Sub-Routers ──
+    // ── Admin Sub-Routers (mounted before control room for path priority) ──
     app.use('/api/admin/revenue', requireAdmin, createAdminRevenueRouter(db));
     app.use('/api/admin/reputation', requireAdmin, createAdminReputationRouter(db));
     app.use('/api/admin/lifecycle', requireAdmin, createAdminLifecycleRouter(db));
@@ -199,24 +222,24 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/api/admin/forensics', requireAdmin, createAdminForensicsRouter(db, {}));
     app.use('/api/admin/growth', requireAdmin, createAdminGrowthRouter(db, null));
     app.use('/api/admin/sla', requireAdmin, createAdminSLARouter(db, null));
-    app.use('/beta', createBetaRouter({ db }));
-    app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
+
+    // ── Admin Control Room (comprehensive admin — handles 72+ routes) ──
+    const controlRoomRouter = createAdminControlRoomRouter(opsEngine, {});
+
+    // Settlement path compatibility: frontend calls /api/admin/settlement/*
+    // but control room defines routes at /services/settlement/*
+    app.use('/api/admin/settlement', requireAdmin, (req, res, next) => {
+        req.url = '/services/settlement' + req.url;
+        controlRoomRouter(req, res, next);
+    });
+
+    // Mount control room at /api/admin — catches all remaining admin paths
+    app.use('/api/admin', requireAdmin, controlRoomRouter);
 
     // ── Legacy admin-api catch-all for dashboard compatibility ──
-    app.all(/^\/admin-api(\/.*)?$/, requireAdmin, async (req, res) => {
-        // Return real system data instead of empty stub
-        try {
-            const nodes = await db.query("SELECT COUNT(*) as count FROM nodes WHERE status = 'active'");
-            const epochs = await db.query("SELECT * FROM epochs ORDER BY id DESC LIMIT 1");
-            res.json({
-                ok: true,
-                active_nodes: nodes?.[0]?.count || 0,
-                latest_epoch: epochs?.[0] || null,
-                uptime: process.uptime()
-            });
-        } catch (e) {
-            res.json({ ok: true, uptime: process.uptime() });
-        }
+    // Forwards to control room for any /admin-api/* requests not handled above
+    app.use('/admin-api', requireAdmin, (req, res, next) => {
+        controlRoomRouter(req, res, next);
     });
 
     // Catch-all
