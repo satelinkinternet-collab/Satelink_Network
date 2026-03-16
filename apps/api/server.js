@@ -36,6 +36,222 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
     });
     await db.init();
 
+    // Ensure core tables exist (idempotent)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS auth_nonces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            address TEXT NOT NULL,
+            nonce TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            used_at INTEGER,
+            created_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS trusted_devices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wallet TEXT NOT NULL,
+            device_public_id TEXT NOT NULL,
+            user_agent TEXT,
+            ip_hash TEXT,
+            first_seen_at INTEGER,
+            last_seen_at INTEGER,
+            status TEXT DEFAULT 'active',
+            UNIQUE(wallet, device_public_id)
+        );
+        CREATE TABLE IF NOT EXISTS system_flags (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS revenue_events_v2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            epoch_id INTEGER,
+            op_type TEXT NOT NULL,
+            node_id TEXT,
+            client_id TEXT,
+            request_id TEXT,
+            timestamp INTEGER,
+            payload_hash TEXT,
+            metadata_hash TEXT,
+            amount_usdt REAL DEFAULT 0,
+            revenue_usdt REAL DEFAULT 0,
+            node_share REAL DEFAULT 0,
+            platform_share REAL DEFAULT 0,
+            dist_share REAL DEFAULT 0,
+            status TEXT DEFAULT 'completed',
+            created_at INTEGER,
+            price_version INTEGER DEFAULT 1,
+            surge_multiplier REAL DEFAULT 1.0,
+            unit_cost REAL DEFAULT 0,
+            unit_count INTEGER DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS slow_queries (
+            query_hash TEXT PRIMARY KEY,
+            avg_ms REAL,
+            p95_ms REAL,
+            count INTEGER DEFAULT 0,
+            last_seen_at INTEGER,
+            sample_sql TEXT,
+            source TEXT
+        );
+        CREATE TABLE IF NOT EXISTS error_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service TEXT,
+            route TEXT,
+            method TEXT,
+            status_code INTEGER,
+            message TEXT,
+            stack_hash TEXT,
+            stack_preview TEXT,
+            first_seen_at INTEGER,
+            last_seen_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS request_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            trace_id TEXT UNIQUE,
+            request_id TEXT,
+            route TEXT,
+            method TEXT,
+            status_code INTEGER,
+            duration_ms INTEGER,
+            client_id TEXT,
+            node_id TEXT,
+            ip_hash TEXT,
+            created_at INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_request_traces_trace_id ON request_traces(trace_id);
+        CREATE INDEX IF NOT EXISTS idx_request_traces_created_at ON request_traces(created_at);
+        CREATE TABLE IF NOT EXISTS pricing_rules (
+            op_type TEXT PRIMARY KEY,
+            base_price_usdt REAL NOT NULL,
+            surge_enabled INTEGER DEFAULT 0,
+            surge_threshold INTEGER DEFAULT 1000,
+            surge_multiplier REAL DEFAULT 1.0,
+            version INTEGER DEFAULT 1,
+            updated_at INTEGER
+        );
+        INSERT OR IGNORE INTO pricing_rules (op_type, base_price_usdt, updated_at) VALUES ('inference', 0.0001, 1700000000);
+        INSERT OR IGNORE INTO pricing_rules (op_type, base_price_usdt, updated_at) VALUES ('storage_gb_hr', 0.00005, 1700000000);
+        INSERT OR IGNORE INTO pricing_rules (op_type, base_price_usdt, updated_at) VALUES ('api_relay_execution', 0.00008, 1700000000);
+        INSERT OR IGNORE INTO pricing_rules (op_type, base_price_usdt, updated_at) VALUES ('routing_decision_compute', 0.00012, 1700000000);
+        INSERT OR IGNORE INTO pricing_rules (op_type, base_price_usdt, updated_at) VALUES ('verification_op', 0.00006, 1700000000);
+        INSERT OR IGNORE INTO pricing_rules (op_type, base_price_usdt, updated_at) VALUES ('automation_job_execute', 0.00015, 1700000000);
+        CREATE TABLE IF NOT EXISTS epochs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            starts_at INTEGER NOT NULL DEFAULT 0,
+            ends_at INTEGER,
+            status TEXT DEFAULT 'OPEN',
+            total_revenue_usdt REAL DEFAULT 0,
+            node_pool_usdt REAL DEFAULT 0,
+            platform_share_usdt REAL DEFAULT 0,
+            distributor_share_usdt REAL DEFAULT 0,
+            total_node_weight REAL DEFAULT 0,
+            closed_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS security_alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            severity TEXT DEFAULT 'low',
+            message TEXT,
+            details TEXT,
+            status TEXT DEFAULT 'open',
+            created_at INTEGER,
+            resolved_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id TEXT,
+            action TEXT,
+            target TEXT,
+            details TEXT,
+            ip_hash TEXT,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS epoch_earnings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            epoch_id INTEGER,
+            node_id TEXT,
+            amount_usdt REAL DEFAULT 0,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS withdrawals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wallet TEXT,
+            amount_usdt REAL,
+            status TEXT DEFAULT 'pending',
+            tx_hash TEXT,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS incident_bundles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            severity TEXT,
+            node_id TEXT,
+            details TEXT,
+            status TEXT DEFAULT 'open',
+            created_at INTEGER,
+            resolved_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS config_limits (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS self_test_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            suite TEXT,
+            status TEXT,
+            results TEXT,
+            duration_ms INTEGER,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS enforcement_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            node_id TEXT,
+            action TEXT,
+            reason TEXT,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS payout_batches_v2 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            epoch_id INTEGER,
+            status TEXT DEFAULT 'pending',
+            total_usdt REAL DEFAULT 0,
+            tx_hash TEXT,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS settlement_shadow_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_id INTEGER,
+            expected_usdt REAL,
+            actual_usdt REAL,
+            drift_pct REAL,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS settlement_evm_txs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            batch_id INTEGER,
+            tx_hash TEXT,
+            status TEXT,
+            gas_used INTEGER,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS node_uptime (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            node_id TEXT,
+            epoch_id INTEGER,
+            uptime_pct REAL DEFAULT 0,
+            heartbeats INTEGER DEFAULT 0,
+            created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS auth_failures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wallet TEXT,
+            ip_hash TEXT,
+            reason TEXT,
+            created_at INTEGER
+        );
+    `);
+
     const app = createApp(db);
     const PORT = process.env.PORT || 8080;
 
