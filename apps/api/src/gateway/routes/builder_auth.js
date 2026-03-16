@@ -55,7 +55,7 @@ export function createBuilderAuthRouter(opsEngine) {
 
             // Set Session Cookie (Legacy Support)
             const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
-            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'secret').update(sessionData).digest('hex');
+            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || process.env.JWT_SECRET).update(sessionData).digest('hex');
             res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
 
             nonces.delete(wallet.toLowerCase());
@@ -90,7 +90,7 @@ export function createBuilderAuthRouter(opsEngine) {
             );
 
             const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
-            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'secret').update(sessionData).digest('hex');
+            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || process.env.JWT_SECRET).update(sessionData).digest('hex');
 
             res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
             res.json({ success: true, token });
@@ -103,7 +103,7 @@ export function createBuilderAuthRouter(opsEngine) {
         if (!cookie) return res.status(401).json({ error: 'Unauthorized' });
 
         const [dataStr, sig] = cookie.split('.');
-        const validSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'secret').update(dataStr).digest('hex');
+        const validSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || process.env.JWT_SECRET).update(dataStr).digest('hex');
 
         if (sig !== validSig) return res.status(401).json({ error: 'Invalid Session' });
 

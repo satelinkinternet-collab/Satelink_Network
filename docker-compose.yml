@@ -1,62 +1,80 @@
 version: '3.8'
 
+x-common-env: &common-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://satelink:satelinkpassword@database:5432/satelink_prod
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+  IP_HASH_SALT: ${IP_HASH_SALT:?IP_HASH_SALT is required}
+  PASSWORD_SALT: ${PASSWORD_SALT:?PASSWORD_SALT is required}
+  ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
+  FEATURE_REAL_SETTLEMENT: ${FEATURE_REAL_SETTLEMENT:-false}
+  SETTLEMENT_INTERVAL_MS: ${SETTLEMENT_INTERVAL_MS:-60000}
+  EPOCH_DURATION: ${EPOCH_DURATION:-3600}
+  FLYWHEEL_ENABLED: ${FLYWHEEL_ENABLED:-true}
+
 services:
-  satelink-core:
-    build: .
-    container_name: satelink-core
+  # ── API Server ──
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: satelink-api
     environment:
-      - NODE_ENV=production
-      - PORT=8080
-      - LOG_LEVEL=info
+      <<: *common-env
+      PORT: 8080
+      LOG_LEVEL: info
     ports:
       - "8080:8080"
-    volumes:
-      - satelink-data:/usr/src/app/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/health" ]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     depends_on:
-      - database
-      - redis
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  satelink-gateway:
-    build: .
-    container_name: satelink-gateway
-    command: npm run gateway
+  # ── Background Worker ──
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: satelink-worker
+    command: node apps/api/worker.js
     environment:
-      - NODE_ENV=production
-      - PORT=8081
-      - LOG_LEVEL=info
+      <<: *common-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
+      WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-60000}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Dashboard (Next.js) ──
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: satelink-dashboard
+    environment:
+      INTERNAL_API_URL: http://api:8080
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     ports:
-      - "8081:8081"
-    volumes:
-      - satelink-data:/usr/src/app/data
+      - "3000:3000"
     restart: unless-stopped
     depends_on:
-      - satelink-core
+      api:
+        condition: service_healthy
 
-  satelink-node-worker:
-    build: .
-    container_name: satelink-node-worker
-    command: npm run worker
-    environment:
-      - NODE_ENV=production
-      - LOG_LEVEL=info
-      - WORKER_INTERVAL_MS=10000
-    volumes:
-      - satelink-data:/usr/src/app/data
-    restart: unless-stopped
-    depends_on:
-      - database
-      - redis
-
+  # ── PostgreSQL ──
   database:
-    # We provision a PostgreSQL database as requested for production readiness.
-    # The application currently uses better-sqlite3 heavily, but this establishes
-    # the container architecture for the upcoming migration.
     image: postgres:15-alpine
     container_name: satelink-db
     environment:
@@ -69,11 +87,12 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U satelink" ]
+      test: ["CMD-SHELL", "pg_isready -U satelink"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ── Redis ──
   redis:
     image: redis:7-alpine
     container_name: satelink-redis
@@ -81,11 +100,41 @@ services:
       - "6379:6379"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ── Prometheus ──
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: satelink-prometheus
+    volumes:
+      - ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # ── Grafana ──
+  grafana:
+    image: grafana/grafana:latest
+    container_name: satelink-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-satelink}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infra/monitoring/grafana:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
 volumes:
-  satelink-data:
   postgres-data:
+  prometheus-data:
+  grafana-data:
