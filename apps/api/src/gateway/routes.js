@@ -169,6 +169,21 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── Authentication Routes ──
     app.use(createUnifiedAuthRouter({ db }));
     app.use('/auth/embedded', createEmbeddedAuthRouter(db));
+
+    // Mount embedded auth again at /auth so /auth/start and /auth/finish work
+    const authRouter = createEmbeddedAuthRouter(db);
+    app.use('/auth', authRouter);
+
+    // Frontend-expected aliases: POST /auth/nonce → /auth/start, POST /auth/verify → /auth/finish
+    app.post('/auth/nonce', (req, res, next) => {
+        req.url = '/start';
+        authRouter.handle(req, res, next);
+    });
+    app.post('/auth/verify', (req, res, next) => {
+        req.url = '/finish';
+        authRouter.handle(req, res, next);
+    });
+
     app.use(createBuilderAuthRouter({ db }));
 
     // Dev-only test auth (auto-disabled in production via internal guard)
