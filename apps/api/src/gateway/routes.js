@@ -276,6 +276,15 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         controlRoomRouter(req, res, next);
     });
 
+    // ── Admin convenience aliases ──
+    // /api/admin/nodes → control room's /network/nodes
+    app.get('/api/admin/nodes', requireAdmin, (req, res, next) => {
+        req.url = '/network/nodes' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+        controlRoomRouter(req, res, next);
+    });
+    // /api/admin/workloads direct alias (already mounted as sub-router above, but
+    // ensure the control room also handles /ops/* which includes workload-related routes)
+
     // Mount control room at /api/admin — catches all remaining admin paths
     app.use('/api/admin', requireAdmin, controlRoomRouter);
 
@@ -284,6 +293,51 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/admin-api', requireAdmin, (req, res, next) => {
         controlRoomRouter(req, res, next);
     });
+
+    // ── /admin/* mirror for scripts & backward compatibility ──
+    // All admin endpoints accessible at BOTH /api/admin/* AND /admin/*
+    app.use('/admin/settlement', requireAdmin, (req, res, next) => {
+        req.url = '/services/settlement' + req.url;
+        controlRoomRouter(req, res, next);
+    });
+    app.use('/admin/revenue', requireAdmin, createAdminRevenueRouter(db));
+    app.use('/admin/reputation', requireAdmin, createAdminReputationRouter(db));
+    app.use('/admin/lifecycle', requireAdmin, createAdminLifecycleRouter(db));
+    app.use('/admin/network/reputation', requireAdmin, createAdminReputationRouter(db));
+    app.use('/admin/network', requireAdmin, createAdminNetworkRouter(db));
+    app.use('/admin/partners', requireAdmin, createAdminPartnersRouter(db));
+    app.use('/admin/launch', requireAdmin, createAdminLaunchRouter(db));
+    app.use('/admin/ledger', requireAdmin, createLedgerRouter(opsEngine, (req, res, next) => next()));
+    app.post('/admin/ledger/execute', requireAdmin, async (req, res) => {
+        try {
+            const result = await opsEngine.executeOp(req.body);
+            res.json(result);
+        } catch (e) {
+            res.status(e.message.includes('Rate limit') ? 429 : 500).json({ ok: false, error: e.message });
+        }
+    });
+    app.get('/admin/ledger/events', requireAdmin, async (req, res) => {
+        try {
+            const limit = parseInt(req.query.limit) || 50;
+            const rows = db.prepare?.("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT ?")?.all(limit) || [];
+            res.json({ ok: true, events: rows });
+        } catch (e) {
+            res.json({ ok: true, events: [] });
+        }
+    });
+    app.use('/admin/economics', requireAdmin, createAdminEconomicsRouter(db, null, null, null));
+    app.use('/admin/forensics', requireAdmin, createAdminForensicsRouter(db, {}));
+    app.use('/admin/growth', requireAdmin, createAdminGrowthRouter(db, null));
+    app.use('/admin/sla', requireAdmin, createAdminSLARouter(db, null));
+    app.use('/admin/autonomous', requireAdmin, createAdminAutonomousRouter(db, null));
+    app.use('/admin/workloads', requireAdmin, createWorkloadAdminRouter(acquisitionEngine));
+    app.use('/admin/genesis', requireAdmin, createGenesisAdminRouter(genesisEngine));
+    app.use('/admin/flywheel', requireAdmin, createFlywheelAdminRouter(flywheelEngine));
+    app.get('/admin/nodes', requireAdmin, (req, res, next) => {
+        req.url = '/network/nodes' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+        controlRoomRouter(req, res, next);
+    });
+    app.use('/admin', requireAdmin, controlRoomRouter);
 
     // Catch-all
     app.all('*catchall', (req, res) => {
