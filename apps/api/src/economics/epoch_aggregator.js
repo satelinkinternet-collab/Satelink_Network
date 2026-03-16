@@ -38,8 +38,8 @@ export function closeEpoch(db, epochId) {
         // 2. Aggregate Revenue
         // Fetch sum(amount_usdt) from revenue_events
         const revenueResult = db.prepare(`
-            SELECT COALESCE(SUM(amount_usdt), 0) AS totalRevenue 
-            FROM revenue_events 
+            SELECT COALESCE(SUM(amount_usdt), 0) AS totalRevenue
+            FROM revenue_events_v2
             WHERE epoch_id = ?
         `).get(epochId);
 
@@ -50,13 +50,13 @@ export function closeEpoch(db, epochId) {
         const platformShare = totalRevenue * 0.3;
         const distributorShare = totalRevenue * 0.2;
 
-        // 4. Calculate Node Ops Counts
+        // 4. Calculate Node Ops Counts (from revenue_events_v2)
         const opsQuery = db.prepare(`
-            SELECT user_wallet as node_id, COALESCE(SUM(ops), 0) as ops
-            FROM op_counts
+            SELECT node_id, COUNT(*) as ops
+            FROM revenue_events_v2
             WHERE epoch_id = ?
-            AND user_wallet IS NOT NULL
-            GROUP BY user_wallet
+            AND node_id IS NOT NULL
+            GROUP BY node_id
         `).all(epochId);
 
         let totalNodeOps = 0;
