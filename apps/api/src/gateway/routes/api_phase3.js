@@ -3,8 +3,9 @@ import { RevenueOracle } from '../../economics/revenue_oracle.js';
 import { TreasuryMonitor } from '../../monitoring/treasury_monitor.js';
 import fuseService from '../../security/fuse.js';
 import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { executeWithdrawal, withdrawRateLimitMiddleware } from '../../settlement/withdraw_service.js';
 
-export function createPhase3Router(db) {
+export function createPhase3Router(db, opsEngine) {
     const router = Router();
     const oracle = new RevenueOracle(fuseService, db);
     const treasury = new TreasuryMonitor(fuseService, db);
@@ -72,15 +73,36 @@ export function createPhase3Router(db) {
         }
     });
 
-    // POST /api/node/me/withdraw - Actually happens on-chain, but here we can return historical withdrawals if needed.
-    // The spec says: "POST /api/node/me/withdraw: Show withdrawable balance, hash, ledger confirmation"
-    // Wait, withdraw is executed from the frontend via MetaMask against the SC, but backend might record it.
-    router.post('/node/me/withdraw', requireAuth, async (req, res) => {
+    // POST /api/node/me/withdraw - Routes through canonical withdrawal service
+    // On-chain execution recorded alongside canonical withdrawal pipeline
+    router.post('/node/me/withdraw', requireAuth, withdrawRateLimitMiddleware, async (req, res) => {
         try {
             const { claimId, amount, txHash } = req.body;
             const wallet = req.user.wallet;
 
-            // Record the withdrawal intent/success in DB
+            // Route through canonical withdrawal service if opsEngine available
+            if (opsEngine) {
+                const result = await executeWithdrawal(wallet, amount, opsEngine, {
+                    sourceRoute: '/node/me/withdraw'
+                });
+
+                // Also record on-chain tx hash in claim_withdrawals for audit trail
+                try {
+                    db.prepare(`
+                        INSERT INTO claim_withdrawals (operator_wallet, amount_usdt, tx_hash, withdrawn_at)
+                        VALUES (?, ?, ?, ?)
+                    `).run(wallet, amount, txHash, Date.now());
+                } catch (_) { /* claim_withdrawals table may not exist yet */ }
+
+                return res.json({
+                    ok: true,
+                    withdrawalId: result.withdrawalId,
+                    status: result.status,
+                    hash: txHash
+                });
+            }
+
+            // Fallback: record only (no opsEngine provided)
             db.prepare(`
                 INSERT INTO claim_withdrawals (operator_wallet, amount_usdt, tx_hash, withdrawn_at)
                 VALUES (?, ?, ?, ?)
@@ -92,7 +114,8 @@ export function createPhase3Router(db) {
                 hash: txHash
             });
         } catch (error) {
-            res.status(500).json({ ok: false, error: error.message });
+            const status = error.statusCode || 500;
+            res.status(status).json({ ok: false, error: error.message });
         }
     });
 
