@@ -11,6 +11,7 @@ import { Scheduler } from "./src/monitoring/ops/scheduler.js";
 import { AlertService } from "./src/monitoring/ops/alerts.js";
 import { RuntimeMonitor } from "./src/monitoring/runtime_monitor.js";
 import { OperationsEngine } from "./src/core/operations_engine.js";
+import { MemoryWatchdog } from "./src/monitoring/memory_watchdog.js";
 
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
@@ -84,6 +85,19 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             scheduler.start();
             app.set('scheduler', scheduler);
             logger.info("Scheduler started (epoch, health, node lifecycle, maintenance, runtime, backup, economics)");
+
+            // Start Memory Watchdog for 72h endurance monitoring
+            const memWatchdog = new MemoryWatchdog({
+                intervalMs: 60000,
+                windowMs: 30 * 60 * 1000,
+                threshold: 0.30,
+                onWarning: (msg) => {
+                    logger.warn(msg);
+                    alertService.send?.(msg, 'warn').catch(() => {});
+                },
+            });
+            memWatchdog.start();
+            app.set('memoryWatchdog', memWatchdog);
         } catch (e) {
             logger.error("Scheduler startup failed", { error: e.message });
         }
@@ -101,11 +115,13 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         isShuttingDown = true;
         logger.info(`${signal} received — starting graceful shutdown`);
 
-        // 1. Stop settlement timer and scheduler
+        // 1. Stop settlement timer, scheduler, and memory watchdog
         const settlementTimer = app.get('settlementTimer');
         if (settlementTimer) clearInterval(settlementTimer);
         const scheduler = app.get('scheduler');
         if (scheduler) scheduler.stop();
+        const memWatchdog = app.get('memoryWatchdog');
+        if (memWatchdog) memWatchdog.stop();
 
         // 2. Stop accepting new connections
         server.close(() => {
