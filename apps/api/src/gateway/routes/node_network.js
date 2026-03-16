@@ -74,6 +74,24 @@ export function createNodeNetworkRouter(db) {
                 latency_ms: Number(latency_ms) || 50
             });
 
+            // Persist uptime to DB for epoch earnings distribution
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                db.prepare("UPDATE registered_nodes SET last_heartbeat = ?, active = 1 WHERE node_id = ? OR wallet = ?")
+                    .run(now, node_id, node_id);
+                const epochRow = db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get();
+                if (epochRow) {
+                    const existing = db.prepare("SELECT 1 FROM node_uptime WHERE node_wallet = ? AND epoch_id = ?").get(node_id, epochRow.id);
+                    if (existing) {
+                        db.prepare("UPDATE node_uptime SET uptime_seconds = uptime_seconds + 60, score = score + 60 WHERE node_wallet = ? AND epoch_id = ?")
+                            .run(node_id, epochRow.id);
+                    } else {
+                        db.prepare("INSERT INTO node_uptime (node_wallet, epoch_id, uptime_seconds, score) VALUES (?, ?, 60, 60)")
+                            .run(node_id, epochRow.id);
+                    }
+                }
+            } catch (e) { /* uptime tracking best-effort */ }
+
             res.status(200).json({ ok: true, ...result });
         } catch (e) {
             console.error('[NodeNetwork] /heartbeat error:', e.message);
