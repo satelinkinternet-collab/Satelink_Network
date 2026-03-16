@@ -19,7 +19,7 @@ import { NodeHeartbeat } from '../../nodes/node_heartbeat.js';
 import { NodeReputation } from '../../nodes/node_reputation.js';
 import { NodeCapacity } from '../../nodes/node_capacity.js';
 
-export function createNodeNetworkRouter(db) {
+export function createNodeNetworkRouter(db, opsEngine) {
     const router = Router();
 
     // Initialise the Node Network Layer services.
@@ -189,26 +189,19 @@ export function createNodeNetworkRouter(db) {
                 // best-effort metric update
             }
 
-            // Increment node earnings tracking
+            // Record job execution revenue via canonical pipeline.
+            // Earnings are created only when finalizeEpoch() runs.
             try {
-                const epochRow = db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get();
-                if (epochRow) {
-                    const existing = db.prepare(
-                        "SELECT id FROM epoch_earnings WHERE epoch_id = ? AND wallet_or_node_id = ? AND role = 'node_operator'"
-                    ).get(epochRow.id, node_id);
-
-                    if (existing) {
-                        db.prepare(
-                            "UPDATE epoch_earnings SET amount_usdt = amount_usdt + 0.01 WHERE id = ?"
-                        ).run(existing.id);
-                    } else {
-                        db.prepare(
-                            "INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, 0.01, 'UNPAID', ?)"
-                        ).run(epochRow.id, node_id, now);
-                    }
+                if (opsEngine) {
+                    await opsEngine.executeOp({
+                        op_type:    'job_execution',
+                        node_id:    node_id,
+                        client_id:  node_id,
+                        request_id: `submit_${job_id}_${now}`,
+                    });
                 }
             } catch (e) {
-                // best-effort earnings update
+                // best-effort — executeOp logs internally
             }
 
             res.json({ ok: true, job_id, status: finalStatus, node_id });
