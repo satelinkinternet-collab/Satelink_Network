@@ -87,14 +87,17 @@ async function sendHeartbeat(node) {
     try {
         const signature = await node.wallet.signMessage(message);
 
-        const res = await fetch(`${API_BASE}/heartbeat`, {
+        const res = await fetch(`${API_BASE}/v1/node/heartbeat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                nodeWallet: node.address,
+                node_id: node.address,
+                cpu_usage: stats.cpu,
+                memory_usage: stats.memory,
+                capacity_available: stats.capacity_available,
+                latency_ms: stats.latency_ms,
                 timestamp,
                 nonce: node.nonce,
-                stats,
                 signature,
             }),
         });

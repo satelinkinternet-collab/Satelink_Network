@@ -169,8 +169,10 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         CREATE TABLE IF NOT EXISTS epoch_earnings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             epoch_id INTEGER,
-            node_id TEXT,
+            role TEXT DEFAULT 'node_operator',
+            wallet_or_node_id TEXT,
             amount_usdt REAL DEFAULT 0,
+            status TEXT DEFAULT 'UNPAID',
             created_at INTEGER
         );
         CREATE TABLE IF NOT EXISTS withdrawals (
@@ -237,10 +239,10 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         );
         CREATE TABLE IF NOT EXISTS node_uptime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            node_id TEXT,
-            epoch_id INTEGER,
-            uptime_pct REAL DEFAULT 0,
-            heartbeats INTEGER DEFAULT 0,
+            node_wallet TEXT NOT NULL,
+            epoch_id INTEGER NOT NULL,
+            uptime_seconds INTEGER DEFAULT 0,
+            score INTEGER DEFAULT 0,
             created_at INTEGER
         );
         CREATE TABLE IF NOT EXISTS auth_failures (
@@ -249,6 +251,32 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             ip_hash TEXT,
             reason TEXT,
             created_at INTEGER
+        );
+        CREATE TABLE IF NOT EXISTS registered_nodes (
+            wallet TEXT PRIMARY KEY,
+            node_id TEXT,
+            node_type TEXT DEFAULT 'community',
+            management_type TEXT DEFAULT 'self_hosted',
+            active INTEGER DEFAULT 0,
+            is_flagged INTEGER DEFAULT 0,
+            last_heartbeat INTEGER,
+            last_nonce TEXT,
+            infra_reserved INTEGER DEFAULT 0,
+            updatedAt INTEGER,
+            latency REAL,
+            bandwidth REAL
+        );
+        CREATE TABLE IF NOT EXISTS job_queue_log (
+            job_id TEXT PRIMARY KEY,
+            client_id TEXT,
+            job_type TEXT,
+            payload TEXT,
+            priority INTEGER DEFAULT 5,
+            reward REAL DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            route TEXT,
+            created_at INTEGER,
+            completed_at INTEGER
         );
     `);
 
