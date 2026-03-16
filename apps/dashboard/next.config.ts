@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       'network-stats', 'partners', '__test', 'api', 'v1', 'rpc', 'node',
       'treasury', 'network', 'heartbeat', 'exchange', 'marketplace',
       'connectors', 'compute', 'capacity', 'amm', 'protocol', 'watchdog',
+      'settlement',
     ];
     return [
       ...apiPrefixes.map(prefix => ({
