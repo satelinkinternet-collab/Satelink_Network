@@ -4,8 +4,13 @@ import { fileURLToPath } from "url";
 import { validateEnv } from "./src/utils/validateEnv.js";
 import { logger } from "./src/monitoring/logger.js";
 import { createApp } from "./app_factory.mjs";
-import Database from "better-sqlite3";
+import { getValidatedDB } from "./src/core/db/index.js";
 import { DepositDetector } from "./src/settlement/deposit_detector.js";
+import { BatchCreator } from "./src/settlement/batch_creator.js";
+import { Scheduler } from "./src/monitoring/ops/scheduler.js";
+import { AlertService } from "./src/monitoring/ops/alerts.js";
+import { RuntimeMonitor } from "./src/monitoring/runtime_monitor.js";
+import { OperationsEngine } from "./src/core/operations_engine.js";
 
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
@@ -24,14 +29,17 @@ export default createApp;
 
 // If we are not running under Mocha (tests), boot the server
 if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
-    // Only SQLite currently instantiated natively here. In true Prod, Db connection should route 
-    // to PostgreSQL based on DB_TYPE. However, we simply mount it safely for now
-    const db = new Database(process.env.SQLITE_PATH || "satelink.db");
+    // Use UniversalDB: PostgreSQL when DATABASE_URL is set, SQLite otherwise
+    const db = getValidatedDB({
+        sqlitePath: process.env.SQLITE_PATH || "satelink.db"
+    });
+    await db.init();
+
     const app = createApp(db);
     const PORT = process.env.PORT || 8080;
 
-    app.listen(PORT, async () => {
-        logger.info(`🚀 Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: process.env.DB_TYPE });
+    const server = app.listen(PORT, async () => {
+        logger.info(`🚀 Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: db.type });
 
         // Start Deposit Detector if Real Settlement is enabled
         if (process.env.FEATURE_REAL_SETTLEMENT === 'true') {
@@ -45,5 +53,80 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         } else {
             logger.info("Simulated mode - Deposit Detector offline.");
         }
+
+        // Start Settlement Pipeline: batch creator + engine processing loop
+        const settlementEngine = app.get('settlementEngine');
+        if (settlementEngine) {
+            const batchCreator = new BatchCreator(db);
+            const SETTLEMENT_INTERVAL = parseInt(process.env.SETTLEMENT_INTERVAL_MS) || 60000;
+
+            const settlementTimer = setInterval(async () => {
+                try {
+                    await batchCreator.createBatches();
+                    await settlementEngine.processQueue();
+                } catch (e) {
+                    logger.error("Settlement cycle error", { error: e.message });
+                }
+            }, SETTLEMENT_INTERVAL);
+
+            app.set('settlementTimer', settlementTimer);
+            app.set('batchCreator', batchCreator);
+            logger.info("Settlement pipeline active", { intervalMs: SETTLEMENT_INTERVAL });
+        }
+
+        // Start Scheduler (7-loop background orchestrator)
+        try {
+            const opsEngine = new OperationsEngine(db, null, null);
+            await opsEngine.init();
+            const alertService = new AlertService();
+            const runtimeMonitor = new RuntimeMonitor();
+            const scheduler = new Scheduler(opsEngine, alertService, runtimeMonitor, null, {});
+            scheduler.start();
+            app.set('scheduler', scheduler);
+            logger.info("Scheduler started (epoch, health, node lifecycle, maintenance, runtime, backup, economics)");
+        } catch (e) {
+            logger.error("Scheduler startup failed", { error: e.message });
+        }
     });
+
+    // Store references for graceful shutdown
+    app.set('server', server);
+    app.set('db', db);
+
+    // ── Graceful Shutdown ──
+    let isShuttingDown = false;
+
+    async function gracefulShutdown(signal) {
+        if (isShuttingDown) return;
+        isShuttingDown = true;
+        logger.info(`${signal} received — starting graceful shutdown`);
+
+        // 1. Stop settlement timer and scheduler
+        const settlementTimer = app.get('settlementTimer');
+        if (settlementTimer) clearInterval(settlementTimer);
+        const scheduler = app.get('scheduler');
+        if (scheduler) scheduler.stop();
+
+        // 2. Stop accepting new connections
+        server.close(() => {
+            logger.info("HTTP server closed");
+        });
+
+        // 3. Allow in-flight requests to drain (max 2s)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // 4. Close database connection
+        try {
+            db.close();
+            logger.info("Database connection closed");
+        } catch (e) {
+            logger.error("Error closing database", { error: e.message });
+        }
+
+        logger.info("Shutdown complete");
+        process.exit(0);
+    }
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }

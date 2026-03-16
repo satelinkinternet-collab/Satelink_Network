@@ -65,7 +65,7 @@ export function createUnifiedAuthRouter(opsEngine) {
 
     // IP Hashing helper for rate limits
     const hashIp = (ip) => {
-        const salt = process.env.IP_HASH_SALT || process.env.IP_SALT || 'satelink_default_salt';
+        const salt = process.env.IP_HASH_SALT;
         return crypto.createHash('sha256').update((ip || '') + salt).digest('hex').substring(0, 16);
     };
 
@@ -84,13 +84,9 @@ export function createUnifiedAuthRouter(opsEngine) {
         message: { ok: false, error: 'Too many authentication attempts, please try again later.' }
     });
 
-    if (!process.env.IP_HASH_SALT) {
-        console.warn("[WARN] IP_HASH_SALT is not set. Using default salt for auth rate limiting (not recommended for production).");
-    }
-
     // Hash password helper
     const hashPassword = (password) => {
-        const salt = process.env.PASSWORD_SALT || process.env.JWT_SECRET || 'satelink_fallback_salt';
+        const salt = process.env.PASSWORD_SALT;
         return crypto.createHash('sha256').update(password + salt).digest('hex');
     };
 

@@ -316,13 +316,14 @@ export function getValidatedDB(config) {
         });
     }
 
-    // 2. If NO DATABASE_URL, check environment
+    // 2. If NO DATABASE_URL in production, fail hard
     if (isProd) {
-        console.warn("[WARN] Production requires DATABASE_URL. Using SQLite fallback for local/mock testing.");
+        console.error("[FATAL] DATABASE_URL is required in production. SQLite is not supported for production workloads.");
+        process.exit(1);
     }
 
     // 3. Fallback to SQLite (Dev/Test only)
-    if (!isProd) console.warn("[WARN] Using SQLite (Non-Production Fallback)");
+    console.warn("[WARN] Using SQLite (non-production fallback). Set DATABASE_URL for PostgreSQL.");
     return new UniversalDB({
         type: 'sqlite',
         connectionString: config.sqlitePath || process.env.SQLITE_PATH || 'satelink.db'

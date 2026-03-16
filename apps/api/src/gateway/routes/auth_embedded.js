@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 import rateLimit from 'express-rate-limit';
 
 function hashIp(ip) {
-    return crypto.createHash('sha256').update(ip + (process.env.IP_SALT || 'satelink_salty')).digest('hex').substring(0, 16);
+    return crypto.createHash('sha256').update(ip + (process.env.IP_HASH_SALT || '')).digest('hex').substring(0, 16);
 }
 
 /**
