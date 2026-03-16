@@ -15,6 +15,16 @@ export function validateEnv() {
         console.error(`❌ JWT_SECRET is too short (${secret.length} chars). Minimum 64 chars required.`);
         process.exit(1);
     }
+
+    // Security secrets — required in all environments to prevent hardcoded fallback usage
+    const securityVars = ['JWT_REFRESH_SECRET', 'IP_HASH_SALT', 'PASSWORD_SALT'];
+    for (const variable of securityVars) {
+        if (!process.env[variable]) {
+            console.error(`❌ ${variable} is not defined. All security secrets are required — no fallbacks allowed.`);
+            process.exit(1);
+        }
+    }
+
     if (process.env.NODE_ENV === "production") {
         if (process.env.DB_TYPE === "sqlite") {
             console.error("❌ SQLite is not allowed in production");
@@ -23,6 +33,12 @@ export function validateEnv() {
 
         if (!process.env.DATABASE_URL) {
             console.error("❌ DATABASE_URL must be provided in production");
+            process.exit(1);
+        }
+
+        // Additional production-only secret checks
+        if (!process.env.ADMIN_API_KEY) {
+            console.error("❌ ADMIN_API_KEY is required in production");
             process.exit(1);
         }
     }
