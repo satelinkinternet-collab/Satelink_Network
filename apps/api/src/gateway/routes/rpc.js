@@ -14,6 +14,7 @@ export function createRpcRouter(db) {
     const router = express.Router();
 
     const opsEngine = new OperationsEngine(db, null, null);
+    opsEngine.init().catch(e => console.error('[RPC] OperationsEngine init failed:', e.message));
 
     const capacityRegistry = new NodeCapacityRegistry(db);
     const fallbackAdapter = new ProviderFallbackAdapter();

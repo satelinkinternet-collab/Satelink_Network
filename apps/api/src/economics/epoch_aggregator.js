@@ -35,11 +35,10 @@ export function closeEpoch(db, epochId) {
             throw new Error(`Epoch ${epochId} is not OPEN. Current status: ${epochRow.status}`);
         }
 
-        // 2. Aggregate Revenue
-        // Fetch sum(amount_usdt) from revenue_events
+        // 2. Aggregate Revenue from revenue_events_v2 (the active revenue table)
         const revenueResult = db.prepare(`
-            SELECT COALESCE(SUM(amount_usdt), 0) AS totalRevenue 
-            FROM revenue_events 
+            SELECT COALESCE(SUM(amount_usdt), 0) AS totalRevenue
+            FROM revenue_events_v2
             WHERE epoch_id = ?
         `).get(epochId);
 
