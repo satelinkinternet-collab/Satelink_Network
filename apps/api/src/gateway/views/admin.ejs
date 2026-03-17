@@ -1,0 +1,107 @@
+<%- include('partials/header') %>
+
+    <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <h2 class="text-3xl font-bold text-gray-900 mb-1">Admin Dashboard</h2>
+        <div class="actions">
+            <!-- Example actions -->
+            <button
+                class="bg-satelink-accent hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all flex items-center"
+                onclick="generateDiagToken()">
+                Generate Diag Token
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-xl p-6 border border-satelink-border shadow-sm">
+            <div class="text-sm font-medium text-satelink-muted mb-1">Revenue Today</div>
+            <div class="text-3xl font-bold text-gray-900 tracking-tight">$<%= revenueToday %>
+            </div>
+            <div class="text-satelink-muted text-sm mt-1">Total: $<%= revenueTotal %>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-satelink-border shadow-sm">
+            <div class="text-sm font-medium text-satelink-muted mb-1">Webhooks (24h)</div>
+            <div class="text-3xl font-bold tracking-tight mb-1">
+                <span class="text-emerald-600">
+                    <%= webhookSuccess %>
+                </span> <span class="text-gray-300">/</span> <span class="text-red-500">
+                    <%= webhookFail %>
+                </span>
+            </div>
+            <div class="text-xs text-satelink-muted font-bold uppercase tracking-wider">Success / Fail</div>
+        </div>
+
+        <div class="bg-white rounded-xl p-6 border border-satelink-border shadow-sm">
+            <div class="text-sm font-medium text-satelink-muted mb-1">Network Status</div>
+            <div class="text-3xl font-bold tracking-tight mb-1">
+                <span class="text-emerald-600">
+                    <%= nodesOnline %>
+                </span> <span class="text-gray-300">/</span> <span class="text-gray-500">
+                    <%= nodesOffline %>
+                </span>
+            </div>
+            <div class="text-xs text-satelink-muted font-bold uppercase tracking-wider">Online / Offline</div>
+        </div>
+    </div>
+
+    <!-- Distribution Runs -->
+    <div class="bg-white rounded-xl border border-satelink-border shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-satelink-border bg-gray-50/50">
+            <h3 class="text-lg font-bold text-gray-900">Recent Distributions</h3>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-satelink-muted font-medium border-b border-satelink-border">
+                    <tr>
+                        <th class="px-6 py-3">ID</th>
+                        <th class="px-6 py-3">Epoch</th>
+                        <th class="px-6 py-3">Total Rev</th>
+                        <th class="px-6 py-3">Node Pool</th>
+                        <th class="px-6 py-3">Created At</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <% distRuns.forEach(function(run) { %>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 text-gray-600 font-mono text-xs">
+                                <%= run.id %>
+                            </td>
+                            <td class="px-6 py-4 font-bold text-gray-900">
+                                <%= run.epoch_id %>
+                            </td>
+                            <td class="px-6 py-4 text-emerald-600 font-bold">$<%= run.total_revenue?.toFixed(2) %>
+                            </td>
+                            <td class="px-6 py-4 text-blue-600 font-medium">$<%= run.node_pool?.toFixed(2) %>
+                            </td>
+                            <td class="px-6 py-4 text-satelink-muted text-xs">
+                                <%= new Date(run.created_at).toLocaleString() %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function generateDiagToken() {
+            const key = prompt("Enter Admin Key");
+            if (!key) return;
+            const res = await fetch('/diag/share', {
+                method: 'POST',
+                headers: { 'x-admin-key': key }
+            });
+            const data = await res.json();
+            if (data.success) {
+                prompt("Shareable Diagnostic URL (Valid 24h):", window.location.origin + data.url);
+            } else {
+                alert("Failed: " + (data.error || "Unknown"));
+            }
+        }
+    </script>
+
+    <%- include('partials/footer') %>

@@ -1,97 +1,140 @@
-# ─── PRODUCTION-ORIENTED COMPOSE ──────────────────────────────────────────────
-# For local development with hot-reload and dev settings, use:
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-#
-# Prerequisites: copy .env.docker to .env and fill in secrets before running.
-#   cp .env.docker .env
-# ──────────────────────────────────────────────────────────────────────────────
+version: '3.8'
+
+x-common-env: &common-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://satelink:satelinkpassword@database:5432/satelink_prod
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+  IP_HASH_SALT: ${IP_HASH_SALT:?IP_HASH_SALT is required}
+  PASSWORD_SALT: ${PASSWORD_SALT:?PASSWORD_SALT is required}
+  ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
+  FEATURE_REAL_SETTLEMENT: ${FEATURE_REAL_SETTLEMENT:-false}
+  SETTLEMENT_INTERVAL_MS: ${SETTLEMENT_INTERVAL_MS:-60000}
+  EPOCH_DURATION: ${EPOCH_DURATION:-3600}
+  FLYWHEEL_ENABLED: ${FLYWHEEL_ENABLED:-true}
 
 services:
+  # ── API Server ──
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
-    env_file:
-      # Load secrets from .env (copied from .env.docker template, not committed)
-      - path: .env
-        required: false
+    container_name: satelink-api
     environment:
-      - NODE_ENV=production
-      - PORT=8080
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - JWT_ISSUER=${JWT_ISSUER:-satelink-network}
-      - JWT_TTL=${JWT_TTL:-15m}
-      - JWT_REFRESH_TTL=${JWT_REFRESH_TTL:-7d}
-      - DATABASE_URL=postgres://satelink:satelink@db:5432/satelink
-      - DB_TYPE=postgres
-      - ADMIN_API_KEY=${ADMIN_API_KEY}
-      - ADMIN_KEY=${ADMIN_KEY}
-      - MOONPAY_WEBHOOK_SECRET=${MOONPAY_WEBHOOK_SECRET}
-      - FUSE_WEBHOOK_IP_ALLOWLIST=${FUSE_WEBHOOK_IP_ALLOWLIST}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
-      - IP_HASH_SALT=${IP_HASH_SALT}
+      <<: *common-env
+      PORT: 8080
+      LOG_LEVEL: info
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test:
-        - "CMD"
-        - "node"
-        - "-e"
-        - "fetch('http://localhost:8080/health').then(r=>r.ok||process.exit(1)).catch(()=>process.exit(1))"
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  web:
+  # ── Background Worker ──
+  worker:
     build:
-      context: ./web
-      dockerfile: Dockerfile.web
-      args:
-        # NEXT_PUBLIC_* vars must be baked in at build time (next build reads them)
-        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
-        - INTERNAL_API_URL=http://api:8080
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: satelink-worker
+    command: node apps/api/worker.js
     environment:
-      - NODE_ENV=production
-      # Server-side rewrite target (Docker networking: web → api service)
-      - INTERNAL_API_URL=http://api:8080
-      # Browser-visible base URL — must be localhost so the browser can reach it
-      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      <<: *common-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
+      WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-60000}
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Dashboard (Next.js) ──
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: satelink-dashboard
+    environment:
+      INTERNAL_API_URL: http://api:8080
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
-    restart: unless-stopped
 
-  db:
-    image: postgres:16-alpine
+  # ── PostgreSQL ──
+  database:
+    image: postgres:15-alpine
+    container_name: satelink-db
     environment:
-      - POSTGRES_USER=satelink
-      - POSTGRES_PASSWORD=satelink
-      - POSTGRES_DB=satelink
+      POSTGRES_USER: satelink
+      POSTGRES_PASSWORD: satelinkpassword
+      POSTGRES_DB: satelink_prod
     ports:
       - "5432:5432"
     volumes:
-      - satelink_pg:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test:
-        - "CMD-SHELL"
-        - "pg_isready -U satelink -d satelink"
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
+      test: ["CMD-SHELL", "pg_isready -U satelink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: satelink-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Prometheus ──
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: satelink-prometheus
+    volumes:
+      - ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # ── Grafana ──
+  grafana:
+    image: grafana/grafana:latest
+    container_name: satelink-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-satelink}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infra/monitoring/grafana:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
 
 volumes:
-  satelink_pg:
-    driver: local
+  postgres-data:
+  prometheus-data:
+  grafana-data:

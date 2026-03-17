@@ -1,0 +1,30 @@
+<!-- views/partials/kpi_card.ejs -->
+<div
+    class="bg-white rounded-2xl p-6 border border-satelink-border shadow-sm hover:shadow-md transition-all duration-300 group">
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <p class="text-sm font-medium text-satelink-muted mb-1">
+                <%= title %>
+            </p>
+            <h3 class="text-2xl font-bold text-satelink-text tracking-tight">
+                <%= value %>
+            </h3>
+        </div>
+        <div
+            class="p-2 bg-blue-50 rounded-xl text-satelink-accent group-hover:bg-satelink-accent group-hover:text-white transition-colors">
+            <%- include('icon', { name: icon, className: 'w-6 h-6' }) %>
+        </div>
+    </div>
+    <% if (typeof subtext !=='undefined' && subtext) { %>
+        <p class="text-xs text-satelink-muted flex items-center font-medium">
+            <% if (typeof trend !=='undefined' ) { %>
+                <span
+                    class="<%= trend === 'up' ? 'text-satelink-success bg-emerald-50 px-1.5 py-0.5 rounded' : 'text-satelink-error bg-red-50 px-1.5 py-0.5 rounded' %> mr-2 flex items-center">
+                    <%- include('icon', { name: 'arrow-' + trend, className: 'w-3 h-3 mr-1' }) %>
+                        <span class="text-[10px] font-bold">2.5%</span> <!-- Placeholder % -->
+                </span>
+                <% } %>
+                    <%= subtext %>
+        </p>
+        <% } %>
+</div>

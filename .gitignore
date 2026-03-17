@@ -6,79 +6,48 @@ node_modules/
 # Testing
 coverage/
 
-# Production
+# Output
 build/
 dist/
+.next/
+out/
+.vercel
+.turbo/
 
-# Misc
-.DS_Store
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment and Secrets
 .env
 .env.*
 !.env.example
 !.env.staging.example
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-*.log
 
 # Database
 *.db
-*.db-shm
-*.db-wal
 *.sqlite
 *.sqlite3
+satelink.db
+test.db
 
-# Next.js
-.next/
-out/
+# OS
+.DS_Store
 
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-web/src/app/enterprise/.page.tsx.swp
-web/src/app/node/.page.tsx.swp
-*.swp
-extracted_scope.txt
-scope.txt
-satelink Developer -Master Scope & arcitech /
-backups/
-.env.sandbox
-.env.local
-.env.production
-.env.test
-
-# Claude Code internal tooling (local only, not for version control)
-.claude/
-
-# Editor / IDE configs (local only)
+# Editor
 .vscode/
 .continue/
+.claude/
+*.swp
+*.bak
 
-# Agent and temporary files
+# Temporary and Artifacts
 artifacts/
+tempdir/
+.cache/
+cache/
 cookies.txt
 share_bundle/
 share_bundle.zip
-server.js.bak2
-server.js.new
-*.bak*
-*.log
-
-# local artifacts
-*.swp
-*.tgz
-*_pid.txt
-server_pid.txt
-s_pid.txt
-server.js.backup_*
-test/*.backup_*
-
-# Foundry
-cache/
-lib/
-out/
-broadcast/
-cache/
