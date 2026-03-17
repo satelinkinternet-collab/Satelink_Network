@@ -109,8 +109,10 @@ export function createDashboardRouter(opsEngine) {
 
     router.get('/diag/snapshot', async (req, res, next) => {
         try {
-            const token = req.query.token;
-            if (!token) return res.status(401).json({ error: "Missing token" });
+            // SECURITY FIX: Query-string token removed. Use Authorization header instead.
+            const authHeader = req.headers['authorization'] || '';
+            const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers['x-diag-token'] || '');
+            if (!token) return res.status(401).json({ error: "Missing token. Use Authorization: Bearer <token> or X-Diag-Token header." });
 
             const valid = await req.diagnostics.validateToken(token);
             if (!valid) return res.status(403).json({ error: "Invalid or expired token" });

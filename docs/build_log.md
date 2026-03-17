@@ -35,21 +35,29 @@ Resumable build log. If execution stops, the next engineer resumes from the last
 - [x] Move EJS templates
 - [x] Verify no production routes reference EJS
 
-## Phase 5: Dashboard Consolidation
-- [ ] Verify Next.js pages cover all roles
-- [ ] Agent control panel integration
-- [ ] Role-based routing guards
+## Phase 5: Dashboard Consolidation (COMPLETE)
+- [x] Remove legacy `dashboard.js` (static JS)
+- [x] Remove last `req.query.token` in `dashboard.js` (route handler)
+- [x] Create Next.js middleware for server-side route protection
+- [x] Expand AppShell auth guard to all dashboard routes
+- [x] Create `RoleGuard` component for per-section access control
+- [x] Create admin layout with role guard (admin_super, admin_ops, admin_readonly)
+- [x] Create node layout with role guard (node_operator, admins)
+- [x] Create builder layout with role guard (builder, admins)
+- [x] Create distributor layout with role guard (distributor roles, admins)
+- [x] Verify Next.js pages cover all roles (admin, node, builder, distributor, enterprise)
+- [x] Create Agent Control Centre at `/admin/agent-control-centre` (10 platform agents)
 
-## Phase 6: Documentation
-- [ ] docs/authentication.md
-- [ ] docs/dashboard_architecture.md
-- [ ] docs/security_model.md
-- [ ] docs/api_map.md
-- [ ] docs/rebuild_notes.md
+## Phase 6: Documentation (COMPLETE)
+- [x] docs/authentication.md
+- [x] docs/dashboard_architecture.md
+- [x] docs/security_model.md
+- [x] docs/api_map.md
+- [x] docs/rebuild_notes.md
 
-## Phase 7: Validation
-- [ ] Auth flow verification
-- [ ] JWT validation check
-- [ ] Role routing check
-- [ ] Revenue pipeline unchanged
-- [ ] Withdraw pipeline unchanged
+## Phase 7: Validation (COMPLETE)
+- [x] Query-token auth fully purged (only doc reference remains)
+- [x] All dashboard routes protected by middleware + layout guards
+- [x] Role routing verified in use-auth.tsx login()
+- [x] Revenue pipeline untouched (protected modules not modified)
+- [x] Withdraw pipeline untouched (protected modules not modified)

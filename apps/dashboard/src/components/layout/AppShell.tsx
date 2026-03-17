@@ -13,8 +13,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        // In the scope of this implementation, /run-node/dashboard requires auth
-        const isAuthRequired = pathname.startsWith('/run-node/dashboard');
+        // All dashboard routes require authentication
+        const protectedPrefixes = [
+            '/admin',
+            '/node',
+            '/builder',
+            '/distributor',
+            '/enterprise/dashboard',
+            '/run-node/dashboard',
+            '/account',
+        ];
+        const isAuthRequired = protectedPrefixes.some(p => pathname.startsWith(p));
 
         if (!loading && !user && isAuthRequired) {
             router.push('/login');
