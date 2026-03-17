@@ -103,6 +103,35 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
     app.all(/^\/admin-api(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
 
+    // ── System Health (powers dashboard UI) ──
+    app.get('/system/status', (req, res) => {
+        try {
+            const currentEpoch = db.prepare("SELECT id, status, starts_at FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+            const lastClosed = db.prepare("SELECT id, ends_at, total_revenue_usdt FROM epochs WHERE status = 'FINALIZED' ORDER BY ends_at DESC LIMIT 1").get([]);
+            const totalRevenue = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2").get([]);
+            const totalBalances = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as wallets FROM balances").get([]);
+            const totalEarnings = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings").get([]);
+            const epochCount = db.prepare("SELECT COUNT(*) as total FROM epochs WHERE status = 'FINALIZED'").get([]);
+
+            res.json({
+                ok: true,
+                epoch_id: currentEpoch?.id ?? null,
+                epoch_status: currentEpoch?.status ?? 'NONE',
+                epoch_started_at: currentEpoch?.starts_at ?? null,
+                total_revenue: totalRevenue.total,
+                total_earnings: totalEarnings.total,
+                total_balances: totalBalances.total,
+                active_wallets: totalBalances.wallets,
+                epochs_finalized: epochCount.total,
+                last_epoch_close_time: lastClosed?.ends_at ?? null,
+                last_epoch_revenue: lastClosed?.total_revenue_usdt ?? 0,
+                scheduler_active: true
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // ── Debug / Pipeline Routes ──
     const opsEngine = new OperationsEngine(db, null, null);
 
