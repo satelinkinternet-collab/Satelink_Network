@@ -36,6 +36,7 @@ import { createAiRouter } from './routes/ai_api.js';
 import { createJobSubmitRouter } from './routes/job_submit.js';
 import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
+import { OperationsEngine } from '../core/operations_engine.js';
 
 client.collectDefaultMetrics();
 
@@ -101,6 +102,156 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // Admin
     app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
     app.all(/^\/admin-api(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
+
+    // ── Debug / Pipeline Routes ──
+    const opsEngine = new OperationsEngine(db, null, null);
+
+    app.get('/debug/pipeline-status', async (req, res) => {
+        try {
+            // Ensure tables exist (OperationsEngine seeds them)
+            if (!opsEngine.initialized) await opsEngine.init();
+
+            const revenue_v2 = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2").get([]);
+            const exec_metrics = db.prepare("SELECT COUNT(*) as count FROM execution_metrics").get([]);
+            const op_counts_row = db.prepare("SELECT COUNT(*) as count FROM op_counts").get([]);
+            const earnings = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings").get([]);
+            const balances_row = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM balances").get([]);
+            const epochs_list = db.prepare("SELECT id, status, starts_at, ends_at, total_revenue_usdt FROM epochs ORDER BY id DESC LIMIT 5").all([]);
+
+            res.json({
+                ok: true,
+                pipeline: {
+                    revenue_events_v2: { count: revenue_v2.count, total_usdt: revenue_v2.total },
+                    execution_metrics: { count: exec_metrics.count },
+                    op_counts: { count: op_counts_row.count },
+                    epoch_earnings: { count: earnings.count, total_usdt: earnings.total },
+                    balances: { count: balances_row.count, total_usdt: balances_row.total },
+                    recent_epochs: epochs_list
+                }
+            });
+        } catch (e) {
+            console.error("[DEBUG] pipeline-status error:", e.message);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    app.get('/debug/run-epoch', async (req, res) => {
+        try {
+            if (!opsEngine.initialized) await opsEngine.init();
+
+            console.log("[DEBUG] Aggregation triggered");
+            const now = Math.floor(Date.now() / 1000);
+
+            // 1. Find or create an OPEN epoch
+            let epoch = db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get([]);
+            if (!epoch) {
+                const r = db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
+                epoch = { id: r.lastInsertRowid };
+                console.log("[DEBUG] Created new OPEN epoch:", epoch.id);
+            }
+            const epochId = epoch.id;
+
+            // 2. Count revenue for this epoch
+            const revCount = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE epoch_id = ?").get([epochId]);
+            console.log(`[DEBUG] Revenue count: ${revCount.count}, total: ${revCount.total}`);
+
+            if (revCount.count === 0) {
+                return res.json({
+                    ok: true,
+                    warning: "No revenue events for current epoch",
+                    epoch_id: epochId,
+                    revenue_count: 0
+                });
+            }
+
+            // 3. Check if already finalized (idempotency)
+            const existingEarnings = db.prepare("SELECT COUNT(*) as count FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
+            if (existingEarnings.count > 0) {
+                const finalEarnings = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
+                const finalBalances = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM balances").get([]);
+                return res.json({
+                    ok: true,
+                    warning: "Epoch already finalized — no duplicate processing",
+                    epoch_id: epochId,
+                    earnings: { count: finalEarnings.count, total_usdt: finalEarnings.total },
+                    balances: { count: finalBalances.count, total_usdt: finalBalances.total }
+                });
+            }
+
+            // 4. Aggregate: 50/30/20 split from revenue_events_v2
+            const totalRevenue = revCount.total;
+            const nodePool = totalRevenue * 0.50;
+            const platformFee = totalRevenue * 0.30;
+            const distroPool = totalRevenue * 0.20;
+
+            // 5. Distribute node pool proportionally by node_id contribution
+            const nodeContributions = db.prepare(`
+                SELECT node_id, COUNT(*) as ops, COALESCE(SUM(amount_usdt), 0) as revenue
+                FROM revenue_events_v2
+                WHERE epoch_id = ? AND node_id IS NOT NULL
+                GROUP BY node_id
+            `).all([epochId]);
+
+            const totalNodeRevenue = nodeContributions.reduce((s, n) => s + n.revenue, 0);
+
+            // Use a transaction for atomicity
+            const runAggregation = db.transaction(() => {
+                // Platform earnings
+                db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, 'UNPAID', ?)").run([epochId, platformFee, now]);
+
+                // Distribution pool
+                db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'distribution_pool', 'DIST_POOL', ?, 'UNPAID', ?)").run([epochId, distroPool, now]);
+
+                // Node operator earnings (proportional to revenue contribution)
+                for (const node of nodeContributions) {
+                    const share = totalNodeRevenue > 0
+                        ? (node.revenue / totalNodeRevenue) * nodePool
+                        : 0;
+                    if (share > 0) {
+                        db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, ?, 'UNPAID', ?)").run([epochId, node.node_id, share, now]);
+                    }
+                }
+
+                // Close epoch
+                db.prepare("UPDATE epochs SET status = 'FINALIZED', ends_at = ?, total_revenue_usdt = ?, node_pool_usdt = ?, platform_share_usdt = ?, distributor_share_usdt = ? WHERE id = ?").run([now, totalRevenue, nodePool, platformFee, distroPool, epochId]);
+            });
+
+            runAggregation();
+            console.log("[DEBUG] Earnings written for epoch:", epochId);
+
+            // 6. Update balances from node_operator earnings
+            const earningsRows = db.prepare("SELECT wallet_or_node_id, SUM(amount_usdt) as total FROM epoch_earnings WHERE epoch_id = ? AND role = 'node_operator' GROUP BY wallet_or_node_id").all([epochId]);
+            for (const row of earningsRows) {
+                const existing = db.prepare("SELECT 1 FROM balances WHERE wallet = ?").get([row.wallet_or_node_id]);
+                if (existing) {
+                    db.prepare("UPDATE balances SET amount_usdt = amount_usdt + ?, updated_at = ? WHERE wallet = ?").run([row.total, now, row.wallet_or_node_id]);
+                } else {
+                    db.prepare("INSERT INTO balances (wallet, amount_usdt, updated_at) VALUES (?, ?, ?)").run([row.wallet_or_node_id, row.total, now]);
+                }
+            }
+            console.log("[DEBUG] Balances updated for", earningsRows.length, "wallets");
+
+            // 7. Open a new epoch for future revenue
+            db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
+
+            // 8. Return results
+            const finalEarnings = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
+            const finalBalances = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM balances").get([]);
+
+            res.json({
+                ok: true,
+                epoch_id: epochId,
+                revenue: { count: revCount.count, total_usdt: totalRevenue },
+                split: { node_pool: nodePool, platform: platformFee, distribution: distroPool },
+                nodes_distributed: earningsRows.length,
+                earnings: { count: finalEarnings.count, total_usdt: finalEarnings.total },
+                balances: { count: finalBalances.count, total_usdt: finalBalances.total }
+            });
+        } catch (e) {
+            console.error("[DEBUG] run-epoch error:", e.message, e.stack);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
 
     // Catch-all
     app.all('*catchall', (req, res) => {

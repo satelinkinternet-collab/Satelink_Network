@@ -227,6 +227,81 @@ export function attachSchema(db) {
   )`);
   // ----------------------------------------
 
+  // --- Epoch-based Revenue Pipeline (V2) ---
+  ensure(`CREATE TABLE IF NOT EXISTS epochs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    starts_at INTEGER NOT NULL,
+    ends_at INTEGER,
+    status TEXT DEFAULT 'OPEN',
+    total_revenue_usdt REAL DEFAULT 0,
+    node_pool_usdt REAL DEFAULT 0,
+    platform_share_usdt REAL DEFAULT 0,
+    distributor_share_usdt REAL DEFAULT 0,
+    total_node_weight REAL DEFAULT 0,
+    closed_at TEXT
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS revenue_events_v2 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    epoch_id INTEGER,
+    op_type TEXT NOT NULL,
+    node_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    amount_usdt REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'success',
+    request_id TEXT,
+    created_at BIGINT NOT NULL,
+    metadata_hash TEXT,
+    price_version INTEGER DEFAULT 1,
+    surge_multiplier REAL DEFAULT 1.0,
+    unit_cost REAL DEFAULT 0,
+    unit_count INTEGER DEFAULT 1,
+    UNIQUE(client_id, op_type, request_id)
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS epoch_earnings (
+    epoch_id INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    wallet_or_node_id TEXT NOT NULL,
+    amount_usdt REAL NOT NULL,
+    status TEXT NOT NULL DEFAULT 'UNPAID',
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY (epoch_id, role, wallet_or_node_id)
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS balances (
+    wallet TEXT PRIMARY KEY,
+    amount_usdt REAL DEFAULT 0,
+    updated_at BIGINT
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS node_epoch_earnings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id TEXT NOT NULL,
+    epoch_id INTEGER NOT NULL,
+    earnings_usdt REAL NOT NULL,
+    ops_processed INTEGER DEFAULT 0,
+    weight REAL DEFAULT 0
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS pricing_rules (
+    op_type TEXT PRIMARY KEY,
+    base_price_usdt REAL NOT NULL,
+    version INTEGER DEFAULT 1,
+    surge_enabled INTEGER DEFAULT 0,
+    surge_threshold INTEGER DEFAULT 100,
+    surge_multiplier REAL DEFAULT 1.5
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS node_uptime (
+    node_wallet TEXT NOT NULL,
+    epoch_id INTEGER NOT NULL,
+    uptime_seconds INTEGER DEFAULT 0,
+    score REAL DEFAULT 0,
+    PRIMARY KEY (node_wallet, epoch_id)
+  )`);
+  // ----------------------------------------
+
   // Ensure columns (to handle schema evolution in prod)
   if (!hasCol("op_counts", "epoch_id")) ensure(`ALTER TABLE op_counts ADD COLUMN epoch_id INTEGER`);
   if (!hasCol("op_counts", "user_wallet")) ensure(`ALTER TABLE op_counts ADD COLUMN user_wallet TEXT`);
