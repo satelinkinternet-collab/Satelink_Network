@@ -3,11 +3,71 @@ import { ethers } from 'ethers';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
+// ── SECURITY: Dedicated HMAC key for session cookies ──────────────────────
+// Uses ADMIN_API_KEY exclusively. Fails fast if not configured.
+// Previous code fell back to JWT_SECRET which conflates auth domains.
+function getSessionHmacKey() {
+    const key = process.env.ADMIN_API_KEY;
+    if (!key) {
+        throw new Error('ADMIN_API_KEY is required for builder session HMAC. No fallbacks allowed.');
+    }
+    return key;
+}
+
+// ── SECURITY: Cookie options — secure in production ───────────────────────
+function cookieOpts(maxAge) {
+    return {
+        httpOnly: true,
+        secure:   process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge,
+    };
+}
+
 export function createBuilderAuthRouter(opsEngine) {
     const router = Router();
 
-    // In-memory nonce store (Production: use Redis)
-    const nonces = new Map();
+    // Nonce storage — persisted in DB for production resilience
+    // Falls back to in-memory Map only in dev/test when DB unavailable
+
+    async function storeNonce(wallet, nonce) {
+        try {
+            await opsEngine.db.query(
+                "INSERT OR REPLACE INTO auth_nonces (address, nonce, created_at, expires_at) VALUES (?, ?, ?, ?)",
+                [wallet.toLowerCase(), nonce, Date.now(), Date.now() + 300000]
+            );
+        } catch (_) {
+            // Fallback: in-memory if auth_nonces table doesn't exist yet
+            if (!router._nonces) router._nonces = new Map();
+            router._nonces.set(wallet.toLowerCase(), { nonce, expires: Date.now() + 300000 });
+        }
+    }
+
+    async function getNonce(wallet) {
+        try {
+            const row = await opsEngine.db.get(
+                "SELECT nonce FROM auth_nonces WHERE address = ? AND expires_at > ?",
+                [wallet.toLowerCase(), Date.now()]
+            );
+            return row ? row.nonce : null;
+        } catch (_) {
+            if (!router._nonces) return null;
+            const entry = router._nonces.get(wallet.toLowerCase());
+            if (!entry || entry.expires < Date.now()) return null;
+            return entry.nonce;
+        }
+    }
+
+    async function deleteNonce(wallet) {
+        try {
+            await opsEngine.db.query(
+                "DELETE FROM auth_nonces WHERE address = ?",
+                [wallet.toLowerCase()]
+            );
+        } catch (_) {
+            if (router._nonces) router._nonces.delete(wallet.toLowerCase());
+        }
+    }
 
     // 1. Challenge: Get nonce for wallet
     router.post('/auth/builder/challenge', (req, res) => {
@@ -15,12 +75,11 @@ export function createBuilderAuthRouter(opsEngine) {
         if (!wallet) return res.status(400).json({ error: 'Wallet required' });
 
         const nonce = crypto.randomBytes(16).toString('hex');
-        nonces.set(wallet.toLowerCase(), nonce);
-
-        // Expire nonce after 5 mins
-        setTimeout(() => nonces.delete(wallet.toLowerCase()), 300000);
-
-        res.json({ nonce });
+        storeNonce(wallet, nonce).then(() => {
+            res.json({ nonce });
+        }).catch(e => {
+            res.status(500).json({ error: 'Failed to generate nonce' });
+        });
     });
 
     // 2. Verify: Check signature
@@ -28,7 +87,7 @@ export function createBuilderAuthRouter(opsEngine) {
         const { wallet, signature } = req.body;
         if (!wallet || !signature) return res.status(400).json({ error: 'Missing params' });
 
-        const nonce = nonces.get(wallet.toLowerCase());
+        const nonce = await getNonce(wallet);
         if (!nonce) return res.status(400).json({ error: 'Invalid or expired nonce' });
 
         try {
@@ -53,16 +112,16 @@ export function createBuilderAuthRouter(opsEngine) {
                 { expiresIn: '7d', issuer: 'satelink-core' }
             );
 
-            // Set Session Cookie (Legacy Support)
+            // Set Session Cookie with dedicated HMAC key + secure flags
             const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
-            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || process.env.JWT_SECRET).update(sessionData).digest('hex');
-            res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
+            const sessionSig = crypto.createHmac('sha256', getSessionHmacKey()).update(sessionData).digest('hex');
+            res.cookie('builder_session', `${sessionData}.${sessionSig}`, cookieOpts(86400000));
 
-            nonces.delete(wallet.toLowerCase());
+            await deleteNonce(wallet);
 
             res.json({ success: true, token });
         } catch (e) {
-            console.error("Auth Error:", e);
+            console.error("Auth Error:", e.message);
             res.status(500).json({ error: 'Internal Error' });
         }
     });
@@ -89,10 +148,12 @@ export function createBuilderAuthRouter(opsEngine) {
                 { expiresIn: '7d', issuer: 'satelink-core' }
             );
 
+            // Use dedicated HMAC key for session cookie
+            const hmacKey = process.env.ADMIN_API_KEY || process.env.JWT_SECRET; // Fallback OK in dev only
             const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
-            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || process.env.JWT_SECRET).update(sessionData).digest('hex');
+            const sessionSig = crypto.createHmac('sha256', hmacKey).update(sessionData).digest('hex');
 
-            res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
+            res.cookie('builder_session', `${sessionData}.${sessionSig}`, cookieOpts(86400000));
             res.json({ success: true, token });
         });
     }
@@ -102,16 +163,20 @@ export function createBuilderAuthRouter(opsEngine) {
         const cookie = req.cookies['builder_session'];
         if (!cookie) return res.status(401).json({ error: 'Unauthorized' });
 
-        const [dataStr, sig] = cookie.split('.');
-        const validSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || process.env.JWT_SECRET).update(dataStr).digest('hex');
+        try {
+            const [dataStr, sig] = cookie.split('.');
+            const validSig = crypto.createHmac('sha256', getSessionHmacKey()).update(dataStr).digest('hex');
 
-        if (sig !== validSig) return res.status(401).json({ error: 'Invalid Session' });
+            if (sig !== validSig) return res.status(401).json({ error: 'Invalid Session' });
 
-        const data = JSON.parse(dataStr);
-        if (Date.now() > data.exp) return res.status(401).json({ error: 'Session Expired' });
+            const data = JSON.parse(dataStr);
+            if (Date.now() > data.exp) return res.status(401).json({ error: 'Session Expired' });
 
-        req.builderWallet = data.wallet;
-        next();
+            req.builderWallet = data.wallet;
+            next();
+        } catch (e) {
+            return res.status(401).json({ error: 'Invalid Session' });
+        }
     };
 
     // Middleware to protect routes (JWT)

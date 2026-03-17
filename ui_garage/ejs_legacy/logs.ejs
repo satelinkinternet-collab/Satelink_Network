@@ -1,0 +1,59 @@
+<%- include('partials/header') %>
+
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900 mb-2">System Logs</h2>
+        <p class="text-satelink-muted">Showing last 200 system errors</p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-satelink-border shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm font-mono">
+                <thead class="bg-gray-50 text-satelink-muted font-medium font-sans border-b border-satelink-border">
+                    <tr>
+                        <th class="px-6 py-3">Time</th>
+                        <th class="px-6 py-3">Level</th>
+                        <th class="px-6 py-3">Source</th>
+                        <th class="px-6 py-3">Route</th>
+                        <th class="px-6 py-3 w-1/2">Message</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <% logs.forEach(function(log) { %>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-satelink-muted">
+                                <%= new Date(log.ts).toLocaleString() %>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span
+                                    class="px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider <%= log.level === 'error' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-blue-50 text-blue-600 border border-blue-100' %>">
+                                    <%= log.level %>
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600">
+                                <%= log.source %>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 font-medium">
+                                <%= log.route %>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="max-w-md truncate text-gray-900">
+                                    <%= log.message %>
+                                </div>
+                                <% if(log.meta_json && log.meta_json !=='{}' ) { %>
+                                    <details class="mt-2 text-gray-500">
+                                        <summary
+                                            class="text-xs text-satelink-accent cursor-pointer hover:underline outline-none font-bold">
+                                            Meta</summary>
+                                        <pre
+                                            class="mt-2 p-3 bg-gray-50 rounded border border-gray-200 text-xs text-gray-700 overflow-x-auto shadow-inner"><%= JSON.stringify(JSON.parse(log.meta_json), null, 2) %></pre>
+                                    </details>
+                                    <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>

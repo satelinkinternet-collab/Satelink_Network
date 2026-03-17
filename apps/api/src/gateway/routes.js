@@ -1,5 +1,6 @@
 import { createUserSettingsRouter } from './routes/user_settings.js';
 import { createUnifiedAuthRouter } from './routes/auth_v2.js';
+import { createAuthController } from '../auth/auth_controller.js';
 import { createStreamApiRouter } from './routes/stream_api.js';
 import { createPhase3Router } from './routes/api_phase3.js';
 import { createEnterpriseRouter, createDemandMetricsRouter } from './routes/api_enterprise.js';
@@ -167,24 +168,19 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     });
 
     // ── Authentication Routes ──
+    // Legacy auth router (auth_v2) — kept for /me, /auth/me, /login, /auth/register
     app.use(createUnifiedAuthRouter({ db }));
+
+    // ── Unified Auth Controller (canonical pipeline) ──
+    // Handles: /auth/challenge, /auth/verify, /auth/me, /auth/refresh, /auth/logout
+    // Backward-compatible aliases: /auth/nonce, /auth/start, /auth/finish
+    app.use('/auth', createAuthController(db));
+
+    // Legacy embedded auth — preserved at /auth/embedded for clients not yet migrated
     app.use('/auth/embedded', createEmbeddedAuthRouter(db));
 
-    // Mount embedded auth again at /auth so /auth/start and /auth/finish work
-    const authRouter = createEmbeddedAuthRouter(db);
-    app.use('/auth', authRouter);
-
-    // Frontend-expected aliases: POST /auth/nonce → /auth/start, POST /auth/verify → /auth/finish
-    app.post('/auth/nonce', (req, res, next) => {
-        req.url = '/start';
-        authRouter.handle(req, res, next);
-    });
-    app.post('/auth/verify', (req, res, next) => {
-        req.url = '/finish';
-        authRouter.handle(req, res, next);
-    });
-
-    app.use(createBuilderAuthRouter({ db }));
+    // Builder auth — separate session domain (HMAC cookie + JWT)
+    app.use(createBuilderAuthRouter(opsEngine));
 
     // Dev-only test auth (auto-disabled in production via internal guard)
     app.use('/__test/auth', createDevAuthRouter({ db }));

@@ -14,9 +14,9 @@ export function verifyJWT(req, res, next) {
         token = authHeader.split(' ')[1];
     } else if (req.cookies && req.cookies.satelink_session) {
         token = req.cookies.satelink_session;
-    } else if (req.query.token) {
-        token = req.query.token;
     }
+    // SECURITY FIX: Query-string token acceptance REMOVED.
+    // Tokens in URLs leak via browser history, referrer headers, and proxy logs.
 
     if (!token) {
         return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Unauthorized' });

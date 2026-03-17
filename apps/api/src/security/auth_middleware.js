@@ -78,9 +78,12 @@ export function authenticate(req, res, next) {
   let token = null;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    const queryToken = req.query.token;
-    if (queryToken) {
-      token = queryToken;
+    // SECURITY FIX: Query-string tokens REMOVED — tokens in URLs leak via
+    // browser history, referrer headers, proxy logs, and server access logs.
+    // Accept tokens ONLY from Authorization header or httpOnly cookies.
+    const cookieToken = req.cookies && req.cookies.satelink_session;
+    if (cookieToken) {
+      token = cookieToken;
     } else {
       // Preserve opsEngine failure recording from original
       if (req.app && req.app.get('opsEngine')) {
@@ -110,7 +113,7 @@ export function authenticate(req, res, next) {
   } catch (err) {
     // Preserve abuse firewall recording from original
     if (req.abuseFirewall) {
-      const ipHash = req.ipHash || crypto.createHash('sha256').update(req.ip + (process.env.IP_HASH_SALT || '')).digest('hex');
+      const ipHash = req.ipHash || crypto.createHash('sha256').update(req.ip + (process.env.IP_HASH_SALT)).digest('hex');
       req.abuseFirewall.recordMetric({ key_type: 'ip_hash', key_value: ipHash, metric: 'auth_fail' });
     }
 
