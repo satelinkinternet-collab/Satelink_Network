@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (token: string) => Promise<void>;
+    login: (token: string, redirect?: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -60,16 +60,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const login = async (token: string) => {
+    const login = async (token: string, redirect?: string) => {
         localStorage.setItem('satelink_token', token);
         const user = await fetchMe();
 
         if (user) {
-            if (['admin_super', 'admin_ops'].includes(user.role)) router.push('/admin');
+            // If a specific redirect was requested (e.g. from middleware), use it
+            if (redirect) {
+                router.push(redirect);
+                return;
+            }
+            // Otherwise, route based on role
+            if (['admin_super', 'admin_ops', 'admin_readonly'].includes(user.role)) router.push('/admin');
             else if (user.role === 'node_operator') router.push('/node');
             else if (user.role === 'builder') router.push('/builder');
             else if (user.role.startsWith('distributor')) router.push('/distributor');
-            else if (user.role === 'enterprise') router.push('/enterprise');
+            else if (user.role === 'enterprise') router.push('/enterprise/dashboard');
             else router.push('/'); // Fallback
         } else {
             router.push('/');

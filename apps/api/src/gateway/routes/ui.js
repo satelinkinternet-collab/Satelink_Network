@@ -27,9 +27,9 @@ export function createUIRouter(opsEngine) {
     };
 
     // --- BUILDER UI ROUTES ---
+    // Legacy EJS login deprecated — canonical login is Next.js /login
     router.get('/builder/login', (req, res) => {
-        if (req.cookies['builder_session']) return res.redirect('/ui/builder');
-        res.render('builder_login');
+        res.redirect('/login');
     });
 
     router.get('/builder', requireBuilderAuth, async (req, res) => {
