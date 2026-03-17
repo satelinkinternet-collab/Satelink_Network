@@ -13,13 +13,13 @@ db.prepare(`
     ON CONFLICT(id) DO UPDATE SET status='OPEN'
 `).run();
 
-// Setup mock revenue events (100 USDT total)
-db.prepare(`DELETE FROM revenue_events WHERE epoch_id = 999`).run();
+// Setup mock revenue events in revenue_events_v2 (100 USDT total)
+db.prepare(`DELETE FROM revenue_events_v2 WHERE epoch_id = 999`).run();
 db.prepare(`
-    INSERT INTO revenue_events (epoch_id, amount_usdt, created_at)
-    VALUES 
-    (999, 40.0, strftime('%s', 'now')),
-    (999, 60.0, strftime('%s', 'now'))
+    INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+    VALUES
+    (999, 'api_relay_execution', 'nodeA', 'test_client', 40.0, 'success', 'req1', strftime('%s', 'now')),
+    (999, 'api_relay_execution', 'nodeB', 'test_client', 60.0, 'success', 'req2', strftime('%s', 'now'))
 `).run();
 
 // Setup mock node ops (Total ops = 100)
