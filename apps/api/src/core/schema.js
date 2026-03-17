@@ -243,6 +243,9 @@ export function attachSchema(db) {
   // Feature: link revenue event to enterprise
   if (!hasCol("revenue_events", "enterprise_id")) ensure(`ALTER TABLE revenue_events ADD COLUMN enterprise_id TEXT`);
 
+  // Ensure balances table has updated_at for epoch aggregator upserts
+  if (!hasCol("balances", "updated_at")) ensure(`ALTER TABLE balances ADD COLUMN updated_at BIGINT`);
+
   // Bootstrap rows
   ensure(`INSERT OR IGNORE INTO system_config (key, value) VALUES ('security_freeze', '0')`);
   ensure(`INSERT OR IGNORE INTO system_config (key, value) VALUES ('withdrawals_paused', '0')`);

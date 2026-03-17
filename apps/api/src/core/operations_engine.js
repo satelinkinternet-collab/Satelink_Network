@@ -244,6 +244,46 @@ export class OperationsEngine {
     `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
       priceVersion, surgeMultiplier, unitCost]);
 
+    // Record op_counts for epoch aggregator (node weight calculation)
+    try {
+      const opWeight = this.db.prepare("SELECT weight FROM op_weights WHERE op_type = ?").get([op_type]);
+      const weightValue = opWeight ? opWeight.weight : 1.0;
+      const existingOp = this.db.prepare(
+        "SELECT ops FROM op_counts WHERE epoch_id = ? AND user_wallet = ? AND op_type = ?"
+      ).get([epochId, node_id, op_type]);
+      if (existingOp) {
+        this.db.prepare(
+          "UPDATE op_counts SET ops = ops + 1, weight = ? WHERE epoch_id = ? AND user_wallet = ? AND op_type = ?"
+        ).run([weightValue, epochId, node_id, op_type]);
+      } else {
+        this.db.prepare(
+          "INSERT INTO op_counts (epoch_id, user_wallet, op_type, ops, weight, created_at) VALUES (?, ?, ?, 1, ?, ?)"
+        ).run([epochId, node_id, op_type, weightValue, now]);
+      }
+      console.log(`[Pipeline] op_counts updated: epoch=${epochId} node=${node_id} op=${op_type}`);
+    } catch (e) {
+      console.error("[Pipeline] op_counts write failed:", e.message);
+    }
+
+    // Update execution_metrics for the executing node
+    try {
+      const existingMetric = this.db.prepare(
+        "SELECT id FROM execution_metrics WHERE source_id = ? AND source_type = ? AND chain = ?"
+      ).get([node_id, 'node', op_type]);
+      if (existingMetric) {
+        this.db.prepare(
+          "UPDATE execution_metrics SET requests_handled = requests_handled + 1, updated_at = ? WHERE id = ?"
+        ).run([now, existingMetric.id]);
+      } else {
+        this.db.prepare(
+          "INSERT INTO execution_metrics (source_id, source_type, chain, requests_handled, updated_at) VALUES (?, 'node', ?, 1, ?)"
+        ).run([node_id, op_type, now]);
+      }
+      console.log(`[Pipeline] execution_metrics updated: node=${node_id} op=${op_type}`);
+    } catch (e) {
+      console.error("[Pipeline] execution_metrics write failed:", e.message);
+    }
+
     // [Phase 26] Economic Ledger Recording
     if (this.ledger && billingAmount > 0) {
       try {
