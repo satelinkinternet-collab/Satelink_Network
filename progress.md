@@ -14,6 +14,8 @@
 | Dashboard Consolidation | COMPLETE | Role guards, middleware, agent panel |
 | Legacy Removal | COMPLETE | dashboard.js removed, query-token auth purged |
 | Validation | COMPLETE | All dashboard routes protected |
+| Dashboard Query Layer | COMPLETE | 5 read-only endpoints at /dashboard-api/* |
+| CI Fix | COMPLETE | package-lock.json synced, workflow paths fixed |
 
 ## Security Fixes Tracker
 

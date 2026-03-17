@@ -70,6 +70,7 @@ import { createDistApiRouter } from './routes/dist_api_v2.js';
 import { createEntApiRouter } from './routes/ent_api_v2.js';
 import { createPublicPartnersRouter } from './routes/public_partners.js';
 import { createAdminAutonomousRouter } from './routes/admin_autonomous.js';
+import { createDashboardApiRouter } from '../dashboard_api/index.js';
 
 client.collectDefaultMetrics();
 
@@ -184,6 +185,9 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // Dev-only test auth (auto-disabled in production via internal guard)
     app.use('/__test/auth', createDevAuthRouter({ db }));
+
+    // ── Dashboard Query Layer (read-only, separated from operational APIs) ──
+    app.use('/dashboard-api', createDashboardApiRouter(db));
 
     // ── User & Settings ──
     app.use('/me', createUserSettingsRouter(db));

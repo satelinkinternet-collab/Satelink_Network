@@ -23,6 +23,10 @@
 - Agent Control Centre page created at `/admin/agent-control-centre`
 - Documentation complete (6 docs)
 
+- Dashboard Query Layer implemented (`apps/api/src/dashboard_api/`)
+- 5 read-only endpoints mounted at `/dashboard-api/*`
+- CI fix: package-lock.json synced, frontend path updated in workflow
+
 ## Pending
 - Final build report
 
