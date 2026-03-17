@@ -1,15 +1,52 @@
 // economics/epoch_scheduler.js
 // Automatic epoch aggregation on a fixed interval.
+// Supports distributed locking via PostgreSQL advisory locks
+// or in-process mutex for SQLite.
 
 const INTERVAL_MS = parseInt(process.env.EPOCH_INTERVAL_MS || '60000', 10);
+const LOCK_ID = 738291; // Arbitrary unique lock ID for epoch aggregation
 
 let running = false;
 
-function runEpochCycle(db) {
-    if (running) return;
+/**
+ * Attempt to acquire a distributed lock.
+ * PostgreSQL: pg_try_advisory_lock
+ * SQLite: in-process mutex (the `running` flag)
+ */
+async function tryAcquireLock(db) {
+    // Detect PostgreSQL (UniversalDB with query method or pg Pool)
+    if (typeof db.query === 'function' && typeof db.prepare !== 'function') {
+        const result = await db.query(`SELECT pg_try_advisory_lock(${LOCK_ID}) as locked`);
+        const locked = result.rows?.[0]?.locked ?? result?.[0]?.locked ?? false;
+        return locked;
+    }
+    // SQLite: use in-process flag
+    if (running) return false;
     running = true;
+    return true;
+}
+
+/**
+ * Release the distributed lock.
+ */
+async function releaseLock(db) {
+    if (typeof db.query === 'function' && typeof db.prepare !== 'function') {
+        await db.query(`SELECT pg_advisory_unlock(${LOCK_ID})`);
+        return;
+    }
+    // SQLite: clear in-process flag
+    running = false;
+}
+
+async function runEpochCycle(db) {
+    const lockAcquired = await tryAcquireLock(db);
+    if (!lockAcquired) {
+        console.log("[AUTO-EPOCH] Lock skipped");
+        return;
+    }
 
     try {
+        console.log("[AUTO-EPOCH] Lock acquired");
         console.log("[AUTO-EPOCH] Checking epoch");
         const now = Math.floor(Date.now() / 1000);
 
@@ -92,7 +129,8 @@ function runEpochCycle(db) {
     } catch (e) {
         console.error("[AUTO-EPOCH] Error:", e.message);
     } finally {
-        running = false;
+        await releaseLock(db);
+        console.log("[AUTO-EPOCH] Lock released");
     }
 }
 
