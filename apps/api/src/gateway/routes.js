@@ -114,6 +114,16 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             const totalEarnings = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings").get([]);
             const epochCount = db.prepare("SELECT COUNT(*) as total FROM epochs WHERE status = 'FINALIZED'").get([]);
 
+            // Live metrics for dashboard graphs
+            const now = Math.floor(Date.now() / 1000);
+            const oneMinAgo = now - 60;
+            const fiveMinAgo = now - 300;
+            const oneHourAgo = now - 3600;
+
+            const opsLastMin = db.prepare("SELECT COUNT(*) as count FROM revenue_events_v2 WHERE created_at >= ?").get([oneMinAgo]);
+            const revLast5Min = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at >= ?").get([fiveMinAgo]);
+            const epochsLastHour = db.prepare("SELECT COUNT(*) as count FROM epochs WHERE status = 'FINALIZED' AND ends_at >= ?").get([oneHourAgo]);
+
             res.json({
                 ok: true,
                 epoch_id: currentEpoch?.id ?? null,
@@ -126,6 +136,9 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
                 epochs_finalized: epochCount.total,
                 last_epoch_close_time: lastClosed?.ends_at ?? null,
                 last_epoch_revenue: lastClosed?.total_revenue_usdt ?? 0,
+                ops_per_min: opsLastMin.count,
+                revenue_last_5min: { count: revLast5Min.count, total_usdt: revLast5Min.total },
+                epochs_last_hour: epochsLastHour.count,
                 scheduler_active: true,
                 scheduler_last_run_time: schedulerStatus.last_run_time,
                 scheduler_last_status: schedulerStatus.last_status,
