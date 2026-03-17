@@ -55,6 +55,22 @@ Resumable build log. If execution stops, the next engineer resumes from the last
 - [x] docs/api_map.md
 - [x] docs/rebuild_notes.md
 
+## Phase 7A: Dashboard Query Layer (COMPLETE)
+- [x] Create `apps/api/src/dashboard_api/` directory
+- [x] Create `network_overview.js` — aggregated network stats
+- [x] Create `nodes_overview.js` — per-node summary + admin nodes overview
+- [x] Create `earnings_overview.js` — revenue split, epoch history, op-type breakdown
+- [x] Create `admin_system.js` — system health, KPIs, flags, user counts
+- [x] Create `index.js` — router with 5 endpoints, JWT + role guards
+- [x] Mount at `/dashboard-api` in routes.js
+- [x] Verify zero INSERT/UPDATE/DELETE in dashboard_api/
+- [x] Verify only operations_engine.js writes to revenue_events_v2 and epoch_earnings
+- [x] Cache hooks in place (cacheKey pattern, cache?.get/set)
+
+## Phase 7B: CI Fix (COMPLETE)
+- [x] Regenerate package-lock.json (husky@8.0.3 was missing)
+- [x] Update satelink-ci.yml: Frontend job web/ → apps/dashboard/
+
 ## Phase 7: Validation (COMPLETE)
 - [x] Query-token auth fully purged (only doc reference remains)
 - [x] All dashboard routes protected by middleware + layout guards
