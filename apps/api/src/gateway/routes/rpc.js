@@ -14,6 +14,8 @@ export function createRpcRouter(db) {
     const router = express.Router();
 
     const opsEngine = new OperationsEngine(db, null, null);
+    // Ensure opsEngine tables (op_counts, execution_metrics, etc.) exist before first use
+    opsEngine.init().catch(e => console.error('[RPC] OpsEngine init failed:', e.message));
 
     const capacityRegistry = new NodeCapacityRegistry(db);
     const fallbackAdapter = new ProviderFallbackAdapter();
@@ -77,7 +79,7 @@ export function createRpcRouter(db) {
             const payloadHash = crypto.createHash('sha256').update(payloadString).digest('hex');
             const reqId = `rpc_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-            await opsEngine.executeOp({
+            const opResult = await opsEngine.executeOp({
                 op_type: 'api_relay_execution',
                 node_id: targetNodeId,
                 client_id: req.headers['x-api-key'] || 'anonymous_client',
@@ -86,7 +88,12 @@ export function createRpcRouter(db) {
                 payload_hash: payloadHash
             }).catch(e => {
                 console.error('[RPC] Failed to record op revenue:', e.message);
+                return null;
             });
+
+            if (opResult && opResult.ok) {
+                console.log(`[Pipeline] Revenue recorded: chain=${chain} node=${targetNodeId} amount=${opResult.amount} USDT reqId=${reqId}`);
+            }
 
             res.status(200).json(finalResultData.result || finalResultData);
         } catch (error) {
