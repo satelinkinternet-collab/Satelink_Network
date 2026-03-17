@@ -6,6 +6,7 @@ import { logger } from "./src/monitoring/logger.js";
 import { createApp } from "./app_factory.mjs";
 import Database from "better-sqlite3";
 import { DepositDetector } from "./src/settlement/deposit_detector.js";
+import { startEpochScheduler } from "./src/economics/epoch_scheduler.js";
 
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
@@ -45,5 +46,8 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         } else {
             logger.info("Simulated mode - Deposit Detector offline.");
         }
+
+        // Start automatic epoch aggregation scheduler
+        startEpochScheduler(db);
     });
 }
