@@ -37,6 +37,7 @@ import { createJobSubmitRouter } from './routes/job_submit.js';
 import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
 import { OperationsEngine } from '../core/operations_engine.js';
+import { schedulerStatus } from '../economics/epoch_scheduler.js';
 
 client.collectDefaultMetrics();
 
@@ -125,7 +126,10 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
                 epochs_finalized: epochCount.total,
                 last_epoch_close_time: lastClosed?.ends_at ?? null,
                 last_epoch_revenue: lastClosed?.total_revenue_usdt ?? 0,
-                scheduler_active: true
+                scheduler_active: true,
+                scheduler_last_run_time: schedulerStatus.last_run_time,
+                scheduler_last_status: schedulerStatus.last_status,
+                scheduler_last_error: schedulerStatus.last_error
             });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });

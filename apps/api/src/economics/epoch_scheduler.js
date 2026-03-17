@@ -8,6 +8,13 @@ const LOCK_ID = 738291; // Arbitrary unique lock ID for epoch aggregation
 
 let running = false;
 
+// Exported status tracker — read by /system/status
+export const schedulerStatus = {
+    last_run_time: null,
+    last_status: null,
+    last_error: null
+};
+
 /**
  * Attempt to acquire a distributed lock.
  * PostgreSQL: pg_try_advisory_lock
@@ -63,6 +70,9 @@ async function runEpochCycle(db) {
 
         if (rev.count === 0) {
             console.log("[AUTO-EPOCH] No revenue, skipping");
+            schedulerStatus.last_run_time = Date.now();
+            schedulerStatus.last_status = "skipped";
+            schedulerStatus.last_error = null;
             return;
         }
 
@@ -70,6 +80,9 @@ async function runEpochCycle(db) {
         const existing = db.prepare("SELECT COUNT(*) as count FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
         if (existing.count > 0) {
             console.log("[AUTO-EPOCH] Epoch", epochId, "already finalized, skipping");
+            schedulerStatus.last_run_time = Date.now();
+            schedulerStatus.last_status = "skipped";
+            schedulerStatus.last_error = null;
             return;
         }
 
@@ -124,10 +137,16 @@ async function runEpochCycle(db) {
         // 8. Open new epoch
         db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
 
-        console.log("[AUTO-EPOCH] Epoch", epochId, "closed | earnings:", earningsRows.length, "nodes | revenue:", totalRevenue, "USDT");
+        console.log("[AUTO-EPOCH] SUCCESS | Epoch", epochId, "closed | earnings:", earningsRows.length, "nodes | revenue:", totalRevenue, "USDT");
+        schedulerStatus.last_run_time = Date.now();
+        schedulerStatus.last_status = "success";
+        schedulerStatus.last_error = null;
 
     } catch (e) {
-        console.error("[AUTO-EPOCH] Error:", e.message);
+        console.error("[AUTO-EPOCH] ERROR:", e.message);
+        schedulerStatus.last_run_time = Date.now();
+        schedulerStatus.last_status = "error";
+        schedulerStatus.last_error = e.message;
     } finally {
         await releaseLock(db);
         console.log("[AUTO-EPOCH] Lock released");
