@@ -7,9 +7,9 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     // Finalize Epoch (Admin)
     router.post("/epoch/finalize", adminAuth, async (req, res) => {
         try {
-            const { epochId } = req.body;
-            if (!epochId) return res.status(400).json({ error: "Missing epochId" });
-            const result = await opsEngine.finalizeEpoch(epochId);
+            const { epochId } = req.body || {};
+            // If no epochId provided, finalize the current open epoch
+            const result = await opsEngine.finalizeEpoch(epochId || undefined);
             return res.json({ ok: true, ...result });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });

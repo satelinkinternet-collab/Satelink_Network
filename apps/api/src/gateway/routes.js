@@ -1,5 +1,6 @@
 import { createUserSettingsRouter } from './routes/user_settings.js';
 import { createUnifiedAuthRouter } from './routes/auth_v2.js';
+import { createAuthController } from '../auth/auth_controller.js';
 import { createStreamApiRouter } from './routes/stream_api.js';
 import { createPhase3Router } from './routes/api_phase3.js';
 import { createEnterpriseRouter, createDemandMetricsRouter } from './routes/api_enterprise.js';
@@ -39,6 +40,40 @@ import { QueueBackpressure } from '../queue/queue_backpressure.js';
 import { OperationsEngine } from '../core/operations_engine.js';
 import { schedulerStatus } from '../economics/epoch_scheduler.js';
 
+// ── Previously Unmounted Route Modules ──
+import { createAdminControlRoomRouter } from './routes/admin_control_room_api.js';
+import { createEmbeddedAuthRouter } from './routes/auth_embedded.js';
+import { createBuilderAuthRouter } from './routes/builder_auth.js';
+import { createBuilderApiRouter } from './routes/builder_api.js';
+import { createNodeApiRouter } from './routes/node_api_v2.js';
+import { createAdminRevenueRouter } from './routes/admin_revenue.js';
+import { createAdminReputationRouter } from './routes/admin_reputation.js';
+import { createAdminLifecycleRouter } from './routes/admin_lifecycle.js';
+import { createAdminNetworkRouter } from './routes/admin_network.js';
+import { createAdminPartnersRouter } from './routes/admin_partners.js';
+import { createAdminLaunchRouter } from './routes/admin_launch.js';
+import { createPublicMarketplaceRouter } from './routes/public_marketplace.js';
+import { createPublicNodeRouter } from './routes/public_node.js';
+import { createPublicStatusRouter } from './routes/public_status.js';
+import { createNodeLifecycleRouter } from './routes/node_lifecycle.js';
+import { createPairApiRouter } from './routes/pair_api.js';
+import { createSupportRouter } from './routes/support.js';
+import { createLedgerRouter } from './routes/ledger.js';
+import { OperationsEngine } from '../core/operations_engine.js';
+
+// ── Additional Route Modules (Phase 14 wiring) ──
+import { createDevAuthRouter } from './routes/dev_auth_tokens.js';
+import { createBetaRouter } from './routes/beta_api.js';
+import { createAdminEconomicsRouter } from './routes/admin_economics.js';
+import { createAdminForensicsRouter } from './routes/admin_forensics.js';
+import { createAdminGrowthRouter } from './routes/admin_growth.js';
+import { createAdminSLARouter } from './routes/admin_sla.js';
+import { createDistApiRouter } from './routes/dist_api_v2.js';
+import { createEntApiRouter } from './routes/ent_api_v2.js';
+import { createPublicPartnersRouter } from './routes/public_partners.js';
+import { createAdminAutonomousRouter } from './routes/admin_autonomous.js';
+import { createDashboardApiRouter } from '../dashboard_api/index.js';
+
 client.collectDefaultMetrics();
 
 let demoState = { active: null, expiry: 0 };
@@ -67,11 +102,22 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     const acquisitionEngine = new WorkloadAcquisitionEngine(buffer);
     acquisitionEngine.start();
 
+    // ── Genesis Workload Engine (autonomous workload discovery) ──
+    const genesisEngine = new GenesisWorkloadEngine(buffer, {});
+    try { genesisEngine.start(); } catch (e) { console.warn('[Genesis] Engine start deferred:', e.message); }
+
+    // ── Demand Flywheel Engine (follow-up workload generation) ──
+    const abuseFirewall = new AbuseFirewall(db);
+    const flywheelEngine = new DemandFlywheelEngine(buffer, abuseFirewall, {});
+    try { flywheelEngine.start(); } catch (e) { console.warn('[Flywheel] Engine start deferred:', e.message); }
+
     const autoScheduler = new AutomationScheduler(db);
     autoScheduler.start();
     app.use('/v1/automation', createAutomationRouter(autoScheduler));
 
     app.use('/api/admin/workloads', requireAdmin, createWorkloadAdminRouter(acquisitionEngine));
+    app.use('/api/admin/genesis', requireAdmin, createGenesisAdminRouter(genesisEngine));
+    app.use('/api/admin/flywheel', requireAdmin, createFlywheelAdminRouter(flywheelEngine));
 
     app.get('/health/queue', async (req, res) => {
         try { const length = await JobQueue.getLength(); res.status(200).json({ ok: true, queue_depth: length }); }
@@ -81,7 +127,67 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use("/rpc", createRpcRouter(db));
     app.use('/me', createUserSettingsRouter(db));
     app.use(createUnifiedAuthRouter({ db }));
-    app.use('/v1/node', createNodeNetworkRouter(db));
+
+    // ── Unified Auth Controller (canonical pipeline) ──
+    // Handles: /auth/challenge, /auth/verify, /auth/me, /auth/refresh, /auth/logout
+    // Backward-compatible aliases: /auth/nonce, /auth/start, /auth/finish
+    app.use('/auth', createAuthController(db));
+
+    // Legacy embedded auth — preserved at /auth/embedded for clients not yet migrated
+    app.use('/auth/embedded', createEmbeddedAuthRouter(db));
+
+    // Builder auth — separate session domain (HMAC cookie + JWT)
+    app.use(createBuilderAuthRouter(opsEngine));
+
+    // Dev-only test auth (auto-disabled in production via internal guard)
+    app.use('/__test/auth', createDevAuthRouter({ db }));
+
+    // ── Dashboard Query Layer (read-only, separated from operational APIs) ──
+    app.use('/dashboard-api', createDashboardApiRouter(db));
+
+    // ── User & Settings ──
+    app.use('/me', createUserSettingsRouter(db));
+    app.use('/pair', createPairApiRouter({ db }));
+    app.use('/support', requireJWT, createSupportRouter(db));
+
+    // ── Node Operator Routes ──
+    app.use('/v1/node', createNodeNetworkRouter(db, opsEngine));
+    app.use('/node', requireJWT, createNodeApiRouter({ db }));
+    app.use('/api/node', requireJWT, createNodeApiRouter({ db })); // Alias for frontend /api/node/* calls
+    app.use('/v1/node/lifecycle', requireJWT, createNodeLifecycleRouter(db));
+
+    // ── Builder / Developer Routes ──
+    app.use('/builder-api', requireJWT, createBuilderApiRouter({ db }, requireJWT));
+    app.use('/api/builder', requireJWT, createBuilderApiRouter({ db }, requireJWT)); // Alias for frontend /api/builder/* calls
+
+    // ── Distributor & Enterprise Routes ──
+    app.use('/dist-api', requireJWT, createDistApiRouter({ db }));
+    app.use('/ent-api', requireEnterprise, createEntApiRouter({ db }));
+
+    // ── Public Routes (no auth required) ──
+    app.use('/api/network', createPublicNodeRouter(db));
+    app.use('/api/network/marketplace', createPublicMarketplaceRouter(db)); // Alias for frontend
+    app.use('/api/marketplace', createPublicMarketplaceRouter(db));
+    app.use('/api/status', createPublicStatusRouter(db));
+    app.use('/api/partners', createPublicPartnersRouter(db));
+
+    // ── Economics summary (used by RevenueSplitChart) ──
+    app.get('/api/economics/summary', async (req, res) => {
+        try {
+            const summary = getEconomicsSummary(db);
+            res.json({ ok: true, ...summary });
+        } catch (e) {
+            res.json({ ok: true, total_revenue: 0, node_share: 0, platform_share: 0, distribution_share: 0 });
+        }
+    });
+
+    // ── Settlement mode (used by useSettlementMode hook) ──
+    app.get('/settlement/mode', (req, res) => {
+        const mode = process.env.FEATURE_REAL_SETTLEMENT === 'true' ? 'live' : 'simulated';
+        res.json({ ok: true, mode, adapter: mode === 'live' ? 'evm' : 'simulated' });
+    });
+
+    // ── Growth & Revenue ──
     app.use('/v1', createGrowthRouter(db).router);
     app.use('/stream', createStreamApiRouter({ db }));
 

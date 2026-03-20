@@ -9,39 +9,22 @@ const API_BASE =
 
 const nextConfig: NextConfig = {
   async rewrites() {
+    const apiPrefixes = [
+      'auth', 'me', 'admin-api', 'node-api', 'builder-api', 'dist-api',
+      'ent-api', 'pair', 'stream', 'support', 'beta', 'webhooks',
+      'network-stats', 'partners', '__test', 'api', 'v1', 'rpc', 'node',
+      'treasury', 'network', 'heartbeat', 'exchange', 'marketplace',
+      'connectors', 'compute', 'capacity', 'amm', 'protocol', 'watchdog',
+      'settlement',
+    ];
     return [
-      // Auth
-      { source: '/auth/:path*', destination: 'http://localhost:8080/auth/:path*' },
-      // User settings
-      { source: '/me/:path*', destination: 'http://localhost:8080/me/:path*' },
-      // Admin API (NOT admin pages — those are frontend)
-      { source: '/admin-api/:path*', destination: 'http://localhost:8080/admin-api/:path*' },
-      // Node API
-      { source: '/node-api/:path*', destination: 'http://localhost:8080/node-api/:path*' },
-      // Builder API
-      { source: '/builder-api/:path*', destination: 'http://localhost:8080/builder-api/:path*' },
-      // Distributor API
-      { source: '/dist-api/:path*', destination: 'http://localhost:8080/dist-api/:path*' },
-      // Enterprise API
-      { source: '/ent-api/:path*', destination: 'http://localhost:8080/ent-api/:path*' },
-      // Pairing
-      { source: '/pair/:path*', destination: 'http://localhost:8080/pair/:path*' },
-      // SSE Stream
-      { source: '/stream/:path*', destination: 'http://localhost:8080/stream/:path*' },
-      // Support
-      { source: '/support/:path*', destination: 'http://localhost:8080/support/:path*' },
-      // Beta
-      { source: '/beta/:path*', destination: 'http://localhost:8080/beta/:path*' },
-      // Health
-      { source: '/health', destination: 'http://localhost:8080/health' },
-      // Test routes (dev only)
-      { source: '/__test/:path*', destination: 'http://localhost:8080/__test/:path*' },
-      // Webhooks
-      { source: '/webhooks/:path*', destination: 'http://localhost:8080/webhooks/:path*' },
-      // Network stats
-      { source: '/network-stats/:path*', destination: 'http://localhost:8080/network-stats/:path*' },
-      // Partners
-      { source: '/partners/:path*', destination: 'http://localhost:8080/partners/:path*' },
+      ...apiPrefixes.map(prefix => ({
+        source: `/${prefix}/:path*`,
+        destination: `${API_BASE}/${prefix}/:path*`,
+      })),
+      { source: '/health', destination: `${API_BASE}/health` },
+      { source: '/metrics', destination: `${API_BASE}/metrics` },
+      { source: '/metrics/json', destination: `${API_BASE}/metrics/json` },
     ];
   },
 };
