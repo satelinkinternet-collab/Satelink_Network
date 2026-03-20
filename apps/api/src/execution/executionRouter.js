@@ -3,6 +3,7 @@ import { CapacityManager } from './capacityManager.js';
 import { ProviderFallback } from './providerFallback.js';
 import { ProfitProtection } from '../economics/profitProtection.js';
 import { JobQueue } from '../queue/job_queue.js';
+import { getOpsPrice } from '../core/config/ops_pricing.js';
 import client from 'prom-client';
 
 // Prometheus Metrics

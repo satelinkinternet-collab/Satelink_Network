@@ -4,11 +4,71 @@ import { JobProducer } from '../../queue/job_producer.js';
 const SCHEDULE_INTERVALS_MS = {
     every_minute: 60_000,
     every_5_minutes: 300_000,
+    every_15_minutes: 900_000,
+    every_30_minutes: 1_800_000,
     hourly: 3_600_000,
     daily: 86_400_000
 };
 
 const VALID_SCHEDULES = new Set(Object.keys(SCHEDULE_INTERVALS_MS));
+
+// Automation pricing: $0.01 per step
+const AUTOMATION_STEP_REWARD_USDT = 0.01;
+
+// Maximum steps per automation job
+const MAX_STEPS = 10;
+
+// Valid automation step actions
+const VALID_ACTIONS = new Set(['http_request', 'transform']);
+
+/**
+ * Validate automation steps for safety and correctness.
+ */
+function validateSteps(steps) {
+    if (!Array.isArray(steps) || steps.length === 0) {
+        return { valid: false, error: 'steps must be a non-empty array' };
+    }
+    if (steps.length > MAX_STEPS) {
+        return { valid: false, error: `Maximum ${MAX_STEPS} steps allowed` };
+    }
+    for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        if (!step || typeof step !== 'object') {
+            return { valid: false, error: `Step ${i} must be an object` };
+        }
+        if (!step.action || !VALID_ACTIONS.has(step.action)) {
+            return { valid: false, error: `Step ${i}: invalid action. Supported: ${[...VALID_ACTIONS].join(', ')}` };
+        }
+        if (step.action === 'http_request') {
+            if (!step.url || typeof step.url !== 'string') {
+                return { valid: false, error: `Step ${i}: http_request requires a url` };
+            }
+            try {
+                const parsed = new URL(step.url);
+                if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+                    return { valid: false, error: `Step ${i}: only http/https URLs allowed` };
+                }
+                const h = parsed.hostname.toLowerCase();
+                if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === '0.0.0.0') {
+                    return { valid: false, error: `Step ${i}: target URL must be a public endpoint` };
+                }
+                const parts = h.split('.');
+                if (parts.length === 4 && parts.every(p => /^\d+$/.test(p))) {
+                    const [a, b] = parts.map(Number);
+                    if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)) {
+                        return { valid: false, error: `Step ${i}: target URL must be a public endpoint` };
+                    }
+                }
+            } catch {
+                return { valid: false, error: `Step ${i}: invalid URL format` };
+            }
+        }
+        if (step.action === 'transform' && (!Array.isArray(step.extract) || step.extract.some(k => typeof k !== 'string'))) {
+            return { valid: false, error: `Step ${i}: transform requires extract as array of strings` };
+        }
+    }
+    return { valid: true };
+}
 
 export class AutomationScheduler {
     constructor(db) {
@@ -38,8 +98,14 @@ export class AutomationScheduler {
 
     async register({ job_type, schedule, payload }) {
         if (!job_type) throw new Error('job_type is required');
-        if (!VALID_SCHEDULES.has(schedule)) throw new Error('invalid schedule');
+        if (!VALID_SCHEDULES.has(schedule)) throw new Error(`invalid schedule. Valid: ${[...VALID_SCHEDULES].join(', ')}`);
         if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
+
+        // Validate steps if present
+        if (payload.steps) {
+            const stepCheck = validateSteps(payload.steps);
+            if (!stepCheck.valid) throw new Error(stepCheck.error);
+        }
 
         const job_id = `auto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const interval = SCHEDULE_INTERVALS_MS[schedule];
@@ -112,11 +178,12 @@ export class AutomationScheduler {
 
     async _fire(job_id, job_type, payload) {
         try {
+            const stepCount = payload.steps ? payload.steps.length : 1;
             await this.producer.produce({
                 type: 'automation_job',
                 client_id: 'automation_scheduler',
-                payload: { job_id, job_type, context: payload },
-                reward: 0.10, // Automation reward
+                payload: { job_id, job_type, steps: payload.steps || [payload], context: payload },
+                reward: stepCount * AUTOMATION_STEP_REWARD_USDT,
                 priority: 'NORMAL'
             });
 

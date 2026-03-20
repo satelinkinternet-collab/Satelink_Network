@@ -8,6 +8,17 @@ export function attachHeartbeat(app, db) {
             return res.status(400).json({ error: "Missing fields" });
         }
 
+        // Timestamp freshness check — reject stale (>60s) or future-dated (>5s) heartbeats
+        const MAX_AGE_MS = 60000;
+        const MAX_FUTURE_MS = 5000;
+        const age = Date.now() - Number(timestamp);
+        if (age > MAX_AGE_MS) {
+            return res.status(400).json({ error: "Stale heartbeat", age_ms: age });
+        }
+        if (age < -MAX_FUTURE_MS) {
+            return res.status(400).json({ error: "Future-dated heartbeat", age_ms: age });
+        }
+
         // Ensure row exists in registered_nodes
         try {
             await db.prepare(
@@ -85,4 +96,78 @@ export function attachHeartbeat(app, db) {
 
         return res.status(200).json({ status: "ok" });
     });
+}
+
+/**
+ * Heartbeat Watchdog — runs on interval, deactivates nodes that missed heartbeats.
+ * Nodes with last_heartbeat_at older than STALE_THRESHOLD_MS are marked inactive.
+ */
+const STALE_THRESHOLD_MS = 120_000; // 2 minutes without heartbeat
+const WATCHDOG_INTERVAL_MS = 30_000; // check every 30 seconds
+
+export function startHeartbeatWatchdog(db) {
+    // Ensure column exists
+    try {
+        db.prepare('ALTER TABLE registered_nodes ADD COLUMN last_heartbeat_at INTEGER').run();
+    } catch (e) { /* column already exists */ }
+    try {
+        db.prepare('ALTER TABLE registered_nodes ADD COLUMN active INTEGER DEFAULT 1').run();
+    } catch (e) { /* column already exists */ }
+
+    const timer = setInterval(() => {
+        try {
+            const cutoff = Date.now() - STALE_THRESHOLD_MS;
+            const result = db.prepare(`
+                UPDATE registered_nodes
+                SET active = 0
+                WHERE active = 1
+                  AND last_heartbeat_at IS NOT NULL
+                  AND last_heartbeat_at < ?
+                  AND is_flagged = 0
+            `).run(cutoff);
+
+            if (result.changes > 0) {
+                console.log(`[HeartbeatWatchdog] Deactivated ${result.changes} stale node(s)`);
+                // Reassign jobs from deactivated nodes
+                reassignOrphanedJobs(db);
+            }
+        } catch (e) {
+            // Non-fatal — watchdog is best-effort
+        }
+    }, WATCHDOG_INTERVAL_MS);
+
+    console.log('[HeartbeatWatchdog] Started — checking every 30s, threshold 120s');
+    return timer;
+}
+
+/**
+ * Reassign jobs that were dispatched to nodes that are now inactive.
+ * Moves them back to QUEUED status so the scheduler picks them up again.
+ */
+function reassignOrphanedJobs(db) {
+    try {
+        // Find jobs assigned to inactive nodes and reset them
+        const result = db.prepare(`
+            UPDATE job_queue_log
+            SET status = 'QUEUED', route = 'REASSIGNED'
+            WHERE status = 'DISPATCHED'
+              AND route IN (
+                  SELECT wallet FROM registered_nodes WHERE active = 0
+              )
+        `).run();
+
+        if (result.changes > 0) {
+            console.log(`[HeartbeatWatchdog] Reassigned ${result.changes} orphaned job(s) from inactive nodes`);
+        }
+    } catch (e) {
+        // job_queue_log table may not have the expected columns — non-fatal
+    }
+
+    // Also reset active_jobs count for inactive nodes in capacity tracking
+    try {
+        db.prepare(`
+            UPDATE node_capacity SET active_jobs = 0
+            WHERE node_id IN (SELECT wallet FROM registered_nodes WHERE active = 0)
+        `).run();
+    } catch (e) { /* non-fatal */ }
 }

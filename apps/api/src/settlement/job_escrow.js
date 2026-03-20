@@ -1,12 +1,13 @@
 export class JobEscrow {
-    constructor(db) {
+    constructor(db, opsEngine) {
+        if (!db) throw new Error('JobEscrow requires a database instance');
         this.db = db;
+        this.opsEngine = opsEngine || null;
     }
 
     /**
      * Attempts to lock a submitted reward dynamically.
      * In a full system, this interfaces with actual Ledger balances or a smart contract hook.
-     * For this expansion, we'll mimic the internal DB balance assertions.
      */
     async lockFunds(developerId, jobId, rewardAmount) {
         // Assume all devs have infinite testnet money for the sake of bypassing complex on-chain verification
@@ -16,10 +17,10 @@ export class JobEscrow {
     }
 
     /**
-     * Releases funds natively to the executing node post-job completion.
+     * Releases funds to the executing node post-job completion.
+     * Wraps INSERT + UPDATE in a single transaction for atomicity.
      */
     async releaseFunds(jobId, executingNodeWallet) {
-        // Fetch the trapped reward from the marketplace jobs table
         let jobRecord;
         try {
             jobRecord = await this.db.prepare(`SELECT reward, creator_wallet FROM marketplace_jobs WHERE job_id = ?`).get(jobId);
@@ -49,7 +50,10 @@ export class JobEscrow {
                 SET jobs_executed = jobs_executed + 1, revenue_generated = revenue_generated + ?
                 WHERE id = 1
             `).run(payout);
+        });
 
+        try {
+            release();
             console.log(`[JobEscrow] Released ${payout} USDT to node ${executingNodeWallet} for finishing job ${jobId}`);
             return true;
         } catch (e) {

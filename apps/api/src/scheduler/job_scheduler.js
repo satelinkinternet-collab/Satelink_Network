@@ -3,6 +3,7 @@ import { ProfitabilityEngine } from '../economics/profitability_engine.js';
 import { PricingEngine } from '../economics/pricing_engine.js';
 import { ExecutionRouter } from '../execution/executionRouter.js';
 import { OperationsEngine } from '../core/operations_engine.js';
+import { SLAEngine } from '../monitoring/sla_engine.js';
 import { JobMatchingEngine } from './job_matching_engine.js';
 import { JobEscrow } from '../settlement/job_escrow.js';
 import crypto from 'crypto';
@@ -15,8 +16,9 @@ export class JobScheduler {
         this.pricing = new PricingEngine(db);
         this.router = new ExecutionRouter(db);
         this.opsEngine = new OperationsEngine(db, null, null);
+        try { this.opsEngine.slaEngine = new SLAEngine(db); } catch (e) { /* SLA tables may not exist */ }
         this.matchingEngine = new JobMatchingEngine(db);
-        this.escrow = new JobEscrow(db);
+        this.escrow = new JobEscrow(db, this.opsEngine);
 
         this.isRunning = false;
         this.pollIntervalMs = 1000;
@@ -36,13 +38,37 @@ export class JobScheduler {
     }
 
     async _getSystemLoad() {
-        // Mock method to get current load %, perhaps from the number of active jobs or Redis depth
-        return 65;
+        try {
+            // 1. Queue depth component (0-50% of load)
+            let queueDepth = 0;
+            try { queueDepth = await JobQueue.getLength(); } catch (e) { /* Redis may be down */ }
+            const queueLoad = Math.min(queueDepth / 10000, 1.0) * 50; // 10K jobs = 50% load
+
+            // 2. Node utilization component (0-50% of load)
+            let activeNodes = 0, totalCapacity = 0, activeJobs = 0;
+            try {
+                const stats = this.db.prepare(`
+                    SELECT COUNT(*) as node_count,
+                           COALESCE(SUM(max_jobs), 0) as total_cap,
+                           COALESCE(SUM(active_jobs), 0) as active
+                    FROM node_capacity
+                `).get();
+                activeNodes = stats.node_count;
+                totalCapacity = stats.total_cap;
+                activeJobs = stats.active;
+            } catch (e) { /* table may not exist */ }
+
+            const nodeLoad = totalCapacity > 0
+                ? (activeJobs / totalCapacity) * 50
+                : 25; // default 25% if no capacity data
+
+            return Math.round(queueLoad + nodeLoad);
+        } catch (e) {
+            return 50; // safe default on error
+        }
     }
 
     async _checkNodeCapacity(nodeId) {
-        // Query the node's current load
-        // Stub implementation, would realistically check real-time metrics
         try {
             const row = await this.db.prepare("SELECT current_load FROM node_metrics WHERE node_id = ?").get([nodeId]);
             return row ? row.current_load : 0;
@@ -164,9 +190,50 @@ export class JobScheduler {
     }
 
     async _dispatch(job, node) {
-        // In real execution, this sends the HTTP request or WebSocket payload to the node.
-        // For testing we simulate a successful network call.
-        return new Promise(resolve => setTimeout(() => resolve({ success: true }), 50));
+        const endpoint = node.api_endpoint || node.endpoint;
+        if (!endpoint) {
+            return { success: false, error: 'Node has no api_endpoint' };
+        }
+
+        const timeout_ms = job.timeout_ms || 30000;
+        const body = {
+            job_id: job.id,
+            type: job.type,
+            payload: job.payload || {},
+            reward: job.reward || 0,
+            timeout_ms
+        };
+
+        // HMAC signature for node verification
+        const hmac = crypto.createHmac('sha256', process.env.JOB_SIGNING_SECRET || 'dev-signing-key');
+        hmac.update(JSON.stringify(body));
+        const signature = hmac.digest('hex');
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout_ms);
+
+        try {
+            const response = await fetch(`${endpoint}/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Job-Signature': signature
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+
+            if (!response.ok) {
+                return { success: false, error: `Node returned ${response.status}` };
+            }
+
+            const data = await response.json();
+            return { success: data.status === 'accepted', execution_id: data.execution_id };
+        } catch (err) {
+            clearTimeout(timer);
+            return { success: false, error: err.name === 'AbortError' ? 'dispatch_timeout' : err.message };
+        }
     }
 
     async _handleFailure(job, reason) {
