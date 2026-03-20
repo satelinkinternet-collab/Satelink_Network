@@ -52,6 +52,11 @@ import { RuntimeMonitor } from "./src/services/runtime_monitor.js";
 
 import { Scheduler } from "./src/ops/scheduler.js";
 
+// Day-1 Mode System
+import { getCurrentMode } from './src/config/mode.js';
+import { createProdGuard } from './src/middleware/prod_guard.js';
+import { createGoldenPathRouter } from './src/routes/golden_path.js';
+
 // Documentation (Swagger)
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -508,6 +513,7 @@ export function createApp(db) {
         service: "satelink",
         port: PORT,
         node_env: process.env.NODE_ENV,
+        mode: getCurrentMode(),
         time: Date.now(),
         pid: process.pid,
         uptime: process.uptime()
@@ -806,6 +812,9 @@ export function createApp(db) {
       // 2. /admin Alias (Redirects logic to admin router)
       app.use('/admin', verifyJWT, createAdminApiRouter(opsEngine));
     }
+
+    // Day-1: Mode status endpoint
+    app.use('/api', createGoldenPathRouter());
 
     // 8) Mount Integration Router
     app.use("/", createIntegrationRouter(opsEngine, adminAuth));
