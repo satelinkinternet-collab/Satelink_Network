@@ -59,7 +59,6 @@ import { createNodeLifecycleRouter } from './routes/node_lifecycle.js';
 import { createPairApiRouter } from './routes/pair_api.js';
 import { createSupportRouter } from './routes/support.js';
 import { createLedgerRouter } from './routes/ledger.js';
-import { OperationsEngine } from '../core/operations_engine.js';
 
 // ── Additional Route Modules (Phase 14 wiring) ──
 import { createDevAuthRouter } from './routes/dev_auth_tokens.js';
