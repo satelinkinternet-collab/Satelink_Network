@@ -15,18 +15,18 @@ export function createAdminApiRouter(opsEngine) {
             const todayStart = new Date().setHours(0, 0, 0, 0);
 
             // Revenue Stats
-            const revenueEvents = await opsEngine.db.query("SELECT * FROM revenue_events_v2 ORDER BY created_at DESC LIMIT 100");
+            const revenueEvents = await opsEngine.db.prepare("SELECT * FROM revenue_events_v2 ORDER BY created_at DESC LIMIT 100").all();
             const revenueToday = revenueEvents.filter(e => e.created_at * 1000 >= todayStart).reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
 
             // Treasury Status
             const treasury = await opsEngine.getTreasuryAvailable();
 
             // Epoch Status
-            const currentEpoch = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
+            const currentEpoch = await opsEngine.db.prepare("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get();
 
             // Nodes
-            const nodesOnline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE status = 'online'")).c;
-            const nodesOffline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE status != 'online'")).c;
+            const nodesOnline = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE status = 'online'").get()).c;
+            const nodesOffline = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE status != 'online'").get()).c;
 
             res.json({
                 ok: true,
@@ -52,14 +52,14 @@ export function createAdminApiRouter(opsEngine) {
 
     // GET /epochs/current - Current epoch status
     router.get('/epochs/current', async (req, res) => {
-        const current = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
+        const current = await opsEngine.db.prepare("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get();
         res.json({ ok: true, epoch: current });
     });
 
     // GET /admin/revenue-events - Recent revenue events
     router.get('/revenue-events', async (req, res) => {
         const limit = parseInt(req.query.limit) || 50;
-        const events = await opsEngine.db.query("SELECT * FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?", [limit]);
+        const events = await opsEngine.db.prepare("SELECT * FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?").all([limit]);
         res.json({ ok: true, events });
     });
 
@@ -75,10 +75,9 @@ export function createAdminApiRouter(opsEngine) {
 
         // Phase 5: Audit Log
         try {
-            await opsEngine.db.query(
-                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
-                [req.user?.wallet || 'admin_api', 'PAUSE_WITHDRAWALS', JSON.stringify({ paused }), Date.now()]
-            );
+            await opsEngine.db.prepare(
+                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)"
+            ).run([req.user?.wallet || 'admin_api', 'PAUSE_WITHDRAWALS', JSON.stringify({ paused }), Date.now()]);
         } catch (e) { console.error("Audit Log Error:", e.message); }
 
         res.json({ ok: true, paused });
@@ -90,7 +89,7 @@ export function createAdminApiRouter(opsEngine) {
             const term = req.query.search ? `%${req.query.search}%` : '%';
 
             // Gather unique wallets from roles, nodes, and builders
-            const users = await opsEngine.db.query(`
+            const users = await opsEngine.db.prepare(`
                 SELECT DISTINCT u.wallet, 
                        COALESCE(ur.role, 'user') as role,
                        COALESCE(b.created_at, n.updatedAt, 0) as created_at,
@@ -106,7 +105,7 @@ export function createAdminApiRouter(opsEngine) {
                 WHERE u.wallet LIKE ?
                 ORDER BY created_at DESC
                 LIMIT 50
-            `, [term]);
+            `).all([term]);
 
             res.json({ ok: true, users });
         } catch (e) {
@@ -124,11 +123,11 @@ export function createAdminApiRouter(opsEngine) {
                 return res.status(403).json({ ok: false, error: "Only Super Admin can change roles" });
             }
 
-            await opsEngine.db.query(`
+            await opsEngine.db.prepare(`
                 INSERT INTO user_roles (wallet, role, updated_at) 
                 VALUES (?, ?, ?)
                 ON CONFLICT(wallet) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at
-            `, [wallet, role, Date.now()]);
+            `).run([wallet, role, Date.now()]);
 
             res.json({ ok: true });
         } catch (e) {
@@ -139,7 +138,7 @@ export function createAdminApiRouter(opsEngine) {
     // ─── NODE MONITORING (Phase 19) ───
     router.get('/nodes', async (req, res) => {
         try {
-            const nodes = await opsEngine.db.query("SELECT * FROM nodes ORDER BY last_seen DESC LIMIT 100");
+            const nodes = await opsEngine.db.prepare("SELECT * FROM nodes ORDER BY last_seen DESC LIMIT 100").all();
             res.json({ ok: true, nodes });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -149,12 +148,12 @@ export function createAdminApiRouter(opsEngine) {
     router.get('/services/nodes/:id', async (req, res) => {
         try {
             const { id } = req.params;
-            const node = await opsEngine.db.get("SELECT * FROM nodes WHERE node_id = ?", [id]);
+            const node = await opsEngine.db.prepare("SELECT * FROM nodes WHERE node_id = ?").get([id]);
             if (!node) return res.status(404).json({ ok: false, error: "Node not found" });
 
             // Fetch recent heartbeats/events if tables exist, or mock for now
             // We can query revenue_events as a proxy for activity locally
-            const recentEvents = await opsEngine.db.query("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20", [id]);
+            const recentEvents = await opsEngine.db.prepare("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20").all([id]);
 
             res.json({ ok: true, node, activity: recentEvents });
         } catch (e) {
@@ -186,9 +185,9 @@ export function createAdminApiRouter(opsEngine) {
     router.get('/services/nodes/distribution', async (req, res) => {
         try {
             // Get actual counts if possible, else mock
-            const starlink = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'starlink%'"))?.c || 0;
-            const iot = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'iot%'"))?.c || 0;
-            const validator = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'validator%'"))?.c || 0;
+            const starlink = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'starlink%'").get())?.c || 0;
+            const iot = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'iot%'").get())?.c || 0;
+            const validator = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'validator%'").get())?.c || 0;
 
             // If DB empty, show mocks for UI demo
             const distribution = [

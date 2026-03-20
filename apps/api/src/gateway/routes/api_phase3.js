@@ -81,10 +81,10 @@ export function createPhase3Router(db) {
             const wallet = req.user.wallet;
 
             // Record the withdrawal intent/success in DB
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO claim_withdrawals (operator_wallet, amount_usdt, tx_hash, withdrawn_at)
                 VALUES (?, ?, ?, ?)
-            `).run(wallet, amount, txHash, Date.now());
+            `).run([wallet, amount, txHash, Date.now()]);
 
             res.json({
                 ok: true,

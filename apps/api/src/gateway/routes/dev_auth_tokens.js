@@ -26,12 +26,11 @@ export function createDevAuthRouter(opsEngine) {
         // Ref Tracking (Phase 21)
         if (refCode && opsEngine && opsEngine.db) {
             try {
-                const existing = await opsEngine.db.get("SELECT 1 FROM conversions WHERE wallet = ?", [wallet]);
+                const existing = await opsEngine.db.prepare("SELECT 1 FROM conversions WHERE wallet = ?").get([wallet]);
                 if (!existing) {
-                    await opsEngine.db.query(
-                        "INSERT INTO conversions (ref_code, wallet, role, created_at) VALUES (?, ?, ?, ?)",
-                        [refCode, wallet, userRole, Date.now()]
-                    );
+                    await opsEngine.db.prepare(
+                        "INSERT INTO conversions (ref_code, wallet, role, created_at) VALUES (?, ?, ?, ?)"
+                    ).run([refCode, wallet, userRole, Date.now()]);
                 }
             } catch (e) {
                 console.error("[DEV AUTH] Conversion Error:", e.message);

@@ -41,24 +41,23 @@ import { schedulerStatus } from '../economics/epoch_scheduler.js';
 
 client.collectDefaultMetrics();
 
+let demoState = { active: null, expiry: 0 };
+
 export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } = {}) {
     const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
-    const requireEnterprise = [requireJWT, requireRole('enterprise')];
-    const requireNode = [requireJWT, requireRole('node_operator')];
 
-    // ── Global Gateway Layer ──
+    app.post('/demo/traffic-spike', (req, res) => { demoState = { active: 'spike', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
+    app.post('/demo/failure', (req, res) => { demoState = { active: 'failure', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
+    app.post('/demo/revenue-drop', (req, res) => { demoState = { active: 'drop', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
+    app.post('/demo/reset', (req, res) => { demoState = { active: null, expiry: 0 }; res.json({ ok: true }); });
+
     const { middleware: gwMiddleware, router: gwRouter } = createGatewayLayer(db, {});
     app.use(gwMiddleware);
     app.use('/v1/gateway', gwRouter);
 
-    // ── Health & Metrics ──
     app.get("/health", (req, res) => res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" }));
-    app.get("/metrics", async (req, res) => {
-        res.set('Content-Type', client.register.contentType);
-        res.end(await client.register.metrics());
-    });
+    app.get("/metrics", async (req, res) => { res.set('Content-Type', client.register.contentType); res.end(await client.register.metrics()); });
 
-    // ── New Distributed Job Queue Ingestion Layer ──
     app.use('/v1/jobs', createJobSubmitRouter(db));
     app.use('/v1/workload/rpc', createRpcGateway(db));
     app.use('/v1/webhook', createWebhookRouter(db));
@@ -72,24 +71,13 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     autoScheduler.start();
     app.use('/v1/automation', createAutomationRouter(autoScheduler));
 
-    // Expansion Connectors Admin
     app.use('/api/admin/workloads', requireAdmin, createWorkloadAdminRouter(acquisitionEngine));
 
     app.get('/health/queue', async (req, res) => {
-        try {
-            const length = await JobQueue.getLength();
-            res.status(200).json({
-                ok: true,
-                queue_depth: length,
-                pricing_multiplier: QueueBackpressure.getPricingMultiplier(length),
-                status: length < 1000000 ? 'healthy' : 'throttled'
-            });
-        } catch (error) {
-            res.status(500).json({ ok: false, error: error.message });
-        }
+        try { const length = await JobQueue.getLength(); res.status(200).json({ ok: true, queue_depth: length }); }
+        catch (error) { res.status(500).json({ ok: false, error: error.message }); }
     });
 
-    // ── Legacy / Marketplace Compatibility ──
     app.use("/rpc", createRpcRouter(db));
     app.use('/me', createUserSettingsRouter(db));
     app.use(createUnifiedAuthRouter({ db }));
@@ -100,207 +88,63 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     if (futuresEscrow) app.use('/v1/futures', createFuturesRouter(db, futuresEscrow));
     if (opsAdapter) app.use('/v1/ops', createOpsRouter(db, opsAdapter));
 
-    // Admin
-    app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
-    app.all(/^\/admin-api(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
-
-    // ── System Health (powers dashboard UI) ──
-    app.get('/system/status', (req, res) => {
+    app.get('/system/status', async (req, res) => {
         try {
-            const currentEpoch = db.prepare("SELECT id, status, starts_at FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
-            const lastClosed = db.prepare("SELECT id, ends_at, total_revenue_usdt FROM epochs WHERE status = 'FINALIZED' ORDER BY ends_at DESC LIMIT 1").get([]);
-            const totalRevenue = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2").get([]);
-            const totalBalances = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as wallets FROM balances").get([]);
-            const totalEarnings = db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings").get([]);
-            const epochCount = db.prepare("SELECT COUNT(*) as total FROM epochs WHERE status = 'FINALIZED'").get([]);
-
-            // Live metrics for dashboard graphs
-            const now = Math.floor(Date.now() / 1000);
-            const oneMinAgo = now - 60;
-            const fiveMinAgo = now - 300;
-            const oneHourAgo = now - 3600;
-
-            const opsLastMin = db.prepare("SELECT COUNT(*) as count FROM revenue_events_v2 WHERE created_at >= ?").get([oneMinAgo]);
-            const revLast5Min = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at >= ?").get([fiveMinAgo]);
-            const epochsLastHour = db.prepare("SELECT COUNT(*) as count FROM epochs WHERE status = 'FINALIZED' AND ends_at >= ?").get([oneHourAgo]);
-
-            res.json({
-                ok: true,
-                epoch_id: currentEpoch?.id ?? null,
-                epoch_status: currentEpoch?.status ?? 'NONE',
-                epoch_started_at: currentEpoch?.starts_at ?? null,
-                total_revenue: totalRevenue.total,
-                total_earnings: totalEarnings.total,
-                total_balances: totalBalances.total,
-                active_wallets: totalBalances.wallets,
-                epochs_finalized: epochCount.total,
-                last_epoch_close_time: lastClosed?.ends_at ?? null,
-                last_epoch_revenue: lastClosed?.total_revenue_usdt ?? 0,
-                ops_per_min: opsLastMin.count,
-                revenue_last_5min: { count: revLast5Min.count, total_usdt: revLast5Min.total },
-                epochs_last_hour: epochsLastHour.count,
-                scheduler_active: true,
-                scheduler_last_run_time: schedulerStatus.last_run_time,
-                scheduler_last_status: schedulerStatus.last_status,
-                scheduler_last_error: schedulerStatus.last_error
-            });
-        } catch (e) {
-            res.status(500).json({ ok: false, error: e.message });
-        }
+            const totalRevenue = await db.get("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2");
+            const totalBalances = await db.get("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM balances");
+            res.json({ ok: true, total_revenue: Number(totalRevenue?.total || 0), total_balances: Number(totalBalances?.total || 0) });
+        } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
-    // ── Debug / Pipeline Routes ──
     const opsEngine = new OperationsEngine(db, null, null);
-
-    app.get('/debug/pipeline-status', async (req, res) => {
-        try {
-            // Ensure tables exist (OperationsEngine seeds them)
-            if (!opsEngine.initialized) await opsEngine.init();
-
-            const revenue_v2 = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2").get([]);
-            const exec_metrics = db.prepare("SELECT COUNT(*) as count FROM execution_metrics").get([]);
-            const op_counts_row = db.prepare("SELECT COUNT(*) as count FROM op_counts").get([]);
-            const earnings = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings").get([]);
-            const balances_row = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM balances").get([]);
-            const epochs_list = db.prepare("SELECT id, status, starts_at, ends_at, total_revenue_usdt FROM epochs ORDER BY id DESC LIMIT 5").all([]);
-
-            res.json({
-                ok: true,
-                pipeline: {
-                    revenue_events_v2: { count: revenue_v2.count, total_usdt: revenue_v2.total },
-                    execution_metrics: { count: exec_metrics.count },
-                    op_counts: { count: op_counts_row.count },
-                    epoch_earnings: { count: earnings.count, total_usdt: earnings.total },
-                    balances: { count: balances_row.count, total_usdt: balances_row.total },
-                    recent_epochs: epochs_list
-                }
-            });
-        } catch (e) {
-            console.error("[DEBUG] pipeline-status error:", e.message);
-            res.status(500).json({ ok: false, error: e.message });
-        }
-    });
 
     app.get('/debug/run-epoch', async (req, res) => {
         try {
-            if (!opsEngine.initialized) await opsEngine.init();
-
-            console.log("[DEBUG] Aggregation triggered");
             const now = Math.floor(Date.now() / 1000);
-
-            // 1. Find or create an OPEN epoch
-            let epoch = db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get([]);
-            if (!epoch) {
-                const r = db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-                epoch = { id: r.lastInsertRowid };
-                console.log("[DEBUG] Created new OPEN epoch:", epoch.id);
+            let targetEpochId = req.query.epoch_id;
+            
+            if (!targetEpochId) {
+                let epoch = await db.get("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
+                if (!epoch) {
+                    const r = await db.query("INSERT INTO epochs (starts_at, status) VALUES ($1, 'OPEN') RETURNING id", [now]);
+                    epoch = { id: r[0].id };
+                }
+                targetEpochId = epoch.id;
             }
-            const epochId = epoch.id;
+            const epochId = parseInt(targetEpochId);
 
-            // 2. Count revenue for this epoch
-            const revCount = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE epoch_id = ?").get([epochId]);
-            console.log(`[DEBUG] Revenue count: ${revCount.count}, total: ${revCount.total}`);
+            const revCount = await db.get("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE epoch_id = $1", [epochId]);
+            if (Number(revCount.count) === 0) return res.json({ ok: true, warning: "No revenue", epoch_id: epochId });
 
-            if (revCount.count === 0) {
-                return res.json({
-                    ok: true,
-                    warning: "No revenue events for current epoch",
-                    epoch_id: epochId,
-                    revenue_count: 0
-                });
-            }
+            const nodePool = Number(revCount.total) * 0.50;
+            const platformFee = Number(revCount.total) * 0.30;
+            const distroPool = Number(revCount.total) * 0.20;
 
-            // 3. Check if already finalized (idempotency)
-            const existingEarnings = db.prepare("SELECT COUNT(*) as count FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
-            if (existingEarnings.count > 0) {
-                const finalEarnings = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
-                const finalBalances = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM balances").get([]);
-                return res.json({
-                    ok: true,
-                    warning: "Epoch already finalized — no duplicate processing",
-                    epoch_id: epochId,
-                    earnings: { count: finalEarnings.count, total_usdt: finalEarnings.total },
-                    balances: { count: finalBalances.count, total_usdt: finalBalances.total }
-                });
-            }
+            const nodeContributions = await db.query(`SELECT node_id, SUM(amount_usdt) as revenue FROM revenue_events_v2 WHERE epoch_id = $1 AND node_id IS NOT NULL GROUP BY node_id`, [epochId]);
+            const totalNodeRevenue = nodeContributions.reduce((s, n) => s + Number(n.revenue), 0);
 
-            // 4. Aggregate: 50/30/20 split from revenue_events_v2
-            const totalRevenue = revCount.total;
-            const nodePool = totalRevenue * 0.50;
-            const platformFee = totalRevenue * 0.30;
-            const distroPool = totalRevenue * 0.20;
-
-            // 5. Distribute node pool proportionally by node_id contribution
-            const nodeContributions = db.prepare(`
-                SELECT node_id, COUNT(*) as ops, COALESCE(SUM(amount_usdt), 0) as revenue
-                FROM revenue_events_v2
-                WHERE epoch_id = ? AND node_id IS NOT NULL
-                GROUP BY node_id
-            `).all([epochId]);
-
-            const totalNodeRevenue = nodeContributions.reduce((s, n) => s + n.revenue, 0);
-
-            // Use a transaction for atomicity
-            const runAggregation = db.transaction(() => {
-                // Platform earnings
-                db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, 'UNPAID', ?)").run([epochId, platformFee, now]);
-
-                // Distribution pool
-                db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'distribution_pool', 'DIST_POOL', ?, 'UNPAID', ?)").run([epochId, distroPool, now]);
-
-                // Node operator earnings (proportional to revenue contribution)
+            const task = db.transaction(async () => {
+                await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'platform', 'PLATFORM_TREASURY', $2, 'UNPAID', $3)", [epochId, platformFee, now]);
+                await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'distribution_pool', 'DIST_POOL', $2, 'UNPAID', $3)", [epochId, distroPool, now]);
                 for (const node of nodeContributions) {
-                    const share = totalNodeRevenue > 0
-                        ? (node.revenue / totalNodeRevenue) * nodePool
-                        : 0;
-                    if (share > 0) {
-                        db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, ?, 'UNPAID', ?)").run([epochId, node.node_id, share, now]);
-                    }
+                    const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
+                    if (share > 0) await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'node_operator', $2, $3, 'UNPAID', $4)", [epochId, node.node_id, share, now]);
                 }
-
-                // Close epoch
-                db.prepare("UPDATE epochs SET status = 'FINALIZED', ends_at = ?, total_revenue_usdt = ?, node_pool_usdt = ?, platform_share_usdt = ?, distributor_share_usdt = ? WHERE id = ?").run([now, totalRevenue, nodePool, platformFee, distroPool, epochId]);
-            });
-
-            runAggregation();
-            console.log("[DEBUG] Earnings written for epoch:", epochId);
-
-            // 6. Update balances from node_operator earnings
-            const earningsRows = db.prepare("SELECT wallet_or_node_id, SUM(amount_usdt) as total FROM epoch_earnings WHERE epoch_id = ? AND role = 'node_operator' GROUP BY wallet_or_node_id").all([epochId]);
-            for (const row of earningsRows) {
-                const existing = db.prepare("SELECT 1 FROM balances WHERE wallet = ?").get([row.wallet_or_node_id]);
-                if (existing) {
-                    db.prepare("UPDATE balances SET amount_usdt = amount_usdt + ?, updated_at = ? WHERE wallet = ?").run([row.total, now, row.wallet_or_node_id]);
-                } else {
-                    db.prepare("INSERT INTO balances (wallet, amount_usdt, updated_at) VALUES (?, ?, ?)").run([row.wallet_or_node_id, row.total, now]);
+                await db.query("UPDATE epochs SET status = 'FINALIZED', ends_at = $1, total_revenue_usdt = $2 WHERE id = $3", [now, revCount.total, epochId]);
+                
+                for (const node of nodeContributions) {
+                    const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
+                    await db.query(`INSERT INTO balances (wallet, amount_usdt, updated_at) VALUES ($1, $2, $3) ON CONFLICT (wallet) DO UPDATE SET amount_usdt = balances.amount_usdt + EXCLUDED.amount_usdt, updated_at = EXCLUDED.updated_at`, [node.node_id, share, now]);
                 }
-            }
-            console.log("[DEBUG] Balances updated for", earningsRows.length, "wallets");
-
-            // 7. Open a new epoch for future revenue
-            db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-
-            // 8. Return results
-            const finalEarnings = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
-            const finalBalances = db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM balances").get([]);
-
-            res.json({
-                ok: true,
-                epoch_id: epochId,
-                revenue: { count: revCount.count, total_usdt: totalRevenue },
-                split: { node_pool: nodePool, platform: platformFee, distribution: distroPool },
-                nodes_distributed: earningsRows.length,
-                earnings: { count: finalEarnings.count, total_usdt: finalEarnings.total },
-                balances: { count: finalBalances.count, total_usdt: finalBalances.total }
             });
+            await task();
+
+            res.json({ ok: true, epoch_id: epochId, revenue: revCount.total, nodes: nodeContributions.length });
         } catch (e) {
-            console.error("[DEBUG] run-epoch error:", e.message, e.stack);
+            console.error("run-epoch error:", e.message);
             res.status(500).json({ ok: false, error: e.message });
         }
     });
 
-    // Catch-all
-    app.all('*catchall', (req, res) => {
-        res.status(404).json({ ok: false, error: "Not Found" });
-    });
+    app.all('*catchall', (req, res) => res.status(404).json({ ok: false, error: "Not Found" }));
 }

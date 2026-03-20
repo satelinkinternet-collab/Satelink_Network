@@ -41,10 +41,9 @@ export function createBuilderAuthRouter(opsEngine) {
             }
 
             // Success: Create/Update Builder
-            await opsEngine.db.query(
-                "INSERT OR IGNORE INTO builders (wallet, created_at) VALUES (?, ?)",
-                [wallet.toLowerCase(), Date.now()]
-            );
+            await opsEngine.db.prepare(
+                "INSERT INTO builders (wallet, created_at) VALUES ($1, $2) ON CONFLICT (wallet) DO NOTHING"
+            ).run([wallet.toLowerCase(), Date.now()]);
 
             // Generate JWT
             const token = jwt.sign(
@@ -73,29 +72,7 @@ export function createBuilderAuthRouter(opsEngine) {
         res.json({ success: true });
     });
 
-    // 4. (DEV ONLY) Test Login
-    if (process.env.NODE_ENV !== "production") {
-        router.post('/__test/auth/builder/login', async (req, res) => {
-            const { wallet } = req.body;
-            if (!wallet) return res.status(400).json({ error: 'Wallet required' });
-
-            // Create builder if not exists
-            await opsEngine.db.query("INSERT OR IGNORE INTO builders (wallet, created_at) VALUES (?, ?)", [wallet.toLowerCase(), Date.now()]);
-
-            // Generate JWT
-            const token = jwt.sign(
-                { wallet: wallet.toLowerCase(), role: 'builder' },
-                process.env.JWT_SECRET,
-                { expiresIn: '7d', issuer: 'satelink-core' }
-            );
-
-            const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
-            const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'secret').update(sessionData).digest('hex');
-
-            res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
-            res.json({ success: true, token });
-        });
-    }
+    // 4. (DEV ONLY) Test Login removed for production stabilization
 
     // Middleware to protect routes (Legacy Cookie)
     router.requireAuth = (req, res, next) => {

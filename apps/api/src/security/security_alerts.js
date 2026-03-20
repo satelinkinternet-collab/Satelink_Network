@@ -30,10 +30,10 @@ function pruneMap(map) {
 
 async function createAlert(db, { severity, category, entity_type, entity_id, title, evidence }) {
     try {
-        await db.query(`
+        await db.prepare(`
             INSERT INTO security_alerts (severity, category, entity_type, entity_id, title, evidence_json, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
-        `, [severity, category, entity_type, entity_id, title, JSON.stringify(evidence), Date.now()]);
+        `).run([severity, category, entity_type, entity_id, title, JSON.stringify(evidence), Date.now()]);
     } catch (e) {
         console.error('[SecurityAlert] Failed to create alert:', e.message);
     }

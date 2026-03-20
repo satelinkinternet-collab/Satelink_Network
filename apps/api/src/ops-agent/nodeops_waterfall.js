@@ -6,6 +6,8 @@ export class NodeopsWaterfallService {
     }
 
     async init() {
+        // Tables operator_billing, ledger_entries handled by init.sql
+        /*
         // Automatically run migrations if needed for testing scope
         if (typeof this.db.exec === 'function') {
             try {
@@ -41,6 +43,7 @@ export class NodeopsWaterfallService {
                 // Ignore if tables exist
             }
         }
+        */
     }
 
     /**
@@ -52,7 +55,7 @@ export class NodeopsWaterfallService {
      * @returns {object} settlement summary
      */
     async settleOperatorPeriod(operatorId, period, grossRewardUsdt) {
-        let billing = this.db.prepare("SELECT * FROM operator_billing WHERE operator_id = ?").get([operatorId]);
+        let billing = await this.db.prepare("SELECT * FROM operator_billing WHERE operator_id = ?").get([operatorId]);
         if (!billing) {
             throw new Error(`Billing record not found for operator ${operatorId}`);
         }

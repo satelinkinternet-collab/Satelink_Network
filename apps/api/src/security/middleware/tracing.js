@@ -57,10 +57,10 @@ async function recordTrace(req, data) {
 
         // We use direct DB exec if possible or query
         // "INSERT INTO request_traces ..."
-        await db.query(`
+        await db.prepare(`
             INSERT INTO request_traces (trace_id, request_id, route, method, status_code, duration_ms, client_id, node_id, ip_hash, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
+        `).run([
             data.traceId,
             data.requestId,
             data.route,

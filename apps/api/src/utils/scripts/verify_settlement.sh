@@ -17,12 +17,26 @@ curl -s -X POST $API_URL/admin/settlement/config \
 echo ""
 
 # 3. Create a Batch Manually (Inject into DB for test)
-DB_PATH="./satelink.db" # Assuming default
 echo "Injecting test batch..."
 BATCH_ID=$(uuidgen)
-sqlite3 $DB_PATH "INSERT INTO payout_batches_v2 (id, status, currency, total_amount, fee_amount, adapter_type, created_at, updated_at) VALUES ('$BATCH_ID', 'queued', 'USDT', 100.0, 1.0, 'SIMULATED', $(date +%s)000, $(date +%s)000);"
 ITEM_ID=$(uuidgen)
-sqlite3 $DB_PATH "INSERT INTO payout_items_v2 (id, batch_id, wallet, amount, status, created_at, updated_at) VALUES ('$ITEM_ID', '$BATCH_ID', '0xTestWallet', 100.0, 'pending', $(date +%s)000, $(date +%s)000);"
+
+node -e "
+  async function run() {
+    const { getValidatedDB } = await import('./apps/api/src/core/db/index.js');
+    const db = await getValidatedDB();
+    await db.init();
+    
+    await db.prepare('INSERT INTO payout_batches_v2 (id, status, currency, total_amount, fee_amount, adapter_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(['$BATCH_ID', 'queued', 'USDT', 100.0, 1.0, 'SIMULATED', Date.now(), Date.now()]);
+    
+    await db.prepare('INSERT INTO payout_items_v2 (id, batch_id, wallet, amount, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(['$ITEM_ID', '$BATCH_ID', '0xTestWallet', 100.0, 'pending', Date.now(), Date.now()]);
+    
+    process.exit(0);
+  }
+  run();
+"
 
 # 4. Process Queue
 echo "Processing Queue..."

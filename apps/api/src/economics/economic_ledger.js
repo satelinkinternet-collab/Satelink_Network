@@ -11,10 +11,10 @@ export class EconomicLedger {
     /**
      * Ensure an account exists (Idempotent)
      */
-    ensureAccount(accountKey, type, label) {
-        this.db.prepare(`
-            INSERT OR IGNORE INTO economic_accounts (account_key, account_type, label, created_at)
-            VALUES (?, ?, ?, ?)
+    async ensureAccount(accountKey, type, label) {
+        await this.db.prepare(`
+            INSERT INTO economic_accounts (account_key, account_type, label, created_at)
+            VALUES ($1, $2, $3, $4) ON CONFLICT (account_key) DO NOTHING
         `).run([accountKey, type, label, Date.now()]);
     }
 
@@ -42,13 +42,13 @@ export class EconomicLedger {
         const now = Date.now();
 
         // 2. Execute Atomically
-        await this.db.transaction(async (tx) => {
+        const txFn = this.db.transaction(async () => {
             // A. Ensure Accounts exist
             for (const line of lines) {
                 if (line.account_type && line.label) {
-                    tx.prepare(`
-                        INSERT OR IGNORE INTO economic_accounts (account_key, account_type, label, created_at)
-                        VALUES (?, ?, ?, ?)
+                    await this.db.prepare(`
+                        INSERT INTO economic_accounts (account_key, account_type, label, created_at)
+                        VALUES ($1, $2, $3, $4) ON CONFLICT (account_key) DO NOTHING
                     `).run([line.account_key, line.account_type, line.label, now]);
                 }
             }
@@ -57,16 +57,17 @@ export class EconomicLedger {
             let lineNo = 1;
             for (const line of lines) {
                 // Insert Entry
-                const res = tx.prepare(`
-                    INSERT INTO economic_ledger_entries 
+                const res = await this.db.prepare(`
+                    INSERT INTO economic_ledger_entries
                     (txn_id, line_no, account_key, direction, amount_usdt, memo, event_type, reference_type, reference_id, created_by, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    RETURNING id
                 `).run([txnId, lineNo, line.account_key, line.direction, line.amount_usdt, memo, event_type, reference_type, reference_id, created_by, now]);
 
                 const entryId = res.lastInsertRowid;
 
                 // Get Last Hash
-                const lastChain = tx.prepare("SELECT hash_current FROM economic_ledger_chain ORDER BY id DESC LIMIT 1").get([]);
+                const lastChain = await this.db.prepare("SELECT hash_current FROM economic_ledger_chain ORDER BY id DESC LIMIT 1").get();
                 const prevHash = lastChain ? lastChain.hash_current : 'GENESIS';
 
                 // Compute Current Hash
@@ -85,10 +86,10 @@ export class EconomicLedger {
                 const currentHash = crypto.createHash('sha256').update(canonical + prevHash).digest('hex');
 
                 // Insert Chain
-                tx.prepare(`
+                await this.db.prepare(`
                     INSERT INTO economic_ledger_chain
                     (ledger_entry_id, txn_id, hash_prev, hash_current, created_at)
-                    VALUES (?, ?, ?, ?, ?)
+                    VALUES ($1, $2, $3, $4, $5)
                 `).run([entryId, txnId, prevHash, currentHash, now]);
 
                 lineNo++;
@@ -97,32 +98,34 @@ export class EconomicLedger {
             // C. Update Balances Cache
             const keys = new Set(lines.map(l => l.account_key));
             for (const key of keys) {
-                const usage = tx.prepare(`
-                    SELECT 
+                const usage = await this.db.prepare(`
+                    SELECT
                         SUM(CASE WHEN direction='debit' THEN amount_usdt ELSE 0 END) as debits,
                         SUM(CASE WHEN direction='credit' THEN amount_usdt ELSE 0 END) as credits
-                    FROM economic_ledger_entries WHERE account_key = ?
+                    FROM economic_ledger_entries WHERE account_key = $1
                 `).get([key]);
 
-                const bal = (usage?.debits || 0) - (usage?.credits || 0);
+                const bal = (Number(usage?.debits || 0)) - (Number(usage?.credits || 0));
 
-                tx.prepare(`
+                await this.db.prepare(`
                     INSERT INTO economic_account_balances (account_key, balance_usdt, updated_at)
-                    VALUES (?, ?, ?)
+                    VALUES ($1, $2, $3)
                     ON CONFLICT(account_key) DO UPDATE SET balance_usdt=excluded.balance_usdt, updated_at=excluded.updated_at
                 `).run([key, bal, now]);
             }
         });
 
+        await txFn();
+
         return { txnId };
     }
 
-    getAccount(key) {
-        return this.db.prepare("SELECT * FROM economic_accounts WHERE account_key = ?").get([key]);
+    async getAccount(key) {
+        return await this.db.prepare("SELECT * FROM economic_accounts WHERE account_key = $1").get([key]);
     }
 
-    getBalance(key) {
-        const row = this.db.prepare("SELECT balance_usdt FROM economic_account_balances WHERE account_key = ?").get([key]);
-        return row ? row.balance_usdt : 0;
+    async getBalance(key) {
+        const row = await this.db.prepare("SELECT balance_usdt FROM economic_account_balances WHERE account_key = $1").get([key]);
+        return row ? Number(row.balance_usdt) : 0;
     }
 }

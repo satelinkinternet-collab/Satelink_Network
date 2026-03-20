@@ -12,16 +12,14 @@ export function createAdminLifecycleRouter(db) {
             const { node_id } = req.params;
 
             // Fetch last bundle
-            const bundle = await db.get(
-                "SELECT bundle_json, created_at FROM node_diag_bundles WHERE node_id = ? ORDER BY created_at DESC LIMIT 1",
-                [node_id]
-            );
+            const bundle = await db.prepare(
+                "SELECT bundle_json, created_at FROM node_diag_bundles WHERE node_id = ? ORDER BY created_at DESC LIMIT 1"
+            ).get([node_id]);
 
             // Fetch remediation suggestions
-            const suggestions = await db.query(
-                "SELECT * FROM node_remediation_suggestions WHERE node_id = ? AND status = 'open' ORDER BY created_at DESC",
-                [node_id]
-            );
+            const suggestions = await db.prepare(
+                "SELECT * FROM node_remediation_suggestions WHERE node_id = ? AND status = 'open' ORDER BY created_at DESC"
+            ).all([node_id]);
 
             if (!bundle && (!suggestions || suggestions.length === 0)) {
                 return res.json({ ok: true, data: null });
@@ -48,7 +46,7 @@ export function createAdminLifecycleRouter(db) {
      */
     router.get('/releases', async (req, res) => {
         try {
-            const policies = await db.query("SELECT * FROM node_release_policy");
+            const policies = await db.prepare("SELECT * FROM node_release_policy").all();
             res.json({ ok: true, policies });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -64,7 +62,7 @@ export function createAdminLifecycleRouter(db) {
             const { channel, min_version, build_hash } = req.body;
             if (!channel || !min_version) return res.status(400).json({ error: "Missing channel/version" });
 
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO node_release_policy (channel, min_version, build_hash, updated_at, updated_by)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(channel) DO UPDATE SET
@@ -72,7 +70,7 @@ export function createAdminLifecycleRouter(db) {
                     build_hash = excluded.build_hash,
                     updated_at = excluded.updated_at,
                     updated_by = excluded.updated_by
-            `, [channel, min_version, build_hash || null, Date.now(), req.user.wallet]);
+            `).run([channel, min_version, build_hash || null, Date.now(), req.user.wallet]);
 
             res.json({ ok: true });
         } catch (e) {

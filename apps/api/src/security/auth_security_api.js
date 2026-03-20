@@ -32,10 +32,10 @@ export function createAuthSecurityRouter(db) {
             // We'll store the full message as the "nonce" or just the random part?
             // auth_nonces schema: wallet, nonce, expires_at.
             // We can store just the nonce string.
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO auth_nonces (address, nonce, expires_at, created_at)
                 VALUES (?, ?, ?, ?)
-            `, [normalizedWallet, nonce, Date.now() + 300000, Date.now()]); // 5 min expiry for nonce
+            `).run([normalizedWallet, nonce, Date.now() + 300000, Date.now()]); // 5 min expiry for nonce
 
             res.json({ ok: true, nonce, message });
         } catch (e) {
@@ -54,9 +54,9 @@ export function createAuthSecurityRouter(db) {
             const normalizedWallet = wallet.toLowerCase();
 
             // Verify nonce exists and is valid
-            const nonceRow = await db.get(`
+            const nonceRow = await db.prepare(`
                 SELECT * FROM auth_nonces WHERE address = ? AND nonce = ? AND expires_at > ?
-            `, [normalizedWallet, nonce, Date.now()]);
+            `).get([normalizedWallet, nonce, Date.now()]);
 
             if (!nonceRow) {
                 return res.status(400).json({ ok: false, error: 'Invalid or expired nonce' });
@@ -72,17 +72,17 @@ export function createAuthSecurityRouter(db) {
             }
 
             // Consume nonce
-            await db.query("DELETE FROM auth_nonces WHERE address = ? AND nonce = ?", [normalizedWallet, nonce]);
+            await db.prepare("DELETE FROM auth_nonces WHERE address = ? AND nonce = ?").run([normalizedWallet, nonce]);
 
             // Issue Reauth Token
             const token = crypto.randomBytes(32).toString('hex');
             const tokenHash = hashToken(token);
             const expiresAt = Date.now() + (REAUTH_TTL * 1000);
 
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO reauth_tokens (id, wallet, token_hash, scope, expires_at, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `, [
+            `).run([
                 crypto.randomUUID(),
                 normalizedWallet,
                 tokenHash,
@@ -104,12 +104,12 @@ export function createAuthSecurityRouter(db) {
         try {
             if (!req.user || !req.user.wallet) return res.status(401).json({ ok: false, error: 'Unauthorized' });
 
-            const devices = await db.query(`
+            const devices = await db.prepare(`
                 SELECT id, device_public_id, label, user_agent, last_seen_at, first_seen_at, status
                 FROM trusted_devices
                 WHERE wallet = ? AND status = 'active'
                 ORDER BY last_seen_at DESC
-            `, [req.user.wallet]);
+            `).all([req.user.wallet]);
 
             res.json({ ok: true, devices });
         } catch (e) {
@@ -124,10 +124,10 @@ export function createAuthSecurityRouter(db) {
             const { device_public_id } = req.body;
             if (!device_public_id) return res.status(400).json({ ok: false, error: 'Device ID required' });
 
-            await db.query(`
+            await db.prepare(`
                 UPDATE trusted_devices SET status = 'revoked' 
                 WHERE wallet = ? AND device_public_id = ?
-            `, [req.user.wallet, device_public_id]);
+            `).run([req.user.wallet, device_public_id]);
 
             // Also should revoke any active sessions? 
             // Phase I2: Session binding checks valid check.
@@ -166,14 +166,14 @@ export function requireReauth(db, scope) {
                 return res.status(401).json({ ok: false, error: 'Unauthorized' });
             }
 
-            const validToken = await db.get(`
+            const validToken = await db.prepare(`
                 SELECT * FROM reauth_tokens 
                 WHERE wallet = ? 
                   AND token_hash = ? 
                   AND scope = ? 
                   AND expires_at > ?
                   AND used_at IS NULL
-            `, [userWallet, tokenHash, scope, Date.now()]);
+            `).get([userWallet, tokenHash, scope, Date.now()]);
 
             if (!validToken) {
                 return res.status(403).json({
@@ -185,7 +185,7 @@ export function requireReauth(db, scope) {
             }
 
             // Mark as used (One-Time Use)
-            await db.query(`UPDATE reauth_tokens SET used_at = ? WHERE id = ?`, [Date.now(), validToken.id]);
+            await db.prepare(`UPDATE reauth_tokens SET used_at = ? WHERE id = ?`).run([Date.now(), validToken.id]);
 
             next();
         } catch (e) {

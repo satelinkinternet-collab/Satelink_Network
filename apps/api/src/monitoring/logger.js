@@ -41,10 +41,9 @@ export class LoggerService {
             // Redact potential secrets from meta if passing full objects (basic check)
             // Implementation detail: caller should sanitise, but we can do a pass
 
-            await this.db.query(
-                `INSERT INTO error_logs (ts, level, source, route, message, meta_json) VALUES (?, ?, ?, ?, ?, ?)`,
-                [Date.now(), level, source, route || '', message, JSON.stringify(meta || {})]
-            );
+            await this.db.prepare(
+                `INSERT INTO error_logs (ts, level, source, route, message, meta_json) VALUES (?, ?, ?, ?, ?, ?)`
+            ).run([Date.now(), level, source, route || '', message, JSON.stringify(meta || {})]);
         } catch (e) {
             // Use internal logger for failures to log to DB
             logger.error({ err: e }, "FAILED TO WRITE TO DB LOG");
@@ -62,20 +61,19 @@ export class LoggerService {
         if (!this.db) return;
 
         try {
-            await this.db.query(
-                `INSERT INTO webhook_logs (ts, provider, event_id, status, amount_usdt, payer_wallet, source_type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [Date.now(), provider, eventId, status, amount_usdt || 0, payer_wallet, source_type]
-            );
+            await this.db.prepare(
+                `INSERT INTO webhook_logs (ts, provider, event_id, status, amount_usdt, payer_wallet, source_type) VALUES (?, ?, ?, ?, ?, ?, ?)`
+            ).run([Date.now(), provider, eventId, status, amount_usdt || 0, payer_wallet, source_type]);
         } catch (e) {
             logger.error({ err: e }, "FAILED TO WRITE WEBHOOK LOG");
         }
     }
 
     async getRecentErrors(limit = 50) {
-        return this.db.query(`SELECT * FROM error_logs ORDER BY ts DESC LIMIT ?`, [limit]);
+        return await this.db.prepare(`SELECT * FROM error_logs ORDER BY ts DESC LIMIT ?`).all([limit]);
     }
 
     async getRecentWebhooks(limit = 20) {
-        return this.db.query(`SELECT * FROM webhook_logs ORDER BY ts DESC LIMIT ?`, [limit]);
+        return await this.db.prepare(`SELECT * FROM webhook_logs ORDER BY ts DESC LIMIT ?`).all([limit]);
     }
 }

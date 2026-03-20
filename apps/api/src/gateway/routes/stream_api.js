@@ -13,7 +13,7 @@ export function createStreamApiRouter(opsEngine) {
      */
     const pollDB = async (query, params) => {
         try {
-            return await opsEngine.db.query(query, params);
+            return await opsEngine.db.prepare(query).all(params);
         } catch (e) {
             console.error("[SSE] Poll Error:", e.message);
             return [];
@@ -22,7 +22,7 @@ export function createStreamApiRouter(opsEngine) {
 
     const getSystemFlags = async () => {
         try {
-            const rows = await opsEngine.db.query("SELECT * FROM system_flags");
+            const rows = await opsEngine.db.prepare("SELECT * FROM system_flags").all();
             return rows.reduce((acc, r) => ({ ...acc, [r.key]: r.value }), {});
         } catch (e) { return {}; }
     };
@@ -67,13 +67,13 @@ export function createStreamApiRouter(opsEngine) {
                 const hourAgoMs = Date.now() - 3600000;
 
                 const [activeNodes, opsCount, revenue24h, alertsOpen, errors1h, slowQueries1h, incidentsOpen] = await Promise.all([
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinAgo]),
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
-                    opsEngine.db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [hourAgoMs]),
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?", [hourAgoMs]),
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'"),
+                    opsEngine.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?").get([fiveMinAgo]),
+                    opsEngine.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?").get([fiveMinAgo]),
+                    opsEngine.db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?").get([dayAgo]),
+                    opsEngine.db.prepare("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'").get(),
+                    opsEngine.db.prepare("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?").get([hourAgoMs]),
+                    opsEngine.db.prepare("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?").get([hourAgoMs]),
+                    opsEngine.db.prepare("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'").get(),
                 ]);
 
                 const treasury = await opsEngine.getTreasuryAvailable();
@@ -227,7 +227,7 @@ export function createStreamApiRouter(opsEngine) {
 
         const pollStatus = setInterval(async () => {
             try {
-                const node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
+                const node = await opsEngine.db.prepare("SELECT * FROM registered_nodes WHERE wallet = ?").get([wallet]);
                 if (node) {
                     const now = Math.floor(Date.now() / 1000);
                     const isOnline = (now - node.last_heartbeat) < 300;

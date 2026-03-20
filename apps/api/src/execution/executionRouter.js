@@ -24,16 +24,16 @@ export class ExecutionRouter {
      * @returns {Promise<Object>}
      */
     async routeExecution(job) {
-        const { type, payload, reward } = job;
+        const { type, payload, reward_usdt, reward } = job;
 
         // 0. Profit Protection Guard (Dynamic)
-        const userPrice = reward || 0.005;
+        const userPrice = Number(reward_usdt || reward || 0.005);
         const nodeReward = userPrice * 0.6;
         const providerCost = 0.001;
 
         // Calculate Network Stats
         const communityNodes = await this.capacityManager.getAvailableCommunityNodes();
-        const totalNodes = (this.db.prepare("SELECT COUNT(*) as count FROM registered_nodes WHERE active = 1").get() || { count: 0 }).count;
+        const totalNodes = (await this.db.prepare("SELECT COUNT(*) as count FROM registered_nodes WHERE active = 1").get() || { count: 0 }).count;
         const utilization = totalNodes > 0 ? ((totalNodes - communityNodes.length) / totalNodes) * 100 : 0;
         const queueLength = await JobQueue.getLength();
 
@@ -56,7 +56,7 @@ export class ExecutionRouter {
         if (genesisNodes.length > 0) {
             const node = genesisNodes[Math.floor(Math.random() * genesisNodes.length)];
             logger.info({
-                job_id: job.id,
+                job_id: job.id || job.job_id,
                 node_id: node.node_id,
                 profit: valuation.expected_profit
             }, 'execution_genesis');
@@ -69,7 +69,7 @@ export class ExecutionRouter {
         if (communityNodes.length > 0) {
             const node = communityNodes[0];
             logger.info({
-                job_id: job.id,
+                job_id: job.id || job.job_id,
                 node_id: node.node_id,
                 profit: valuation.expected_profit
             }, 'execution_community');
@@ -82,13 +82,13 @@ export class ExecutionRouter {
 
 
         // 3. Fallback to External Provider
-        logger.warn({ job_id: job.id }, 'execution_fallback_initiated');
+        logger.warn({ job_id: job.id || job.job_id }, 'execution_fallback_initiated');
         try {
             const result = await this.providerFallback.executeExternal(job);
             executionProviderTotal.inc();
             return result;
         } catch (error) {
-            logger.error({ job_id: job.id, error: error.message }, 'full_execution_failure');
+            logger.error({ job_id: job.id || job.job_id, error: error.message }, 'full_execution_failure');
             throw new Error(`Execution failed at all levels: ${error.message}`);
         }
     }

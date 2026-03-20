@@ -11,15 +11,14 @@ export class DiagnosticsService {
         const now = Date.now();
         const expiresAt = now + (24 * 60 * 60 * 1000); // 24h
 
-        await this.db.query(
-            `INSERT INTO diag_share_tokens (token, created_at, expires_at, note) VALUES (?, ?, ?, ?)`,
-            [token, now, expiresAt, note]
-        );
+        await this.db.prepare(
+            `INSERT INTO diag_share_tokens (token, created_at, expires_at, note) VALUES (?, ?, ?, ?)`
+        ).run([token, now, expiresAt, note]);
         return { token, expiresAt };
     }
 
     async validateToken(token) {
-        const row = await this.db.get(`SELECT * FROM diag_share_tokens WHERE token = ?`, [token]);
+        const row = await this.db.prepare(`SELECT * FROM diag_share_tokens WHERE token = ?`).get([token]);
         if (!row) return false;
         if (Date.now() > row.expires_at) return false;
         return true;
@@ -36,9 +35,9 @@ export class DiagnosticsService {
         };
 
         // 2. DB Stats
-        const revCount = (await this.db.get(`SELECT COUNT(*) as c FROM revenue_events`)).c;
-        const pendingWithdrawals = (await this.db.get(`SELECT COUNT(*) as c FROM withdrawals WHERE status = 'PENDING'`)).c;
-        const nodesOnline = (await this.db.get(`SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1`)).c; // heavily simplified "online" check
+        const revCount = (await this.db.prepare(`SELECT COUNT(*) as c FROM revenue_events`).get()).c;
+        const pendingWithdrawals = (await this.db.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE status = 'PENDING'`).get()).c;
+        const nodesOnline = (await this.db.prepare(`SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1`).get()).c; // heavily simplified "online" check
 
         const dbStats = {
             ok: true,
@@ -72,7 +71,7 @@ export class DiagnosticsService {
         }));
 
         // 5. Distribution (Last 5)
-        const recentDist = await this.db.query(`SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 5`);
+        const recentDist = await this.db.prepare(`SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 5`).all();
 
         return {
             service,

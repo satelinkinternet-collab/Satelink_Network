@@ -19,20 +19,20 @@ export class DensityService {
         const end = start + 86400000;
 
         // 1. Get all regions from nodes
-        const regions = this.db.prepare("SELECT DISTINCT region FROM nodes").all([]);
+        const regions = await this.db.prepare("SELECT DISTINCT region FROM nodes").all([]);
         // Also check if we have a region list config? Using DB distinct for now.
 
         for (const { region } of regions) {
             if (!region) continue;
 
             // 2. Active Nodes in Region (Yesterday)
-            // Ideally check activity log. 
+            // Ideally check activity log.
             // Simplified: Nodes with status 'online' OR last_seen recently.
             // Let's use `nodes` table count for now, assuming mostly accurate.
             // Better: Count distinct nodes from `op_counts` in this region?
             // `op_counts` links to node_id. We need to join `nodes` to get region.
 
-            const activeNodesRow = this.db.prepare(`
+            const activeNodesRow = await this.db.prepare(`
                 SELECT COUNT(DISTINCT n.node_id) as count
                 FROM nodes n
                 JOIN op_counts oc ON n.node_id = oc.node_id
@@ -47,12 +47,12 @@ export class DensityService {
             // If 0 active by ops, checking if any heartbeat?
             // Use `nodes` table count as fallback for "Available Capacity"
             if (activeNodes === 0) {
-                const registered = this.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE region = ?").get([region]);
+                const registered = await this.db.prepare("SELECT COUNT(*) as c FROM nodes WHERE region = ?").get([region]);
                 // If registered > 0 but active=0 -> Utilization is 0.
             }
 
             // 3. Total Ops in Region
-            const opsRow = this.db.prepare(`
+            const opsRow = await this.db.prepare(`
                  SELECT SUM(oc.total_ops) as total
                  FROM op_counts oc
                  JOIN nodes n ON oc.node_id = n.node_id
@@ -71,8 +71,8 @@ export class DensityService {
             let regionRevenue = 0;
             if (opsTotal > 0) {
                 // Get total revenue
-                const totalRev = this.db.prepare("SELECT SUM(amount_usdt) as t FROM revenue_events_v2 WHERE created_at >= ? AND created_at < ?").get([start, end]);
-                const globalOps = this.db.prepare("SELECT SUM(total_ops) as t FROM op_counts oc JOIN epochs e ON oc.epoch_id = e.id WHERE e.starts_at >= ? AND e.ends_at < ?").get([start / 1000, end / 1000]);
+                const totalRev = await this.db.prepare("SELECT SUM(amount_usdt) as t FROM revenue_events_v2 WHERE created_at >= ? AND created_at < ?").get([start, end]);
+                const globalOps = await this.db.prepare("SELECT SUM(total_ops) as t FROM op_counts oc JOIN epochs e ON oc.epoch_id = e.id WHERE e.starts_at >= ? AND e.ends_at < ?").get([start / 1000, end / 1000]);
 
                 if ((globalOps?.t || 0) > 0) {
                     regionRevenue = (totalRev?.t || 0) * (opsTotal / globalOps.t);
@@ -85,7 +85,7 @@ export class DensityService {
             const nodeToOps = opsTotal > 0 ? activeNodes / opsTotal : 0; // Inverse, simpler is ops/node
 
             // 6. Store
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO region_density_daily (
                     day_yyyymmdd, region_code, active_nodes, ops_total, revenue_usdt,
                     ops_per_node, revenue_per_node, node_to_ops_ratio, created_at
@@ -109,12 +109,12 @@ export class DensityService {
     }
 
     async getHistory(limit = 60) {
-        return this.db.prepare("SELECT * FROM region_density_daily ORDER BY day_yyyymmdd DESC, ops_total DESC LIMIT ?").all([limit]);
+        return await this.db.prepare("SELECT * FROM region_density_daily ORDER BY day_yyyymmdd DESC, ops_total DESC LIMIT ?").all([limit]);
     }
 
     async getLatest() {
-        const last = this.db.prepare("SELECT MAX(day_yyyymmdd) as d FROM region_density_daily").get([]);
+        const last = await this.db.prepare("SELECT MAX(day_yyyymmdd) as d FROM region_density_daily").get([]);
         if (!last?.d) return [];
-        return this.db.prepare("SELECT * FROM region_density_daily WHERE day_yyyymmdd = ? ORDER BY ops_total DESC").all([last.d]);
+        return await this.db.prepare("SELECT * FROM region_density_daily WHERE day_yyyymmdd = ? ORDER BY ops_total DESC").all([last.d]);
     }
 }

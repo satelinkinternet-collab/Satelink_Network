@@ -29,10 +29,10 @@ export class NetworkMetrics {
      *   capacity_available
      * }}
      */
-    snapshot() {
-        const nodeStats = this._nodeStats();
-        const workloadStats = this._workloadStats();
-        const rewardPool = this._rewardPool();
+    async snapshot() {
+        const nodeStats = await this._nodeStats();
+        const workloadStats = await this._workloadStats();
+        const rewardPool = await this._rewardPool();
 
         // workloads_per_second: daily total / 86400
         const wps = workloadStats.daily_total > 0
@@ -52,9 +52,9 @@ export class NetworkMetrics {
 
     // ─── Private ──────────────────────────────────────────────────────────────
 
-    _nodeStats() {
+    async _nodeStats() {
         try {
-            const rows = this.db.prepare(`
+            const rows = await this.db.prepare(`
                 SELECT status, COUNT(*) as cnt, SUM(capacity) as cap
                 FROM node_registry GROUP BY status
             `).all();
@@ -70,9 +70,9 @@ export class NetworkMetrics {
         }
     }
 
-    _workloadStats() {
+    async _workloadStats() {
         try {
-            const rows = this.db.prepare('SELECT key, value FROM workload_metrics').all();
+            const rows = await this.db.prepare('SELECT key, value FROM workload_metrics').all();
             const map = Object.fromEntries(rows.map(r => [r.key, r.value]));
             const rpcR = map.rpc_requests || 0;
             const whR = map.webhook_events || 0;
@@ -86,9 +86,9 @@ export class NetworkMetrics {
         }
     }
 
-    _rewardPool() {
+    async _rewardPool() {
         // Reward pool estimate: 60% of daily revenue distributed to nodes
-        const { daily_revenue } = this._workloadStats();
+        const { daily_revenue } = await this._workloadStats();
         return Math.round(daily_revenue * 0.6 * 10000) / 10000;
     }
 }

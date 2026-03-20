@@ -1,8 +1,7 @@
-import { UniversalDB } from './src/db/index.js';
+import { PgDatabase } from './apps/api/src/database/pg_adapter.js';
 
 (async () => {
-    const db = new UniversalDB({ type: 'sqlite', connectionString: './satelink.db' });
-    await db.init();
+    const db = await PgDatabase.create(process.env.DATABASE_URL);
 
     const distWallet = '0xdist_lco';
     const refCode = distWallet.slice(0, 8); // '0xdist_l'
@@ -19,7 +18,7 @@ import { UniversalDB } from './src/db/index.js';
     // 2. Create Conversion / Referral
     await db.query(`INSERT INTO conversions (ref_code, wallet, role, node_id, created_at) 
         VALUES (?, ?, 'node_operator', ?, ?)`,
-        [refCode, nodeWallet, nodeId, Date.now()]);
+        [refCode, nodeWallet, nodeId, Math.floor(Date.now() / 1000)]);
 
     console.log("✅ Seeded Fleet Node.");
 })();

@@ -57,22 +57,26 @@ export class RevenueOracle {
     constructor(fuseService, dbInstance) {
         this.fuse = fuseService;
         this.db = dbInstance;
+    }
 
+    async init() {
+        // Tables epoch_anchors, epoch_claims handled by init.sql
+        /*
         // Ensure table exists for epoch anchoring
-        this.db.prepare(`
+        await this.db.prepare(`
             CREATE TABLE IF NOT EXISTS epoch_anchors (
                 epoch_id INTEGER PRIMARY KEY,
                 merkle_root TEXT NOT NULL,
                 total_revenue TEXT NOT NULL,
                 tx_hash TEXT,
-                anchored_at INTEGER,
+                anchored_at BIGINT,
                 status TEXT DEFAULT 'PENDING'
             )
         `).run();
 
-        this.db.prepare(`
+        await this.db.prepare(`
             CREATE TABLE IF NOT EXISTS epoch_claims (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 epoch_id INTEGER NOT NULL,
                 operator_wallet TEXT NOT NULL,
                 amount_usdt TEXT NOT NULL,
@@ -81,17 +85,17 @@ export class RevenueOracle {
                 UNIQUE(epoch_id, operator_wallet)
             )
         `).run();
+        */
     }
 
     async anchorEpoch(epochId) {
-        // 1. Fetch all rewards for this epoch (from economic_ledger_entries or similar)
-        // For phase 3, we define the canonical query or just sum up node rewards
-        const rewards = this.db.prepare(`
+        // 1. Fetch all rewards for this epoch
+        const rewards = await this.db.prepare(`
             SELECT operator_wallet, SUM(reward_amount) as total
             FROM node_rewards
-            WHERE epoch_id = ? AND status = 'FINALIZED'
+            WHERE epoch_id = $1 AND status = 'FINALIZED'
             GROUP BY operator_wallet
-        `).all(epochId);
+        `).all([epochId]);
 
         if (rewards.length === 0) {
             console.log(`No rewards found for epoch ${epochId}`);
@@ -103,7 +107,6 @@ export class RevenueOracle {
 
         // 2. Generate Leaves
         for (const r of rewards) {
-            const amountStr = Math.floor(r.total * 10 ** 6).toString(); // Assuming API provides human readable, we convert to 6 decimals (USDT)
             const amountBN = ethers.parseUnits(r.total.toString(), 6);
             totalRevenue += amountBN;
 
@@ -125,46 +128,51 @@ export class RevenueOracle {
         // Save proofs
         for (const l of leaves) {
             const proof = tree.getProof(l.leaf);
-            this.db.prepare(`
-                INSERT OR IGNORE INTO epoch_claims (epoch_id, operator_wallet, amount_usdt, leaf_hash, proof)
-                VALUES (?, ?, ?, ?, ?)
-            `).run(epochId, l.operator, l.amount, l.leaf, JSON.stringify(proof));
+            await this.db.prepare(`
+                INSERT INTO epoch_claims (epoch_id, operator_wallet, amount_usdt, leaf_hash, proof)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (epoch_id, operator_wallet) DO NOTHING
+            `).run([epochId, l.operator, l.amount, l.leaf, JSON.stringify(proof)]);
         }
 
         // 4. Record to DB
-        this.db.prepare(`
-            INSERT OR REPLACE INTO epoch_anchors (epoch_id, merkle_root, total_revenue, status)
-            VALUES (?, ?, ?, 'PENDING')
-        `).run(epochId, root, totalRevenue.toString());
+        await this.db.prepare(`
+            INSERT INTO epoch_anchors (epoch_id, merkle_root, total_revenue, status)
+            VALUES ($1, $2, $3, 'PENDING')
+            ON CONFLICT (epoch_id) DO UPDATE SET
+            merkle_root = EXCLUDED.merkle_root,
+            total_revenue = EXCLUDED.total_revenue,
+            status = 'PENDING'
+        `).run([epochId, root, totalRevenue.toString()]);
 
-        // 5. Submit to Fuse via fuseService (assuming fuseService wraps contract calls)
+        // 5. Submit to Fuse
         try {
             console.log(`[RevenueOracle] Submitting root ${root} for epoch ${epochId}`);
             const tx = await this.fuse.submitEpochRoot(epochId, root, totalRevenue.toString());
 
-            this.db.prepare(`
+            await this.db.prepare(`
                 UPDATE epoch_anchors 
-                SET status = 'ANCHORED', tx_hash = ?, anchored_at = ?
-                WHERE epoch_id = ?
-            `).run(tx.hash, Date.now(), epochId);
+                SET status = 'ANCHORED', tx_hash = $1, anchored_at = $2
+                WHERE epoch_id = $3
+            `).run([tx.hash, Date.now(), epochId]);
 
             console.log(`[RevenueOracle] Epoch ${epochId} anchored successfully!`);
             return tx.hash;
         } catch (error) {
             console.error(`[RevenueOracle] Failed to anchor epoch ${epochId}:`, error);
-            this.db.prepare(`
+            await this.db.prepare(`
                 UPDATE epoch_anchors 
                 SET status = 'FAILED'
-                WHERE epoch_id = ?
-            `).run(epochId);
+                WHERE epoch_id = $1
+            `).run([epochId]);
             throw error;
         }
     }
 
-    getClaimData(epochId, operatorWallet) {
-        const row = this.db.prepare(`
-            SELECT * FROM epoch_claims WHERE epoch_id = ? AND operator_wallet = ?
-        `).get(epochId, operatorWallet);
+    async getClaimData(epochId, operatorWallet) {
+        const row = await this.db.prepare(`
+            SELECT * FROM epoch_claims WHERE epoch_id = $1 AND operator_wallet = $2
+        `).get([epochId, operatorWallet]);
         if (!row) return null;
         row.proof = JSON.parse(row.proof);
         return row;

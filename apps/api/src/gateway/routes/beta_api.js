@@ -18,7 +18,7 @@ export function createBetaRouter(opsEngine) {
             }
 
             // Check if beta gate is enabled
-            const gateFlag = await db.get("SELECT value FROM system_flags WHERE key = 'beta_gate_enabled'");
+            const gateFlag = await db.prepare("SELECT value FROM system_flags WHERE key = 'beta_gate_enabled'").get();
             const isGateEnabled = gateFlag?.value === '1';
 
             if (!isGateEnabled) {
@@ -29,7 +29,7 @@ export function createBetaRouter(opsEngine) {
             }
 
             // Check if user already exists
-            const existing = await db.get("SELECT * FROM beta_users WHERE wallet = ?", [wallet]);
+            const existing = await db.prepare("SELECT * FROM beta_users WHERE wallet = ?").get([wallet]);
             if (existing) {
                 if (existing.status === 'active') {
                     return res.json({ ok: true, status: 'active', message: 'Already joined' });
@@ -39,7 +39,7 @@ export function createBetaRouter(opsEngine) {
             }
 
             // Validate invite
-            const invite = await db.get("SELECT * FROM beta_invites WHERE invite_code = ?", [invite_code]);
+            const invite = await db.prepare("SELECT * FROM beta_invites WHERE invite_code = ?").get([invite_code]);
             if (!invite) {
                 return res.status(400).json({ ok: false, error: 'Invalid invite code' });
             }
@@ -56,17 +56,17 @@ export function createBetaRouter(opsEngine) {
             // Proceed to register
             await db.transaction(async (tx) => {
                 // Insert user
-                await tx.query(`
+                await tx.prepare(`
                     INSERT INTO beta_users (wallet, invite_code, status, first_seen_at, last_seen_at, created_at)
                     VALUES (?, ?, 'active', ?, ?, ?)
-                `, [wallet, invite_code, Date.now(), Date.now(), Date.now()]);
+                `).run([wallet, invite_code, Date.now(), Date.now(), Date.now()]);
 
                 // Increment invite usage
-                await tx.query(`
+                await tx.prepare(`
                     UPDATE beta_invites 
                     SET used_count = used_count + 1 
                     WHERE id = ?
-                `, [invite.id]);
+                `).run([invite.id]);
             });
 
             res.json({ ok: true, status: 'active' });
@@ -84,17 +84,17 @@ export function createBetaRouter(opsEngine) {
             const { wallet } = req.body;
             if (!wallet) return res.status(400).json({ ok: false });
 
-            const gateFlag = await db.get("SELECT value FROM system_flags WHERE key = 'beta_gate_enabled'");
+            const gateFlag = await db.prepare("SELECT value FROM system_flags WHERE key = 'beta_gate_enabled'").get();
             const isGateEnabled = gateFlag?.value === '1';
 
             if (!isGateEnabled) {
                 return res.json({ ok: true, access: true });
             }
 
-            const user = await db.get("SELECT * FROM beta_users WHERE wallet = ?", [wallet]);
+            const user = await db.prepare("SELECT * FROM beta_users WHERE wallet = ?").get([wallet]);
             if (user && user.status === 'active') {
                 // Update last seen
-                db.query("UPDATE beta_users SET last_seen_at = ? WHERE id = ?", [Date.now(), user.id]).catch(() => { });
+                db.prepare("UPDATE beta_users SET last_seen_at = ? WHERE id = ?").run([Date.now(), user.id]).catch(() => { });
                 return res.json({ ok: true, access: true });
             }
 
@@ -111,17 +111,17 @@ export function createBetaRouter(opsEngine) {
             const { wallet, category, severity, message, page_url, trace_id } = req.body;
 
             // Insert feedback
-            const { lastID } = await db.query(`
+            const { lastID } = await db.prepare(`
                 INSERT INTO beta_feedback (wallet, category, severity, message, page_url, trace_id, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [wallet, category, severity, message, page_url, trace_id, Date.now()]);
+            `).run([wallet, category, severity, message, page_url, trace_id, Date.now()]);
 
             // Auto-incident for High Severity
             if (severity === 'high') {
-                await db.query(`
+                await db.prepare(`
                     INSERT INTO security_alerts (type, severity, title, created_at, source_ip)
                     VALUES ('beta_feedback', 'high', ?, ?, ?)
-                `, [`High Severity Beta Feedback: ${message.substring(0, 50)}...`, Date.now(), req.ip]);
+                `).run([`High Severity Beta Feedback: ${message.substring(0, 50)}...`, Date.now(), req.ip]);
             }
 
             res.json({ ok: true, id: lastID });

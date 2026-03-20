@@ -1,6 +1,6 @@
 export function createBillingMiddleware(db) {
     return function enforceBilling(opType) {
-        return (req, res, next) => {
+        return async (req, res, next) => {
             const apiKey = req.get("X-Enterprise-Key");
 
             if (!apiKey) {
@@ -10,12 +10,12 @@ export function createBillingMiddleware(db) {
 
             try {
                 // Fetch key and client
-                const keyRecord = db.prepare(`SELECT client_id FROM enterprise_api_keys WHERE api_key = ?`).get(apiKey);
+                const keyRecord = await db.prepare(`SELECT client_id FROM enterprise_api_keys WHERE api_key = ?`).get(apiKey);
                 if (!keyRecord) {
                     return res.status(401).json({ ok: false, error: "Invalid Enterprise API Key" });
                 }
 
-                const client = db.prepare(`SELECT * FROM enterprise_clients WHERE client_id = ?`).get(keyRecord.client_id);
+                const client = await db.prepare(`SELECT * FROM enterprise_clients WHERE client_id = ?`).get(keyRecord.client_id);
                 if (!client) {
                     return res.status(401).json({ ok: false, error: "Client not found" });
                 }
@@ -37,16 +37,16 @@ export function createBillingMiddleware(db) {
                 }
 
                 // Deduct balance and record revenue event in an atomic transaction
-                const doBilling = db.transaction(() => {
+                const doBilling = db.transaction(async () => {
                     const newBalance = Number(client.deposit_balance) - cost;
 
-                    db.prepare(`
-                        UPDATE enterprise_clients 
-                        SET deposit_balance = ? 
+                    await db.prepare(`
+                        UPDATE enterprise_clients
+                        SET deposit_balance = ?
                         WHERE client_id = ?
                     `).run(newBalance, client.client_id);
 
-                    db.prepare(`
+                    await db.prepare(`
                         INSERT INTO revenue_events (amount, token, source, enterprise_id, created_at)
                         VALUES (?, 'USDT', ?, ?, ?)
                     `).run(cost, opType, client.client_id, Date.now());
@@ -54,7 +54,7 @@ export function createBillingMiddleware(db) {
                     return newBalance;
                 });
 
-                const updatedBalance = doBilling();
+                const updatedBalance = await doBilling();
 
                 // Attach to request for downstream usage (like SLA multipliers)
                 req.enterprise = {

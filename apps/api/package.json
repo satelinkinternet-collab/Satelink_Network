@@ -7,7 +7,6 @@
         "@openzeppelin/contracts": "^5.4.0",
         "@openzeppelin/defender-sdk": "^1.14.3",
         "base32.js": "^0.1.0",
-        "better-sqlite3": "^12.6.2",
         "bullmq": "^5.70.4",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.6",
@@ -42,6 +41,7 @@
         "start": "node server.js",
         "dev": "NODE_ENV=development nodemon server.js",
         "worker": "node worker.js",
+        "gateway": "node gateway.js",
         "test": "mocha test/**/*.test.js"
     }
 }

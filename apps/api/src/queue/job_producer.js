@@ -50,10 +50,10 @@ export class JobProducer {
             // 3. PostgreSQL Metadata Logging
             if (this.db) {
                 try {
-                    await this.db.query(`
+                    await this.db.prepare(`
                         INSERT INTO job_queue_log (job_id, client_id, job_type, payload, priority, reward, status, route, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
+                    `).run([
                         job.id,
                         job.client_id,
                         job.type,

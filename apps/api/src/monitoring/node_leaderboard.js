@@ -17,12 +17,17 @@
 export class NodeLeaderboard {
     constructor(db) {
         this.db = db;
-        this._ensureTable();
     }
 
-    _ensureTable() {
+    async init() {
+        await this._ensureTable();
+    }
+
+    async _ensureTable() {
+        // Table node_growth_stats handled by init.sql
+        /*
         try {
-            this.db.prepare(`
+            await this.db.prepare(`
                 CREATE TABLE IF NOT EXISTS node_growth_stats (
                     node_id         TEXT PRIMARY KEY,
                     jobs_completed  INTEGER DEFAULT 0,
@@ -35,6 +40,7 @@ export class NodeLeaderboard {
         } catch (e) {
             console.warn('[NodeLeaderboard] Init:', e.message);
         }
+        */
     }
 
     /**
@@ -44,11 +50,11 @@ export class NodeLeaderboard {
      * @param {string} node_id
      * @param {number} reward     — USD value of the job
      */
-    recordJob(node_id, reward = 0) {
+    async recordJob(node_id, reward = 0) {
         const now = Date.now();
         try {
             // Upsert into growth stats
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO node_growth_stats (node_id, jobs_completed, earnings_today, earnings_total, last_active, updated_at)
                 VALUES (?, 1, ?, ?, ?, ?)
                 ON CONFLICT(node_id) DO UPDATE SET
@@ -66,9 +72,9 @@ export class NodeLeaderboard {
     /**
      * Reset earnings_today for all nodes (called at epoch/day boundary).
      */
-    resetDailyEarnings() {
+    async resetDailyEarnings() {
         try {
-            this.db.prepare('UPDATE node_growth_stats SET earnings_today = 0').run();
+            await this.db.prepare('UPDATE node_growth_stats SET earnings_today = 0').run();
         } catch (_) { /* non-fatal */ }
     }
 
@@ -78,9 +84,9 @@ export class NodeLeaderboard {
      * @param {number} limit
      * @returns {Array<{ rank, node_id, jobs_completed, earnings_today, earnings_total }>}
      */
-    getLeaderboard(limit = 50) {
+    async getLeaderboard(limit = 50) {
         try {
-            const rows = this.db.prepare(`
+            const rows = await this.db.prepare(`
                 SELECT
                     g.node_id,
                     g.jobs_completed,
@@ -103,9 +109,9 @@ export class NodeLeaderboard {
     /**
      * Summary stats for the leaderboard endpoint.
      */
-    summary() {
+    async summary() {
         try {
-            const row = this.db.prepare(`
+            const row = await this.db.prepare(`
                 SELECT
                     COUNT(*)             AS total_ranked,
                     SUM(jobs_completed)  AS total_jobs,

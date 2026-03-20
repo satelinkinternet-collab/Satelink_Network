@@ -4,8 +4,12 @@ export class TreasuryMonitor {
     constructor(fuseService, dbInstance) {
         this.fuse = fuseService;
         this.db = dbInstance;
+    }
 
-        this.db.prepare(`
+    async init() {
+        // Table treasury_snapshots handled by init.sql
+        /*
+        await this.db.prepare(`
             CREATE TABLE IF NOT EXISTS treasury_snapshots (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 total_balance TEXT NOT NULL,
@@ -15,6 +19,7 @@ export class TreasuryMonitor {
                 snapshot_at INTEGER NOT NULL
             )
         `).run();
+        */
     }
 
     async captureSnapshot() {
@@ -27,17 +32,18 @@ export class TreasuryMonitor {
             // This would normally be calculated by finding unwithdrawn claims.
             // Simplified for Phase 3: Total Anchored Revenue - Total Withdrawn
             let pendingClaimsTotal = 0n;
-            const rows = this.db.prepare(`
-                SELECT amount_usdt FROM epoch_claims 
+            const rows = await this.db.prepare(`
+                SELECT amount_usdt FROM epoch_claims
                 WHERE epoch_id IN (SELECT epoch_id FROM epoch_anchors WHERE status = 'ANCHORED')
             `).all();
 
             rows.forEach(r => pendingClaimsTotal += ethers.getBigInt(r.amount_usdt));
 
-            // Subtract total already withdrawn (need to track withdrawals via events or local db). 
+            // Subtract total already withdrawn (need to track withdrawals via events or local db).
             // For now assume pendingClaimsTotal is roughly total claims created ever.
-            // Need a real tracking of withdrawn amounts. Let's assume we have a table `claim_withdrawals`
-            this.db.prepare(`
+            // Table claim_withdrawals handled by init.sql
+            /*
+            await this.db.prepare(`
                 CREATE TABLE IF NOT EXISTS claim_withdrawals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     operator_wallet TEXT NOT NULL,
@@ -46,8 +52,9 @@ export class TreasuryMonitor {
                     withdrawn_at INTEGER NOT NULL
                 )
             `).run();
+            */
 
-            const withdrawRows = this.db.prepare(`SELECT amount_usdt FROM claim_withdrawals`).all();
+            const withdrawRows = await this.db.prepare(`SELECT amount_usdt FROM claim_withdrawals`).all();
             withdrawRows.forEach(r => pendingClaimsTotal -= ethers.getBigInt(r.amount_usdt));
 
             if (pendingClaimsTotal < 0n) pendingClaimsTotal = 0n;
@@ -68,7 +75,7 @@ export class TreasuryMonitor {
             }
 
             // 4. Save
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO treasury_snapshots (total_balance, pending_claims_total, liquidity_ratio, withdraw_status, snapshot_at)
                 VALUES (?, ?, ?, ?, ?)
             `).run(vaultBalance.toString(), pendingClaimsTotal.toString(), liquidityRatio, status, Date.now());
@@ -85,8 +92,8 @@ export class TreasuryMonitor {
         }
     }
 
-    getLatestSnapshot() {
-        return this.db.prepare(`
+    async getLatestSnapshot() {
+        return await this.db.prepare(`
             SELECT * FROM treasury_snapshots ORDER BY snapshot_at DESC LIMIT 1
         `).get();
     }

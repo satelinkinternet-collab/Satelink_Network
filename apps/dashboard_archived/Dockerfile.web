@@ -1,0 +1,28 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY apps/dashboard/package*.json ./apps/dashboard/
+
+RUN npm install
+
+COPY apps/dashboard ./apps/dashboard
+
+WORKDIR /app/apps/dashboard
+
+RUN npm run build
+
+# ── Stage 2: runtime ───────────────────────────────────────────────────────────
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/apps/dashboard/public ./public
+COPY --from=builder /app/apps/dashboard/.next ./.next
+COPY --from=builder /app/apps/dashboard/node_modules ./node_modules
+COPY --from=builder /app/apps/dashboard/package.json ./package.json
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

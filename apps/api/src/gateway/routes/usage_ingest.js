@@ -10,9 +10,6 @@ export function createUsageIngestRouter(opsEngine) {
     const keyCache = new Map();
 
     const db = opsEngine.db;
-    const isRaw = db && typeof db.prepare === 'function';
-    const dbGet = async (sql, params=[]) => isRaw ? db.prepare(sql).get(params) : db.get(sql, params);
-    const dbRun = async (sql, params=[]) => isRaw ? db.prepare(sql).run(params) : db.run(sql, params);
 
 
 
@@ -39,10 +36,9 @@ export function createUsageIngestRouter(opsEngine) {
         let projectId = keyCache.get(keyHash);
 
         if (!projectId) {
-            const keyRecord = await dbGet(
-                "SELECT project_id, status FROM api_keys WHERE key_hash = ?",
-                [keyHash]
-            );
+            const keyRecord = await db.prepare(
+                "SELECT project_id, status FROM api_keys WHERE key_hash = ?"
+            ).get([keyHash]);
             if (!keyRecord || keyRecord.status !== 'active') {
                 return res.status(401).json({ error: 'Invalid API Key' });
             }
@@ -56,24 +52,21 @@ export function createUsageIngestRouter(opsEngine) {
         const ts = Date.now();
 
         try {
-            // 1. Log Usage
-            await dbRun(
-                "INSERT INTO api_usage (project_id, ts, endpoint, ok, cost_usdt, meta_json) VALUES (?, ?, ?, ?, ?, ?)",
-                [projectId, ts, endpoint, 1, cost, JSON.stringify(meta || {})]
-            );
+            await db.prepare(
+                "INSERT INTO api_usage (project_id, ts, endpoint, ok, cost_usdt, meta_json) VALUES (?, ?, ?, ?, ?, ?)"
+            ).run([projectId, ts, endpoint, 1, cost, JSON.stringify(meta || {})]);
 
             // 2. Create Revenue Event
             // We use a dummy tx_hash derived from our own system since this is internal metering
             const txRef = `builder:${projectId}:${ts}:${Math.floor(Math.random() * 1000)}`;
 
             // Assume Provider="Builder", SourceType="API"
-            await dbRun(
+            await db.prepare(
                 `INSERT INTO revenue_events (
                     provider, source_type, payer_wallet, amount_usdt, amount_sats, 
                     tx_hash, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                ['Builder', 'api_usage', payer_wallet, cost, cost * 100000000, txRef, ts] // Assuming 1 USDT = 100M Sats for simplicity or 0 if pure USDT
-            );
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+            ).run(['Builder', 'api_usage', payer_wallet, cost, cost * 100000000, txRef, ts]);
 
             res.json({ success: true, ref: txRef });
         } catch (e) {

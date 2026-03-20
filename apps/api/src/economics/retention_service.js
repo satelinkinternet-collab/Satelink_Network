@@ -32,7 +32,7 @@ export class RetentionService {
         const activeEnd = activeStart + 86400000;
 
         // 1. Users Cohort
-        const userCohort = await this.db.query("SELECT primary_wallet as wallet FROM users WHERE created_at >= ? AND created_at < ?", [startTs, endTs]);
+        const userCohort = await this.db.prepare("SELECT primary_wallet as wallet FROM users WHERE created_at >= ? AND created_at < ?").all([startTs, endTs]);
         if (userCohort.length > 0) {
             let active = 0;
             for (const u of userCohort) {
@@ -47,17 +47,16 @@ export class RetentionService {
                 // Or checking `auth_events`? (Assuming recorded).
                 // MVP: Check `request_traces` (only valid for D1/D7) OR `revenue_events_v2` (longer retention).
 
-                const hasActivity = await this.db.get(
-                    `SELECT 1 FROM request_traces WHERE client_id = ? AND created_at >= ? AND created_at < ? LIMIT 1`,
-                    [u.wallet, activeStart, activeEnd]
-                );
+                const hasActivity = await this.db.prepare(
+                    `SELECT 1 FROM request_traces WHERE client_id = ? AND created_at >= ? AND created_at < ? LIMIT 1`
+                ).get([u.wallet, activeStart, activeEnd]);
                 if (hasActivity) active++;
             }
             await this._store('user', cohortYmd, userCohort.length, active, currentYmd);
         }
 
         // 2. Nodes Cohort (by created_at or first_seen)
-        const nodeCohort = await this.db.query("SELECT node_id FROM nodes WHERE created_at >= ? AND created_at < ?", [startTs, endTs]);
+        const nodeCohort = await this.db.prepare("SELECT node_id FROM nodes WHERE created_at >= ? AND created_at < ?").all([startTs, endTs]);
         if (nodeCohort.length > 0) {
             let active = 0;
             for (const n of nodeCohort) {
@@ -70,11 +69,11 @@ export class RetentionService {
                 // Let's use `op_counts` (Layer 55).
                 // Assumption: Op counts are recorded per epoch.
                 // Epochs map to time.
-                const hasOps = await this.db.get(`
+                const hasOps = await this.db.prepare(`
                     SELECT 1 FROM op_counts oc
                     JOIN epochs e ON oc.epoch_id = e.id
                     WHERE oc.node_id = ? AND e.starts_at >= ? AND e.ends_at < ? LIMIT 1
-                `, [n.node_id, activeStart / 1000, activeEnd / 1000]);
+                `).get([n.node_id, activeStart / 1000, activeEnd / 1000]);
 
                 if (hasOps) active++;
             }
@@ -84,13 +83,13 @@ export class RetentionService {
 
     async _store(type, cohortYmd, size, active, currentYmd) {
         const rate = size > 0 ? active / size : 0;
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO retention_daily (day_yyyymmdd, cohort_type, cohort_day_yyyymmdd, cohort_size, active_count, retention_rate, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(day_yyyymmdd, cohort_type, cohort_day_yyyymmdd) DO UPDATE SET
                 active_count = excluded.active_count,
                 retention_rate = excluded.retention_rate
-        `, [currentYmd, type, cohortYmd, size, active, rate, Date.now()]);
+        `).run([currentYmd, type, cohortYmd, size, active, rate, Date.now()]);
     }
 
     _daysAgo(ymd, days) {
@@ -107,9 +106,8 @@ export class RetentionService {
     }
 
     async getRetentionMatrix(type, days = 30) {
-        return await this.db.query(
-            "SELECT * FROM retention_daily WHERE cohort_type = ? ORDER BY cohort_day_yyyymmdd DESC LIMIT ?",
-            [type, days * 30] // excessive limit to get matrix
-        );
+        return await this.db.prepare(
+            "SELECT * FROM retention_daily WHERE cohort_type = ? ORDER BY cohort_day_yyyymmdd DESC LIMIT ?"
+        ).all([type, days * 30]);
     }
 }
