@@ -211,6 +211,7 @@ export function createStreamApiRouter(opsEngine) {
     /**
      * GET /stream/node
      * Access: Node Operator (own node only)
+     * Emits: heartbeat (node status + earnings), log (new relay events)
      */
     router.get('/node', verifyJWT, async (req, res) => {
         if (req.user?.role !== 'node_operator') {
@@ -225,7 +226,31 @@ export function createStreamApiRouter(opsEngine) {
 
         const conn = sseHelper.init(req, res);
 
-        const pollStatus = setInterval(async () => {
+        const formatUptime = (lastSeen) => {
+            if (!lastSeen) return '—';
+            const s = Math.floor(Date.now() / 1000) - lastSeen;
+            if (s <= 0) return '0d 0h 0m';
+            const d = Math.floor(s / 86400);
+            const h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return `${d}d ${h}h ${m}m`;
+        };
+
+        // Seed lastLogId so we only stream NEW events
+        let lastLogId = 0;
+        try {
+            const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
+            if (node?.node_id) {
+                const latest = await opsEngine.db.get(
+                    "SELECT MAX(id) as max_id FROM revenue_events_v2 WHERE node_id = ?",
+                    [node.node_id]
+                );
+                lastLogId = latest?.max_id || 0;
+            }
+        } catch (e) { }
+
+        // heartbeat: online status + uptime + claimable earnings + telemetry point every 10s
+        const pollHeartbeat = setInterval(async () => {
             try {
                 const node = await opsEngine.db.prepare("SELECT * FROM registered_nodes WHERE wallet = ?").get([wallet]);
                 if (node) {
@@ -237,26 +262,39 @@ export function createStreamApiRouter(opsEngine) {
                         ip: '127.0.0.1'
                     });
                 }
-            } catch (e) { }
-        }, 10000);
 
-        const pollEarnings = setInterval(async () => {
-            try {
-                const total = await opsEngine.getBalance(wallet);
-                const recent_earnings = await pollDB(
-                    `SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 5`,
-                    [wallet]
-                );
-                conn.send('earnings', {
-                    unpaid_balance: total,
-                    recent_epochs: recent_earnings || []
+                const now = new Date();
+                const timeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                conn.send('heartbeat', {
+                    online: node?.status === 'online',
+                    uptime: formatUptime(node?.last_seen),
+                    earnings: parseFloat(claimable.toFixed(2)),
+                    lastPing: node?.last_seen ? node.last_seen * 1000 : Date.now(),
+                    telemetry_point: { t: timeLabel, cpu: 0, bw: recentOps * 10 },
                 });
             } catch (e) { }
         }, 10000);
 
+        // log: emit one 'log' event per new revenue event for this node
+        const pollLogs = setInterval(async () => {
+            try {
+                const node = await opsEngine.db.get("SELECT node_id FROM nodes WHERE wallet = ?", [wallet]);
+                if (!node?.node_id) return;
+                const events = await pollDB(
+                    "SELECT * FROM revenue_events_v2 WHERE node_id = ? AND id > ? ORDER BY id ASC LIMIT 5",
+                    [node.node_id, lastLogId]
+                );
+                for (const e of events) {
+                    conn.send('log', { message: `[RELAY] ${e.op_type} → $${e.amount_usdt}` });
+                    lastLogId = e.id;
+                }
+            } catch (e) { }
+        }, 10000);
+
         req.on('close', () => {
-            clearInterval(pollStatus);
-            clearInterval(pollEarnings);
+            clearInterval(pollHeartbeat);
+            clearInterval(pollLogs);
         });
     });
 

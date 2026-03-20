@@ -24,7 +24,7 @@ export default function TreasuryPage() {
         setLoading(true);
         try {
             setError('');
-            const res = await api.get('/treasury/status');
+            const res = await api.get('/admin-api/treasury/health');
             if (res.data.ok) {
                 setStatus(res.data.data);
             }
@@ -75,9 +75,9 @@ export default function TreasuryPage() {
                                 <h3 className="text-sm font-semibold text-zinc-400">Current USDT Balance</h3>
                             </div>
                             <p className="text-3xl font-bold tracking-tight text-white mb-1">
-                                ${(parseFloat(status.total_balance) / 10 ** 6).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ${Number(status.total_balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
-                            <p className="text-xs text-zinc-500">Held in RevenueVault contract</p>
+                            <p className="text-xs text-zinc-500">Available treasury balance (USDT)</p>
                         </CardContent>
                     </Card>
 
@@ -88,9 +88,9 @@ export default function TreasuryPage() {
                                 <h3 className="text-sm font-semibold text-zinc-400">Pending Claims</h3>
                             </div>
                             <p className="text-3xl font-bold tracking-tight text-white mb-1">
-                                ${(parseFloat(status.pending_claims_total) / 10 ** 6).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ${Number(status.pending_claims_total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
-                            <p className="text-xs text-zinc-500">Total unwithdrawn entitlements</p>
+                            <p className="text-xs text-zinc-500">Total UNPAID epoch earnings</p>
                         </CardContent>
                     </Card>
 

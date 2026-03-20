@@ -10,38 +10,67 @@ const API_BASE =
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
+      // General API catch-all
+      { source: "/api/:path*", destination: `${API_BASE}/:path*` },
       // Auth
-      { source: '/auth/:path*', destination: 'http://localhost:8080/auth/:path*' },
+      { source: "/auth/:path*", destination: `${API_BASE}/auth/:path*` },
       // User settings
-      { source: '/me/:path*', destination: 'http://localhost:8080/me/:path*' },
+      { source: "/me/:path*", destination: `${API_BASE}/me/:path*` },
       // Admin API (NOT admin pages — those are frontend)
-      { source: '/admin-api/:path*', destination: 'http://localhost:8080/admin-api/:path*' },
+      { source: "/admin-api/:path*", destination: `${API_BASE}/admin-api/:path*` },
+      // Admin control proxy (frontend /admin-ctrl/* → backend /admin/*)
+      { source: "/admin-ctrl/:path*", destination: `${API_BASE}/admin/:path*` },
+      // Dashboard API
+      { source: "/dashboard/:path*", destination: `${API_BASE}/dashboard/:path*` },
       // Node API
-      { source: '/node-api/:path*', destination: 'http://localhost:8080/node-api/:path*' },
+      { source: "/node-api/:path*", destination: `${API_BASE}/node-api/:path*` },
       // Builder API
-      { source: '/builder-api/:path*', destination: 'http://localhost:8080/builder-api/:path*' },
+      { source: "/builder-api/:path*", destination: `${API_BASE}/builder-api/:path*` },
       // Distributor API
-      { source: '/dist-api/:path*', destination: 'http://localhost:8080/dist-api/:path*' },
+      { source: "/dist-api/:path*", destination: `${API_BASE}/dist-api/:path*` },
       // Enterprise API
-      { source: '/ent-api/:path*', destination: 'http://localhost:8080/ent-api/:path*' },
-      // Pairing
-      { source: '/pair/:path*', destination: 'http://localhost:8080/pair/:path*' },
+      { source: "/ent-api/:path*", destination: `${API_BASE}/ent-api/:path*` },
       // SSE Stream
-      { source: '/stream/:path*', destination: 'http://localhost:8080/stream/:path*' },
+      { source: "/stream/:path*", destination: `${API_BASE}/stream/:path*` },
+      // Pairing
+      { source: "/pair/:path*", destination: `${API_BASE}/pair/:path*` },
       // Support
-      { source: '/support/:path*', destination: 'http://localhost:8080/support/:path*' },
+      { source: "/support/:path*", destination: `${API_BASE}/support/:path*` },
       // Beta
-      { source: '/beta/:path*', destination: 'http://localhost:8080/beta/:path*' },
+      { source: "/beta/:path*", destination: `${API_BASE}/beta/:path*` },
       // Health
-      { source: '/health', destination: 'http://localhost:8080/health' },
+      { source: "/health", destination: `${API_BASE}/health` },
       // Test routes (dev only)
-      { source: '/__test/:path*', destination: 'http://localhost:8080/__test/:path*' },
+      { source: "/__test/:path*", destination: `${API_BASE}/__test/:path*` },
       // Webhooks
-      { source: '/webhooks/:path*', destination: 'http://localhost:8080/webhooks/:path*' },
+      { source: "/webhooks/:path*", destination: `${API_BASE}/webhooks/:path*` },
       // Network stats
-      { source: '/network-stats/:path*', destination: 'http://localhost:8080/network-stats/:path*' },
+      { source: "/network-stats/:path*", destination: `${API_BASE}/network-stats/:path*` },
       // Partners
-      { source: '/partners/:path*', destination: 'http://localhost:8080/partners/:path*' },
+      { source: "/partners/:path*", destination: `${API_BASE}/partners/:path*` },
+      // Admin sub-APIs
+      { source: "/admin/economics/:path*", destination: `${API_BASE}/admin/economics/:path*` },
+      { source: "/admin/autonomous/:path*", destination: `${API_BASE}/admin/autonomous/:path*` },
+      { source: "/admin/forensics/:path*", destination: `${API_BASE}/admin/forensics/:path*` },
+      { source: "/admin/control/:path*", destination: `${API_BASE}/admin/control/:path*` },
+      { source: "/admin/partners/:path*", destination: `${API_BASE}/admin/partners/:path*` },
+      { source: "/admin/network/:path*", destination: `${API_BASE}/admin/network/:path*` },
+      // Partner portal
+      { source: "/partner/:path*", destination: `${API_BASE}/partner/:path*` },
+      // Operations
+      { source: "/operations/:path*", destination: `${API_BASE}/operations/:path*` },
+      // Ledger
+      { source: "/ledger/:path*", destination: `${API_BASE}/ledger/:path*` },
+      // Heartbeat
+      { source: "/heartbeat", destination: `${API_BASE}/heartbeat` },
+      // API docs
+      { source: "/api-docs", destination: `${API_BASE}/api-docs` },
+      // Usage
+      { source: "/usage/:path*", destination: `${API_BASE}/usage/:path*` },
+      // Admin Command Center REST endpoints
+      { source: "/admin/command/:path*", destination: `${API_BASE}/admin/command/:path*` },
+      // Admin Controls (pause-withdrawals, security-freeze, beta-gate, exit-safe-mode)
+      { source: "/admin/controls/:path*", destination: `${API_BASE}/admin/controls/:path*` },
     ];
   },
 };
