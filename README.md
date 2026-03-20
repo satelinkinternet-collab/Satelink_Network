@@ -1,8 +1,14 @@
-# Sample Hardhat 3 Beta Project (minimal)
+# Satelink MVP
 
-This project has a minimal setup of Hardhat 3 Beta, without any plugins.
+Satelink is a Decentralized Physical Infrastructure Network (DePIN) combining hardware nodes, an API builder platform, and decentralized settlement mechanisms to power the next generation of infrastructure.
 
-## What's included?
+## Architecture Highlights
+- **Node Lifecycle Management**: Secure pair codes for zero-friction provisioning.
+- **Heartbeat Integrity**: Hardened system with signature, nonce, and drift mitigation mechanisms to ensure node uptime credibility.
+- **Operations Engine**: A paid usage pipeline tracking request usage securely.
+- **Economic Ledger Engine**: Periodically finalizes epochs and distributes rewards accurately to honest operators.
+- **Support & Triage**: Integrated diagnostic capabilities.
+- **Security Mechanisms**: X-Admin-Keys, Spike Auto-Freeze, JWT-bounded session context, embedded authentication via wallets.
 
 The project includes native support for TypeScript, Hardhat scripts, tasks, and support for Solidity compilation and tests.
 
