@@ -20,7 +20,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const { name } = req.body;
         if (!name) return res.status(400).json({ error: 'Name required' });
 
-        await opsEngine.db.run(
+        await opsEngine.db.query(
             "INSERT INTO builder_projects (builder_wallet, name, created_at) VALUES (?, ?, ?)",
             [req.builderWallet, name, Date.now()]
         );
@@ -61,7 +61,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
         const keyPrefix = rawKey.substring(0, 12) + '...';
 
-        await opsEngine.db.run(
+        await opsEngine.db.query(
             "INSERT INTO api_keys (project_id, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?)",
             [id, keyHash, keyPrefix, Date.now()]
         );
@@ -77,7 +77,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const project = await opsEngine.db.prepare("SELECT * FROM builder_projects WHERE id = ? AND builder_wallet = ?").get([id, req.builderWallet]);
         if (!project) return res.status(403).json({ error: 'Unauthorized' });
 
-        await opsEngine.db.run(
+        await opsEngine.db.query(
             "UPDATE api_keys SET status = 'revoked', revoked_at = ? WHERE id = ? AND project_id = ?",
             [Date.now(), keyId, id]
         );
@@ -94,7 +94,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
 
         // Revoke old if requested
         if (revoke_id) {
-            await opsEngine.db.run(
+            await opsEngine.db.query(
                 "UPDATE api_keys SET status = 'revoked', revoked_at = ? WHERE id = ? AND project_id = ?",
                 [Date.now(), revoke_id, id]
             );
@@ -105,7 +105,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
         const keyPrefix = rawKey.substring(0, 12) + '...';
 
-        await opsEngine.db.run(
+        await opsEngine.db.query(
             "INSERT INTO api_keys (project_id, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?)",
             [id, keyHash, keyPrefix, Date.now()]
         );
