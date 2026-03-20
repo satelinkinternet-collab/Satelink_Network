@@ -12,6 +12,7 @@
   ],
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "husky": "^8.0.0",
     "turbo": "^2.1.2",
     "typescript": "~5.8.0"
   },
