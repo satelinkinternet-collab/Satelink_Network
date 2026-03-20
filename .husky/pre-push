@@ -1,0 +1,2 @@
+# Husky pre-push hook — run full agent-check
+bash scripts/agent-check.sh
