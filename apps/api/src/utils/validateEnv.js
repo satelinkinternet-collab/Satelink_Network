@@ -21,14 +21,10 @@ export function validateEnv() {
         process.exit(1);
     }
 
-    // Default DATABASE_URL for dev/Docker
+    // Require DATABASE_URL — no fallback to avoid hidden host mismatches
     if (!process.env.DATABASE_URL) {
-        if (process.env.NODE_ENV === 'production') {
-            console.error('DATABASE_URL must be provided in production');
-            process.exit(1);
-        }
-        process.env.DATABASE_URL = 'postgres://satelink:satelinkpassword@satelink-db:5432/satelink';
-        console.warn('[validateEnv] DATABASE_URL not set — using Docker default');
+        console.error('[FATAL] DATABASE_URL must be provided. Set it in .env or .env.local.');
+        process.exit(1);
     }
 
     // Force DB_TYPE=postgres

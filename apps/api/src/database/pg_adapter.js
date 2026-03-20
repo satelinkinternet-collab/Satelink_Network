@@ -17,6 +17,10 @@ export class PgDatabase {
     async init() {
         if (this.pool) return;
         const connectionString = process.env.DATABASE_URL;
+        if (!connectionString) {
+            throw new Error("[PgDatabase] DATABASE_URL is not set. Cannot connect.");
+        }
+        console.log("[PgDatabase] FINAL_DB_URL:", connectionString.replace(/\/\/.*@/, '//<credentials>@'));
         this.pool = new Pool({
             connectionString,
             max: 20,
@@ -31,7 +35,12 @@ export class PgDatabase {
         console.log("[PgDatabase] Connected via init()");
     }
 
-    static async create(connectionString, { retries = 15, delay = 2000 } = {}) {
+    static async create(connectionStringParam, { retries = 15, delay = 2000 } = {}) {
+        const connectionString = connectionStringParam || process.env.DATABASE_URL;
+        if (!connectionString) {
+            throw new Error("[PgDatabase] DATABASE_URL is not set and no connection string provided. Cannot connect.");
+        }
+        console.log("[PgDatabase] FINAL_DB_URL:", connectionString.replace(/\/\/.*@/, '//<credentials>@'));
         const pool = new Pool({
             connectionString,
             max: 20,

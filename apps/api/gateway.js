@@ -32,7 +32,7 @@ if (process.cwd() !== __dirname) {
 
 validateEnv();
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgres://satelink:satelinkpassword@satelink-db:5432/satelink";
+const DATABASE_URL = process.env.DATABASE_URL;
 
     try {
         const db = await PgDatabase.create(DATABASE_URL);
