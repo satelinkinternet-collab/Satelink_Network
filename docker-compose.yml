@@ -1,4 +1,10 @@
-version: '3.8'
+# ─── PRODUCTION-ORIENTED COMPOSE ──────────────────────────────────────────────
+# For local development with hot-reload and dev settings, use:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Prerequisites: copy .env.docker to .env and fill in secrets before running.
+#   cp .env.docker .env
+# ──────────────────────────────────────────────────────────────────────────────
 
 x-common-env: &common-env
   NODE_ENV: production
@@ -22,7 +28,7 @@ services:
       dockerfile: Dockerfile.api
     container_name: satelink-api
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=8080
       - LOG_LEVEL=info
       - JWT_SECRET=devsecret_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abc
