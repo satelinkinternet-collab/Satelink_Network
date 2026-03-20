@@ -83,7 +83,7 @@ export class Scheduler {
             // In MVP we might use shorter epochs or check DB config?
             // Let's assume 1 hour for now or checks the epoch start time.
 
-            const epoch = await this.opsEngine.db.get("SELECT * FROM epochs WHERE id = ?", [currentId]);
+            const epoch = await this.opsEngine.db.prepare("SELECT * FROM epochs WHERE id = ?").get([currentId]);
             const now = Math.floor(Date.now() / 1000);
 
             // Should we finalize? 
@@ -99,10 +99,9 @@ export class Scheduler {
 
                 // Phase 5: Audit Log
                 try {
-                    await this.opsEngine.db.query(
-                        "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
-                        ['system_scheduler', 'EPOCH_FINALIZE', JSON.stringify({ epochId: currentId }), Date.now()]
-                    );
+                    await this.opsEngine.db.prepare(
+                        "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)"
+                    ).run(['system_scheduler', 'EPOCH_FINALIZE', JSON.stringify({ epochId: currentId }), Date.now()]);
                 } catch (e) { console.error("Audit Log Error:", e.message); }
 
                 // 2. Validate Distribution Logic (Pre-flight)
@@ -140,14 +139,14 @@ export class Scheduler {
         // 1. DB Connectivity (implicit if we query)
         try {
             const now = Date.now();
-            await this.opsEngine.db.get("SELECT 1");
+            await this.opsEngine.db.prepare("SELECT 1").get();
 
             // 2. Webhook Health (Last received)
             // Need a way to track last webhook time? Maybe check latest revenue event?
             // MVP: Just ensure scheduler is alive.
 
             // 3. Pending Withdrawals
-            const pending = (await this.opsEngine.db.get(`SELECT COUNT(*) as c FROM withdrawals WHERE status = 'PENDING'`)).c;
+            const pending = (await this.opsEngine.db.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE status = 'PENDING'`).get()).c;
             if (pending > 10) {
                 await this.alertService.send(`⚠️ High Pending Withdrawals: ${pending}`, 'warn');
             }
@@ -164,16 +163,14 @@ export class Scheduler {
             const cutoff = now - 60; // 60s timeout per Phase 3 requirements
 
             // 1. Mark 'nodes' offline
-            const res1 = await this.opsEngine.db.query(
-                "UPDATE nodes SET status = 'offline' WHERE last_seen < ? AND status = 'active'",
-                [cutoff]
-            );
+            const res1 = await this.opsEngine.db.prepare(
+                "UPDATE nodes SET status = 'offline' WHERE last_seen < ? AND status = 'active'"
+            ).run([cutoff]);
 
             // 2. Mark 'registered_nodes' inactive (Legacy sync)
-            const res2 = await this.opsEngine.db.query(
-                "UPDATE registered_nodes SET active = 0 WHERE last_heartbeat < ? AND active = 1",
-                [cutoff]
-            );
+            const res2 = await this.opsEngine.db.prepare(
+                "UPDATE registered_nodes SET active = 0 WHERE last_heartbeat < ? AND active = 1"
+            ).run([cutoff]);
 
             if (res1.changes > 0 || res2.changes > 0) {
                 console.log(`[SCHEDULER] Marked ${res1.changes || res2.changes} nodes offline.`);
@@ -190,9 +187,9 @@ export class Scheduler {
         console.log('[SCHEDULER] Running DB Maintenance...');
         try {
             // WAL Checkpoint (Passive)
-            await this.opsEngine.db.query("PRAGMA wal_checkpoint(PASSIVE)");
+            await this.opsEngine.db.prepare("PRAGMA wal_checkpoint(PASSIVE)").run();
             // Incremental Vacuum (free pages)
-            await this.opsEngine.db.query("PRAGMA incremental_vacuum(100)"); // Limit to 100 pages per run to avoid latency spikes
+            await this.opsEngine.db.prepare("PRAGMA incremental_vacuum(100)").run(); // Limit to 100 pages per run to avoid latency spikes
         } catch (e) {
             console.error('[SCHEDULER] Maintenance failed:', e.message);
         }
@@ -219,7 +216,7 @@ export class Scheduler {
             // Or just query the latest backup for verification.
 
             // Workaround: Query latest backup
-            const latest = await this.opsEngine.db.get("SELECT id FROM backup_log ORDER BY id DESC LIMIT 1");
+            const latest = await this.opsEngine.db.prepare("SELECT id FROM backup_log ORDER BY id DESC LIMIT 1").get();
             if (latest) {
                 const verify = await this.backupService.verifyBackup(latest.id);
                 if (verify.valid) {

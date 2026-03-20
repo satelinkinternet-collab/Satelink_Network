@@ -2,10 +2,10 @@
  * Aggregates Economics Revenue Split information directly from the database schema.
  * Operates purely on `epochs` where `status = 'CLOSED'`.
  */
-export function getEconomicsSummary(db) {
+export async function getEconomicsSummary(db) {
     // 1. Total Allocations (All Closed Epochs)
-    const totals = db.prepare(`
-        SELECT 
+    const totals = await db.prepare(`
+        SELECT
             SUM(total_revenue_usdt) as totalRevenueUsdt,
             SUM(node_pool_usdt) as totalNodePoolUsdt,
             SUM(platform_share_usdt) as totalPlatformShareUsdt,
@@ -22,7 +22,7 @@ export function getEconomicsSummary(db) {
     const totalDistributorShareUsdt = coalesce(totals.totalDistributorShareUsdt);
 
     // 2. Last Closed Epoch Properties
-    const lastEpoch = db.prepare(`
+    const lastEpoch = await db.prepare(`
         SELECT id, total_revenue_usdt, closed_at
         FROM epochs
         WHERE status = 'CLOSED'

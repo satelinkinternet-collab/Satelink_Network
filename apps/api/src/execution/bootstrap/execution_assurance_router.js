@@ -6,9 +6,16 @@ export class ExecutionAssuranceRouter {
         this.fallbackAdapter = adapter;
         this.db = db;
 
-        // Mock table ensures execution_assurance_metrics exist if not in Schema natively 
+        // Mock table ensures execution_assurance_metrics exist if not in Schema natively
+        // Note: init must be called after construction to create the table
+        this._initPromise = this._initTable();
+    }
+
+    async _initTable() {
+        // Table execution_assurance_metrics handled by init.sql
+        /*
         try {
-            this.db.prepare(`CREATE TABLE IF NOT EXISTS execution_assurance_metrics (
+            await this.db.prepare(`CREATE TABLE IF NOT EXISTS execution_assurance_metrics (
                  id INTEGER PRIMARY KEY AUTOINCREMENT,
                  execution_source TEXT NOT NULL,
                  success_count INTEGER DEFAULT 0,
@@ -16,9 +23,13 @@ export class ExecutionAssuranceRouter {
                  updated_at BIGINT
              )`).run();
         } catch (e) { }
+        */
     }
 
     async routeWorkload(chain, payload) {
+        // Ensure table is created
+        await this._initPromise;
+
         // 1. Freshen dynamic state
         await this.registry.refreshCommunityCapacity();
 
@@ -33,7 +44,7 @@ export class ExecutionAssuranceRouter {
                 if (availableLocalNodes.length > 0) {
                     // In real scenarios, route via ExecutionRouter or direct payload hit
                     // Here we mock the generic "success" state locally terminating traffic
-                    this.recordMetric(targetSource, false);
+                    await this.recordMetric(targetSource, false);
                     return {
                         status: 'executed',
                         source: targetSource,
@@ -48,7 +59,7 @@ export class ExecutionAssuranceRouter {
 
                 try {
                     const result = await this.fallbackAdapter.dispatch(targetSource, chain, payload);
-                    this.recordMetric(targetSource, true);
+                    await this.recordMetric(targetSource, true);
                     return {
                         status: 'fallback_executed',
                         source: targetSource,
@@ -63,15 +74,15 @@ export class ExecutionAssuranceRouter {
         throw new Error(`[ExecutionAssurance] COMPLETE CATASTROPHIC FAILURE. All logical nodes and physical fallbacks failed or timed out for chain: ${chain}.`);
     }
 
-    recordMetric(source, isFallback) {
+    async recordMetric(source, isFallback) {
         try {
-            const hasRow = this.db.prepare("SELECT 1 FROM execution_assurance_metrics WHERE execution_source = ?").get(source);
+            const hasRow = await this.db.prepare("SELECT 1 FROM execution_assurance_metrics WHERE execution_source = ?").get(source);
             if (!hasRow) {
-                this.db.prepare("INSERT INTO execution_assurance_metrics (execution_source, updated_at) VALUES (?, ?)").run(source, Date.now());
+                await this.db.prepare("INSERT INTO execution_assurance_metrics (execution_source, updated_at) VALUES (?, ?)").run(source, Date.now());
             }
 
-            this.db.prepare(`
-                UPDATE execution_assurance_metrics 
+            await this.db.prepare(`
+                UPDATE execution_assurance_metrics
                 SET success_count = success_count + 1,
                     fallback_events = fallback_events + ?
                 WHERE execution_source = ?

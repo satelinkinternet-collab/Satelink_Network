@@ -9,7 +9,7 @@ export class LaunchMode {
     }
 
     async isEnabled() {
-        const row = await this.db.get("SELECT value FROM system_config WHERE key = 'launch_mode_enabled'");
+        const row = await this.db.prepare("SELECT value FROM system_config WHERE key = 'launch_mode_enabled'").get();
         return row?.value === 'true';
     }
 
@@ -21,10 +21,10 @@ export class LaunchMode {
         ];
 
         for (const [key, value] of configs) {
-            await this.db.query(
-                "INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)",
-                [key, value]
-            );
+            await this.db.prepare(`
+                INSERT INTO system_config (key, value) VALUES (?, ?)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            `).run([key, value]);
         }
 
         // Tighten parameters
@@ -35,20 +35,21 @@ export class LaunchMode {
 
     async disable() {
         const now = Date.now();
-        await this.db.query(
-            "INSERT OR REPLACE INTO system_config (key, value) VALUES ('launch_mode_enabled', 'false')"
-        );
+        await this.db.prepare(`
+            INSERT INTO system_config (key, value) VALUES ('launch_mode_enabled', 'false')
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        `).run();
         await this._revertLaunchSettings(now);
         return { ok: true, enabled: false };
     }
 
     async getStatus() {
         const enabled = await this.isEnabled();
-        const activatedAt = await this.db.get("SELECT value FROM system_config WHERE key = 'launch_mode_activated_at'");
+        const activatedAt = await this.db.prepare("SELECT value FROM system_config WHERE key = 'launch_mode_activated_at'").get();
 
         // Gather current safety params
-        const rewardsMode = await this.db.get("SELECT value FROM system_config WHERE key = 'rewards_mode'");
-        const abuseLevel = await this.db.get("SELECT value FROM system_config WHERE key = 'abuse_sensitivity'");
+        const rewardsMode = await this.db.prepare("SELECT value FROM system_config WHERE key = 'rewards_mode'").get();
+        const abuseLevel = await this.db.prepare("SELECT value FROM system_config WHERE key = 'abuse_sensitivity'").get();
 
         return {
             launch_mode_enabled: enabled,
@@ -66,10 +67,10 @@ export class LaunchMode {
             ['enhanced_logging', 'true'],
         ];
         for (const [key, value] of tighten) {
-            await this.db.query(
-                "INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)",
-                [key, value]
-            );
+            await this.db.prepare(`
+                INSERT INTO system_config (key, value) VALUES (?, ?)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            `).run([key, value]);
         }
     }
 
@@ -81,10 +82,10 @@ export class LaunchMode {
             ['enhanced_logging', 'false'],
         ];
         for (const [key, value] of revert) {
-            await this.db.query(
-                "INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)",
-                [key, value]
-            );
+            await this.db.prepare(`
+                INSERT INTO system_config (key, value) VALUES (?, ?)
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            `).run([key, value]);
         }
     }
 }

@@ -11,32 +11,32 @@ export function createPublicStatusRouter(db, preflightCheck) {
             const dayAgo = now - 86400000;
 
             // System state
-            const safeMode = await db.get("SELECT value FROM system_config WHERE key = 'system_state'");
+            const safeMode = await db.prepare("SELECT value FROM system_config WHERE key = 'system_state'").get();
             const isSafeMode = safeMode?.value === 'SAFE_MODE';
 
             // Open incidents
-            const openIncidents = await db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'");
+            const openIncidents = await db.prepare("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'").get();
             const hasIncidents = openIncidents?.c > 0;
 
             // Network stats
-            const stats = await db.get(`
+            const stats = await db.prepare(`
                 SELECT 
                     (SELECT COUNT(DISTINCT node_wallet) FROM node_uptime 
                      WHERE uptime_seconds > 0 AND epoch_id = (SELECT MAX(id) FROM epochs)) as active_nodes,
                     (SELECT COUNT(*) FROM revenue_events_v2 WHERE created_at > ?) as ops_24h,
                     (SELECT COALESCE(SUM(amount), 0) FROM payout_items_v2 WHERE created_at > ?) as rewards_24h_sim
-            `, [dayAgo, dayAgo]);
+            `).get([dayAgo, dayAgo]);
 
             // Uptime % (average across all active nodes)
-            const uptimeRow = await db.get(`
+            const uptimeRow = await db.prepare(`
                 SELECT AVG(CASE WHEN uptime_seconds > 86400 THEN 100 
                            ELSE (uptime_seconds * 100.0 / 86400) END) as avg_uptime
                 FROM node_uptime 
                 WHERE epoch_id = (SELECT MAX(id) FROM epochs) AND uptime_seconds > 0
-            `);
+            `).get();
 
             // Total operations all-time
-            const totalOps = await db.get("SELECT COUNT(*) as c FROM revenue_events_v2");
+            const totalOps = await db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2").get();
 
             // Build status
             let systemStatus = 'LIVE';

@@ -36,7 +36,7 @@ export class AutoOpsEngine {
         if (!autoEnabled) return;
 
         // Fetch pending recs
-        const pending = await this.db.query("SELECT * FROM ops_recommendations WHERE status = 'pending'");
+        const pending = await this.db.prepare("SELECT * FROM ops_recommendations WHERE status = 'pending'").all();
         for (const rec of pending) {
             // Check sub-flags
             let shouldExecute = false;
@@ -97,13 +97,13 @@ export class AutoOpsEngine {
         }
 
         // 1. Log Action
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO auto_actions_log (action_type, before_json, after_json, reason, executed_by, created_at)
             VALUES (?, '{}', ?, ?, ?, ?)
-        `, [rec.type, rec.recommendation_json, `Executed: ${rec.id}`, actorWallet || 'system', Date.now()]);
+        `).run([rec.type, rec.recommendation_json, `Executed: ${rec.id}`, actorWallet || 'system', Date.now()]);
 
         // 2. Update Status
-        await this.db.query("UPDATE ops_recommendations SET status = 'executed', decided_by = ?, decided_at = ? WHERE id = ?", [actorWallet || 'system', Date.now(), rec.id]);
+        await this.db.prepare("UPDATE ops_recommendations SET status = 'executed', decided_by = ?, decided_at = ? WHERE id = ?").run([actorWallet || 'system', Date.now(), rec.id]);
     }
 
     async _checkSafety() {
@@ -116,14 +116,14 @@ export class AutoOpsEngine {
         }
 
         // 2. Authenticity Score (Avoid tuning on fake data)
-        const authScore = await this.db.get("SELECT authenticity_score FROM usage_authenticity_daily ORDER BY created_at DESC LIMIT 1");
+        const authScore = await this.db.prepare("SELECT authenticity_score FROM usage_authenticity_daily ORDER BY created_at DESC LIMIT 1").get();
         if (authScore && authScore.authenticity_score < 60) {
             throw new Error(`Safety Guardrail: Authenticity Score low (${authScore.authenticity_score})`);
         }
     }
 
     async _getConfigBool(key) {
-        const row = await this.db.get("SELECT value FROM system_config WHERE key = ?", [key]);
+        const row = await this.db.prepare("SELECT value FROM system_config WHERE key = ?").get([key]);
         return row && (row.value === 'true' || row.value === '1');
     }
 }

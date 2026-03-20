@@ -45,7 +45,7 @@ export class NodeIncentiveEngine {
      * @param {string} node_id
      * @returns {{ multiplier: number, bonuses: string[], breakdown: Object }}
      */
-    evaluate(node_id) {
+    async evaluate(node_id) {
         const node = this.registry?.get(node_id);
         const stats = this._getStats(node_id);
 
@@ -53,7 +53,7 @@ export class NodeIncentiveEngine {
         let multiplier = NodeIncentiveEngine.BASE_MULTIPLIER;
 
         // ── 1. First-100-nodes bonus ──────────────────────────────────────────
-        if (this._isEarlyNode(node_id)) {
+        if (await this._isEarlyNode(node_id)) {
             multiplier = NodeIncentiveEngine.FIRST_100_MULTIPLIER;
             bonuses.push('first_100_nodes_bonus');
         }
@@ -96,8 +96,8 @@ export class NodeIncentiveEngine {
      * @param {number} raw_reward
      * @returns {{ raw_reward, adjusted_reward, multiplier, bonuses }}
      */
-    applyIncentive(node_id, raw_reward) {
-        const { multiplier, bonuses, breakdown } = this.evaluate(node_id);
+    async applyIncentive(node_id, raw_reward) {
+        const { multiplier, bonuses, breakdown } = await this.evaluate(node_id);
         const adjusted_reward = Math.round(raw_reward * multiplier * 1_000_000) / 1_000_000;
         return { node_id, raw_reward, adjusted_reward, multiplier, bonuses, breakdown };
     }
@@ -108,9 +108,9 @@ export class NodeIncentiveEngine {
      * A node qualifies as an "early node" if its position in the registry
      * (by created_at ascending) is ≤ FIRST_N_NODES.
      */
-    _isEarlyNode(node_id) {
+    async _isEarlyNode(node_id) {
         try {
-            const row = this.db.prepare(`
+            const row = await this.db.prepare(`
                 SELECT COUNT(*) AS pos
                 FROM node_registry
                 WHERE created_at <= (SELECT created_at FROM node_registry WHERE node_id = ?)

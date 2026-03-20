@@ -11,18 +11,18 @@ export function createPublicPartnersRouter(db) {
     // GET /partners
     router.get('/', async (req, res) => {
         try {
-            const partners = await db.query(
+            const partners = await db.prepare(
                 "SELECT partner_id, partner_name, total_ops, created_at FROM partner_registry WHERE status = 'active' ORDER BY total_ops DESC"
-            );
+            ).all();
 
             // Supported op types
             const opTypes = ['inference', 'storage', 'relay', 'compute'];
 
             // SLA stats
-            const totalOps = (await db.get("SELECT COUNT(*) as c FROM revenue_events_v2"))?.c || 0;
+            const totalOps = (await db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2").get())?.c || 0;
             let uptimePct = 99.9;
             try {
-                const up = await db.get("SELECT AVG(uptime_seconds) as avg FROM node_uptime");
+                const up = await db.prepare("SELECT AVG(uptime_seconds) as avg FROM node_uptime").get();
                 uptimePct = up?.avg ? Math.min(100, (up.avg / 86400) * 100) : 99.9;
             } catch (e) { /* table may not exist */ }
 

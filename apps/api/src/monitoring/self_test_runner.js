@@ -31,7 +31,7 @@ const KIND_SEVERITY = {
 
 const ALLOWED_KINDS = [
     'backend_smoke', 'api_contract', 'sse_health', 'db_integrity',
-    'browser_smoke', 'settlement_integrity', 'evm_adapter_health',
+    'browser_smoke', 'settlement_integrity', 'fuse_service_health',
     'fleet_integrity', 'rewards_safety', 'status_page_contract',
     'pricing_integrity', 'commission_integrity', 'unit_economics_sanity', 'growth_fraud_detection',
     'region_cap_enforcement', 'partner_rate_limit_integrity', 'referral_fraud_detection',
@@ -46,11 +46,11 @@ const ALLOWED_KINDS = [
 ];
 
 export class SelfTestRunner {
-    constructor(opsEngine, port = 8080, incidentBuilder = null, settlementEngine = null) {
+    constructor(opsEngine, port = 8080, incidentBuilder = null, fuseService = null) {
         this.db = opsEngine.db;
         this.port = port;
         this.incidentBuilder = incidentBuilder;
-        this.settlementEngine = settlementEngine;
+        this.fuseService = fuseService;
         this._interval = null;
     }
 
@@ -118,8 +118,8 @@ export class SelfTestRunner {
                 case 'browser_smoke':
                     output = await this._testBrowserSmoke();
                     break;
-                case 'evm_adapter_health':
-                    output = await this._testEvmAdapterHealth();
+                case 'fuse_service_health':
+                    output = await this._testFuseServiceHealth();
                     break;
                 case 'fleet_integrity':
                     output = await this._testFleetIntegrity();
@@ -241,10 +241,10 @@ export class SelfTestRunner {
 
         // Persist result
         try {
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO self_test_runs (kind, status, duration_ms, output_json, error_message, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `, [kind, status, durationMs, JSON.stringify(output), errorMessage, Date.now()]);
+            `).run([kind, status, durationMs, JSON.stringify(output), errorMessage, Date.now()]);
         } catch (e) {
             console.error('[SelfTest] Failed to persist result:', e.message);
         }
@@ -265,7 +265,7 @@ export class SelfTestRunner {
 
         // Verify DB is accessible
         try {
-            const row = await this.db.get("SELECT 1 as ok");
+            const row = await this.db.prepare("SELECT 1 as ok").get();
             if (!row || row.ok !== 1) return { _fail: 'DB health check returned unexpected result' };
         } catch (e) {
             return { _fail: `DB query failed: ${e.message}` };
@@ -300,7 +300,7 @@ export class SelfTestRunner {
         const missing = [];
         for (const table of REQUIRED_TABLES) {
             try {
-                await this.db.get(`SELECT 1 FROM ${table} LIMIT 1`);
+                await this.db.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get();
             } catch (e) {
                 missing.push(table);
             }
@@ -314,20 +314,20 @@ export class SelfTestRunner {
     async _testSettlementIntegrity() {
         // 1. Check for Stuck Batches (Processing > 10 mins)
         const tenMinsAgo = Date.now() - 600000;
-        const stuckBatches = await this.db.query("SELECT id FROM payout_batches_v2 WHERE status = 'processing' AND updated_at < ?", [tenMinsAgo]);
+        const stuckBatches = await this.db.prepare("SELECT id FROM payout_batches_v2 WHERE status = 'processing' AND updated_at < ?").all([tenMinsAgo]);
 
         // 2. Check for Duplicate External Refs (where not null)
-        const dupes = await this.db.query(`
+        const dupes = await this.db.prepare(`
             SELECT external_ref, COUNT(*) as c 
             FROM payout_batches_v2 
             WHERE external_ref IS NOT NULL 
             GROUP BY external_ref 
             HAVING c > 1
-        `);
+        `).all();
 
         // 3. Shadow Mismatches in last hour
         const hourAgo = Date.now() - 3600000;
-        const shadowMismatches = await this.db.get("SELECT COUNT(*) as c FROM settlement_shadow_log WHERE created_at > ?", [hourAgo]);
+        const shadowMismatches = await this.db.prepare("SELECT COUNT(*) as c FROM settlement_shadow_log WHERE created_at > ?").get([hourAgo]);
 
         const result = {
             stuck_batches: stuckBatches.length,
@@ -346,40 +346,44 @@ export class SelfTestRunner {
         return result;
     }
 
-    async _testEvmAdapterHealth() {
-        if (!this.settlementEngine) return { note: 'Settlement Engine not available' };
+    async _testFuseServiceHealth() {
+        if (!this.fuseService) return { note: 'Fuse Service not available' };
 
-        const flag = await this.db.get("SELECT value FROM system_flags WHERE key = 'settlement_adapter'");
-        const currentAdapter = flag ? flag.value : 'SIMULATED';
+        const start = Date.now();
+        try {
+            // Check connectivity and provider availability
+            if (!this.fuseService.isConnected) {
+                await this.fuseService.connect();
+            }
+            
+            const address = this.fuseService.getSignerAddress();
+            const latency = Date.now() - start;
 
-        const adapter = this.settlementEngine.registry.get(currentAdapter);
-        if (!adapter) return { _fail: `Active adapter ${currentAdapter} not found in registry` };
-
-        const health = await adapter.healthCheck();
-        if (!health.ok) return { _fail: `Adapter ${currentAdapter} unhealthy: ${health.error}`, latency_ms: health.latency_ms };
-
-        return {
-            adapter: currentAdapter,
-            health: 'ok',
-            latency_ms: health.latency_ms,
-            details: health.signer
-        };
+            return {
+                service: 'FuseService',
+                status: 'ok',
+                latency_ms: latency,
+                address: address ? address.substring(0, 6) + '...' : 'None'
+            };
+        } catch (e) {
+            return { _fail: `Fuse Service unhealthy: ${e.message}`, latency_ms: Date.now() - start };
+        }
     }
 
     async _testFleetIntegrity() {
         const now = Date.now();
         const tenMinsAgo = now - 600000;
-        const count = await this.db.get("SELECT COUNT(*) as c FROM node_heartbeats WHERE timestamp > ?", [tenMinsAgo]);
+        const count = await this.db.prepare("SELECT COUNT(*) as c FROM node_heartbeats WHERE timestamp > ?").get([tenMinsAgo]);
 
-        const future = await this.db.get("SELECT COUNT(*) as c FROM node_heartbeats WHERE timestamp > ?", [now + 30000]);
+        const future = await this.db.prepare("SELECT COUNT(*) as c FROM node_heartbeats WHERE timestamp > ?").get([now + 30000]);
         if (future.c > 0) return { _fail: `${future.c} heartbeats from the future detected (clock drift)` };
 
         return { recent_heartbeats: count.c, drift_check: 'pass' };
     }
 
     async _testRewardsSafety() {
-        const mode = await this.db.get("SELECT value FROM system_flags WHERE key='rewards_mode'");
-        const cap = await this.db.get("SELECT value FROM system_flags WHERE key='rewards_daily_cap_usdt'");
+        const mode = await this.db.prepare("SELECT value FROM system_flags WHERE key='rewards_mode'").get();
+        const cap = await this.db.prepare("SELECT value FROM system_flags WHERE key='rewards_daily_cap_usdt'").get();
 
         if (mode && mode.value === 'LIMITED') {
             if (!cap || isNaN(parseFloat(cap.value))) {
@@ -516,15 +520,15 @@ export class SelfTestRunner {
                 contextJson = JSON.stringify({ kind, status, error: errorMessage, output });
             }
 
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO incident_bundles (severity, title, source_kind, context_json, status, created_at)
                 VALUES (?, ?, 'self_test', ?, 'open', ?)
-            `, [severity, `Self-test FAILED: ${kind}`, contextJson, Date.now()]);
+            `).run([severity, `Self-test FAILED: ${kind}`, contextJson, Date.now()]);
 
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO security_alerts (severity, category, entity_type, entity_id, title, evidence_json, status, created_at)
                 VALUES (?, 'infra', 'system', ?, ?, ?, 'open', ?)
-            `, [
+            `).run([
                 severity,
                 `self_test:${kind}`,
                 `Self-test FAILED: ${kind}`,
@@ -538,23 +542,23 @@ export class SelfTestRunner {
         }
     }
     async _testPricingIntegrity() {
-        const rules = await this.db.get("SELECT COUNT(*) as c FROM pricing_rules");
+        const rules = await this.db.prepare("SELECT COUNT(*) as c FROM pricing_rules").get();
         if (!rules || rules.c < 1) return { _fail: "No pricing rules found — revenue engine non-functional" };
 
         // Verify revenue events are recording new billing columns
-        const recent = await this.db.get(
+        const recent = await this.db.prepare(
             "SELECT price_version, surge_multiplier, unit_cost FROM revenue_events_v2 ORDER BY created_at DESC LIMIT 1"
-        );
+        ).get();
         if (recent && recent.price_version === null) {
             return { _fail: "Revenue events missing price_version — billing columns not populated" };
         }
 
         // Cross-check: every priced op_type should have a pricing_rule
-        const orphans = await this.db.get(`
+        const orphans = await this.db.prepare(`
             SELECT COUNT(DISTINCT op_type) as c FROM revenue_events_v2 
             WHERE op_type NOT IN (SELECT op_type FROM pricing_rules)
               AND op_type NOT IN (SELECT op_type FROM ops_pricing)
-        `);
+        `).get();
 
         return {
             rules_count: rules.c,
@@ -565,20 +569,20 @@ export class SelfTestRunner {
 
     async _testCommissionIntegrity() {
         // No negative or zero commissions
-        const invalid = await this.db.get("SELECT COUNT(*) as c FROM distributor_commissions WHERE amount_usdt <= 0");
+        const invalid = await this.db.prepare("SELECT COUNT(*) as c FROM distributor_commissions WHERE amount_usdt <= 0").get();
         if (invalid?.c > 0) return { _fail: `${invalid.c} commissions with <= 0 amount found` };
 
         // Fraud-flagged should not be in 'paid' status
-        const fraudPaid = await this.db.get(
+        const fraudPaid = await this.db.prepare(
             "SELECT COUNT(*) as c FROM distributor_commissions WHERE fraud_flag = 1 AND status = 'paid'"
-        );
+        ).get();
         if (fraudPaid?.c > 0) return { _fail: `${fraudPaid.c} fraud-flagged commissions were paid out` };
 
-        return { integrity: "pass", total: (await this.db.get("SELECT COUNT(*) as c FROM distributor_commissions"))?.c || 0 };
+        return { integrity: "pass", total: (await this.db.prepare("SELECT COUNT(*) as c FROM distributor_commissions").get())?.c || 0 };
     }
 
     async _testUnitEconomicsSanity() {
-        const eco = await this.db.get("SELECT burn_rate, total_revenue, total_rewards FROM unit_economics_daily ORDER BY created_at DESC LIMIT 1");
+        const eco = await this.db.prepare("SELECT burn_rate, total_revenue, total_rewards FROM unit_economics_daily ORDER BY created_at DESC LIMIT 1").get();
         if (eco) {
             if (eco.burn_rate > 10000) return { _fail: `Burn rate critical: $${eco.burn_rate}/day — treasury at risk` };
             if (eco.total_rewards > 0 && eco.total_revenue === 0) return { _fail: "Rewards being paid but zero revenue — unsustainable" };
@@ -591,7 +595,7 @@ export class SelfTestRunner {
             const { GrowthEngine } = await import('./growth_engine.js');
             const engine = new GrowthEngine(this.db);
             const result = await engine.detectCommissionFraud();
-            const flagged = await this.db.get("SELECT COUNT(*) as c FROM distributor_commissions WHERE fraud_flag = 1");
+            const flagged = await this.db.prepare("SELECT COUNT(*) as c FROM distributor_commissions WHERE fraud_flag = 1").get();
 
             if (result.total_flags > 10) {
                 return { _fail: `High fraud activity: ${result.total_flags} flags detected` };
@@ -629,9 +633,9 @@ export class SelfTestRunner {
 
     async _testPartnerRateLimits() {
         try {
-            const partners = await this.db.query(
+            const partners = await this.db.prepare(
                 "SELECT partner_id, rate_limit_per_min, total_ops FROM partner_registry WHERE status = 'active'"
-            ) || [];
+            ).all() || [];
 
             for (const p of partners) {
                 if (p.rate_limit_per_min <= 0) {
@@ -671,11 +675,11 @@ export class SelfTestRunner {
 
             if (status.launch_mode_enabled) {
                 // Verify tightened settings are actually applied
-                const abuse = await this.db.get("SELECT value FROM system_config WHERE key = 'abuse_sensitivity'");
+                const abuse = await this.db.prepare("SELECT value FROM system_config WHERE key = 'abuse_sensitivity'").get();
                 if (abuse?.value !== 'high') {
                     return { _fail: 'Launch mode ON but abuse_sensitivity not set to high' };
                 }
-                const capMul = await this.db.get("SELECT value FROM system_config WHERE key = 'rewards_cap_multiplier'");
+                const capMul = await this.db.prepare("SELECT value FROM system_config WHERE key = 'rewards_cap_multiplier'").get();
                 if (parseFloat(capMul?.value || '1') > 0.5) {
                     return { _fail: 'Launch mode ON but rewards_cap_multiplier not reduced' };
                 }
@@ -689,15 +693,15 @@ export class SelfTestRunner {
     async _testMarketingMetrics() {
         try {
             const weekAgo = Date.now() - 7 * 86400000;
-            const opsThisWeek = (await this.db.get(
+            const opsThisWeek = (await this.db.prepare(
                 "SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [weekAgo]
-            ))?.c || 0;
+            ).get())?.c || 0;
 
             // Check for revenue stagnation
-            const prevWeek = (await this.db.get(
+            const prevWeek = (await this.db.prepare(
                 "SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ? AND created_at <= ?",
                 [weekAgo - 7 * 86400000, weekAgo]
-            ))?.c || 0;
+            ).get())?.c || 0;
 
             const growthRate = prevWeek > 0 ? ((opsThisWeek - prevWeek) / prevWeek) * 100 : 0;
 
@@ -716,7 +720,7 @@ export class SelfTestRunner {
 
     async _testRevenueStability() {
         try {
-            const last = await this.db.get("SELECT * FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT 1");
+            const last = await this.db.prepare("SELECT * FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT 1").get();
             if (!last) return { status: 'no_data', note: 'No stability data yet' };
 
             if (last.stability_score < 0 || last.stability_score > 100) {
@@ -730,7 +734,7 @@ export class SelfTestRunner {
 
     async _testAuthenticity() {
         try {
-            const last = await this.db.get("SELECT * FROM usage_authenticity_daily ORDER BY day_yyyymmdd DESC LIMIT 1");
+            const last = await this.db.prepare("SELECT * FROM usage_authenticity_daily ORDER BY day_yyyymmdd DESC LIMIT 1").get();
             if (!last) return { status: 'no_data', note: 'No authenticity data yet' };
 
             if (last.authenticity_score < 0 || last.authenticity_score > 100) {
@@ -748,8 +752,8 @@ export class SelfTestRunner {
 
     async _testQualityRouting() {
         try {
-            const flag = await this.db.get("SELECT value FROM system_config WHERE key = 'quality_routing_enabled'");
-            const nodes = await this.db.query("SELECT node_id, composite_score, fraud_penalty_score FROM node_reputation ORDER BY composite_score DESC LIMIT 5") || [];
+            const flag = await this.db.prepare("SELECT value FROM system_config WHERE key = 'quality_routing_enabled'").get();
+            const nodes = await this.db.prepare("SELECT node_id, composite_score, fraud_penalty_score FROM node_reputation ORDER BY composite_score DESC LIMIT 5").all() || [];
 
             // Verify no high-fraud nodes would be preferred
             for (const n of nodes) {
@@ -787,10 +791,9 @@ export class SelfTestRunner {
         try {
             // Check if any nodes have impossibly high scores with stale update times
             const weekAgo = Date.now() - 7 * 86400000;
-            const staleHigh = await this.db.query(
-                "SELECT node_id, composite_score, last_updated_at FROM node_reputation WHERE composite_score > 90 AND last_updated_at < ?",
-                [weekAgo]
-            ) || [];
+            const staleHigh = await this.db.prepare(
+                "SELECT node_id, composite_score, last_updated_at FROM node_reputation WHERE composite_score > 90 AND last_updated_at < ?"
+            ).all([weekAgo]) || [];
 
             if (staleHigh.length > 5) {
                 return { _fail: `${staleHigh.length} nodes have high scores but stale updates — decay not running` };
@@ -805,7 +808,7 @@ export class SelfTestRunner {
         try {
             const { ReputationEngine } = await import('./reputation_engine.js');
             const T = ReputationEngine.TIERS;
-            const nodes = await this.db.query("SELECT node_id, composite_score, tier FROM node_reputation") || [];
+            const nodes = await this.db.prepare("SELECT node_id, composite_score, tier FROM node_reputation").all() || [];
 
             for (const n of nodes) {
                 let expected;
@@ -855,11 +858,11 @@ export class SelfTestRunner {
 
     async _testSupportBundleRedaction() {
         // This is a logic check — ensure ticket system exists and tables are correct
-        const tickets = await this.db.get("SELECT COUNT(*) as c FROM support_tickets");
+        const tickets = await this.db.prepare("SELECT COUNT(*) as c FROM support_tickets").get();
         if (tickets === undefined) return { _fail: 'support_tickets table missing' };
 
         // Check recent bundle for secrets (mock check)
-        const recent = await this.db.get("SELECT bundle_json FROM support_tickets ORDER BY created_at DESC LIMIT 1");
+        const recent = await this.db.prepare("SELECT bundle_json FROM support_tickets ORDER BY created_at DESC LIMIT 1").get();
         if (recent) {
             const b = recent.bundle_json.toLowerCase();
             if (b.includes('private_key') || b.includes('secret') || b.includes('password')) {
@@ -966,7 +969,7 @@ export class SelfTestRunner {
         }
 
         // Verify plans exist
-        const plans = await this.db.query("SELECT id FROM sla_plans");
+        const plans = await this.db.prepare("SELECT id FROM sla_plans").all();
         if (!plans || plans.length === 0) {
             return { _fail: 'No SLA plans found in database' };
         }
@@ -978,17 +981,17 @@ export class SelfTestRunner {
         // Check that tenant_limits table exists and circuit breaker can trip
         try {
             // Verify table schema
-            const schema = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_limits'"
-            );
+            const schema = await this.db.prepare(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'tenant_limits'"
+            ).all();
             if (!schema || schema.length === 0) {
                 return { _fail: 'tenant_limits table not found' };
             }
 
             // Verify circuit state table
-            const csSchema = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_circuit_state'"
-            );
+            const csSchema = await this.db.prepare(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'tenant_circuit_state'"
+            ).all();
             if (!csSchema || csSchema.length === 0) {
                 return { _fail: 'tenant_circuit_state table not found' };
             }
@@ -1002,9 +1005,9 @@ export class SelfTestRunner {
     async _testOpTypeSloContract() {
         // Verify tenant_op_slo_daily table exists
         try {
-            const schema = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_op_slo_daily'"
-            );
+            const schema = await this.db.prepare(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'tenant_op_slo_daily'"
+            ).all();
             if (!schema || schema.length === 0) {
                 return { _fail: 'tenant_op_slo_daily table not found' };
             }
@@ -1018,12 +1021,12 @@ export class SelfTestRunner {
     async _testReportExportContract() {
         // Verify sla_reports + sla_credits tables exist
         try {
-            const reports = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='sla_reports'"
-            );
-            const credits = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='sla_credits'"
-            );
+            const reports = await this.db.prepare(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'sla_reports'"
+            ).all();
+            const credits = await this.db.prepare(
+                "SELECT table_name FROM information_schema.tables WHERE table_name = 'sla_credits'"
+            ).all();
             if (!reports?.length) return { _fail: 'sla_reports table not found' };
             if (!credits?.length) return { _fail: 'sla_credits table not found' };
 
@@ -1043,7 +1046,7 @@ export class SelfTestRunner {
             if (hash1 !== hash2) return { _fail: 'Canonical hashing is not stable' };
 
             // Check if snapshots exist
-            const snap = await this.db.get("SELECT COUNT(*) as c FROM daily_state_snapshots");
+            const snap = await this.db.prepare("SELECT COUNT(*) as c FROM daily_state_snapshots").get();
             return { canonical_json: 'stable', existing_snapshots: snap?.c || 0 };
         } catch (e) {
             return { _fail: `Forensics hash check failed: ${e.message}` };
@@ -1052,8 +1055,8 @@ export class SelfTestRunner {
 
     async _testLedgerIntegrityContract() {
         try {
-            const runner = await this.db.get("SELECT count(*) as c FROM ledger_integrity_runs");
-            const incidents = await this.db.get("SELECT count(*) as c FROM incident_bundles WHERE title LIKE '%Ledger Integrity%'");
+            const runner = await this.db.prepare("SELECT count(*) as c FROM ledger_integrity_runs").get();
+            const incidents = await this.db.prepare("SELECT count(*) as c FROM incident_bundles WHERE title LIKE '%Ledger Integrity%'").get();
             return { integrity_runs: runner?.c || 0, integrity_incidents: incidents?.c || 0 };
         } catch (e) {
             return { _fail: `Ledger integrity check failed: ${e.message}` };
@@ -1062,7 +1065,7 @@ export class SelfTestRunner {
 
     async _testAuditChainIntegrity() {
         try {
-            const logs = await this.db.query("SELECT id, prev_hash, entry_hash FROM admin_audit_log ORDER BY id ASC LIMIT 10");
+            const logs = await this.db.prepare("SELECT id, prev_hash, entry_hash FROM admin_audit_log ORDER BY id ASC LIMIT 10").all();
             if (!logs || logs.length === 0) return { status: 'empty (skip)' };
 
             // Check if any has hash

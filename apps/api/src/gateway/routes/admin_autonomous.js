@@ -39,10 +39,10 @@ export function createAdminAutonomousRouter(db, autoOpsEngine) {
 
             for (const [key, val] of Object.entries(updates)) {
                 // Determine if string or boolean input, store as string
-                await db.query(`
+                await db.prepare(`
                     INSERT INTO system_config (key, value) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET value = excluded.value
-                `, [key, String(val)]);
+                `).run([key, String(val)]);
             }
 
             res.json({ ok: true });
@@ -57,11 +57,11 @@ export function createAdminAutonomousRouter(db, autoOpsEngine) {
             const limit = req.query.limit ? parseInt(req.query.limit) : 50;
             const status = req.query.status || 'pending';
 
-            const recs = await db.query(`
+            const recs = await db.prepare(`
                 SELECT * FROM ops_recommendations 
                 WHERE status = ? 
                 ORDER BY created_at DESC LIMIT ?
-            `, [status, limit]);
+            `).all([status, limit]);
 
             // Parse JSON
             const parsed = recs.map(r => ({ ...r, recommendation_json: JSON.parse(r.recommendation_json) }));
@@ -81,12 +81,12 @@ export function createAdminAutonomousRouter(db, autoOpsEngine) {
             const { action } = req.body; // 'accept', 'reject'
             if (!['accept', 'reject'].includes(action)) return res.status(400).json({ error: "Invalid action" });
 
-            const rec = await db.get("SELECT * FROM ops_recommendations WHERE id = ?", [req.params.id]);
+            const rec = await db.prepare("SELECT * FROM ops_recommendations WHERE id = ?").get([req.params.id]);
             if (!rec) return res.status(404).json({ error: "Recommendation not found" });
 
             if (rec.status !== 'pending') return res.status(400).json({ error: `Recommendation is already ${rec.status}` });
 
-            await db.query("UPDATE ops_recommendations SET status = ?, updated_at = ? WHERE id = ?", [
+            await db.prepare("UPDATE ops_recommendations SET status = ?, updated_at = ? WHERE id = ?").run([
                 action === 'accept' ? 'accepted' : 'rejected',
                 Date.now(),
                 req.params.id

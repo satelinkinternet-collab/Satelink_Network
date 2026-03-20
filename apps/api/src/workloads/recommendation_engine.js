@@ -17,8 +17,8 @@ export class RecommendationEngine {
 
     async _runRewardChecks(config) {
         // Get latest metrics
-        const eco = await this.db.get("SELECT burn_rate, total_revenue FROM unit_economics_daily ORDER BY created_at DESC LIMIT 1");
-        const stab = await this.db.get("SELECT stability_score FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT 1");
+        const eco = await this.db.prepare("SELECT burn_rate, total_revenue FROM unit_economics_daily ORDER BY created_at DESC LIMIT 1").get();
+        const stab = await this.db.prepare("SELECT stability_score FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT 1").get();
 
         if (!eco || !stab) return;
 
@@ -35,7 +35,7 @@ export class RecommendationEngine {
     async _runRegionChecks(config) {
         // Get density data (mocking p95 latency join for now if not in table)
         // region_density_daily has ops_per_node
-        const regions = await this.db.query("SELECT * FROM region_density_daily ORDER BY created_at DESC"); // Needs grouping? Assuming today's snapshot
+        const regions = await this.db.prepare("SELECT * FROM region_density_daily ORDER BY created_at DESC").all(); // Needs grouping? Assuming today's snapshot
 
         // Group by region to get latest
         const latestByRegion = {};
@@ -57,7 +57,7 @@ export class RecommendationEngine {
     async _runNodeChecks(config) {
         // Node Bonus & Churn
         // 1. Top Nodes
-        const topNodes = await this.db.query("SELECT node_id, composite_score FROM node_reputation WHERE composite_score > 90 LIMIT 50");
+        const topNodes = await this.db.prepare("SELECT node_id, composite_score FROM node_reputation WHERE composite_score > 90 LIMIT 50").all();
         for (const n of topNodes) {
             const data = { node_id: n.node_id, composite_score: n.composite_score, uptime: 100 }; // mock uptime
             const rec = Rules.checkNodeBonus(data);
@@ -66,13 +66,13 @@ export class RecommendationEngine {
 
         // 2. Churn Risk (Negative Margin > 3 days)
         // Check `node_econ_daily`
-        const risks = await this.db.query(`
+        const risks = await this.db.prepare(`
             SELECT node_id, COUNT(*) as days 
             FROM node_econ_daily 
             WHERE net_usdt < 0 
             GROUP BY node_id 
             HAVING days >= 3
-        `);
+        `).all();
 
         for (const r of risks) {
             const data = { node_id: r.node_id, negative_streak_days: r.days };
@@ -83,18 +83,17 @@ export class RecommendationEngine {
 
     async _persistRecommendation(rec) {
         // Dedup: Don't insert if pending recommendation exists for same type/entity
-        const existing = await this.db.get(
-            "SELECT id FROM ops_recommendations WHERE type = ? AND entity_id = ? AND status = 'pending'",
-            [rec.type, rec.entity_id]
-        );
+        const existing = await this.db.prepare(
+            "SELECT id FROM ops_recommendations WHERE type = ? AND entity_id = ? AND status = 'pending'"
+        ).get([rec.type, rec.entity_id]);
 
         if (existing) return;
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO ops_recommendations (
                 type, entity_type, entity_id, recommendation_json, status, created_at
             ) VALUES (?, ?, ?, ?, ?, ?)
-        `, [
+        `).run([
             rec.type,
             rec.entity_type,
             rec.entity_id,
@@ -107,7 +106,7 @@ export class RecommendationEngine {
     }
 
     async _getAllConfig() {
-        const rows = await this.db.query("SELECT key, value FROM system_config");
+        const rows = await this.db.prepare("SELECT key, value FROM system_config").all();
         return rows.reduce((acc, row) => {
             acc[row.key] = row.value;
             return acc;

@@ -21,29 +21,19 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
     router.get('/database', async (req, res) => {
         try {
             const db = opsEngine.db;
-            const [pageCount, pageFree, walSize] = await Promise.all([
-                db.get("PRAGMA page_count"),
-                db.get("PRAGMA freelist_count"),
-                db.get("PRAGMA wal_checkpoint(GET)") // Note: GET doesn't checkpoint, just returns status usually? 
-                // Actually `block_checkpoint` isn't a read pragma. 
-                // We'll trust file size or approximate from wal_checkpoint(PASSIVE)?
-                // `PRAGMA wal_checkpoint(PASSIVE)` returns [busy, log, checkpointed]
-            ]);
-
-            // Get WAL size from filesystem 
-            // We assume local sqlite path from env or default
-            // But we can use PRAGMA functionality
-            const walStatus = await db.query("PRAGMA wal_checkpoint(PASSIVE)");
+            const sizeRes = await db.prepare("SELECT pg_database_size(current_database()) as size_bytes").all();
+            const dbSize = sizeRes[0]?.size_bytes || 0;
 
             res.json({
                 ok: true,
-                pages: {
-                    total: pageCount?.page_count,
-                    free: pageFree?.freelist_count
-                },
-                wal: {
-                    // This returns row [0, nLog, nCkpt] usually
-                    status: walStatus
+                stats: {
+                    db_type: 'postgres',
+                    db_size_bytes: dbSize,
+                    pool: {
+                        total: db.pool.totalCount,
+                        idle: db.pool.idleCount,
+                        waiting: db.pool.waitingCount
+                    }
                 }
             });
         } catch (e) {
@@ -54,9 +44,9 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
     // K2: Runtime Metrics
     router.get('/runtime', async (req, res) => {
         try {
-            const history = await opsEngine.db.query(
+            const history = await opsEngine.db.prepare(
                 `SELECT * FROM runtime_metrics ORDER BY created_at DESC LIMIT 60`
-            );
+            ).all();
 
             res.json({
                 ok: true,
@@ -77,10 +67,10 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
         try {
             // Count rows in major tables
             const [traces, errors, slow, audits] = await Promise.all([
-                opsEngine.db.get("SELECT COUNT(*) as c FROM request_traces"),
-                opsEngine.db.get("SELECT COUNT(*) as c FROM error_events"),
-                opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries"),
-                opsEngine.db.get("SELECT COUNT(*) as c FROM admin_audit_log"),
+                opsEngine.db.prepare("SELECT COUNT(*) as c FROM request_traces").get(),
+                opsEngine.db.prepare("SELECT COUNT(*) as c FROM error_events").get(),
+                opsEngine.db.prepare("SELECT COUNT(*) as c FROM slow_queries").get(),
+                opsEngine.db.prepare("SELECT COUNT(*) as c FROM admin_audit_log").get(),
             ]);
 
             res.json({

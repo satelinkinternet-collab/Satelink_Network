@@ -7,15 +7,15 @@ export function createOpsRouter(opsEngine, adminAuth) {
     // 1. Status Endpoint
     router.get('/ops/status', adminAuth, async (req, res) => {
         try {
-            const safeMode = await opsEngine.db.get("SELECT value FROM system_config WHERE key = 'system_state'");
+            const safeMode = await opsEngine.db.prepare("SELECT value FROM system_config WHERE key = 'system_state'").get();
             const schedulerRunning = req.scheduler ? req.scheduler.isRunning : false;
 
             // Check DB
             let dbStatus = "OK";
-            try { await opsEngine.db.get("SELECT 1"); } catch (e) { dbStatus = "FAIL"; }
+            try { await opsEngine.db.prepare("SELECT 1").get(); } catch (e) { dbStatus = "FAIL"; }
 
             // Last Distrib
-            const lastDist = await opsEngine.db.get("SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 1");
+            const lastDist = await opsEngine.db.prepare("SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 1").get();
 
             // Webhook Failures (Counter in memory or DB?)
             // Requirement says "webhook failure count"
@@ -23,7 +23,7 @@ export function createOpsRouter(opsEngine, adminAuth) {
             // "Track: failed webhook attempts"
             // Let's implement a simple counter on the `req.alertService` or `req`?
             // Better: Query recent error logs for webhooks
-            const errors = await req.logger.db.get("SELECT COUNT(*) as c FROM webhook_logs WHERE status != 'applied' AND ts > ?", [Date.now() - 300000]); // last 5 mins
+            const errors = await req.logger.db.prepare("SELECT COUNT(*) as c FROM webhook_logs WHERE status != 'applied' AND ts > ?").get([Date.now() - 300000]); // last 5 mins
 
             res.json({
                 scheduler_running: schedulerRunning,
@@ -116,11 +116,11 @@ export function createOpsRouter(opsEngine, adminAuth) {
             let data = [];
 
             if (target === 'revenue') {
-                data = await opsEngine.db.query("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT 1000");
+                data = await opsEngine.db.prepare("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT 1000").all();
             } else if (target === 'earnings') {
-                data = await opsEngine.db.query("SELECT * FROM epoch_earnings ORDER BY created_at DESC LIMIT 1000");
+                data = await opsEngine.db.prepare("SELECT * FROM epoch_earnings ORDER BY created_at DESC LIMIT 1000").all();
             } else {
-                data = await opsEngine.db.query("SELECT * FROM epochs ORDER BY id DESC LIMIT 100");
+                data = await opsEngine.db.prepare("SELECT * FROM epochs ORDER BY id DESC LIMIT 100").all();
             }
 
             const format = req.query.format || 'json';

@@ -54,33 +54,32 @@ echo "[4] Finalizing Epoch..."
 echo "⚠️  Manual Finalization Wrapper Running..."
 node -e '
   (async () => {
-    const { UniversalDB } = await import("./src/db/index.js");
-    const { OperationsEngine } = await import("./src/services/operations-engine.js");
-    // FIX: Explicitly set type: "sqlite" (Double quotes for JS inside Bash single quotes)
-    const db = new UniversalDB({ type: "sqlite", connectionString: "./satelink.db" });
+    const { getValidatedDB } = await import("./apps/api/src/core/db/index.js");
+    const { OperationsEngine } = await import("./apps/api/src/core/operations_engine.js");
+    const db = await getValidatedDB();
     const ops = new OperationsEngine(db);
     await ops.init();
     
     // Inject a fake conversion to test LCO split if table empty
-    await db.query("INSERT INTO conversions (wallet, role) VALUES (?, ?) ON CONFLICT DO NOTHING", ["0xdist", "distributor_lco"]);
+    await db.query("INSERT INTO conversions (wallet, role) VALUES ($1, $2) ON CONFLICT DO NOTHING", ["0xdist", "distributor_lco"]);
 
     // Ensure we load the current epoch ID from DB
     const epochId = await ops.initEpoch();
     console.log("Finalizing Epoch:", epochId);
 
     // DEBUG: Check events
-    const events = await db.query("SELECT COUNT(*) as c, SUM(amount_usdt) as s FROM revenue_events_v2 WHERE epoch_id = ?", [epochId]);
+    const events = await db.query("SELECT COUNT(*) as c, SUM(amount_usdt) as s FROM revenue_events_v2 WHERE epoch_id = $1", [epochId]);
     console.log("DEBUG EVENTS:", events);
 
     try {
         await ops.finalizeEpoch(epochId);
     } catch(e) { console.log("Finalize note:", e.message); } // Might fail if already finalized
 
-    const earnings = await db.query("SELECT * FROM epoch_earnings WHERE epoch_id = ?", [epochId]);
+    const earnings = await db.query("SELECT * FROM epoch_earnings WHERE epoch_id = $1", [epochId]);
     console.log("EARNINGS:", JSON.stringify(earnings, null, 2));
     
     // Check total
-    const total = earnings.reduce((s, r) => s + r.amount_usdt, 0);
+    const total = earnings.reduce((s, r) => s + Number(r.amount_usdt), 0);
     console.log("TOTAL DISTRIBUTED:", total);
   })();
 ' 

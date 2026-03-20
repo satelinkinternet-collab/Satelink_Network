@@ -15,7 +15,7 @@ export function createPartnerPortalRouter(db, slaEngine = null) {
             const wallet = req.user?.wallet;
             if (!wallet) return res.status(401).json({ ok: false, error: "No wallet in token" });
 
-            const partner = await db.get("SELECT * FROM partner_registry WHERE wallet = ?", [wallet]);
+            const partner = await db.prepare("SELECT * FROM partner_registry WHERE wallet = ?").get([wallet]);
             if (!partner) {
                 if (req.path === '/register') return next();
                 return res.status(403).json({ ok: false, error: "Not a registered partner" });
@@ -51,17 +51,17 @@ export function createPartnerPortalRouter(db, slaEngine = null) {
             if (!name) return res.status(400).json({ ok: false, error: "Name required" });
 
             const wallet = req.user.wallet;
-            const existing = await db.get("SELECT * FROM partner_registry WHERE wallet = ?", [wallet]);
+            const existing = await db.prepare("SELECT * FROM partner_registry WHERE wallet = ?").get([wallet]);
             if (existing) return res.status(400).json({ ok: false, error: "Already a partner" });
 
             const partnerId = `PARTNER-${Date.now()}`;
             const apiKey = `sk_${crypto.randomBytes(32).toString('hex')}`;
             const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO partner_registry (partner_id, partner_name, wallet, api_key_hash, status, created_at, total_ops, rate_limit_per_min, revenue_share_percent)
                 VALUES (?, ?, ?, ?, 'active', ?, 0, 60, 10)
-            `, [partnerId, name, wallet, hash, Date.now()]);
+            `).run([partnerId, name, wallet, hash, Date.now()]);
 
             res.json({ ok: true, partner_id: partnerId, api_key: apiKey });
         } catch (e) {
@@ -74,7 +74,7 @@ export function createPartnerPortalRouter(db, slaEngine = null) {
     router.post('/keys/rotate', requirePartner, async (req, res) => {
         const newKey = `sk_${crypto.randomBytes(32).toString('hex')}`;
         const hash = crypto.createHash('sha256').update(newKey).digest('hex');
-        await db.query("UPDATE partner_registry SET api_key_hash = ?, updated_at = ? WHERE partner_id = ?",
+        await db.prepare("UPDATE partner_registry SET api_key_hash = ?, updated_at = ? WHERE partner_id = ?").run(
             [hash, Date.now(), req.partner.partner_id]);
         res.json({ ok: true, api_key: newKey });
     });
@@ -83,7 +83,7 @@ export function createPartnerPortalRouter(db, slaEngine = null) {
 
     router.get('/webhooks', requirePartner, async (req, res) => {
         try {
-            const hooks = await db.query("SELECT * FROM partner_webhooks WHERE partner_id = ?", [req.partner.partner_id]);
+            const hooks = await db.prepare("SELECT * FROM partner_webhooks WHERE partner_id = ?").all([req.partner.partner_id]);
             res.json({ ok: true, webhooks: hooks });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
@@ -96,26 +96,26 @@ export function createPartnerPortalRouter(db, slaEngine = null) {
             }
             const id = uuidv4();
             const finalSecret = secret || crypto.randomBytes(32).toString('hex');
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO partner_webhooks (id, partner_id, url, secret_hash, events_json, enabled, created_at)
                 VALUES (?, ?, ?, ?, ?, 1, ?)
-            `, [id, req.partner.partner_id, url, finalSecret, JSON.stringify(events), Date.now()]);
+            `).run([id, req.partner.partner_id, url, finalSecret, JSON.stringify(events), Date.now()]);
             res.json({ ok: true, id, secret: finalSecret });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
     router.delete('/webhooks/:id', requirePartner, async (req, res) => {
-        await db.query("DELETE FROM partner_webhooks WHERE id = ? AND partner_id = ?", [req.params.id, req.partner.partner_id]);
+        await db.prepare("DELETE FROM partner_webhooks WHERE id = ? AND partner_id = ?").run([req.params.id, req.partner.partner_id]);
         res.json({ ok: true });
     });
 
     router.get('/webhooks/delivery', requirePartner, async (req, res) => {
-        const history = await db.query(`
+        const history = await db.prepare(`
             SELECT a.*, w.url FROM webhook_delivery_attempts a
             JOIN partner_webhooks w ON a.webhook_id = w.id
             WHERE w.partner_id = ?
             ORDER BY a.created_at DESC LIMIT 50
-        `, [req.partner.partner_id]);
+        `).all([req.partner.partner_id]);
         res.json({ ok: true, history });
     });
 
@@ -125,7 +125,7 @@ export function createPartnerPortalRouter(db, slaEngine = null) {
         if (!slaEngine) return res.status(501).json({ ok: false, error: "SLA not configured" });
         try {
             const budget = await slaEngine.getErrorBudget(req.partner.partner_id);
-            const circuit = await db.get("SELECT * FROM tenant_circuit_state WHERE partner_id = ?", [req.partner.partner_id]);
+            const circuit = await db.prepare("SELECT * FROM tenant_circuit_state WHERE partner_id = ?").get([req.partner.partner_id]);
             res.json({ ok: true, ...budget, circuit });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });

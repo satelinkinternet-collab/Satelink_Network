@@ -24,7 +24,7 @@ export class DynamicProfitGuard {
      */
     async _loadConfig() {
         try {
-            const rows = this.db.prepare("SELECT key, value FROM system_config WHERE key LIKE '%profit_margin%' OR key = 'dynamic_profit_guard_enabled' OR key = 'launch_mode'").all();
+            const rows = await this.db.prepare("SELECT key, value FROM system_config WHERE key LIKE '%profit_margin%' OR key = 'dynamic_profit_guard_enabled' OR key = 'launch_mode'").all();
             for (const row of rows) {
                 if (row.key === 'dynamic_profit_guard_enabled') this.config.enabled = row.value === '1';
                 if (row.key === 'default_profit_margin') this.config.defaultMargin = parseFloat(row.value);

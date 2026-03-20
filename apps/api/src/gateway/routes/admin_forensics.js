@@ -49,10 +49,9 @@ export function createAdminForensicsRouter(db, forensicsServices) {
     router.get('/integrity', async (req, res) => {
         try {
             const days = parseInt(req.query.days) || 30;
-            const runs = await db.query(
-                "SELECT * FROM ledger_integrity_runs ORDER BY day_yyyymmdd DESC LIMIT ?",
-                [days]
-            );
+            const runs = await db.prepare(
+                "SELECT * FROM ledger_integrity_runs ORDER BY day_yyyymmdd DESC LIMIT ?"
+            ).all([days]);
             res.json({ ok: true, runs: runs.map(r => ({ ...r, findings: JSON.parse(r.findings_json) })) });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
@@ -73,7 +72,7 @@ export function createAdminForensicsRouter(db, forensicsServices) {
             const params = [];
             if (status) { sql = "SELECT * FROM partner_disputes WHERE status = ? ORDER BY created_at DESC"; params.push(status); }
 
-            const disputes = await db.query(sql, params);
+            const disputes = await db.prepare(sql).all(params);
             res.json({ ok: true, disputes });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
@@ -86,10 +85,10 @@ export function createAdminForensicsRouter(db, forensicsServices) {
             const report = await replayEngine.replayWindow({ from_ts, to_ts, partner_id });
 
             const now = Date.now();
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO partner_disputes (partner_id, from_ts, to_ts, reason, status, created_at, created_by, forensic_report_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `, [partner_id, from_ts, to_ts, reason, 'investigating', now, req.user.wallet, JSON.stringify(report)]);
+            `).run([partner_id, from_ts, to_ts, reason, 'investigating', now, req.user.wallet, JSON.stringify(report)]);
 
             // Audit
             await auditService.logAction({
@@ -107,10 +106,9 @@ export function createAdminForensicsRouter(db, forensicsServices) {
     router.post('/disputes/:id/resolve', async (req, res) => {
         try {
             const { notes } = req.body;
-            await db.query(
-                "UPDATE partner_disputes SET status = 'resolved', resolution_notes = ?, resolved_at = ?, resolved_by = ? WHERE id = ?",
-                ['resolved', notes, Date.now(), req.user.wallet, req.params.id]
-            );
+            await db.prepare(
+                "UPDATE partner_disputes SET status = 'resolved', resolution_notes = ?, resolved_at = ?, resolved_by = ? WHERE id = ?"
+            ).run([notes, Date.now(), req.user.wallet, req.params.id]);
             res.json({ ok: true });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });

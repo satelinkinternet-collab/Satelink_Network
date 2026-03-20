@@ -9,9 +9,9 @@ export class RevenueForecastEngine {
      * @param {number} projectedEpochs - Number of epochs to forecast for
      * @returns {Object} Forecast indicating total expected and per-epoch average
      */
-    forecastRevenue(nodeId, projectedEpochs = 1) {
+    async forecastRevenue(nodeId, projectedEpochs = 1) {
         // 1. Fetch historical ops counts for this node across recent epochs
-        const historyRows = this.db.prepare(`
+        const historyRows = await this.db.prepare(`
             SELECT epoch_id, SUM(weight) as total_weight 
             FROM op_counts 
             WHERE user_wallet = ? 
@@ -21,7 +21,7 @@ export class RevenueForecastEngine {
         `).all(nodeId);
 
         // 2. Determine reputation/active status
-        const nodeData = this.db.prepare(`
+        const nodeData = await this.db.prepare(`
             SELECT active, is_flagged, infra_reserved 
             FROM registered_nodes 
             WHERE wallet = ?

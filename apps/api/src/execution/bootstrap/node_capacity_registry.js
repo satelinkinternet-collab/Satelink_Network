@@ -17,9 +17,9 @@ export class NodeCapacityRegistry {
     async refreshCommunityCapacity() {
         try {
             // Basic metric check: active, not flagged, and recently heartbeat
-            const activeNodes = this.db.prepare(`
-                SELECT wallet as node_id, node_type, latency, bandwidth, infra_reserved, active, is_flagged 
-                FROM registered_nodes 
+            const activeNodes = await this.db.prepare(`
+                SELECT wallet as node_id, node_type, latency, bandwidth, infra_reserved, active, is_flagged
+                FROM registered_nodes
                 WHERE active = 1 AND is_flagged = 0
             `).all();
 

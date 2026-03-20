@@ -55,10 +55,10 @@ export function createEmbeddedAuthRouter(db) {
         const expiresAt = now + (5 * 60 * 1000); // 5 minutes
 
         try {
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO auth_nonces (address, nonce, expires_at, created_at)
                 VALUES (?, ?, ?, ?)
-            `, [address.toLowerCase(), nonce, expiresAt, now]);
+            `).run([address.toLowerCase(), nonce, expiresAt, now]);
 
             res.json({
                 ok: true,
@@ -85,18 +85,18 @@ export function createEmbeddedAuthRouter(db) {
 
         try {
             // Find valid nonce
-            const nonceRow = await db.get(`
+            const nonceRow = await db.prepare(`
                 SELECT * FROM auth_nonces 
                 WHERE address = ? AND used_at IS NULL AND expires_at > ?
                 ORDER BY created_at DESC LIMIT 1
-            `, [addr, Date.now()]);
+            `).get([addr, Date.now()]);
 
             if (!nonceRow) {
                 return res.status(401).json({ ok: false, error: 'Invalid or expired nonce' });
             }
 
             // Mark nonce as used
-            await db.query('UPDATE auth_nonces SET used_at = ? WHERE id = ?', [Date.now(), nonceRow.id]);
+            await db.prepare('UPDATE auth_nonces SET used_at = ? WHERE id = ?').run([Date.now(), nonceRow.id]);
 
             // Reconstruct message
             const message = `Welcome to Satelink!\n\nAuthorize your device by signing this nonce: ${nonceRow.nonce}\n\nAddress: ${address}\nTimestamp: ${nonceRow.created_at}`;
@@ -105,36 +105,36 @@ export function createEmbeddedAuthRouter(db) {
             const recoveredAddress = ethers.verifyMessage(message, signature);
             if (recoveredAddress.toLowerCase() !== addr) {
                 // Telemetry: increment failure count
-                await db.query('UPDATE users SET status = "flagged" WHERE primary_wallet = ?', [addr]).catch(() => { });
+                await db.prepare('UPDATE users SET status = "flagged" WHERE primary_wallet = ?').run([addr]).catch(() => { });
                 console.warn(`[AUTH] Signature mismatch for ${addr} from ${req.ip}`);
                 return res.status(401).json({ ok: false, error: 'Signature verification failed' });
             }
 
             // Upsert user
-            let user = await db.get('SELECT * FROM users WHERE primary_wallet = ?', [addr]);
+            let user = await db.prepare('SELECT * FROM users WHERE primary_wallet = ?').get([addr]);
             const now = Date.now();
 
             if (!user) {
-                await db.query(`
+                await db.prepare(`
                     INSERT INTO users (primary_wallet, role, status, created_at, last_login_at)
                     VALUES (?, 'user', 'active', ?, ?)
-                `, [addr, now, now]);
-                user = await db.get('SELECT * FROM users WHERE primary_wallet = ?', [addr]);
+                `).run([addr, now, now]);
+                user = await db.prepare('SELECT * FROM users WHERE primary_wallet = ?').get([addr]);
             } else {
-                await db.query('UPDATE users SET last_login_at = ? WHERE primary_wallet = ?', [now, addr]);
+                await db.prepare('UPDATE users SET last_login_at = ? WHERE primary_wallet = ?').run([now, addr]);
             }
 
             // Register Device (Phase I3)
             const ipHash = hashIp(req.ip || 'unknown');
             if (device_public_id) {
-                await db.query(`
+                await db.prepare(`
                     INSERT INTO trusted_devices (wallet, device_public_id, user_agent, ip_hash, first_seen_at, last_seen_at, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'active')
                     ON CONFLICT(wallet, device_public_id) DO UPDATE SET 
                         last_seen_at = excluded.last_seen_at,
                         ip_hash = excluded.ip_hash,
                         user_agent = excluded.user_agent
-                `, [
+                `).run([
                     addr,
                     device_public_id,
                     req.headers['user-agent'] || 'unknown',

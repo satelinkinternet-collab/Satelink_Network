@@ -1,11 +1,11 @@
-import { SelfTestRunner } from '../../../../src/monitoring/self_test_runner.js';
-import { OpsEngine } from '../../../../src/core/operations_engine.js';
-import db from '../../core/db/sqlite.js';
-
-const mockOpsEngine = { db };
-const runner = new SelfTestRunner(mockOpsEngine, 8080);
+import { SelfTestRunner } from '../../monitoring/self_test_runner.js';
+import { getValidatedDB } from '../../core/db/index.js';
 
 async function run() {
+    const db = await getValidatedDB();
+    const mockOpsEngine = { db };
+    const runner = new SelfTestRunner(mockOpsEngine, 8080);
+
     console.log('Running I6 Self Tests...');
 
     // 1. Silent Reauth Contract

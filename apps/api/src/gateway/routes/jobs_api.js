@@ -46,7 +46,7 @@ export function createJobsRouter(db, jobQueue, jobEscrow) {
             await jobEscrow.lockFunds(req.developerId, jobId, reward);
 
             // Insert into marketplace_jobs internal registry (Part 2 Integration)
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO marketplace_jobs (job_id, job_type, reward, payload, creator_wallet, status, created_at)
                 VALUES (?, ?, ?, ?, ?, 'pending', ?)
             `).run(jobId, job_type, reward, payloadString, req.developerId, Date.now());
@@ -66,7 +66,7 @@ export function createJobsRouter(db, jobQueue, jobEscrow) {
             await jobQueue.push_job(internalJob);
 
             // Update status to scheduled
-            db.prepare(`UPDATE marketplace_jobs SET status = 'scheduled' WHERE job_id = ?`).run(jobId);
+            await db.prepare(`UPDATE marketplace_jobs SET status = 'scheduled' WHERE job_id = ?`).run(jobId);
 
             res.status(201).json({
                 message: 'Job submitted and scheduled successfully',
@@ -87,9 +87,9 @@ export function createJobsRouter(db, jobQueue, jobEscrow) {
      * PART 8: GET /v1/jobs
      * List all jobs for the authenticated developer
      */
-    router.get('/', authenticateDeveloper, (req, res) => {
+    router.get('/', authenticateDeveloper, async (req, res) => {
         try {
-            const jobs = db.prepare(`SELECT * FROM marketplace_jobs WHERE creator_wallet = ? ORDER BY created_at DESC LIMIT 50`).all(req.developerId);
+            const jobs = await db.prepare(`SELECT * FROM marketplace_jobs WHERE creator_wallet = ? ORDER BY created_at DESC LIMIT 50`).all(req.developerId);
             res.status(200).json({ jobs });
         } catch (error) {
             res.status(500).json({ error: 'Error fetching jobs' });
@@ -100,9 +100,9 @@ export function createJobsRouter(db, jobQueue, jobEscrow) {
      * PART 8: GET /v1/jobs/:id
      * Get specific job status
      */
-    router.get('/:id', authenticateDeveloper, (req, res) => {
+    router.get('/:id', authenticateDeveloper, async (req, res) => {
         try {
-            const job = db.prepare(`SELECT * FROM marketplace_jobs WHERE job_id = ? AND creator_wallet = ?`).get(req.params.id, req.developerId);
+            const job = await db.prepare(`SELECT * FROM marketplace_jobs WHERE job_id = ? AND creator_wallet = ?`).get(req.params.id, req.developerId);
             if (!job) return res.status(404).json({ error: 'Job not found' });
 
             res.status(200).json({ job });

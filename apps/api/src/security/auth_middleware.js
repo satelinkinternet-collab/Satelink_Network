@@ -185,5 +185,30 @@ export async function handleRefresh(req, res) {
   }
 }
 
+/**
+ * validateApiKey — validates x-api-key against enterprise_api_keys
+ * @param {object} db - Database adapter
+ */
+export function validateApiKey(db) {
+  return async (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'x-api-key header required' });
+    }
+
+    try {
+      const keyRecord = await db.prepare("SELECT client_id FROM enterprise_api_keys WHERE api_key = ?").get([apiKey]);
+      if (!keyRecord) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid API key' });
+      }
+      req.clientId = keyRecord.client_id;
+      next();
+    } catch (err) {
+      console.error('[AUTH] API Key validation error:', err.message);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  };
+}
+
 // Expose for testing
 export const _JWT_SECRET_LENGTH = JWT_SECRET.length;

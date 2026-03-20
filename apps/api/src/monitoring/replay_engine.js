@@ -14,7 +14,7 @@ export class ReplayEngine {
 
         // 1. Fetch Inputs (Parameters used during that period)
         // For MVP: Fetch current effective multipliers/flags
-        const flags = await this.db.query("SELECT key, value FROM system_flags");
+        const flags = await this.db.prepare("SELECT key, value FROM system_flags").all();
         const flagsMap = flags.reduce((acc, f) => ({ ...acc, [f.key]: f.value }), {});
 
         // 2. Fetch Source Data (Revenue Events)
@@ -25,7 +25,7 @@ export class ReplayEngine {
         if (node_id) { sql += " AND node_id = ?"; params.push(node_id); }
         sql += " ORDER BY created_at ASC, request_id ASC, id ASC";
 
-        const events = await this.db.query(sql, params);
+        const events = await this.db.prepare(sql).all(params);
 
         // 3. Compute Totals (using micro-unit math 1e6)
         let totalRevMicro = 0n;
@@ -43,11 +43,10 @@ export class ReplayEngine {
         }
 
         // 4. Fetch Actual Ledger Stats for comparison
-        const ledgerRev = await this.db.get(
+        const ledgerRev = await this.db.prepare(
             `SELECT SUM(amount_usdt) as t FROM economic_ledger_entries 
-             WHERE event_type = 'revenue' AND created_at BETWEEN ? AND ?`,
-            [from_ts * 1000, to_ts * 1000]
-        );
+             WHERE event_type = 'revenue' AND created_at BETWEEN ? AND ?`
+        ).get([from_ts * 1000, to_ts * 1000]);
         const actualRevUsdt = ledgerRev?.t || 0;
         const computedRevUsdt = Number(totalRevMicro) / 1e6;
 

@@ -22,14 +22,14 @@ export class AuthenticityService {
         // If request_traces is pruned (7 days), we can only run this for recent days.
         // Assuming job runs daily for "yesterday", data should exist.
 
-        const stats = await this.db.get(`
+        const stats = await this.db.prepare(`
             SELECT 
                 COUNT(*) as total_ops,
                 COUNT(DISTINCT client_id) as unique_wallets,
                 COUNT(DISTINCT ip_hash) as unique_clients
             FROM request_traces
             WHERE created_at >= ? AND created_at < ?
-        `, [start, end]);
+        `).get([start, end]);
 
         const totalOps = stats?.total_ops || 0;
         const uniqueWallets = stats?.unique_wallets || 0;
@@ -40,17 +40,17 @@ export class AuthenticityService {
         // Let's assume a "test_keys" config or simply checking if wallet starts with '0x000' or similar pattern if used.
         // Or check `users` table for `is_test` flag? (Layer 37 schema might have it?)
         // Let's assume we check `users` table join.
-        // Since sqlite join on log might be slow, let's do a sample check or specific query.
+        // Since database join on log might be slow, let's do a sample check or specific query.
         // "ops_from_test_keys"
 
         // Let's check distinctive test traffic pattern: Wallet '0x000...' or '0xtest...'
         // Or specific route '/__test' (excluded from real ops usually, but maybe included in traces)
         // Traces include everything.
-        const testOps = await this.db.get(`
+        const testOps = await this.db.prepare(`
             SELECT COUNT(*) as c FROM request_traces 
             WHERE (client_id LIKE '0xtest%' OR route LIKE '/__test%')
             AND created_at >= ? AND created_at < ?
-        `, [start, end]);
+        `).get([start, end]);
         const opsFromTest = testOps?.c || 0;
 
         // 3. Replay Suspected (Duplicate Request IDs)
@@ -59,13 +59,13 @@ export class AuthenticityService {
         let replays = 0;
         if (totalOps > 0) {
             // Check for duplicates
-            const dupes = await this.db.get(`
+            const dupes = await this.db.prepare(`
                 SELECT COUNT(*) as c FROM (
                     SELECT request_id FROM request_traces 
                     WHERE created_at >= ? AND created_at < ? AND request_id IS NOT NULL 
                     GROUP BY request_id HAVING COUNT(*) > 1
                 )
-            `, [start, end]);
+            `).get([start, end]);
             replays = dupes?.c || 0;
             dupRate = replays / totalOps;
         }
@@ -76,11 +76,11 @@ export class AuthenticityService {
         // High entropy = Good (distributed). Low entropy = Bad (bot farm).
         let entropyScore = 1.0;
         if (totalOps > 100) {
-            const topIp = await this.db.get(`
+            const topIp = await this.db.prepare(`
                SELECT COUNT(*) as c FROM request_traces 
                WHERE created_at >= ? AND created_at < ? 
                GROUP BY ip_hash ORDER BY c DESC LIMIT 1
-           `, [start, end]);
+           `).get([start, end]);
             const concentration = (topIp?.c || 0) / totalOps;
             if (concentration > 0.9) entropyScore = 0.1;
             else if (concentration > 0.5) entropyScore = 0.5;
@@ -98,7 +98,7 @@ export class AuthenticityService {
         score = Math.max(0, Math.min(100, score));
 
         // 6. Store
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO usage_authenticity_daily (
                 day_yyyymmdd, total_ops, ops_unique_clients, ops_unique_wallets,
                 ops_from_test_keys, ops_replay_suspected, duplicate_request_id_rate,
@@ -107,7 +107,7 @@ export class AuthenticityService {
             ON CONFLICT(day_yyyymmdd) DO UPDATE SET
                 total_ops=excluded.total_ops,
                 authenticity_score=excluded.authenticity_score
-        `, [
+        `).run([
             yyyymmdd, totalOps, uniqueClients, uniqueWallets,
             opsFromTest, replays, dupRate, entropyScore, score, Date.now()
         ]);
@@ -119,6 +119,6 @@ export class AuthenticityService {
     }
 
     async getHistory(limit = 30) {
-        return await this.db.query("SELECT * FROM usage_authenticity_daily ORDER BY day_yyyymmdd DESC LIMIT ?", [limit]);
+        return await this.db.prepare("SELECT * FROM usage_authenticity_daily ORDER BY day_yyyymmdd DESC LIMIT ?").all([limit]);
     }
 }

@@ -6,16 +6,18 @@ import { attachSecurity } from "./src/security/security.js";
 import { attachHeartbeat } from "./src/nodes/heartbeat.js";
 import { attachRoutes } from "./src/gateway/routes.js";
 import { attachUI } from "./src/gateway/ui.js";
+import { EconomicLedger } from "./src/economics/economic_ledger.js";
 
-export function createApp(db) {
+export async function createApp(db) {
   const app = express();
+  const ledger = new EconomicLedger(db);
 
   // Attach modules in same order as server.js
   attachBaseMiddleware(app);
-  attachSchema(db);
+  await attachSchema(db);
   attachSecurity(app, db);
   attachHeartbeat(app, db);
-  attachRoutes(app, db);
+  attachRoutes(app, db, { ledger });
   attachUI(app, db);
 
   // Global Error Handler

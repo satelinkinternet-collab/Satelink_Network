@@ -8,8 +8,8 @@ export function createUserSettingsRouter(rawDb) {
     const router = express.Router();
 
     const db = {
-        get: async (sql, params = []) => rawDb.prepare(sql).get(...params),
-        query: async (sql, params = []) => rawDb.prepare(sql).run(...params)
+        get: async (sql, params = []) => await rawDb.prepare(sql).get(params),
+        query: async (sql, params = []) => await rawDb.prepare(sql).run(params)
     };
 
     // Helper: Generate Public ID (Deterministic)

@@ -85,7 +85,7 @@ export class JobDispatcher {
         // Record revenue event in Operations Engine
         // (Assuming OperationsEngine.recordRevenue or similar exists)
         try {
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO revenue_events (amount, token, source, created_at)
                 VALUES (?, ?, ?, ?)
             `).run(result.revenue, 'USDT', `job:${job.job_id}`, Date.now());
@@ -112,7 +112,7 @@ export class JobDispatcher {
         if (retryInfo.attempts < 3) {
             this.retryMap.set(job.job_id, retryInfo);
             // Re-queue or retry logic
-            // Requirements: 
+            // Requirements:
             // 1st retry -> same node (default scheduler might pick different, so we force or influence)
             // 2nd retry -> different node
             // 3rd retry -> highest reputation node
@@ -127,7 +127,7 @@ export class JobDispatcher {
 
             // Mark FAILED in DB log if log table exists
             try {
-                this.db.prepare('UPDATE job_queue_log SET status = "FAILED" WHERE job_id = ?').run(job.job_id);
+                await this.db.prepare('UPDATE job_queue_log SET status = "FAILED" WHERE job_id = ?').run(job.job_id);
             } catch (e) { }
         }
     }

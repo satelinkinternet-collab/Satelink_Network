@@ -34,7 +34,7 @@ export function createAdminRevenueRouter(db, auditService = null) {
 
         try {
             const now = Date.now();
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO pricing_rules (op_type, base_price_usdt, surge_enabled, surge_threshold, surge_multiplier, version, updated_at)
                 VALUES (?, ?, ?, ?, ?, 1, ?)
                 ON CONFLICT(op_type) DO UPDATE SET
@@ -44,7 +44,7 @@ export function createAdminRevenueRouter(db, auditService = null) {
                     surge_multiplier = excluded.surge_multiplier,
                     version = version + 1,
                     updated_at = excluded.updated_at
-            `, [op_type, base_price_usdt, surge_enabled ? 1 : 0, surge_threshold || 1000, surge_multiplier || 1.0, now]);
+            `).run([op_type, base_price_usdt, surge_enabled ? 1 : 0, surge_threshold || 1000, surge_multiplier || 1.0, now]);
 
             // Audit trail
             await auditLog('pricing_update', req.user?.wallet || 'super_admin', {
@@ -60,8 +60,8 @@ export function createAdminRevenueRouter(db, auditService = null) {
     // GET /admin/revenue/pricing
     router.get('/pricing', async (req, res) => {
         try {
-            const rules = await db.query("SELECT * FROM pricing_rules");
-            const legacy = await db.query("SELECT * FROM ops_pricing");
+            const rules = await db.prepare("SELECT * FROM pricing_rules").all();
+            const legacy = await db.prepare("SELECT * FROM ops_pricing").all();
             res.json({ ok: true, rules, legacy });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -74,13 +74,13 @@ export function createAdminRevenueRouter(db, auditService = null) {
             const now = Date.now();
             const dayStart = now - 86400000;
 
-            const revenue = await db.get(`
+            const revenue = await db.prepare(`
                 SELECT SUM(amount_usdt) as total, COUNT(*) as ops,
                        AVG(surge_multiplier) as avg_surge,
                        COUNT(CASE WHEN surge_multiplier > 1 THEN 1 END) as surge_ops
                 FROM revenue_events_v2 
                 WHERE created_at > ?
-            `, [dayStart]);
+            `).get([dayStart]);
 
             res.json({
                 ok: true,

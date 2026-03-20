@@ -8,6 +8,8 @@ export class FeatureFlagService {
     }
 
     async init() {
+        // Table feature_flags_v2 handled by init.sql
+        /*
         await this.db.exec(`
             CREATE TABLE IF NOT EXISTS feature_flags_v2 (
                 key TEXT PRIMARY KEY,
@@ -19,6 +21,7 @@ export class FeatureFlagService {
                 updated_by TEXT
             )
         `);
+        */
         await this.refreshCache();
         this.loadInterval = setInterval(() => this.refreshCache(), 10000); // Refresh every 10s
         console.log('[FeatureFlags] Service initialized.');
@@ -63,11 +66,11 @@ export class FeatureFlagService {
         }
     }
 
-    setFlag(key, { mode, percent, whitelist, description, updatedBy }) {
+    async setFlag(key, { mode, percent, whitelist, description, updatedBy }) {
         const now = Date.now();
         const whitelistJson = JSON.stringify(whitelist || []);
 
-        this.db.prepare(`
+        await this.db.prepare(`
             INSERT INTO feature_flags_v2 (key, mode, percent, whitelist_json, description, updated_at, updated_by)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(key) DO UPDATE SET

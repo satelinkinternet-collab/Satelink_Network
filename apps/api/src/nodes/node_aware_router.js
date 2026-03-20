@@ -19,7 +19,7 @@ import { NodeCapacity } from './node_capacity.js';
 
 export class NodeAwareRouter {
     /**
-     * @param {Object} db  - better-sqlite3 database instance
+     * @param {Object} db  - Database instance
      * @param {Object} [baseRouter] - optional ExistingExecutionRouter instance
      */
     constructor(db, baseRouter = null) {
@@ -43,7 +43,7 @@ export class NodeAwareRouter {
      */
     async selectExecutionSource(chain, payload = {}) {
         // ── 1. Genesis nodes ────────────────────────────────────────────────
-        const genesisNode = this._findInRegistry('genesis', chain);
+        const genesisNode = await this._findInRegistry('genesis', chain);
         if (genesisNode) {
             return {
                 type: 'genesis_node',
@@ -54,7 +54,7 @@ export class NodeAwareRouter {
         }
 
         // ── 2. Community nodes (highest reputation, has capacity) ───────────
-        const communityNode = this._findInRegistry('community', chain);
+        const communityNode = await this._findInRegistry('community', chain);
         if (communityNode) {
             return {
                 type: 'community_node',
@@ -76,7 +76,7 @@ export class NodeAwareRouter {
      * Surface node network metrics for the metrics layer.
      * Tracked: total_nodes, active_nodes, capacity_available
      */
-    getMetrics() {
+    async getMetrics() {
         return this.registry.getMetrics();
     }
 
@@ -90,9 +90,9 @@ export class NodeAwareRouter {
      * @param {string} chain - not directly filterable yet; kept for future capability matching
      * @returns {Object|null}
      */
-    _findInRegistry(type, chain) {
+    async _findInRegistry(type, chain) {
         try {
-            return this.db.prepare(`
+            return await this.db.prepare(`
                 SELECT node_id, node_type, region, capacity, reputation, status
                 FROM node_registry
                 WHERE node_type = ? AND status = 'ACTIVE' AND capacity > 0

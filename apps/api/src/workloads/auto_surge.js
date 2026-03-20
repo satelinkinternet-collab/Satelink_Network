@@ -24,14 +24,13 @@ export class AutoSurgeService {
         if (next < min) next = min;
         if (next > max) next = max;
 
-        await this.db.query(
-            "INSERT INTO system_config (key, value) VALUES ('surge_multiplier_global', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-            [String(next.toFixed(2)), String(next.toFixed(2))]
-        );
+        await this.db.prepare(
+            "INSERT INTO system_config (key, value) VALUES ('surge_multiplier_global', ?) ON CONFLICT(key) DO UPDATE SET value = ?"
+        ).run([String(next.toFixed(2)), String(next.toFixed(2))]);
     }
 
     async _getConfig(key) {
-        const row = await this.db.get("SELECT value FROM system_config WHERE key = ?", [key]);
+        const row = await this.db.prepare("SELECT value FROM system_config WHERE key = ?").get([key]);
         return row ? row.value : null;
     }
 }

@@ -20,19 +20,19 @@ export class RevenueStabilityService {
 
         // 1. Total Review for Day
         // Using revenue_events_v2
-        const revStats = await this.db.get(`
+        const revStats = await this.db.prepare(`
             SELECT SUM(amount_usdt) as total
             FROM revenue_events_v2
             WHERE created_at >= ? AND created_at < ?
-        `, [start, end]);
+        `).get([start, end]);
         const dailyRevenue = revStats?.total || 0;
 
         // 2. Volatility (7d)
         // Need last 7 days revenue
-        const last7Days = await this.db.query(`
+        const last7Days = await this.db.prepare(`
             SELECT revenue_usdt FROM revenue_stability_daily 
             WHERE day_yyyymmdd < ? ORDER BY day_yyyymmdd DESC LIMIT 6
-        `, [yyyymmdd]);
+        `).all([yyyymmdd]);
 
         const revenues = last7Days.map(r => r.revenue_usdt);
         revenues.push(dailyRevenue);
@@ -50,11 +50,11 @@ export class RevenueStabilityService {
         // 3. Concentration (Client)
         let clientConcentration = 0;
         if (dailyRevenue > 0) {
-            const topClient = await this.db.get(`
+            const topClient = await this.db.prepare(`
                 SELECT SUM(amount_usdt) as total FROM revenue_events_v2 
                 WHERE created_at >= ? AND created_at < ? 
                 GROUP BY client_id ORDER BY total DESC LIMIT 1
-            `, [start, end]);
+            `).get([start, end]);
             if (topClient) {
                 clientConcentration = topClient.total / dailyRevenue;
             }
@@ -95,7 +95,7 @@ export class RevenueStabilityService {
         score = Math.max(0, Math.min(100, score));
 
         // Store
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO revenue_stability_daily (
                 day_yyyymmdd, revenue_usdt, revenue_volatility_7d, client_concentration,
                 region_concentration, surge_dependency, node_distribution_fairness,
@@ -104,7 +104,7 @@ export class RevenueStabilityService {
             ON CONFLICT(day_yyyymmdd) DO UPDATE SET
                 revenue_usdt=excluded.revenue_usdt,
                 stability_score=excluded.stability_score
-        `, [
+        `).run([
             yyyymmdd, dailyRevenue, volatility, clientConcentration,
             regionConcentration, surgeDependency, fairness, score, Date.now()
         ]);
@@ -115,6 +115,6 @@ export class RevenueStabilityService {
     }
 
     async getHistory(limit = 90) {
-        return await this.db.query("SELECT * FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT ?", [limit]);
+        return await this.db.prepare("SELECT * FROM revenue_stability_daily ORDER BY day_yyyymmdd DESC LIMIT ?").all([limit]);
     }
 }
