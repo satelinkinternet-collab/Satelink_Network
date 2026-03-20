@@ -2,27 +2,42 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
+const ROLE_REDIRECTS: Record<string, string> = {
+    admin_super: '/admin',
+    admin_ops: '/admin',
+    node_operator: '/node',
+    builder: '/builder',
+    distributor_lco: '/distributor',
+    distributor_influencer: '/distributor',
+    enterprise: '/enterprise',
+};
+
 export default function LoginPage() {
     const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = async (role: string, wallet: string, redirect: string) => {
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
         setLoading(true);
         try {
-            const res = await api.post('/__test/auth/login', { wallet, role });
-            if (res.data?.token) {
+            const res = await api.post('/login', { email, password });
+            if (res.data?.ok && res.data?.token) {
                 localStorage.setItem('satelink_token', res.data.token);
-                toast.success(`Logged in as ${role}`);
-                router.push(redirect);
+                const role = res.data.user?.role ?? 'node_operator';
+                toast.success('Logged in successfully');
+                router.push(ROLE_REDIRECTS[role] ?? '/');
             } else {
-                throw new Error('No token received');
+                throw new Error(res.data?.error || 'Login failed');
             }
         } catch (error: any) {
-            console.error('Login failed:', error);
-            toast.error(error.message || 'Login failed');
+            const msg = error.response?.data?.error || error.message || 'Login failed';
+            toast.error(msg);
             setLoading(false);
         }
     };
@@ -35,46 +50,51 @@ export default function LoginPage() {
                         <div className="w-8 h-8 bg-black rounded-lg transform rotate-45"></div>
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome to Satelink</h1>
-                    <p className="text-white/50 text-sm">Select a diagnostic role to continue.</p>
+                    <p className="text-white/50 text-sm">Sign in to your account to continue.</p>
                 </div>
 
-                <div className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                        <label htmlFor="email" className="block text-sm text-white/60 mb-1">Email</label>
+                        <input
+                            id="email"
+                            type="email"
+                            required
+                            autoComplete="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/40 transition-colors"
+                            placeholder="you@example.com"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="password" className="block text-sm text-white/60 mb-1">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            required
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-white/40 transition-colors"
+                            placeholder="••••••••••"
+                        />
+                    </div>
                     <button
-                        onClick={() => handleLogin('admin_super', '0xadmin_super', '/admin')}
+                        type="submit"
                         disabled={loading}
-                        className="w-full py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+                        className="w-full py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all disabled:opacity-50"
                     >
-                        Login as Super Admin
+                        {loading ? 'Signing in…' : 'Sign In'}
                     </button>
-                    <button
-                        onClick={() => handleLogin('node_operator', '0xnode_op_1', '/node')}
-                        disabled={loading}
-                        className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
-                    >
-                        Login as Node Operator
-                    </button>
-                    <button
-                        onClick={() => handleLogin('builder', '0xbuilder_1', '/builder')}
-                        disabled={loading}
-                        className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
-                    >
-                        Login as Builder
-                    </button>
-                    <button
-                        onClick={() => handleLogin('distributor_lco', '0xdist_1', '/distributor')}
-                        disabled={loading}
-                        className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
-                    >
-                        Login as Distributor
-                    </button>
-                    <button
-                        onClick={() => handleLogin('enterprise', '0xent_1', '/enterprise')}
-                        disabled={loading}
-                        className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
-                    >
-                        Login as Enterprise
-                    </button>
-                </div>
+                </form>
+
+                <p className="text-center text-sm text-white/40 mt-6">
+                    Don&apos;t have an account?{' '}
+                    <Link href="/register" className="text-white/70 hover:text-white underline transition-colors">
+                        Register
+                    </Link>
+                </p>
             </div>
         </div>
     );

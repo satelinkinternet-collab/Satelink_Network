@@ -1,8 +1,8 @@
-import express, { Router } from 'express';
+import { Router } from 'express';
 
 export function createAdminAutonomousRouter(db, autoOpsEngine) {
     const router = Router();
-    router.use(express.json());
+    // express.json() applied globally in core/middleware.js — no duplicate needed
 
     // 1. Get Config & Status
     router.get('/config', async (req, res) => {

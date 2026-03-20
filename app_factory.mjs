@@ -1,4 +1,4 @@
-import "dotenv/config";
+// dotenv/config loaded once in server.js — no duplicate import needed
 import express from "express";
 import { attachBaseMiddleware } from "./core/middleware.js";
 import { attachSchema } from "./core/schema.js";
