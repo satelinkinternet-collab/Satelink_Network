@@ -71,4 +71,16 @@ export function validateEnv() {
         console.error('[FATAL] DATABASE_URL must be provided for all environments.');
         process.exit(1);
     }
+
+    // ── Report errors ─────────────────────────────────────────────────
+    if (errors.length > 0) {
+        console.error('\n=== Environment Validation Failed ===');
+        for (const err of errors) {
+            console.error(`  ❌ ${err}`);
+        }
+        console.error(`\n${errors.length} error(s) found. Fix before starting.\n`);
+        process.exit(1);
+    }
+
+    console.log(`✅ Environment validated (${process.env.NODE_ENV})`);
 }
