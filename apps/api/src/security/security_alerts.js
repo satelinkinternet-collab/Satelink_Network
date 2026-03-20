@@ -5,7 +5,7 @@ import crypto from 'crypto';
  * Creates security_alerts rows for suspicious patterns.
  */
 
-const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
+const IP_SALT = process.env.IP_HASH_SALT;
 
 // In-memory rate tracking (reset on restart — good enough for MVP)
 const rateLimitHits = new Map();   // clientId -> { count, firstSeen }

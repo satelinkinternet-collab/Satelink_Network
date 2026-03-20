@@ -1,0 +1,95 @@
+<%- include('partials/header', { activePage: 'support' }) %>
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Support Portal</h1>
+    <p class="text-sm text-satelink-muted">Submit a ticket or review platform documentation.</p>
+</div>
+
+<!-- Flash message -->
+<% if (typeof success !== 'undefined' && success) { %>
+    <div class="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-xl text-sm font-medium">
+        ✓ Your ticket has been submitted. Our team will respond shortly.
+    </div>
+<% } %>
+<% if (typeof error !== 'undefined' && error) { %>
+    <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-5 py-4 rounded-xl text-sm font-medium">
+        ✗ <%= error %>
+    </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Ticket Form -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl border border-satelink-border shadow-sm">
+            <div class="p-6 border-b border-satelink-border bg-gray-50/50">
+                <h3 class="font-bold text-gray-900 text-lg">Submit a Support Ticket</h3>
+            </div>
+            <form action="/support/ticket" method="POST" class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Wallet Address</label>
+                    <input type="text" name="wallet" placeholder="0x..." required
+                        class="w-full border border-satelink-border rounded-lg px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-satelink-accent/30 focus:border-satelink-accent transition-colors">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
+                    <select name="category"
+                        class="w-full border border-satelink-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-satelink-accent/30 focus:border-satelink-accent transition-colors bg-white">
+                        <option value="technical">Technical Issue</option>
+                        <option value="billing">Billing / Revenue</option>
+                        <option value="node">Node Problem</option>
+                        <option value="withdrawal">Withdrawal Issue</option>
+                        <option value="account">Account / Auth</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Subject</label>
+                    <input type="text" name="subject" placeholder="Brief description of your issue" required
+                        class="w-full border border-satelink-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-satelink-accent/30 focus:border-satelink-accent transition-colors">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Message</label>
+                    <textarea name="message" rows="5" required placeholder="Describe your issue in detail..."
+                        class="w-full border border-satelink-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-satelink-accent/30 focus:border-satelink-accent transition-colors resize-none"></textarea>
+                </div>
+                <button type="submit"
+                    class="w-full bg-satelink-accent hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl text-sm transition-colors shadow-sm">
+                    Submit Ticket
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- FAQ / Help sidebar -->
+    <div class="space-y-4">
+        <div class="bg-white rounded-2xl border border-satelink-border shadow-sm p-5">
+            <h4 class="font-bold text-gray-900 mb-3">Quick Links</h4>
+            <ul class="space-y-2 text-sm">
+                <li><a href="/health" class="text-satelink-accent hover:underline">→ Health Check</a></li>
+                <li><a href="/status" class="text-satelink-accent hover:underline">→ Network Status</a></li>
+                <li><a href="/api-docs" class="text-satelink-accent hover:underline">→ API Documentation</a></li>
+                <li><a href="/ui/admin/logs" class="text-satelink-accent hover:underline">→ System Logs</a></li>
+                <li><a href="/agent-control-centre.html" class="text-satelink-accent hover:underline">→ Agent Control Centre</a></li>
+            </ul>
+        </div>
+        <div class="bg-white rounded-2xl border border-satelink-border shadow-sm p-5">
+            <h4 class="font-bold text-gray-900 mb-3">Common Issues</h4>
+            <ul class="space-y-3 text-sm text-gray-600">
+                <li class="flex items-start">
+                    <span class="font-bold text-gray-900 mr-2 flex-shrink-0">Q:</span>
+                    <span>Node showing offline? Check heartbeat status at <code class="bg-gray-100 px-1 rounded">/ui/admin/nodes</code></span>
+                </li>
+                <li class="flex items-start">
+                    <span class="font-bold text-gray-900 mr-2 flex-shrink-0">Q:</span>
+                    <span>Withdrawal pending? View queue at <code class="bg-gray-100 px-1 rounded">/ui/admin/withdrawals</code></span>
+                </li>
+                <li class="flex items-start">
+                    <span class="font-bold text-gray-900 mr-2 flex-shrink-0">Q:</span>
+                    <span>Revenue discrepancy? Review epoch ledger at <code class="bg-gray-100 px-1 rounded">/ui/admin/ledger</code></span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

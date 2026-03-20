@@ -3,8 +3,9 @@ import { RevenueOracle } from '../../economics/revenue_oracle.js';
 import { TreasuryMonitor } from '../../monitoring/treasury_monitor.js';
 import fuseService from '../../security/fuse.js';
 import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { executeWithdrawal, withdrawRateLimitMiddleware } from '../../settlement/withdraw_service.js';
 
-export function createPhase3Router(db) {
+export function createPhase3Router(db, opsEngine) {
     const router = Router();
     const oracle = new RevenueOracle(fuseService, db);
     const treasury = new TreasuryMonitor(fuseService, db);
@@ -72,10 +73,9 @@ export function createPhase3Router(db) {
         }
     });
 
-    // POST /api/node/me/withdraw - Actually happens on-chain, but here we can return historical withdrawals if needed.
-    // The spec says: "POST /api/node/me/withdraw: Show withdrawable balance, hash, ledger confirmation"
-    // Wait, withdraw is executed from the frontend via MetaMask against the SC, but backend might record it.
-    router.post('/node/me/withdraw', requireAuth, async (req, res) => {
+    // POST /api/node/me/withdraw - Routes through canonical withdrawal service
+    // On-chain execution recorded alongside canonical withdrawal pipeline
+    router.post('/node/me/withdraw', requireAuth, withdrawRateLimitMiddleware, async (req, res) => {
         try {
             const { claimId, amount, txHash } = req.body;
             const wallet = req.user.wallet;
@@ -92,7 +92,8 @@ export function createPhase3Router(db) {
                 hash: txHash
             });
         } catch (error) {
-            res.status(500).json({ ok: false, error: error.message });
+            const status = error.statusCode || 500;
+            res.status(status).json({ ok: false, error: error.message });
         }
     });
 

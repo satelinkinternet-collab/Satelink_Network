@@ -53,27 +53,9 @@ export function createOpsRouter(opsEngine, adminAuth) {
         }
     });
 
-    // ─── PHASE A: PAID OPS EXECUTION ──────────────────────────
-    router.post('/ops/execute', async (req, res) => {
-        try {
-            const { op_type, node_id, client_id, request_id, timestamp, payload_hash, signature } = req.body;
-
-            // Minimal validation
-            if (!op_type || !node_id || !client_id || !request_id) {
-                return res.status(400).json({ ok: false, error: "Missing required fields" });
-            }
-
-            // Execute logic via engine
-            const result = await opsEngine.executeOp({
-                op_type, node_id, client_id, request_id, timestamp, payload_hash
-            });
-
-            console.log(`[REVENUE] OpExecuted: ${op_type} by ${client_id} on ${node_id}. Paid: ${result.amount} USDT`);
-            res.json(result);
-        } catch (e) {
-            console.error(`[OPS-ERROR] ${e.message}`);
-            res.status(e.message.includes("rate limit") ? 429 : 500).json({ ok: false, error: e.message });
-        }
+    // ─── PHASE A: PAID OPS EXECUTION (DEPRECATED) ──────────────────────────
+    router.post('/ops/execute', adminAuth, (req, res) => {
+        res.status(403).json({ ok: false, error: "Direct execution via control API is prohibited. Use /v1 or /rpc endpoints." });
     });
 
     // ─── PHASE C: CLAIM/WITHDRAW FEED ──────────────────────────

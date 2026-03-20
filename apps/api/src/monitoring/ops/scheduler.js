@@ -21,41 +21,54 @@ export class Scheduler {
         this.backupTimer = null;
         this.econTimer = null; // New
         this.distFailures = 0;
+        this.loopErrors = {};
+    }
+
+    // Crash-safe wrapper: catches unhandled errors in async interval callbacks,
+    // logs them, and allows the loop to continue running.
+    _guard(name, fn) {
+        return async () => {
+            try {
+                await fn.call(this);
+            } catch (e) {
+                this.loopErrors[name] = (this.loopErrors[name] || 0) + 1;
+                console.error(`[SCHEDULER] CRASH GUARD (${name}) caught error #${this.loopErrors[name]}:`, e.message);
+                try { await this.alertService?.send?.(`[CRASH GUARD] ${name}: ${e.message}`, 'error'); } catch (_) {}
+            }
+        };
     }
 
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        console.log("[SCHEDULER] Started automation loop.");
+        console.log("[SCHEDULER] Started automation loop (crash-protected).");
 
         // Loop 1: Epoch maintenance (Every 60s)
-        this.timer = setInterval(() => this.runEpochCycle(), 60000);
+        this.timer = setInterval(this._guard('epoch', this.runEpochCycle), 60000);
 
         // Loop 2: Health Monitor (Every 60s, offset 30s)
         setTimeout(() => {
-            if (this.isRunning) this.healthTimer = setInterval(() => this.runHealthCheck(), 60000);
+            if (this.isRunning) this.healthTimer = setInterval(this._guard('health', this.runHealthCheck), 60000);
         }, 30000);
 
         // Loop 3: Node Lifecycle (Every 30s)
-        this.lifecycleTimer = setInterval(() => this.runNodeLifecycle(), 30000);
+        this.lifecycleTimer = setInterval(this._guard('lifecycle', this.runNodeLifecycle), 30000);
 
         // Loop 4: DB Maintenance (Hourly)
-        this.maintTimer = setInterval(() => this.runMaintenance(), 60 * 60 * 1000);
+        this.maintTimer = setInterval(this._guard('maintenance', this.runMaintenance), 60 * 60 * 1000);
 
         // Loop 5: Runtime Monitor (Every 60s)
         if (this.runtimeMonitor) {
-            this.runtimeTimer = setInterval(() => this.runtimeMonitor.collect(), 60000);
+            this.runtimeTimer = setInterval(this._guard('runtime', () => this.runtimeMonitor.collect()), 60000);
         }
 
         // Loop 6: Backup Verification (Weekly)
-        // 7 days = 604800000 ms
         if (this.backupService) {
-            this.backupTimer = setInterval(() => this.runBackupVerification(), 7 * 24 * 60 * 60 * 1000);
+            this.backupTimer = setInterval(this._guard('backup', this.runBackupVerification), 7 * 24 * 60 * 60 * 1000);
         }
 
         // Loop 7: Daily Economics (Every 24h)
-        // For MVP: Simple interval. Prod would use cron at specific time.
-        this.econTimer = setInterval(() => this.runDailyEconomics(), 24 * 60 * 60 * 1000);
+        this.econTimer = setInterval(this._guard('economics', this.runDailyEconomics), 24 * 60 * 60 * 1000);
     }
 
     stop() {
