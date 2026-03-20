@@ -71,6 +71,9 @@ export class JobConsumer {
                     timestamp: startTime,
                     payload_hash: job.job_id
                 });
+                revenueRecorded = revenueResult?.ok !== false;
+            } else {
+                revenueRecorded = true;
             }
 
             await JobQueue.acknowledge(job.sourceStream, job.streamId);

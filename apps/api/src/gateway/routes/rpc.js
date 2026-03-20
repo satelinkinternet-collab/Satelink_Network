@@ -6,6 +6,7 @@ import { SolanaAdapter } from '../../providers/adapters/solana.js';
 import { FuseAdapter } from '../../providers/adapters/fuse.js';
 import { ArbitrumAdapter } from '../../providers/adapters/arbitrum.js';
 import { OperationsEngine } from '../../core/operations_engine.js';
+import { SLAEngine } from '../../monitoring/sla_engine.js';
 import { NodeCapacityRegistry } from '../../execution/bootstrap/node_capacity_registry.js';
 import { ProviderFallbackAdapter } from '../../execution/bootstrap/provider_fallback_adapter.js';
 import { ExecutionAssuranceRouter } from '../../execution/bootstrap/execution_assurance_router.js';
