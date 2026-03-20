@@ -1,0 +1,58 @@
+<%- include('partials/header', { activePage: 'withdrawals' }) %>
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Withdrawals</h1>
+        <div class="flex items-center space-x-2 text-satelink-muted text-sm">
+            <span>Queue Status: <%= withdrawals.length %> Pending</span>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-satelink-border shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-satelink-muted font-medium border-b border-satelink-border">
+                    <tr>
+                        <th class="px-6 py-3 font-semibold">ID</th>
+                        <th class="px-6 py-3 font-semibold">Wallet</th>
+                        <th class="px-6 py-3 font-semibold">Amount</th>
+                        <th class="px-6 py-3 font-semibold">Created</th>
+                        <th class="px-6 py-3 font-semibold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <% if(withdrawals.length===0) { %>
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-satelink-muted italic">No pending
+                                withdrawals.</td>
+                        </tr>
+                        <% } %>
+                            <% withdrawals.forEach(w=> { %>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-mono text-gray-500">#<%= w.id %>
+                                    </td>
+                                    <td class="px-6 py-4 font-mono text-satelink-accent font-medium">
+                                        <a href="/ui/operator/<%= w.wallet %>"
+                                            class="hover:underline hover:text-blue-700 transition-colors">
+                                            <%= w.wallet %>
+                                        </a>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold text-gray-900">
+                                        <%= formatCurrency(w.amount_usdt) %>
+                                    </td>
+                                    <td class="px-6 py-4 text-gray-500 text-xs">
+                                        <%= formatDate(w.created_at * 1000) %>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button
+                                            class="text-xs bg-emerald-50 hover:bg-emerald-100 text-satelink-success border border-emerald-200 px-3 py-1 rounded transition-colors uppercase tracking-wider font-bold shadow-sm">
+                                            Process
+                                        </button>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>

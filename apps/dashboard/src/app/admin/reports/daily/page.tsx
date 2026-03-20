@@ -12,7 +12,7 @@ export default function DailyReportsPage() {
 
     const fetchReports = async () => {
         try {
-            const res = await fetch('/api/proxy?path=/admin-api/ops/reports/daily');
+            const res = await fetch('/api/admin/ops/reports/daily');
             const data = await res.json();
             if (data.ok) setReports(data.reports);
         } catch (e) {
@@ -23,7 +23,7 @@ export default function DailyReportsPage() {
     const generateReport = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/proxy?path=/admin-api/ops/reports/generate', { method: 'POST' });
+            const res = await fetch('/api/admin/ops/reports/generate', { method: 'POST' });
             const data = await res.json();
             if (data.ok) {
                 toast.success("Report generated!");

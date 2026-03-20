@@ -20,6 +20,26 @@ export async function createApp(db) {
   attachRoutes(app, db, { ledger });
   attachUI(app, db);
 
+  // ── Settlement Engine Initialization ──
+  // Register adapters and wire the settlement engine so admin routes
+  // (req.app.get('settlementEngine')) resolve to a live instance.
+  const adapterRegistry = new AdapterRegistry();
+  adapterRegistry.register(new SimulatedAdapter());
+  adapterRegistry.register(new ShadowAdapter());
+
+  // EvmAdapter requires RPC keys and is registered conditionally
+  if (process.env.SETTLEMENT_EVM_RPC_URL) {
+    import("./src/settlement/adapters/EvmAdapter.js").then(({ EvmAdapter }) => {
+      adapterRegistry.register(new EvmAdapter(db));
+      console.log("[SettlementEngine] EvmAdapter registered (live EVM settlement available)");
+    }).catch(err => {
+      console.warn("[SettlementEngine] EvmAdapter failed to load:", err.message);
+    });
+  }
+
+  const settlementEngine = new SettlementEngine(db, null, adapterRegistry, {});
+  app.set('settlementEngine', settlementEngine);
+
   // Global Error Handler
   app.use((err, req, res, next) => {
     console.error("[SERVER] Unhandled Exception:", err.message);

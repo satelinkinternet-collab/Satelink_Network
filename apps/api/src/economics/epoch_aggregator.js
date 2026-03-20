@@ -52,8 +52,8 @@ export async function closeEpoch(db, epochId) {
             SELECT user_wallet as node_id, COALESCE(SUM(ops), 0) as ops
             FROM op_counts
             WHERE epoch_id = ?
-            AND user_wallet IS NOT NULL
-            GROUP BY user_wallet
+            AND node_id IS NOT NULL
+            GROUP BY node_id
         `).all(epochId);
 
         let totalNodeOps = 0;

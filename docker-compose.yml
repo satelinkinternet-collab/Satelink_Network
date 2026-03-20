@@ -1,9 +1,26 @@
 version: '3.8'
 
+x-common-env: &common-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://satelink:satelinkpassword@database:5432/satelink_prod
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+  IP_HASH_SALT: ${IP_HASH_SALT:?IP_HASH_SALT is required}
+  PASSWORD_SALT: ${PASSWORD_SALT:?PASSWORD_SALT is required}
+  ADMIN_API_KEY: ${ADMIN_API_KEY:?ADMIN_API_KEY is required}
+  FEATURE_REAL_SETTLEMENT: ${FEATURE_REAL_SETTLEMENT:-false}
+  SETTLEMENT_INTERVAL_MS: ${SETTLEMENT_INTERVAL_MS:-60000}
+  EPOCH_DURATION: ${EPOCH_DURATION:-3600}
+  FLYWHEEL_ENABLED: ${FLYWHEEL_ENABLED:-true}
+
 services:
-  satelink-core:
-    build: .
-    container_name: satelink-core
+  # ── API Server ──
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: satelink-api
     environment:
       - NODE_ENV=development
       - PORT=8080
@@ -22,8 +39,6 @@ services:
 
     ports:
       - "8080:8080"
-    volumes:
-      - satelink-data:/usr/src/app/data
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
@@ -39,10 +54,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  satelink-gateway:
-    build: .
-    container_name: satelink-gateway
-    command: npm run gateway
+  # ── Background Worker ──
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: satelink-worker
+    command: node apps/api/worker.js
     environment:
       - NODE_ENV=development
       - PORT=8081
@@ -58,12 +76,17 @@ services:
       - satelink-data:/usr/src/app/data
     restart: unless-stopped
     depends_on:
-      - satelink-core
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  satelink-node-worker:
-    build: .
-    container_name: satelink-node-worker
-    command: npm run worker
+  # ── Dashboard (Next.js) ──
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: satelink-dashboard
     environment:
       - NODE_ENV=development
       - LOG_LEVEL=info
@@ -89,6 +112,7 @@ services:
       redis:
         condition: service_healthy
 
+  # ── PostgreSQL ──
   database:
     image: postgres:15-alpine
     container_name: satelink-db
@@ -103,11 +127,12 @@ services:
       - ./docker/init:/docker-entrypoint-initdb.d
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U satelink" ]
+      test: ["CMD-SHELL", "pg_isready -U satelink"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ── Redis ──
   redis:
     image: redis:7-alpine
     container_name: satelink-redis
@@ -115,11 +140,41 @@ services:
       - "6379:6379"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ── Prometheus ──
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: satelink-prometheus
+    volumes:
+      - ./infra/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # ── Grafana ──
+  grafana:
+    image: grafana/grafana:latest
+    container_name: satelink-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-satelink}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./infra/monitoring/grafana:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
 volumes:
-  satelink-data:
   postgres-data:
+  prometheus-data:
+  grafana-data:

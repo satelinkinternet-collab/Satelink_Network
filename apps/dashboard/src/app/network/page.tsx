@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { useNetworkStats } from "@/hooks/useNetworkStats";
 import { useSettlementMode } from "@/hooks/useSettlementMode";
@@ -7,10 +8,25 @@ import { SectionContainer } from "@/components/ui/SectionContainer";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { AnimatedNodeCard } from "@/components/animations/AnimatedNodeCard";
 import { Server, Activity, Coins, ArrowRightLeft } from "lucide-react";
+import api from "@/lib/api";
+
+interface NodeEntry { id: string; status: string; }
 
 export default function NetworkPage() {
     const { stats, isLoading: statsLoading } = useNetworkStats();
     const { modeData } = useSettlementMode();
+    const [nodes, setNodes] = useState<NodeEntry[]>([]);
+    const [nodesLoading, setNodesLoading] = useState(true);
+
+    useEffect(() => {
+        api.get('/api/network/nodes').then(res => {
+            const list = res.data?.nodes || res.data || [];
+            setNodes(Array.isArray(list) ? list.slice(0, 30).map((n: any) => ({
+                id: n.node_id || n.wallet?.substring(0, 10) || `STL-${n.id}`,
+                status: n.status || (n.active ? 'active' : 'offline'),
+            })) : []);
+        }).catch(() => setNodes([])).finally(() => setNodesLoading(false));
+    }, []);
 
     return (
         <MarketingLayout>
@@ -41,15 +57,20 @@ export default function NetworkPage() {
                         </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        {/* Displaying some mock registered nodes */}
-                        {Array.from({ length: 18 }).map((_, i) => (
+                        {nodesLoading ? (
+                            Array.from({ length: 12 }).map((_, i) => (
+                                <div key={i} className="h-24 bg-zinc-800/50 animate-pulse rounded-lg" />
+                            ))
+                        ) : nodes.length > 0 ? nodes.map((node, i) => (
                             <AnimatedNodeCard
-                                key={i}
-                                id={`STL-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`}
-                                status={Math.random() > 0.1 ? 'active' : 'syncing'}
+                                key={node.id}
+                                id={node.id}
+                                status={node.status}
                                 delay={i * 0.05}
                             />
-                        ))}
+                        )) : (
+                            <p className="col-span-full text-center text-zinc-500 py-8">No nodes registered yet</p>
+                        )}
                     </div>
                 </div>
             </SectionContainer>

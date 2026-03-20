@@ -38,11 +38,14 @@ export default function Homepage() {
             Satelink is a decentralized execution environment powered by real sustainable yield, not inflationary emissions.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in" style={{ animationDelay: '0.3s' }}>
-            <CTAButton href="/run-node" variant="primary">
-              Deploy a Node <ArrowRight className="w-5 h-5 ml-2" />
+            <CTAButton href="/login" variant="primary">
+              Launch App <ArrowRight className="w-5 h-5 ml-2" />
+            </CTAButton>
+            <CTAButton href="/run-node" variant="secondary">
+              Deploy a Node
             </CTAButton>
             <CTAButton href="/developers" variant="secondary">
-              Read Documentation
+              Read Docs
             </CTAButton>
           </div>
         </div>

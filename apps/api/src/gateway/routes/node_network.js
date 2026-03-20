@@ -19,7 +19,7 @@ import { NodeHeartbeat } from '../../nodes/node_heartbeat.js';
 import { NodeReputation } from '../../nodes/node_reputation.js';
 import { NodeCapacity } from '../../nodes/node_capacity.js';
 
-export function createNodeNetworkRouter(db) {
+export function createNodeNetworkRouter(db, opsEngine) {
     const router = Router();
 
     // Initialise the Node Network Layer services.
@@ -46,6 +46,25 @@ export function createNodeNetworkRouter(db) {
                 region: region || 'global',
                 capacity: cap || 10
             });
+
+            // Also persist to registered_nodes for epoch earnings distribution
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                const wallet = req.body.wallet || node_id;
+                const mgmt = req.body.management_type || 'self_hosted';
+                db.prepare(`
+                    INSERT INTO registered_nodes (wallet, node_id, node_type, active, last_heartbeat, updatedAt, management_type)
+                    VALUES (?, ?, ?, 1, ?, ?, ?)
+                    ON CONFLICT(wallet) DO UPDATE SET
+                        node_id = excluded.node_id,
+                        node_type = excluded.node_type,
+                        active = 1,
+                        updatedAt = excluded.updatedAt
+                `).run(wallet, node_id, node_type || 'community', now, now, mgmt);
+            } catch (e) {
+                // Best-effort persistence
+                console.warn('[NodeNetwork] registered_nodes upsert:', e.message);
+            }
 
             res.status(201).json({ ok: true, node });
         } catch (e) {
@@ -74,9 +93,120 @@ export function createNodeNetworkRouter(db) {
                 latency_ms: Number(latency_ms) || 50
             });
 
+            // Persist uptime to DB for epoch earnings distribution
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                db.prepare("UPDATE registered_nodes SET last_heartbeat = ?, active = 1 WHERE node_id = ? OR wallet = ?")
+                    .run(now, node_id, node_id);
+                const epochRow = db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get();
+                if (epochRow) {
+                    const existing = db.prepare("SELECT 1 FROM node_uptime WHERE node_wallet = ? AND epoch_id = ?").get(node_id, epochRow.id);
+                    if (existing) {
+                        db.prepare("UPDATE node_uptime SET uptime_seconds = uptime_seconds + 60, score = score + 60 WHERE node_wallet = ? AND epoch_id = ?")
+                            .run(node_id, epochRow.id);
+                    } else {
+                        db.prepare("INSERT INTO node_uptime (node_wallet, epoch_id, uptime_seconds, score) VALUES (?, ?, 60, 60)")
+                            .run(node_id, epochRow.id);
+                    }
+                }
+            } catch (e) { /* uptime tracking best-effort */ }
+
             res.status(200).json({ ok: true, ...result });
         } catch (e) {
             console.error('[NodeNetwork] /heartbeat error:', e.message);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    //  GET /v1/node/jobs
+    //  Fetch pending jobs assigned to a specific node.
+    // ─────────────────────────────────────────────────────────────
+    router.get('/jobs', (req, res) => {
+        try {
+            const { node_id } = req.query;
+            if (!node_id) {
+                return res.status(400).json({ ok: false, error: 'node_id query parameter is required' });
+            }
+
+            // Fetch pending jobs from job_queue_log assigned to this node
+            let jobs = [];
+            try {
+                jobs = db.prepare(
+                    "SELECT * FROM job_queue_log WHERE route = ? AND status = 'pending' ORDER BY created_at ASC LIMIT 10"
+                ).all(node_id);
+            } catch (e) {
+                // Table may not exist yet — return empty
+            }
+
+            res.json({ ok: true, count: jobs.length, jobs });
+        } catch (e) {
+            console.error('[NodeNetwork] /jobs error:', e.message);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /v1/node/submit
+    //  Submit execution results for a completed job.
+    // ─────────────────────────────────────────────────────────────
+    router.post('/submit', async (req, res) => {
+        try {
+            const { node_id, job_id, result, status: jobStatus, duration_ms } = req.body;
+
+            if (!node_id || !job_id) {
+                return res.status(400).json({ ok: false, error: 'node_id and job_id are required' });
+            }
+
+            const finalStatus = jobStatus || 'completed';
+            const now = Math.floor(Date.now() / 1000);
+
+            // Update job status in job_queue_log
+            try {
+                db.prepare(
+                    "UPDATE job_queue_log SET status = ?, completed_at = ? WHERE job_id = ?"
+                ).run(finalStatus, now, job_id);
+            } catch (e) {
+                // best-effort update
+            }
+
+            // Record execution metric
+            try {
+                const existing = db.prepare(
+                    "SELECT id FROM execution_metrics WHERE source_id = ? AND source_type = 'node'"
+                ).get(node_id);
+
+                if (existing) {
+                    db.prepare(
+                        "UPDATE execution_metrics SET requests_handled = requests_handled + 1, latency_avg = ?, updated_at = ? WHERE id = ?"
+                    ).run(duration_ms || 0, now, existing.id);
+                } else {
+                    db.prepare(
+                        "INSERT INTO execution_metrics (source_id, source_type, chain, requests_handled, latency_avg, updated_at) VALUES (?, 'node', 'fuse', 1, ?, ?)"
+                    ).run(node_id, duration_ms || 0, now);
+                }
+            } catch (e) {
+                // best-effort metric update
+            }
+
+            // Record job execution revenue via canonical pipeline.
+            // Earnings are created only when finalizeEpoch() runs.
+            try {
+                if (opsEngine) {
+                    await opsEngine.executeOp({
+                        op_type:    'job_execution',
+                        node_id:    node_id,
+                        client_id:  node_id,
+                        request_id: `submit_${job_id}_${now}`,
+                    });
+                }
+            } catch (e) {
+                // best-effort — executeOp logs internally
+            }
+
+            res.json({ ok: true, job_id, status: finalStatus, node_id });
+        } catch (e) {
+            console.error('[NodeNetwork] /submit error:', e.message);
             res.status(500).json({ ok: false, error: e.message });
         }
     });

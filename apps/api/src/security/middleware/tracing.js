@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
-const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
+const IP_SALT = process.env.IP_HASH_SALT;
 
 export const tracingMiddleware = (req, res, next) => {
     // 1. Generate or Propagate Trace ID

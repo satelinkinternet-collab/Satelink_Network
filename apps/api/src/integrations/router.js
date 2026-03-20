@@ -254,13 +254,12 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         } catch (e) { res.status(400).json({ error: e.message }); }
     });
 
-    router.post("/withdraw", async (req, res) => {
+    router.post("/withdraw", withdrawRateLimitMiddleware, async (req, res) => {
         const { wallet, amount } = req.body || {};
         if (!wallet || !amount) return res.status(400).json({ error: "Missing wallet or amount" });
         try {
             const bal = await opsEngine.getBalance(wallet);
             if (bal < amount) return res.status(400).json({ error: "Insufficient balance" });
-            const now = Math.floor(Date.now() / 1000);
 
             const withdrawalId = crypto.randomUUID();
             await opsEngine.db.prepare("INSERT INTO withdrawals (id, wallet, amount_usdt, status, retry_count, created_at) VALUES (?, ?, ?, 'PENDING', 0, ?)").run([
