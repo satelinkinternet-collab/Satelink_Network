@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./src/core/config/dotenv_boot.js";
 import express from "express";
 import { attachBaseMiddleware } from "./src/security/middleware.js";
 import { attachSchema } from "./src/core/schema.js";

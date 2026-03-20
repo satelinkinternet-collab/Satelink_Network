@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./src/core/config/dotenv_boot.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { logger } from "./src/monitoring/logger.js";
