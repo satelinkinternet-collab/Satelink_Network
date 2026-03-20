@@ -46,7 +46,7 @@ export default createApp;
 
 // If we are not running under Mocha (tests), boot the server
 if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
-    const DATABASE_URL = process.env.DATABASE_URL || "postgres://satelink:satelinkpass@satelink-db:5432/satelink";
+    const DATABASE_URL = process.env.DATABASE_URL;
     console.log('[BOOT] Starting database connection...');
     try {
         const db = await PgDatabase.create(DATABASE_URL);
