@@ -1,5 +1,5 @@
 export function attachSecurity(app, db) {
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
     const setFreeze = () => {
         try {
@@ -9,8 +9,18 @@ export function attachSecurity(app, db) {
     };
 
     const requireAdminKey = (req, res, next) => {
+        let expectedKey = ADMIN_API_KEY;
+        if (!expectedKey) {
+            const env = process.env.NODE_ENV;
+            if (env === 'development' || env === 'test' || process.env.MOCHA) {
+                expectedKey = "satelink-admin-secret";
+            } else {
+                return res.status(500).send("ADMIN_KEY not configured");
+            }
+        }
+
         const provided = req.get("X-Admin-Key") || req.get("x-admin-key") || "";
-        if (provided !== ADMIN_API_KEY) {
+        if (provided !== expectedKey) {
             app.locals.__authFailCount = (app.locals.__authFailCount || 0) + 1;
             if (app.locals.__authFailCount >= 10) {
                 setFreeze();
