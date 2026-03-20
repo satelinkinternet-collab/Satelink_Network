@@ -33,10 +33,9 @@ export class RetentionCleaner {
         try {
             // 1. Traces (Heavy volume) - 7 days
             const traceCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            const traceRes = await this.db.query(
-                `DELETE FROM request_traces WHERE created_at < ? RETURNING 1`,
-                [traceCutoff]
-            );
+            const traceRes = await this.db.prepare(
+                `DELETE FROM request_traces WHERE created_at < ? RETURNING 1`
+            ).all([traceCutoff]);
             stats.traces_removed = traceRes.length || 0;
 
             // Refined approach for SQLite compatibility
@@ -62,10 +61,9 @@ export class RetentionCleaner {
             // 5. Incidents - 90 days (if not open)
             const incidentCutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
             // Only prune resolved/sent incidents, keep open ones forever until handled
-            const incRes = await this.db.query(
-                `DELETE FROM incident_bundles WHERE created_at < ? AND status != 'open'`,
-                [incidentCutoff]
-            );
+            const incRes = await this.db.prepare(
+                `DELETE FROM incident_bundles WHERE created_at < ? AND status != 'open'`
+            ).run([incidentCutoff]);
             // Manually update stats if wrapper returns array
             if (Array.isArray(incRes)) stats.incidents_removed = incRes.length;
 
@@ -77,10 +75,10 @@ export class RetentionCleaner {
 
             // Log to audit (as system)
             try {
-                await this.db.query(`
+                await this.db.prepare(`
                     INSERT INTO admin_audit_log (actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                `, [
+                `).run([
                     'system',
                     'RETENTION_CLEANUP',
                     'system',
@@ -104,7 +102,7 @@ export class RetentionCleaner {
 
     async _prune(table, timeCol, cutoff, statKey, statsObj) {
         try {
-            await this.db.query(`DELETE FROM ${table} WHERE ${timeCol} < ?`, [cutoff]);
+            await this.db.prepare(`DELETE FROM ${table} WHERE ${timeCol} < ?`).run([cutoff]);
             statsObj[statKey] = 'executed';
         } catch (e) {
             console.error(`[Retention] Failed to prune ${table}:`, e.message);

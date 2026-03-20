@@ -16,19 +16,19 @@ export class NodeBonusService {
 
             const expiresAt = Date.now() + (data.duration_hours || 24) * 3600000;
 
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO node_bonus_flags (node_id, multiplier, expires_at, reason, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(node_id) DO UPDATE SET 
                     multiplier = excluded.multiplier,
                     expires_at = excluded.expires_at,
                     reason = excluded.reason
-            `, [rec.entity_id, data.multiplier, expiresAt, rec.type, Date.now()]);
+            `).run([rec.entity_id, data.multiplier, expiresAt, rec.type, Date.now()]);
         }
     }
 
     async _getConfig(key) {
-        const row = await this.db.get("SELECT value FROM system_config WHERE key = ?", [key]);
+        const row = await this.db.prepare("SELECT value FROM system_config WHERE key = ?").get([key]);
         return row ? row.value : null;
     }
 }

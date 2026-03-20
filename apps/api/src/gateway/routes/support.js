@@ -25,10 +25,10 @@ export function createSupportRouter(db) {
         }
 
         try {
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO support_tickets (wallet, message, bundle_json, created_at)
                 VALUES (?, ?, ?, ?)
-            `, [wallet.toLowerCase(), message + (subject ? ` [${category || 'general'}] ${subject}` : ''), JSON.stringify(bundle_json || {}), Date.now()]);
+            `).run([wallet.toLowerCase(), message + (subject ? ` [${category || 'general'}] ${subject}` : ''), JSON.stringify(bundle_json || {}), Date.now()]);
 
             if (isJson) return res.json({ ok: true, message: 'Support ticket submitted successfully' });
             res.redirect('/support?success=1');
@@ -47,7 +47,7 @@ export function createSupportRouter(db) {
         }
 
         try {
-            const tickets = await db.query('SELECT * FROM support_tickets ORDER BY created_at DESC LIMIT 100');
+            const tickets = await db.prepare('SELECT * FROM support_tickets ORDER BY created_at DESC LIMIT 100').all();
             res.json({ ok: true, tickets });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -61,7 +61,7 @@ export function createSupportRouter(db) {
         }
 
         try {
-            await db.query('UPDATE support_tickets SET status = ? WHERE id = ?', [req.body.status || 'resolved', req.params.id]);
+            await db.prepare('UPDATE support_tickets SET status = ? WHERE id = ?').run([req.body.status || 'resolved', req.params.id]);
             res.json({ ok: true });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });

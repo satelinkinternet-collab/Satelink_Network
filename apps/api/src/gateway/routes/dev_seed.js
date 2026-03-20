@@ -25,11 +25,10 @@ export function createDevSeedRouter(opsEngine) {
 
             // Use REPLACE or upsert logic
             for (const u of users) {
-                await opsEngine.db.query(
+                await opsEngine.db.prepare(
                     `INSERT INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?)
-                     ON CONFLICT(wallet) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at`,
-                    [u.wallet, u.role, Date.now()]
-                );
+                     ON CONFLICT(wallet) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at`
+                ).run([u.wallet, u.role, Date.now()]);
             }
             res.json({ ok: true, seeded: users.length });
         } catch (e) {
@@ -50,20 +49,18 @@ export function createDevSeedRouter(opsEngine) {
 
             for (const n of nodes) {
                 // New table
-                await opsEngine.db.query(
+                await opsEngine.db.prepare(
                     `INSERT INTO nodes (node_id, wallet, device_type, status, last_seen, created_at) 
                      VALUES (?, ?, 'edge', ?, ?, ?)
-                     ON CONFLICT(node_id) DO UPDATE SET status = excluded.status, last_seen = excluded.last_seen`,
-                    [n.id, n.wallet, n.status, n.last_seen, now]
-                );
+                     ON CONFLICT(node_id) DO UPDATE SET status = excluded.status, last_seen = excluded.last_seen`
+                ).run([n.id, n.wallet, n.status, n.last_seen, now]);
 
                 // Legacy table (Sync)
-                await opsEngine.db.query(
+                await opsEngine.db.prepare(
                     `INSERT INTO registered_nodes (wallet, last_heartbeat, active, updatedAt)
                     VALUES (?, ?, ?, ?)
-                    ON CONFLICT(wallet) DO UPDATE SET active = excluded.active, last_heartbeat = excluded.last_heartbeat`,
-                    [n.wallet, n.last_seen, n.status === 'active' ? 1 : 0, now]
-                );
+                    ON CONFLICT(wallet) DO UPDATE SET active = excluded.active, last_heartbeat = excluded.last_heartbeat`
+                ).run([n.wallet, n.last_seen, n.status === 'active' ? 1 : 0, now]);
             }
             res.json({ ok: true, seeded: nodes.length });
         } catch (e) {

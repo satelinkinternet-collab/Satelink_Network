@@ -38,16 +38,15 @@ export class AutoRewardService {
         if (validNew > max) validNew = max;
 
         // 4. Update
-        await this.db.query(
-            "INSERT INTO system_config (key, value) VALUES ('reward_multiplier_effective', ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-            [String(validNew.toFixed(4)), String(validNew.toFixed(4))]
-        );
+        await this.db.prepare(
+            "INSERT INTO system_config (key, value) VALUES ('reward_multiplier_effective', ?) ON CONFLICT(key) DO UPDATE SET value = ?"
+        ).run([String(validNew.toFixed(4)), String(validNew.toFixed(4))]);
 
         return validNew; // Return for logging if needed
     }
 
     async _getConfigMap() {
-        const rows = await this.db.query("SELECT key, value FROM system_config");
+        const rows = await this.db.prepare("SELECT key, value FROM system_config").all();
         return rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {});
     }
 }

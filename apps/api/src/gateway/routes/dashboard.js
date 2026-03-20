@@ -17,9 +17,9 @@ export function createDashboardRouter(opsEngine) {
             const todayStart = new Date().setHours(0, 0, 0, 0);
 
             // Revenue Stats
-            // SQLite specific date functions or just filter by JS?
+            // Use PostgreSQL date functions for efficient grouping
             // Let's just query limits for MVP efficiency
-            const revenueEvents = await opsEngine.db.query("SELECT * FROM revenue_events ORDER BY created_at DESC LIMIT 100");
+            const revenueEvents = await opsEngine.db.prepare("SELECT * FROM revenue_events ORDER BY created_at DESC LIMIT 100").all();
             const revenueToday = revenueEvents.filter(e => e.created_at >= todayStart).reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
             const revenueTotal = revenueEvents.reduce((acc, e) => acc + (e.amount_usdt || 0), 0); // Approx based on limit
 
@@ -30,11 +30,11 @@ export function createDashboardRouter(opsEngine) {
             const webhookFail = webhooks.filter(w => w.ts >= yesterday && w.status !== 'applied').length;
 
             // Distribution
-            const distRuns = await opsEngine.db.query("SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 5");
+            const distRuns = await opsEngine.db.prepare("SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 5").all();
 
             // Nodes
-            const nodesOnline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1")).c;
-            const nodesOffline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 0")).c;
+            const nodesOnline = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1").get()).c;
+            const nodesOffline = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 0").get()).c;
 
             res.render('admin', {
                 revenueToday: revenueToday.toFixed(2),
@@ -71,15 +71,15 @@ export function createDashboardRouter(opsEngine) {
             // Let's assume public read-only for now unless header provided?
             // Actually, let's keep it open for this MVP step to satisfy "GET /node/:wallet".
 
-            const node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
+            const node = await opsEngine.db.prepare("SELECT * FROM registered_nodes WHERE wallet = ?").get([wallet]);
             if (!node) return res.status(404).send("Node not found");
 
-            const balanceRow = await opsEngine.db.get("SELECT * FROM balances WHERE wallet = ?", [wallet]);
+            const balanceRow = await opsEngine.db.prepare("SELECT * FROM balances WHERE wallet = ?").get([wallet]);
             const balance = balanceRow ? balanceRow.amount : 0;
 
-            const earnings = await opsEngine.db.query("SELECT * FROM op_counts WHERE user_wallet = ? ORDER BY epoch_id DESC LIMIT 10", [wallet]);
+            const earnings = await opsEngine.db.prepare("SELECT * FROM op_counts WHERE user_wallet = ? ORDER BY epoch_id DESC LIMIT 10").all([wallet]);
 
-            const withdrawals = await opsEngine.db.query("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10", [wallet]);
+            const withdrawals = await opsEngine.db.prepare("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10").all([wallet]);
 
             res.render('node', { node, balance, earnings, withdrawals });
         } catch (e) { next(e); }

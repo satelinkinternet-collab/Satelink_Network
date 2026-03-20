@@ -15,7 +15,8 @@ const connection = new Redis({
 });
 
 connection.on('error', (err) => {
-    logger.error({ err: err.message }, '[Redis] Connection Error');
+    // Log as warning to avoid noise during temporary downtime
+    logger.warn({ err: err.message }, '[Redis] Connection Error - Retrying...');
 });
 
 connection.on('ready', () => {

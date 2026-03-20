@@ -68,10 +68,9 @@ export function createAdminReputationRouter(db) {
         try {
             const rep = await engine.getNodeReputation(req.params.nodeId);
             if (!rep) return res.status(404).json({ ok: false, error: 'Node not found' });
-            const history = await db.query(
-                "SELECT composite_score, tier, recorded_at FROM reputation_history WHERE node_id = ? ORDER BY recorded_at DESC LIMIT 30",
-                [req.params.nodeId]
-            ) || [];
+            const history = await db.prepare(
+                "SELECT composite_score, tier, recorded_at FROM reputation_history WHERE node_id = ? ORDER BY recorded_at DESC LIMIT 30"
+            ).all([req.params.nodeId]) || [];
             res.json({ ok: true, reputation: rep, history });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });

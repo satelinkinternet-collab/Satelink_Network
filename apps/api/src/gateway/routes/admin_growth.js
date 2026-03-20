@@ -18,29 +18,27 @@ export function createAdminGrowthRouter(db, retentionService) {
     router.get('/ux/summary', verifyJWT, requireAdmin, async (req, res) => {
         try {
             // 1. UI Mode Distribution
-            const modeStats = await db.query(`
+            const modeStats = await db.prepare(`
                 SELECT ui_mode, COUNT(*) as count 
                 FROM user_settings 
                 GROUP BY ui_mode
-            `);
+            `).all();
 
             const totalUsersWithSettings = modeStats.reduce((acc, row) => acc + row.count, 0);
 
-            // 2. Onboarding Completion
-            // Approximated by checking if 'backup' completion is in the json
-            // SQLite specific check for pattern match if no JSON functions available
-            const completedOnboarding = await db.get(`
+            // Onboarding Completion
+            const completedOnboarding = await db.prepare(`
                 SELECT COUNT(*) as count 
                 FROM onboarding_state 
-                WHERE step_completed_json LIKE '%"backup":true%'
-            `);
+                WHERE (step_completed_json::jsonb ->> 'backup')::boolean = true
+            `).get();
 
             // 3. Support Ticket Categories (Phase J7)
-            const ticketStats = await db.query(`
+            const ticketStats = await db.prepare(`
                 SELECT category, COUNT(*) as count 
                 FROM support_tickets 
                 GROUP BY category
-            `);
+            `).all();
 
             res.json({
                 ok: true,

@@ -11,8 +11,8 @@ export class CapacityManager {
      */
     async getAvailableGenesisNodes() {
         try {
-            const nodes = this.db.prepare(`
-                SELECT * FROM genesis_nodes 
+            const nodes = await this.db.prepare(`
+                SELECT * FROM genesis_nodes
                 WHERE status = 'ACTIVE'
             `).all();
             return nodes;
@@ -28,8 +28,8 @@ export class CapacityManager {
      */
     async getAvailableCommunityNodes() {
         try {
-            const nodes = this.db.prepare(`
-                SELECT nc.*, rn.node_type 
+            const nodes = await this.db.prepare(`
+                SELECT nc.*, rn.node_type
                 FROM node_capacity nc
                 JOIN registered_nodes rn ON nc.node_id = rn.wallet
                 WHERE nc.active_jobs < nc.max_jobs
@@ -50,7 +50,7 @@ export class CapacityManager {
     async assignWorkload(nodeId, nodeType = 'community') {
         try {
             if (nodeType === 'community') {
-                this.db.prepare('UPDATE node_capacity SET active_jobs = active_jobs + 1 WHERE node_id = ?').run(nodeId);
+                await this.db.prepare('UPDATE node_capacity SET active_jobs = active_jobs + 1 WHERE node_id = ?').run(nodeId);
             }
             // Genesis nodes might have separate tracking if needed, 
             // but for now we assume they are high-capacity and handle multiple slots.
@@ -62,7 +62,7 @@ export class CapacityManager {
     async releaseWorkload(nodeId, nodeType = 'community') {
         try {
             if (nodeType === 'community') {
-                this.db.prepare('UPDATE node_capacity SET active_jobs = MAX(0, active_jobs - 1) WHERE node_id = ?').run(nodeId);
+                await this.db.prepare('UPDATE node_capacity SET active_jobs = MAX(0, active_jobs - 1) WHERE node_id = ?').run(nodeId);
             }
         } catch (error) {
             logger.error({ error: error.message, nodeId }, 'Failed to release workload');

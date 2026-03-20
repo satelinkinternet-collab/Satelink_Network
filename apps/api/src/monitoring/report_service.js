@@ -16,7 +16,7 @@ export class ReportService {
         for (let i = 0; i < 7; i++) {
             const dayStart = weekStart + (i * 24 * 60 * 60 * 1000);
             const dayEnd = dayStart + (24 * 60 * 60 * 1000);
-            const daily = await this.db.get("SELECT COUNT(DISTINCT node_id) as c FROM node_heartbeats WHERE timestamp BETWEEN ? AND ?", [dayStart, dayEnd]);
+            const daily = await this.db.prepare("SELECT COUNT(DISTINCT node_id) as c FROM node_heartbeats WHERE timestamp BETWEEN ? AND ?").get([dayStart, dayEnd]);
             totalDailyActive += daily.c;
         }
         const activeNodesAvg = Math.round(totalDailyActive / 7);
@@ -28,43 +28,43 @@ export class ReportService {
         const offlineEvents = 0; // Placeholder until explicit offline event tracking
 
         // 3. Incidents Count
-        const incidents = await this.db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE created_at > ?", [weekStart]);
+        const incidents = await this.db.prepare("SELECT COUNT(*) as c FROM incident_bundles WHERE created_at > ?").get([weekStart]);
 
         // 4. Top Error Stacks
-        const topErrors = await this.db.query(`
+        const topErrors = await this.db.prepare(`
             SELECT stack_hash, COUNT(*) as c 
             FROM error_events 
             WHERE last_seen_at > ? 
             GROUP BY stack_hash 
             ORDER BY c DESC 
             LIMIT 5
-        `, [weekStart]);
+        `).all([weekStart]);
 
         // 5. Slow Queries
-        const slowQueries = await this.db.query(`
+        const slowQueries = await this.db.prepare(`
             SELECT query_normalized, COUNT(*) as c, AVG(duration_ms) as avg_ms
             FROM slow_queries 
             WHERE created_at > ? 
             GROUP BY query_normalized 
             ORDER BY avg_ms DESC 
             LIMIT 5
-        `, [weekStart]);
+        `).all([weekStart]);
 
         // 6. Rewards Distributed
         // Sum from ledger where account = USER?
         // Or payout_batches_v2 completed?
-        const rewards = await this.db.get(`
+        const rewards = await this.db.prepare(`
             SELECT SUM(total_amount) as total 
             FROM payout_batches_v2 
             WHERE status = 'completed' AND completed_at > ?
-        `, [weekStart]);
+        `).get([weekStart]);
 
         // Persist
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO weekly_network_reports 
             (week_start, active_nodes_avg, offline_events, incidents_count, top_error_stacks_json, top_slow_queries_json, rewards_distributed, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
+        `).run([
             weekStart,
             activeNodesAvg,
             offlineEvents,
@@ -84,6 +84,6 @@ export class ReportService {
     }
 
     async getLatestReports(limit = 10) {
-        return this.db.query("SELECT * FROM weekly_network_reports ORDER BY week_start DESC LIMIT ?", [limit]);
+        return this.db.prepare("SELECT * FROM weekly_network_reports ORDER BY week_start DESC LIMIT ?").all([limit]);
     }
 }

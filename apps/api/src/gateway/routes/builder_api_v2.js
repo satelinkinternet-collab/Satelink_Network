@@ -10,12 +10,12 @@ export function createBuilderApiV2Router(opsEngine) {
             const wallet = req.user.wallet;
 
             // Usage stats
-            const usage = await opsEngine.db.query(`
+            const usage = await opsEngine.db.prepare(`
                 SELECT op_type, COUNT(*) as count, SUM(amount_usdt) as total_usdt
                 FROM revenue_events_v2
                 WHERE client_id = ?
                 GROUP BY op_type
-            `, [wallet]);
+            `).all([wallet]);
 
             const totalUsage = usage.reduce((acc, curr) => ({
                 count: acc.count + curr.count,
@@ -93,12 +93,12 @@ export function createBuilderApiV2Router(opsEngine) {
             const wallet = req.user.wallet;
             const limit = parseInt(req.query.limit) || 50;
 
-            const requests = await opsEngine.db.query(`
+            const requests = await opsEngine.db.prepare(`
                 SELECT * FROM revenue_events_v2 
                 WHERE client_id = ? 
                 ORDER BY created_at DESC 
                 LIMIT ?
-            `, [wallet, limit]);
+            `).all([wallet, limit]);
 
             res.json({ ok: true, requests });
         } catch (e) {

@@ -44,7 +44,7 @@ export class JobScheduler {
         // Query the node's current load
         // Stub implementation, would realistically check real-time metrics
         try {
-            const row = this.db.prepare("SELECT current_load FROM node_metrics WHERE node_id = ?").get([nodeId]);
+            const row = await this.db.prepare("SELECT current_load FROM node_metrics WHERE node_id = ?").get([nodeId]);
             return row ? row.current_load : 0;
         } catch (e) {
             return 50; // default safe load if table not ready
@@ -90,19 +90,19 @@ export class JobScheduler {
         try {
             if (job.is_marketplace) {
                 // PART 4 & 5: Pass the job to the generic capability Matcher
-                node = this.matchingEngine.findCapableNode(job);
+                node = await this.matchingEngine.findCapableNode(job);
                 if (!node) throw new Error("No capable node currently matches");
                 node.id = node.wallet || node.id; // align format
 
                 // Part 6 Status Update Tracking
                 try {
-                    this.db.prepare(`UPDATE marketplace_jobs SET status = 'executing' WHERE job_id = ?`).run(job.id);
+                    await this.db.prepare(`UPDATE marketplace_jobs SET status = 'executing' WHERE job_id = ?`).run(job.id);
                 } catch (e) { }
             } else {
                 node = await this.router.selectExecutionSource(job.chain || 'ethereum', job.payload);
                 if (job.is_universal_op) {
                     try {
-                        this.db.prepare(`UPDATE ops_registry SET status = 'executing' WHERE op_id = ?`).run(job.id);
+                        await this.db.prepare(`UPDATE ops_registry SET status = 'executing' WHERE op_id = ?`).run(job.id);
                     } catch (e) { }
                 }
             }
@@ -145,15 +145,15 @@ export class JobScheduler {
             if (job.is_marketplace) {
                 await this.escrow.releaseFunds(job.id, node.id);
                 try {
-                    this.db.prepare(`UPDATE marketplace_jobs SET status = 'completed' WHERE job_id = ?`).run(job.id);
+                    await this.db.prepare(`UPDATE marketplace_jobs SET status = 'completed' WHERE job_id = ?`).run(job.id);
                 } catch (e) { }
             }
 
             // Universal Ops Check
             if (job.is_universal_op) {
                 try {
-                    this.db.prepare(`UPDATE ops_registry SET status = 'completed' WHERE op_id = ?`).run(job.id);
-                    this.db.prepare(`UPDATE universal_ops_metrics SET operations_executed = operations_executed + 1, revenue_generated = revenue_generated + ? WHERE id = 1`).run(job.reward);
+                    await this.db.prepare(`UPDATE ops_registry SET status = 'completed' WHERE op_id = ?`).run(job.id);
+                    await this.db.prepare(`UPDATE universal_ops_metrics SET operations_executed = operations_executed + 1, revenue_generated = revenue_generated + ? WHERE id = 1`).run(job.reward);
                 } catch (e) { }
             }
         } catch (e) {
@@ -180,12 +180,12 @@ export class JobScheduler {
             if (job.is_marketplace) {
                 this.escrow.refund(job.id);
                 try {
-                    this.db.prepare(`UPDATE marketplace_jobs SET status = 'failed' WHERE job_id = ?`).run(job.id);
+                    await this.db.prepare(`UPDATE marketplace_jobs SET status = 'failed' WHERE job_id = ?`).run(job.id);
                 } catch (e) { }
             }
             if (job.is_universal_op) {
                 try {
-                    this.db.prepare(`UPDATE ops_registry SET status = 'failed' WHERE op_id = ?`).run(job.id);
+                    await this.db.prepare(`UPDATE ops_registry SET status = 'failed' WHERE op_id = ?`).run(job.id);
                 } catch (e) { }
             }
             return { status: 'failed_dropped', reason };

@@ -63,7 +63,7 @@ export class WorkloadDiscoveryEngine {
 
             if (!profitAnalysis.isProfitable) {
                 console.log(`[WorkloadDiscovery] Discarding ${job.type} (${job.reward} USDT) - UNPROFITABLE. Est Cost: ${profitAnalysis.estimatedCost}`);
-                this._recordWorkload(job.id, opp, 'discarded_unprofitable');
+                await this._recordWorkload(job.id, opp, 'discarded_unprofitable');
                 continue;
             }
 
@@ -72,11 +72,11 @@ export class WorkloadDiscoveryEngine {
                 // Must ensure only Satelink structured jobs hit the queue
                 await this.queue.push_job(job);
                 console.log(`[WorkloadDiscovery] Enqueued profitable ${job.type} job -> ${job.priority} queue. (Profit: ${profitAnalysis.projectedProfit})`);
-                this._recordWorkload(job.id, opp, 'queued');
+                await this._recordWorkload(job.id, opp, 'queued');
                 this._markSignature(sig);
             } catch (e) {
                 console.error("[WorkloadDiscovery] Failed to push to queue:", e.message);
-                this._recordWorkload(job.id, opp, 'failed_enqueue');
+                await this._recordWorkload(job.id, opp, 'failed_enqueue');
             }
         }
     }
@@ -91,9 +91,9 @@ export class WorkloadDiscoveryEngine {
         // Save to DB to prevent rescan duplicates within window
     }
 
-    _recordWorkload(jobId, opp, status) {
+    async _recordWorkload(jobId, opp, status) {
         try {
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO workload_registry (workload_id, job_type, market_source, reward_estimate, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(workload_id) DO UPDATE SET status = excluded.status

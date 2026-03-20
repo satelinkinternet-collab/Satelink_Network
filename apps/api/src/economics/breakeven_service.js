@@ -12,7 +12,7 @@ export class BreakevenService {
         const yyyymmdd = parseInt(yesterday.toISOString().slice(0, 10).replace(/-/g, ''));
 
         // 1. Get all nodes that were active yesterday (or just all known nodes)
-        const nodes = await this.db.query("SELECT node_id FROM nodes UNION SELECT wallet as node_id FROM registered_nodes");
+        const nodes = await this.db.prepare("SELECT node_id FROM nodes UNION SELECT wallet as node_id FROM registered_nodes").all();
 
         let processed = 0;
         for (const { node_id } of nodes) {
@@ -49,10 +49,9 @@ export class BreakevenService {
         // checking schema existence lazily or just try access.
         let revenueUsdt = 0;
         try {
-            const revRow = await this.db.get(
-                `SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE node_id = ? AND created_at >= ? AND created_at < ?`,
-                [nodeId, start, end]
-            );
+            const revRow = await this.db.prepare(
+                `SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE node_id = ? AND created_at >= ? AND created_at < ?`
+            ).get([nodeId, start, end]);
             revenueUsdt = revRow?.total || 0;
         } catch (e) {
             // Column might not exist. Ignore for now.
@@ -68,16 +67,15 @@ export class BreakevenService {
         // Common pattern: `epoch_earnings` table.
         let rewardsUsdt = 0;
         try {
-            const rewardRow = await this.db.get(
-                `SELECT SUM(amount_usdt) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND created_at >= ? AND created_at < ?`,
-                [nodeId, start, end]
-            );
+            const rewardRow = await this.db.prepare(
+                `SELECT SUM(amount_usdt) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND created_at >= ? AND created_at < ?`
+            ).get([nodeId, start, end]);
             rewardsUsdt = rewardRow?.total || 0;
         } catch (e) { }
 
         // 3. Costs (Fixed + Override)
         let costUsdt = this.defaultCost;
-        const override = await this.db.get("SELECT cost_usdt_day FROM node_cost_overrides WHERE node_id = ?", [nodeId]);
+        const override = await this.db.prepare("SELECT cost_usdt_day FROM node_cost_overrides WHERE node_id = ?").get([nodeId]);
         if (override) {
             costUsdt = override.cost_usdt_day;
         }
@@ -94,7 +92,7 @@ export class BreakevenService {
         const marginPct = costUsdt > 0 ? (netUsdt / costUsdt) * 100 : 0;
 
         // 5. Store
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO node_econ_daily (day_yyyymmdd, node_id, revenue_usdt, rewards_usdt, cost_usdt, net_usdt, margin_pct, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(day_yyyymmdd, node_id) DO UPDATE SET
@@ -103,7 +101,7 @@ export class BreakevenService {
                 cost_usdt = excluded.cost_usdt,
                 net_usdt = excluded.net_usdt,
                 margin_pct = excluded.margin_pct
-        `, [yyyymmdd, nodeId, revenueUsdt, rewardsUsdt, costUsdt, netUsdt, marginPct, Date.now()]);
+        `).run([yyyymmdd, nodeId, revenueUsdt, rewardsUsdt, costUsdt, netUsdt, marginPct, Date.now()]);
 
         // 6. Alert Check (Negative Streak)
         if (netUsdt < 0) {
@@ -126,7 +124,7 @@ export class BreakevenService {
             // decrement day logic (rough)
             // simplified: actually need date math
             const d = this._prevDay(checkDay);
-            const row = await this.db.get("SELECT net_usdt FROM node_econ_daily WHERE node_id = ? AND day_yyyymmdd = ?", [nodeId, d]);
+            const row = await this.db.prepare("SELECT net_usdt FROM node_econ_daily WHERE node_id = ? AND day_yyyymmdd = ?").get([nodeId, d]);
             if (row && row.net_usdt < 0) {
                 streak++;
                 checkDay = d;
@@ -148,34 +146,32 @@ export class BreakevenService {
     }
 
     async getHistory(nodeId, limit = 30) {
-        return await this.db.query(
-            "SELECT * FROM node_econ_daily WHERE node_id = ? ORDER BY day_yyyymmdd DESC LIMIT ?",
-            [nodeId, limit]
-        );
+        return await this.db.prepare(
+            "SELECT * FROM node_econ_daily WHERE node_id = ? ORDER BY day_yyyymmdd DESC LIMIT ?"
+        ).all([nodeId, limit]);
     }
 
     async getOverview(day) {
         // Stats for specific day or latest
         if (!day) {
-            const last = await this.db.get("SELECT MAX(day_yyyymmdd) as d FROM node_econ_daily");
+            const last = await this.db.prepare("SELECT MAX(day_yyyymmdd) as d FROM node_econ_daily").get();
             day = last?.d;
         }
         if (!day) return [];
 
-        return await this.db.query(
-            "SELECT * FROM node_econ_daily WHERE day_yyyymmdd = ? ORDER BY net_usdt ASC",
-            [day]
-        );
+        return await this.db.prepare(
+            "SELECT * FROM node_econ_daily WHERE day_yyyymmdd = ? ORDER BY net_usdt ASC"
+        ).all([day]);
     }
 
     async setCostOverride(nodeId, cost, actor) {
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO node_cost_overrides (node_id, cost_usdt_day, updated_by, updated_at)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(node_id) DO UPDATE SET
                 cost_usdt_day = excluded.cost_usdt_day,
                 updated_by = excluded.updated_by,
                 updated_at = excluded.updated_at
-        `, [nodeId, cost, actor, Date.now()]);
+        `).run([nodeId, cost, actor, Date.now()]);
     }
 }

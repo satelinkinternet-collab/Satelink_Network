@@ -53,13 +53,13 @@ export class FuseService extends EventEmitter {
   async connect() {
     const usdtAddress = process.env.FUSE_USDT_CONTRACT;
     const vaultAddress = process.env.REVENUE_VAULT_CONTRACT;
-    const signerKey = process.env.SETTLEMENT_EVM_SIGNER_PRIVATE_KEY;
+    const signerKey = process.env.FUSE_PRIVATE_KEY;
 
     if (!usdtAddress || usdtAddress.includes('REPLACE')) {
       throw new Error('[FuseService] FUSE_USDT_CONTRACT not configured. Check .env');
     }
     if (!signerKey || signerKey.includes('REPLACE')) {
-      throw new Error('[FuseService] SETTLEMENT_EVM_SIGNER_PRIVATE_KEY not configured. Use KMS in prod.');
+        throw new Error("FUSE_PRIVATE_KEY missing. Cannot connect signer.");
     }
 
     this.#provider = new ethers.JsonRpcProvider(this.network.rpcUrl);

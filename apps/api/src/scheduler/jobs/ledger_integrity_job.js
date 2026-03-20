@@ -20,14 +20,12 @@ export class LedgerIntegrityJob {
 
         try {
             // 1. Revenue Variance Check
-            const revEvents = await this.db.get(
-                "SELECT SUM(amount_usdt) as t FROM revenue_events_v2 WHERE created_at BETWEEN ? AND ?",
-                [startTs, endTs]
-            );
-            const ledgerRev = await this.db.get(
-                "SELECT SUM(amount_usdt) as t FROM economic_ledger_entries WHERE event_type = 'revenue' AND created_at BETWEEN ? AND ?",
-                [startTs * 1000, endTs * 1000]
-            );
+            const revEvents = await this.db.prepare(
+                "SELECT SUM(amount_usdt) as t FROM revenue_events_v2 WHERE created_at BETWEEN ? AND ?"
+            ).get([startTs, endTs]);
+            const ledgerRev = await this.db.prepare(
+                "SELECT SUM(amount_usdt) as t FROM economic_ledger_entries WHERE event_type = 'revenue' AND created_at BETWEEN ? AND ?"
+            ).get([startTs * 1000, endTs * 1000]);
 
             const revDiff = Math.abs((revEvents?.t || 0) - (ledgerRev?.t || 0));
             if (revDiff > 0.0001) {
@@ -36,31 +34,29 @@ export class LedgerIntegrityJob {
             }
 
             // 2. Negative Balances Check
-            const negatives = await this.db.query(
+            const negatives = await this.db.prepare(
                 "SELECT * FROM economic_account_balances WHERE balance_usdt < -0.0001 AND account_key NOT LIKE 'user_%' AND account_key NOT LIKE 'dist_%'"
-                // Note: User wallets and distributors can have negative balance depending on credit policy, 
-                // but treasury/pools should not.
-            );
+            ).all();
             if (negatives.length > 0) {
                 ok = 0;
                 findings.push(`Negative balances found: ${negatives.map(n => n.account_key).join(', ')}`);
             }
 
             // 3. Orphans Check
-            const orphans = await this.db.query(`
+            const orphans = await this.db.prepare(`
                 SELECT id FROM economic_ledger_entries e 
                 WHERE NOT EXISTS (SELECT 1 FROM economic_ledger_chain c WHERE c.ledger_entry_id = e.id)
-            `);
+            `).all();
             if (orphans.length > 0) {
                 ok = 0;
                 findings.push(`Total orphans in ledger chain: ${orphans.length}`);
             }
 
             // Store result
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO ledger_integrity_runs (day_yyyymmdd, ok, findings_json, created_at)
                 VALUES (?, ?, ?, ?)
-            `, [day, ok, JSON.stringify(findings), Date.now()]);
+            `).run([day, ok, JSON.stringify(findings), Date.now()]);
 
             if (ok === 0 && this.incidentBuilder) {
                 await this.incidentBuilder.createIncident({

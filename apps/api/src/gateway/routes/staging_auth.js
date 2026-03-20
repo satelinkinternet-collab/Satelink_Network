@@ -40,12 +40,11 @@ export function createStagingAuthRouter(opsEngine) {
             const token = signJWT({ wallet, role: role || 'user' });
 
             // Ensure user exists in DB
-            await opsEngine.db.query(
+            await opsEngine.db.prepare(
                 `INSERT INTO user_roles (wallet, role, created_at) 
                  VALUES (?, ?, ?) 
-                 ON CONFLICT(wallet) DO UPDATE SET role = ?, last_seen = ?`,
-                [wallet, role || 'user', Date.now(), role || 'user', Date.now()]
-            );
+                 ON CONFLICT(wallet) DO UPDATE SET role = ?, last_seen = ?`
+            ).run([wallet, role || 'user', Date.now(), role || 'user', Date.now()]);
 
             res.json({ ok: true, token });
         } catch (error) {

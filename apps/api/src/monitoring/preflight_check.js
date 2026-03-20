@@ -18,17 +18,17 @@ export class PreflightCheckService {
         const warnings = [];
 
         // 1. Governance Lock (Mock for now, checking system_config)
-        const govLock = await this.db.get("SELECT value FROM system_config WHERE key = 'governance_lock'");
+        const govLock = await this.db.prepare("SELECT value FROM system_config WHERE key = 'governance_lock'").get();
         const isGovLocked = govLock?.value === '1';
         checks.push({ name: 'Governance Lock', status: isGovLocked ? 'PASS' : 'WARN', details: 'Critical config locked?' });
         if (!isGovLocked) warnings.push("Governance lock is disabled. Configs are mutable.");
 
         // 2. Economic Integrity (Last Self Test)
-        const lastEcoTest = await this.db.get(`
+        const lastEcoTest = await this.db.prepare(`
             SELECT * FROM self_test_runs 
             WHERE kind = 'economic_integrity' 
             ORDER BY created_at DESC LIMIT 1
-        `);
+        `).get();
         const ecoPass = lastEcoTest && lastEcoTest.status === 'pass';
         checks.push({ name: 'Economic Integrity', status: ecoPass ? 'PASS' : 'FAIL', details: lastEcoTest ? JSON.stringify(lastEcoTest.results) : 'Never ran' });
         if (!ecoPass) blockers.push("Economic Integrity Self-Test failed or never ran.");
@@ -38,28 +38,28 @@ export class PreflightCheckService {
         // Let's rely on the self-test for now to be fast.
 
         // 4. Critical Incidents
-        const openCritical = await this.db.get("SELECT COUNT(*) as c FROM incidents WHERE severity = 'critical' AND status = 'open'");
+        const openCritical = await this.db.prepare("SELECT COUNT(*) as c FROM incidents WHERE severity = 'critical' AND status = 'open'").get();
         const hasCritical = openCritical.c > 0;
         checks.push({ name: 'No Critical Incidents', status: hasCritical ? 'FAIL' : 'PASS', details: `${openCritical.c} open criticals` });
         if (hasCritical) blockers.push("Active Critical Incidents detected.");
 
         // 5. Safe Mode Drill (Last 7 days)
         const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        const safeModeDrill = await this.db.get(`
+        const safeModeDrill = await this.db.prepare(`
             SELECT * FROM self_test_runs 
             WHERE kind = 'safe_mode_toggle' AND created_at > ? 
             ORDER BY created_at DESC LIMIT 1
-        `, [sevenDaysAgo]);
+        `).get([sevenDaysAgo]);
         const safeModeTested = !!safeModeDrill;
         checks.push({ name: 'Safe Mode Drill (7d)', status: safeModeTested ? 'PASS' : 'WARN', details: safeModeTested ? 'Verified' : 'Not tested recently' });
         if (!safeModeTested) warnings.push("Safe Mode mechanism not tested in 7 days.");
 
         // 6. Full Restore Drill (Last 7 days)
-        const restoreDrill = await this.db.get(`
+        const restoreDrill = await this.db.prepare(`
             SELECT * FROM self_test_runs 
             WHERE kind = 'full_restore_drill' AND created_at > ?
             ORDER BY created_at DESC LIMIT 1
-        `, [sevenDaysAgo]);
+        `).get([sevenDaysAgo]);
         const restoreTested = !!restoreDrill && restoreDrill.status === 'pass';
         checks.push({ name: 'Restore Drill (7d)', status: restoreTested ? 'PASS' : 'FAIL', details: restoreTested ? 'Verified' : 'Not tested or failed' });
         if (!restoreTested) blockers.push("Disaster Recovery (Restore) not verified in 7 days.");
@@ -77,7 +77,7 @@ export class PreflightCheckService {
         if (!treasuryOk) warnings.push("Treasury balance low.");
 
         // 9. Settlement Health (Last 5 mins)
-        const lastHealth = await this.db.get("SELECT * FROM settlement_health_log ORDER BY created_at DESC LIMIT 1");
+        const lastHealth = await this.db.prepare("SELECT * FROM settlement_health_log ORDER BY created_at DESC LIMIT 1").get();
         const healthOk = lastHealth && lastHealth.health_status === 'ok';
         // Allow if no health log yet (system startup)
         const healthStatus = (!lastHealth || healthOk) ? 'PASS' : 'FAIL';
@@ -85,10 +85,10 @@ export class PreflightCheckService {
         if (healthStatus === 'FAIL') blockers.push(`Settlement Adapter (${lastHealth.adapter_name}) is unhealthy.`);
 
         // 10. Settlement Shadow Integrity (Last 24h)
-        const recentShadowFailures = await this.db.get(`
+        const recentShadowFailures = await this.db.prepare(`
             SELECT COUNT(*) as c FROM settlement_shadow_log 
             WHERE created_at > ?
-        `, [Date.now() - 86400000]);
+        `).get([Date.now() - 86400000]);
         const shadowOk = recentShadowFailures.c === 0;
         checks.push({ name: 'Shadow Settlement (24h)', status: shadowOk ? 'PASS' : 'WARN', details: `${recentShadowFailures.c} mismatches` });
         if (!shadowOk) warnings.push("Settlement Shadow Mode detected mismatches in last 24h.");
@@ -102,7 +102,7 @@ export class PreflightCheckService {
             if (!ecoPass) blockers.push("ECONOMIC INTEGRITY REQUIRED for EVM Settlement.");
 
             // Safe Mode
-            const safeMode = await this.db.get("SELECT value FROM system_flags WHERE key='safe_mode_enabled'");
+            const safeMode = await this.db.prepare("SELECT value FROM system_flags WHERE key='safe_mode_enabled'").get();
             if (safeMode?.value === '1') blockers.push("SAFE MODE ACTIVE: EVM Settlement blocked.");
 
             // Config / Caps check (via env, implicitly trusted if adapter loaded? or check limits?)

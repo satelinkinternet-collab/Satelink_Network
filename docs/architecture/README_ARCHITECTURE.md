@@ -51,6 +51,6 @@ The project uses **Pino** for high-performance, structured logging.
 ## Technologies
 - **Runtime**: Node.js (ECMAScript Modules)
 - **Framework**: Express
-- **Database**: better-sqlite3 (Primary), PostgreSQL (Optional Fallback)
+- **Database**: PostgreSQL (Primary)
 - **Logging**: Pino
 - **Security**: JWT, Helmet, Rate Limiter

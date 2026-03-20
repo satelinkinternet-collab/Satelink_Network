@@ -23,12 +23,12 @@ export function createPublicMarketplaceRouter(db) {
             // Top by region if region data available
             let byRegion = [];
             try {
-                byRegion = await db.query(`
+                byRegion = await db.prepare(`
                     SELECT nr.node_id, nr.composite_score, nr.tier, ra.region_code
                     FROM node_reputation nr
                     LEFT JOIN region_activation ra ON 1=1
                     ORDER BY nr.composite_score DESC LIMIT 20
-                `) || [];
+                `).all() || [];
             } catch (e) { /* ignore */ }
 
             res.json({

@@ -13,16 +13,16 @@ export class SLAEngine {
     // ─── Q1: PLANS + LIMITS ─────────────────────────────────────
 
     async getPlans() {
-        return this.db.query("SELECT * FROM sla_plans ORDER BY target_success_rate ASC");
+        return await this.db.prepare("SELECT * FROM sla_plans ORDER BY target_success_rate ASC").all();
     }
 
     async getLimits(partnerId) {
-        return this.db.get(`
+        return await this.db.prepare(`
             SELECT tl.*, sp.name as plan_name, sp.target_success_rate, sp.target_p95_latency_ms
             FROM tenant_limits tl
             JOIN sla_plans sp ON tl.plan_id = sp.id
             WHERE tl.partner_id = ?
-        `, [partnerId]);
+        `).get([partnerId]);
     }
 
     async setLimits(partnerId, { plan_id, max_rps, max_daily_ops, max_daily_spend_usdt, allowed_op_types }) {
@@ -30,10 +30,10 @@ export class SLAEngine {
         const opsJson = JSON.stringify(allowed_op_types || ['*']);
 
         // Validate plan exists
-        const plan = await this.db.get("SELECT id FROM sla_plans WHERE id = ?", [plan_id]);
+        const plan = await this.db.prepare("SELECT id FROM sla_plans WHERE id = ?").get([plan_id]);
         if (!plan) throw new Error(`Plan '${plan_id}' not found`);
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO tenant_limits (partner_id, plan_id, max_rps, max_daily_ops, max_daily_spend_usdt, allowed_op_types_json, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(partner_id) DO UPDATE SET
@@ -43,14 +43,14 @@ export class SLAEngine {
                 max_daily_spend_usdt = excluded.max_daily_spend_usdt,
                 allowed_op_types_json = excluded.allowed_op_types_json,
                 updated_at = excluded.updated_at
-        `, [partnerId, plan_id, max_rps || 10, max_daily_ops || 1000, max_daily_spend_usdt || 50, opsJson, now, now]);
+        `).run([partnerId, plan_id, max_rps || 10, max_daily_ops || 1000, max_daily_spend_usdt || 50, opsJson, now, now]);
 
         // Ensure circuit state row exists
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO tenant_circuit_state (partner_id, state, last_reset_day)
             VALUES (?, 'closed', ?)
             ON CONFLICT(partner_id) DO NOTHING
-        `, [partnerId, this._todayStr()]);
+        `).run([partnerId, this._todayStr()]);
 
         return { ok: true };
     }
@@ -66,13 +66,13 @@ export class SLAEngine {
         const dayStart = this._dayToEpoch(dayStr);
         const dayEnd = dayStart + 86400;
 
-        const row = await this.db.get(`
+        const row = await this.db.prepare(`
             SELECT
                 COUNT(*) as total_ops,
                 SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as failed_ops
             FROM revenue_events_v2
             WHERE client_id = ? AND created_at >= ? AND created_at < ?
-        `, [partnerId, dayStart, dayEnd]);
+        `).get([partnerId, dayStart, dayEnd]);
 
         const totalOps = row?.total_ops || 0;
         const failedOps = row?.failed_ops || 0;
@@ -82,11 +82,11 @@ export class SLAEngine {
         // we fall back to request_traces if available, or estimate from timing.
         let p95 = 0;
         try {
-            const latencies = await this.db.query(`
+            const latencies = await this.db.prepare(`
                 SELECT duration_ms FROM request_traces
                 WHERE client_id = ? AND created_at >= ? AND created_at < ?
                 ORDER BY duration_ms ASC
-            `, [partnerId, dayStart, dayEnd]);
+            `).all([partnerId, dayStart, dayEnd]);
             if (latencies.length > 0) {
                 const idx = Math.floor(latencies.length * 0.95);
                 p95 = latencies[Math.min(idx, latencies.length - 1)]?.duration_ms || 0;
@@ -106,7 +106,7 @@ export class SLAEngine {
         // Here we just store the day's raw data.
         const budgetPct = budgetTotal > 0 ? Math.max(0, ((budgetTotal - actualError) / budgetTotal) * 100) : 100;
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO tenant_sla_daily (day_yyyymmdd, partner_id, total_ops, failed_ops, success_rate, p95_latency_ms, budget_remaining_pct, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(day_yyyymmdd, partner_id) DO UPDATE SET
@@ -115,7 +115,7 @@ export class SLAEngine {
                 success_rate = excluded.success_rate,
                 p95_latency_ms = excluded.p95_latency_ms,
                 budget_remaining_pct = excluded.budget_remaining_pct
-        `, [dayStr, partnerId, totalOps, failedOps, successRate, p95, budgetPct, Date.now()]);
+        `).run([dayStr, partnerId, totalOps, failedOps, successRate, p95, budgetPct, Date.now()]);
 
         return { dayStr, partnerId, totalOps, failedOps, successRate, p95, budgetPct };
     }
@@ -126,13 +126,13 @@ export class SLAEngine {
     async getErrorBudget(partnerId, windowDays = 30) {
         const cutoff = this._dayStrOffset(-windowDays);
 
-        const row = await this.db.get(`
+        const row = await this.db.prepare(`
             SELECT
                 SUM(total_ops) as total_ops,
                 SUM(failed_ops) as failed_ops
             FROM tenant_sla_daily
             WHERE partner_id = ? AND day_yyyymmdd >= ?
-        `, [partnerId, cutoff]);
+        `).get([partnerId, cutoff]);
 
         const totalOps = row?.total_ops || 0;
         const failedOps = row?.failed_ops || 0;
@@ -146,10 +146,10 @@ export class SLAEngine {
 
         // 7-day window too
         const cutoff7 = this._dayStrOffset(-7);
-        const row7 = await this.db.get(`
+        const row7 = await this.db.prepare(`
             SELECT SUM(total_ops) as total_ops, SUM(failed_ops) as failed_ops
             FROM tenant_sla_daily WHERE partner_id = ? AND day_yyyymmdd >= ?
-        `, [partnerId, cutoff7]);
+        `).get([partnerId, cutoff7]);
         const total7 = row7?.total_ops || 0;
         const failed7 = row7?.failed_ops || 0;
         const sr7 = total7 > 0 ? (total7 - failed7) / total7 : 1.0;
@@ -181,14 +181,14 @@ export class SLAEngine {
         const dayStart = this._dayToEpoch(dayStr);
         const dayEnd = dayStart + 86400;
 
-        const rows = await this.db.query(`
+        const rows = await this.db.prepare(`
             SELECT op_type,
                 COUNT(*) as total_ops,
                 SUM(CASE WHEN status != 'success' THEN 1 ELSE 0 END) as failed_ops
             FROM revenue_events_v2
             WHERE client_id = ? AND created_at >= ? AND created_at < ?
             GROUP BY op_type
-        `, [partnerId, dayStart, dayEnd]);
+        `).all([partnerId, dayStart, dayEnd]);
 
         const results = [];
         for (const r of rows) {
@@ -197,25 +197,25 @@ export class SLAEngine {
             // Attempt p95 from traces
             let p95 = 0;
             try {
-                const latencies = await this.db.query(`
+                const latencies = await this.db.prepare(`
                     SELECT duration_ms FROM request_traces
                     WHERE client_id = ? AND route LIKE ? AND created_at >= ? AND created_at < ?
                     ORDER BY duration_ms ASC
-                `, [partnerId, `%${r.op_type}%`, dayStart, dayEnd]);
+                `).all([partnerId, `%${r.op_type}%`, dayStart, dayEnd]);
                 if (latencies.length > 0) {
                     const idx = Math.floor(latencies.length * 0.95);
                     p95 = latencies[Math.min(idx, latencies.length - 1)]?.duration_ms || 0;
                 }
             } catch (e) { /* traces may not exist */ }
 
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO tenant_op_slo_daily (day_yyyymmdd, partner_id, op_type, p95_latency_ms, success_rate, total_ops, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(day_yyyymmdd, partner_id, op_type) DO UPDATE SET
                     p95_latency_ms = excluded.p95_latency_ms,
                     success_rate = excluded.success_rate,
                     total_ops = excluded.total_ops
-            `, [dayStr, partnerId, r.op_type, p95, sr, r.total_ops, Date.now()]);
+            `).run([dayStr, partnerId, r.op_type, p95, sr, r.total_ops, Date.now()]);
 
             results.push({ op_type: r.op_type, total_ops: r.total_ops, success_rate: sr, p95_latency_ms: p95 });
         }
@@ -224,7 +224,7 @@ export class SLAEngine {
 
     async getOpSLO(partnerId, days = 30) {
         const cutoff = this._dayStrOffset(-days);
-        return this.db.query(`
+        return await this.db.prepare(`
             SELECT op_type,
                 SUM(total_ops) as total_ops,
                 AVG(success_rate) as avg_success_rate,
@@ -233,7 +233,7 @@ export class SLAEngine {
             WHERE partner_id = ? AND day_yyyymmdd >= ?
             GROUP BY op_type
             ORDER BY total_ops DESC
-        `, [partnerId, cutoff]);
+        `).all([partnerId, cutoff]);
     }
 
     // ─── Q4: CIRCUIT BREAKER ──────────────────────────────────────
@@ -247,24 +247,24 @@ export class SLAEngine {
         if (!limits) return { allowed: true, state: 'no_limits' }; // No limits set = allow
 
         // Get or create circuit state
-        let cs = await this.db.get("SELECT * FROM tenant_circuit_state WHERE partner_id = ?", [partnerId]);
+        let cs = await this.db.prepare("SELECT * FROM tenant_circuit_state WHERE partner_id = ?").get([partnerId]);
         const today = this._todayStr();
 
         if (!cs) {
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO tenant_circuit_state (partner_id, state, last_reset_day, ops_today, spend_today_usdt)
                 VALUES (?, 'closed', ?, 0, 0)
-            `, [partnerId, today]);
+            `).run([partnerId, today]);
             cs = { state: 'closed', ops_today: 0, spend_today_usdt: 0, last_reset_day: today, disabled_ops_json: '[]' };
         }
 
         // Reset daily counters if new day
         if (cs.last_reset_day !== today) {
-            await this.db.query(`
+            await this.db.prepare(`
                 UPDATE tenant_circuit_state
                 SET ops_today = 0, spend_today_usdt = 0, last_reset_day = ?, state = 'closed', disabled_ops_json = '[]'
                 WHERE partner_id = ?
-            `, [today, partnerId]);
+            `).run([today, partnerId]);
             cs.ops_today = 0;
             cs.spend_today_usdt = 0;
             cs.state = 'closed';
@@ -274,7 +274,7 @@ export class SLAEngine {
         if (cs.state === 'open') {
             if (cs.recovers_at && Date.now() > cs.recovers_at) {
                 // Move to half_open — allow one probe
-                await this.db.query("UPDATE tenant_circuit_state SET state = 'half_open' WHERE partner_id = ?", [partnerId]);
+                await this.db.prepare("UPDATE tenant_circuit_state SET state = 'half_open' WHERE partner_id = ?").run([partnerId]);
                 return { allowed: true, state: 'half_open', reason: 'probe_allowed' };
             }
             return { allowed: false, state: 'open', reason: cs.reason || 'circuit_open' };
@@ -302,33 +302,32 @@ export class SLAEngine {
      */
     async recordExecution(partnerId, amountUsdt) {
         const today = this._todayStr();
-        await this.db.query(`
+        await this.db.prepare(`
             UPDATE tenant_circuit_state
             SET ops_today = ops_today + 1, spend_today_usdt = spend_today_usdt + ?
             WHERE partner_id = ? AND last_reset_day = ?
-        `, [amountUsdt || 0, partnerId, today]);
+        `).run([amountUsdt || 0, partnerId, today]);
 
         // If half_open and succeeded, close circuit
-        const cs = await this.db.get("SELECT state FROM tenant_circuit_state WHERE partner_id = ?", [partnerId]);
+        const cs = await this.db.prepare("SELECT state FROM tenant_circuit_state WHERE partner_id = ?").get([partnerId]);
         if (cs?.state === 'half_open') {
-            await this.db.query("UPDATE tenant_circuit_state SET state = 'closed', reason = NULL WHERE partner_id = ?", [partnerId]);
+            await this.db.prepare("UPDATE tenant_circuit_state SET state = 'closed', reason = NULL WHERE partner_id = ?").run([partnerId]);
         }
     }
 
     async _tripCircuit(partnerId, reason) {
         const recoversAt = Date.now() + 60 * 60 * 1000; // 1 hour cooldown
-        await this.db.query(`
+        await this.db.prepare(`
             UPDATE tenant_circuit_state
             SET state = 'open', reason = ?, tripped_at = ?, recovers_at = ?
             WHERE partner_id = ?
-        `, [reason, Date.now(), recoversAt, partnerId]);
+        `).run([reason, Date.now(), recoversAt, partnerId]);
 
         // Audit
         try {
-            await this.db.query(
-                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
-                ['system_sla', 'CIRCUIT_BREAKER_TRIP', JSON.stringify({ partner_id: partnerId, reason }), Date.now()]
-            );
+            await this.db.prepare(
+                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)"
+            ).run(['system_sla', 'CIRCUIT_BREAKER_TRIP', JSON.stringify({ partner_id: partnerId, reason }), Date.now()]);
         } catch (e) { /* audit best-effort */ }
 
         if (this.alertService) {
@@ -346,17 +345,17 @@ export class SLAEngine {
 
         // Gather daily data
         const prefix = monthStr.substring(0, 4) + monthStr.substring(4, 6); // YYYYMM
-        const dailyData = await this.db.query(`
+        const dailyData = await this.db.prepare(`
             SELECT * FROM tenant_sla_daily
             WHERE partner_id = ? AND day_yyyymmdd LIKE ?
             ORDER BY day_yyyymmdd ASC
-        `, [partnerId, `${prefix}%`]);
+        `).all([partnerId, `${prefix}%`]);
 
-        const opSloData = await this.db.query(`
+        const opSloData = await this.db.prepare(`
             SELECT * FROM tenant_op_slo_daily
             WHERE partner_id = ? AND day_yyyymmdd LIKE ?
             ORDER BY op_type, day_yyyymmdd ASC
-        `, [partnerId, `${prefix}%`]);
+        `).all([partnerId, `${prefix}%`]);
 
         // Aggregates
         const totalOps = dailyData.reduce((s, d) => s + d.total_ops, 0);
@@ -365,10 +364,9 @@ export class SLAEngine {
         const avgP95 = dailyData.length > 0 ? dailyData.reduce((s, d) => s + d.p95_latency_ms, 0) / dailyData.length : 0;
 
         // Credits
-        const credits = await this.db.query(
-            "SELECT * FROM sla_credits WHERE partner_id = ? AND created_at >= ? AND created_at < ?",
-            [partnerId, new Date(year, month - 1, 1).getTime(), new Date(year, month, 1).getTime()]
-        );
+        const credits = await this.db.prepare(
+            "SELECT * FROM sla_credits WHERE partner_id = ? AND created_at >= ? AND created_at < ?"
+        ).all([partnerId, new Date(year, month - 1, 1).getTime(), new Date(year, month, 1).getTime()]);
 
         const limits = await this.getLimits(partnerId);
 
@@ -400,20 +398,19 @@ export class SLAEngine {
         };
 
         const id = uuidv4();
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO sla_reports (id, partner_id, month_yyyymm, report_json, created_at)
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT DO NOTHING
-        `, [id, partnerId, monthStr, JSON.stringify(report), Date.now()]);
+        `).run([id, partnerId, monthStr, JSON.stringify(report), Date.now()]);
 
         return report;
     }
 
     async getReport(partnerId, monthStr) {
-        const existing = await this.db.get(
-            "SELECT * FROM sla_reports WHERE partner_id = ? AND month_yyyymm = ?",
-            [partnerId, monthStr]
-        );
+        const existing = await this.db.prepare(
+            "SELECT * FROM sla_reports WHERE partner_id = ? AND month_yyyymm = ?"
+        ).get([partnerId, monthStr]);
         if (existing) return JSON.parse(existing.report_json);
 
         // Generate on-demand
@@ -424,27 +421,25 @@ export class SLAEngine {
 
     async issueCredit(partnerId, amountUsdt, reason) {
         const id = uuidv4();
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO sla_credits (id, partner_id, amount_usdt, reason, status, created_at)
             VALUES (?, ?, ?, ?, 'simulated', ?)
-        `, [id, partnerId, amountUsdt, reason, Date.now()]);
+        `).run([id, partnerId, amountUsdt, reason, Date.now()]);
 
         // Audit
         try {
-            await this.db.query(
-                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
-                ['system_sla', 'SLA_CREDIT_ISSUED', JSON.stringify({ partner_id: partnerId, amount_usdt: amountUsdt, reason }), Date.now()]
-            );
+            await this.db.prepare(
+                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)"
+            ).run(['system_sla', 'SLA_CREDIT_ISSUED', JSON.stringify({ partner_id: partnerId, amount_usdt: amountUsdt, reason }), Date.now()]);
         } catch (e) { /* best-effort */ }
 
         return { id, amount_usdt: amountUsdt, reason, status: 'simulated' };
     }
 
     async getCredits(partnerId) {
-        return this.db.query(
-            "SELECT * FROM sla_credits WHERE partner_id = ? ORDER BY created_at DESC LIMIT 100",
-            [partnerId]
-        );
+        return await this.db.prepare(
+            "SELECT * FROM sla_credits WHERE partner_id = ? ORDER BY created_at DESC LIMIT 100"
+        ).all([partnerId]);
     }
 
     // ─── Q7: DAILY JOB ──────────────────────────────────────────
@@ -456,7 +451,7 @@ export class SLAEngine {
         const yesterday = this._dayStrOffset(-1);
         console.log(`[SLA] Running daily job for ${yesterday}`);
 
-        const partners = await this.db.query("SELECT partner_id FROM tenant_limits");
+        const partners = await this.db.prepare("SELECT partner_id FROM tenant_limits").all();
         let processed = 0;
 
         for (const p of partners) {

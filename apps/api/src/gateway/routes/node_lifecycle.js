@@ -28,11 +28,11 @@ export function createNodeLifecycleRouter(db) {
     router.get('/setup/:setup_id', verifyJWT, async (req, res) => {
         try {
             const { setup_id } = req.params;
-            const session = await db.get("SELECT status, node_id, owner_wallet FROM node_setup_sessions LEFT JOIN node_ownership ON node_ownership.owner_wallet = node_setup_sessions.owner_wallet WHERE setup_id = ?", [setup_id]);
+            const session = await db.prepare("SELECT status, node_id, owner_wallet FROM node_setup_sessions LEFT JOIN node_ownership ON node_ownership.owner_wallet = node_setup_sessions.owner_wallet WHERE setup_id = ?").get([setup_id]);
             // Logic: if session is 'paired', we might want the node_id
             // Simpler: just return session status from `node_setup_sessions`.
             // But wait, `node_setup_sessions` doesn't have node_id column.
-            const s = await db.get("SELECT * FROM node_setup_sessions WHERE setup_id = ?", [setup_id]);
+            const s = await db.prepare("SELECT * FROM node_setup_sessions WHERE setup_id = ?").get([setup_id]);
             if (!s) return res.status(404).json({ ok: false, error: "Not found" });
 
             res.json({ ok: true, status: s.status });
@@ -89,7 +89,7 @@ export function createNodeLifecycleRouter(db) {
         const { node_id } = req.query;
         if (!node_id) return res.status(400).json({ error: "Missing node_id" });
 
-        const lastBundle = await db.get("SELECT bundle_json, created_at FROM node_diag_bundles WHERE node_id = ? ORDER BY created_at DESC LIMIT 1", [node_id]);
+        const lastBundle = await db.prepare("SELECT bundle_json, created_at FROM node_diag_bundles WHERE node_id = ? ORDER BY created_at DESC LIMIT 1").get([node_id]);
 
         if (lastBundle) {
             res.json({

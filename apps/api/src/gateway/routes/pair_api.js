@@ -9,7 +9,7 @@ export function createPairApiRouter(opsEngine) {
     setInterval(async () => {
         try {
             const now = Date.now();
-            await opsEngine.db.query("UPDATE pair_codes SET status = 'expired' WHERE status = 'pending' AND expires_at < ?", [now]);
+            await opsEngine.db.prepare("UPDATE pair_codes SET status = 'expired' WHERE status = 'pending' AND expires_at < ?").run([now]);
         } catch (e) {
             console.error("[PAIR] Cleanup Error:", e.message);
         }
@@ -26,7 +26,7 @@ export function createPairApiRouter(opsEngine) {
             if (!wallet) return res.status(401).json({ ok: false, error: "Unauthorized" });
 
             // Enforce max 5 pending pair codes
-            const pendingCount = (await opsEngine.db.get("SELECT COUNT(*) as c FROM pair_codes WHERE wallet = ? AND status = 'pending' AND expires_at > ?", [wallet, Date.now()]))?.c || 0;
+            const pendingCount = (await opsEngine.db.prepare("SELECT COUNT(*) as c FROM pair_codes WHERE wallet = ? AND status = 'pending' AND expires_at > ?").get([wallet, Date.now()]))?.c || 0;
 
             if (pendingCount >= 5) {
                 return res.status(429).json({ ok: false, error: "Too many active codes. Please pair existing ones." });
@@ -36,10 +36,9 @@ export function createPairApiRouter(opsEngine) {
             const code = Math.floor(100000 + Math.random() * 900000).toString();
             const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
 
-            await opsEngine.db.query(
-                "INSERT INTO pair_codes (code, wallet, status, created_at, expires_at) VALUES (?, ?, 'pending', ?, ?)",
-                [code, wallet, Date.now(), expiresAt]
-            );
+            await opsEngine.db.prepare(
+                "INSERT INTO pair_codes (code, wallet, status, created_at, expires_at) VALUES (?, ?, 'pending', ?, ?)"
+            ).run([code, wallet, Date.now(), expiresAt]);
 
             res.json({
                 ok: true,
@@ -62,7 +61,7 @@ export function createPairApiRouter(opsEngine) {
             const { code, device_id } = req.body;
             if (!code || !device_id) return res.status(400).json({ ok: false, error: "Missing code or device_id" });
 
-            const activeCode = await opsEngine.db.get("SELECT * FROM pair_codes WHERE code = ? AND status = 'pending'", [code]);
+            const activeCode = await opsEngine.db.prepare("SELECT * FROM pair_codes WHERE code = ? AND status = 'pending'").get([code]);
 
             if (!activeCode) {
                 return res.status(404).json({ ok: false, error: "Invalid or expired code" });
@@ -79,22 +78,20 @@ export function createPairApiRouter(opsEngine) {
 
             const now = Math.floor(Date.now() / 1000);
 
-            await opsEngine.db.query(
-                "UPDATE pair_codes SET status = 'used', device_id = ?, used_at = ? WHERE code = ?",
-                [device_id, Date.now(), code]
-            );
+            await opsEngine.db.prepare(
+                "UPDATE pair_codes SET status = 'used', device_id = ?, used_at = ? WHERE code = ?"
+            ).run([device_id, Date.now(), code]);
 
             // Create/Update node
             const userWallet = activeCode.wallet;
-            const existingNode = await opsEngine.db.get("SELECT * FROM nodes WHERE node_id = ?", [device_id]);
+            const existingNode = await opsEngine.db.prepare("SELECT * FROM nodes WHERE node_id = ?").get([device_id]);
 
             if (existingNode) {
-                await opsEngine.db.query("UPDATE nodes SET wallet = ?, status = 'pending', last_seen = ? WHERE node_id = ?", [userWallet, now, device_id]);
+                await opsEngine.db.prepare("UPDATE nodes SET wallet = ?, status = 'pending', last_seen = ? WHERE node_id = ?").run([userWallet, now, device_id]);
             } else {
-                await opsEngine.db.query(
-                    "INSERT INTO nodes (node_id, wallet, device_type, status, created_at, last_seen) VALUES (?, ?, 'edge', 'pending', ?, ?)",
-                    [device_id, userWallet, now, now]
-                );
+                await opsEngine.db.prepare(
+                    "INSERT INTO nodes (node_id, wallet, device_type, status, created_at, last_seen) VALUES (?, ?, 'edge', 'pending', ?, ?)"
+                ).run([device_id, userWallet, now, now]);
             }
 
             console.log(`[PAIR] Device ${device_id} paired to ${userWallet} via code ${code}`);
@@ -118,7 +115,7 @@ export function createPairApiRouter(opsEngine) {
     router.get('/status/:code', async (req, res) => {
         try {
             const { code } = req.params;
-            const data = await opsEngine.db.get("SELECT * FROM pair_codes WHERE code = ?", [code]);
+            const data = await opsEngine.db.prepare("SELECT * FROM pair_codes WHERE code = ?").get([code]);
 
             if (!data) {
                 return res.status(404).json({ ok: false, error: "Invalid or expired code" });

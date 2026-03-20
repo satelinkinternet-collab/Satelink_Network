@@ -31,7 +31,8 @@ async function run() {
 
     console.log(`📅 Settling Period: ${start.toISOString()} to ${end.toISOString()}`);
 
-    const config = { dbUrl: process.env.DATABASE_URL || "sqlite://satelink.db" };
+    const config = { dbUrl: process.env.DATABASE_URL };
+    if (!config.dbUrl) throw new Error("DATABASE_URL is required");
     const db = getValidatedDB(config);
     await db.init();
 

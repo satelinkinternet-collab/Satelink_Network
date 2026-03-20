@@ -19,7 +19,7 @@ export class DrillsService {
             details.push("Safe Mode Enabled");
 
             // 2. Verify State
-            const state = await this.db.get("SELECT value FROM system_flags WHERE key='system_state'");
+            const state = await this.db.prepare("SELECT value FROM system_flags WHERE key='system_state'").get();
             if (state?.value !== 'DEGRADED') throw new Error("State check failed: Not DEGRADED");
             details.push("State Verified: DEGRADED");
 
@@ -29,9 +29,9 @@ export class DrillsService {
             details.push("Ops Guard Verified: Unsafe");
 
             // 4. Exit Safe Mode
-            await this.db.query("UPDATE system_flags SET value='NORMAL' WHERE key='system_state'");
-            await this.db.query("UPDATE system_flags SET value='ACTIVE' WHERE key='revenue_mode'");
-            await this.db.query("UPDATE system_flags SET value='0' WHERE key='safe_mode_enabled'");
+            await this.db.prepare("UPDATE system_flags SET value='NORMAL' WHERE key='system_state'").run();
+            await this.db.prepare("UPDATE system_flags SET value='ACTIVE' WHERE key='revenue_mode'").run();
+            await this.db.prepare("UPDATE system_flags SET value='0' WHERE key='safe_mode_enabled'").run();
             details.push("Safe Mode Exited");
 
             success = true;
@@ -67,7 +67,7 @@ export class DrillsService {
             // Actually it does `evaluateRules` after write.
 
             // 3. Check Enforcement
-            const rule = await this.db.get("SELECT * FROM enforcement_events WHERE entity_id = ? AND decision = 'block'", [testIp]);
+            const rule = await this.db.prepare("SELECT * FROM enforcement_events WHERE entity_id = ? AND decision = 'block'").get([testIp]);
             if (!rule) throw new Error("Firewall did not block test IP");
             details.push("Block Verified");
 
@@ -92,11 +92,11 @@ export class DrillsService {
 
         try {
             // 1. Force Checkpoint
-            await this.db.query("PRAGMA wal_checkpoint(TRUNCATE);");
+            await this.db.prepare("PRAGMA wal_checkpoint(TRUNCATE);").run();
             details.push("WAL Checkpoint Triggered");
 
             // 2. Check Integrity
-            const integrity = await this.db.query("PRAGMA integrity_check;");
+            const integrity = await this.db.prepare("PRAGMA integrity_check;").all();
             if (integrity[0]?.integrity_check !== 'ok') throw new Error("Integrity check failed");
             details.push("Integrity Check Passed");
 
@@ -117,16 +117,16 @@ export class DrillsService {
 
         try {
             // 1. Defcon 1: Set State
-            await this.db.query("UPDATE system_flags SET value='BLACK_SWAN' WHERE key='system_state'");
+            await this.db.prepare("UPDATE system_flags SET value='BLACK_SWAN' WHERE key='system_state'").run();
             details.push("System State: BLACK_SWAN");
 
             // 2. Simulate Massive Load Check (DB Stress)
             // perform a heavy query
-            await this.db.query(`
+            await this.db.prepare(`
                 SELECT count(*) FROM (
                     SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
                 ) a, (SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3) b
-            `);
+            `).get();
             details.push("Load Simulation: Survived");
 
             // 3. Trigger Emergency Lockdown (Simulated)
@@ -139,9 +139,9 @@ export class DrillsService {
             details.push("Lockdown Verified");
 
             // 5. Recovery
-            await this.db.query("UPDATE system_flags SET value='NORMAL' WHERE key='system_state'");
-            await this.db.query("UPDATE system_flags SET value='0' WHERE key='safe_mode_enabled'");
-            await this.db.query("UPDATE system_flags SET value='ACTIVE' WHERE key='revenue_mode'");
+            await this.db.prepare("UPDATE system_flags SET value='NORMAL' WHERE key='system_state'").run();
+            await this.db.prepare("UPDATE system_flags SET value='0' WHERE key='safe_mode_enabled'").run();
+            await this.db.prepare("UPDATE system_flags SET value='ACTIVE' WHERE key='revenue_mode'").run();
             details.push("Recovery Complete");
 
             success = true;
@@ -154,11 +154,11 @@ export class DrillsService {
     }
 
     async _startLog(kind, actor) {
-        const res = await this.db.query("INSERT INTO diagnostics_results (check_name, status, details, created_at) VALUES (?, 'running', ?, ?)", [kind, `Started by ${actor}`, Date.now()]);
+        const res = await this.db.prepare("INSERT INTO diagnostics_results (check_name, status, details, created_at) VALUES (?, 'running', ?, ?)").run([kind, `Started by ${actor}`, Date.now()]);
         return res.lastInsertRowid || res[0]?.id; // rowid
     }
 
     async _endLog(id, success, details) {
-        await this.db.query("UPDATE diagnostics_results SET status = ?, details = ? WHERE id = ?", [success ? 'pass' : 'fail', details, id]);
+        await this.db.prepare("UPDATE diagnostics_results SET status = ?, details = ? WHERE id = ?").run([success ? 'pass' : 'fail', details, id]);
     }
 }

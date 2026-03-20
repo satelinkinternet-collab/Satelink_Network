@@ -11,15 +11,15 @@ export class RegionEngine {
     /** Check if a region allows new node activation */
     async checkRegionAllowed(regionCode) {
         const code = regionCode || 'GLOBAL';
-        const region = await this.db.get(
-            "SELECT * FROM region_activation WHERE region_code = ?", [code]
-        );
+        const region = await this.db.prepare(
+            "SELECT * FROM region_activation WHERE region_code = ?"
+        ).get([code]);
 
         if (!region) {
             // Unknown region → check GLOBAL fallback
-            const global = await this.db.get(
+            const global = await this.db.prepare(
                 "SELECT * FROM region_activation WHERE region_code = 'GLOBAL'"
-            );
+            ).get();
             if (!global || global.status === 'inactive') {
                 return { allowed: false, reason: 'Region not registered and GLOBAL is inactive' };
             }
@@ -45,17 +45,17 @@ export class RegionEngine {
     /** Check if region daily revenue/reward caps allow more ops */
     async checkRegionCaps(regionCode) {
         const code = regionCode || 'GLOBAL';
-        const region = await this.db.get(
-            "SELECT * FROM region_activation WHERE region_code = ?", [code]
-        );
+        const region = await this.db.prepare(
+            "SELECT * FROM region_activation WHERE region_code = ?"
+        ).get([code]);
         if (!region) return { allowed: true };
 
         const dayAgo = Date.now() - 86400000;
 
         // Check revenue cap
-        const rev = await this.db.get(
-            "SELECT SUM(amount_usdt) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]
-        );
+        const rev = await this.db.prepare(
+            "SELECT SUM(amount_usdt) as t FROM revenue_events_v2 WHERE created_at > ?"
+        ).get([dayAgo]);
         if (rev?.t >= region.revenue_cap_usdt_daily) {
             return { allowed: false, reason: `Region ${code} daily revenue cap reached` };
         }
@@ -65,7 +65,7 @@ export class RegionEngine {
 
     /** Get all regions with stats */
     async getRegions() {
-        return await this.db.query("SELECT * FROM region_activation ORDER BY region_code");
+        return await this.db.prepare("SELECT * FROM region_activation ORDER BY region_code").all();
     }
 
     /** Update region settings */
@@ -73,7 +73,7 @@ export class RegionEngine {
         const { status, node_cap, revenue_cap_usdt_daily, rewards_cap_usdt_daily, region_name } = updates;
         const now = Date.now();
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO region_activation (region_code, region_name, status, node_cap, revenue_cap_usdt_daily, rewards_cap_usdt_daily, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(region_code) DO UPDATE SET
@@ -83,7 +83,7 @@ export class RegionEngine {
                 revenue_cap_usdt_daily = COALESCE(excluded.revenue_cap_usdt_daily, revenue_cap_usdt_daily),
                 rewards_cap_usdt_daily = COALESCE(excluded.rewards_cap_usdt_daily, rewards_cap_usdt_daily),
                 updated_at = excluded.updated_at
-        `, [regionCode, region_name || '', status || 'inactive', node_cap || 50,
+        `).run([regionCode, region_name || '', status || 'inactive', node_cap || 50,
             revenue_cap_usdt_daily || 100, rewards_cap_usdt_daily || 50, now, now]);
 
         return { ok: true, region_code: regionCode };
@@ -91,9 +91,8 @@ export class RegionEngine {
 
     /** Increment active node count for a region */
     async incrementNodeCount(regionCode) {
-        await this.db.query(
-            "UPDATE region_activation SET active_nodes_count = active_nodes_count + 1, updated_at = ? WHERE region_code = ?",
-            [Date.now(), regionCode || 'GLOBAL']
-        );
+        await this.db.prepare(
+            "UPDATE region_activation SET active_nodes_count = active_nodes_count + 1, updated_at = ? WHERE region_code = ?"
+        ).run([Date.now(), regionCode || 'GLOBAL']);
     }
 }

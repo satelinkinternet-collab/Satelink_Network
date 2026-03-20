@@ -15,22 +15,22 @@ export function createNodeApiRouter(opsEngine) {
             const wallet = req.user.wallet;
 
             // Node Status
-            const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
+            const node = await opsEngine.db.prepare("SELECT * FROM nodes WHERE wallet = ?").get([wallet]);
 
             // Earnings
-            const earnings = await opsEngine.db.query("SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 20", [wallet]);
+            const earnings = await opsEngine.db.prepare("SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 20").all([wallet]);
             const totalEarned = earnings.reduce((sum, e) => sum + (e.amount_usdt || 0), 0);
             const claimable = earnings.filter(e => e.status === 'UNPAID').reduce((sum, e) => sum + (e.amount_usdt || 0), 0);
 
             // Withdrawals
-            const withdrawals = await opsEngine.db.query("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10", [wallet]);
+            const withdrawals = await opsEngine.db.prepare("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10").all([wallet]);
             const totalWithdrawn = withdrawals.filter(w => w.status === 'COMPLETED').reduce((sum, w) => sum + (w.amount_usdt || 0), 0);
 
             // Uptime (Last 5 epochs)
-            const uptime = await opsEngine.db.query("SELECT * FROM node_uptime WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 5", [wallet]);
+            const uptime = await opsEngine.db.prepare("SELECT * FROM node_uptime WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 5").all([wallet]);
 
             // Logs (Recent Revenue Events)
-            const recentEvents = await opsEngine.db.query("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 50", [node?.node_id]);
+            const recentEvents = await opsEngine.db.prepare("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 50").all([node?.node_id]);
             const logs = recentEvents.map(e => ({
                 id: e.id,
                 timestamp: new Date(e.created_at * 1000).toLocaleTimeString(),

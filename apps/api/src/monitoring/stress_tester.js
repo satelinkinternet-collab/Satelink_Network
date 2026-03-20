@@ -10,10 +10,12 @@ export class StressTester {
 
     async init() {
         console.log("[StressTester] Initializing schema...");
+        // Table stress_test_runs handled by init.sql
+        /*
         // Force recreation to ensure schema sync (dev/beta only)
-        try { await this.db.query("DROP TABLE IF EXISTS stress_test_runs"); } catch (e) { }
+        try { await this.db.prepare("DROP TABLE IF EXISTS stress_test_runs").run(); } catch (e) { }
 
-        await this.db.query(`
+        await this.db.prepare(`
             CREATE TABLE IF NOT EXISTS stress_test_runs (
                 id SERIAL PRIMARY KEY,
                 type TEXT,
@@ -25,7 +27,8 @@ export class StressTester {
                 errors INTEGER,
                 created_at BIGINT
             )
-        `);
+        `).run();
+        */
     }
 
     async run(type = 'read_heavy', durationSec = 10, concurrency = 5) {
@@ -78,10 +81,10 @@ export class StressTester {
             };
 
             // Log
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO stress_test_runs (type, params_json, duration_ms, ops_count, avg_latency_ms, p95_latency_ms, errors, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `, [type, JSON.stringify(result.params), totalDuration, result.ops_count, avg, p95, result.errors, Date.now()]);
+            `).run([type, JSON.stringify(result.params), totalDuration, result.ops_count, avg, p95, result.errors, Date.now()]);
 
             console.log(`[StressTester] Completed. Ops: ${result.ops_count}, p95: ${p95.toFixed(0)}ms`);
             return result;
@@ -95,22 +98,22 @@ export class StressTester {
     async _executeOp(type) {
         if (type === 'read_heavy') {
             // Mixed read load
-            await this.db.query("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT 5");
-            await this.db.query("SELECT COUNT(*) FROM error_events");
+            await this.db.prepare("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT 5").all();
+            await this.db.prepare("SELECT COUNT(*) FROM error_events").get();
         } else if (type === 'write_simulation') {
             // Write to a temp table or harmless update
             // We use 'request_traces' as it's high volume and retention cleaned
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO request_traces (trace_id, route, method, status_code, ip_hash, duration_ms, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [`stress-${Math.random()}`, '/stress', 'POST', 200, 'loc', Math.random() * 100, Date.now()]);
+            `).run([`stress-${Math.random()}`, '/stress', 'POST', 200, 'loc', Math.random() * 100, Date.now()]);
         } else {
             // CPU Loop simulation
-            await this.db.get("SELECT 1");
+            await this.db.prepare("SELECT 1").get();
         }
     }
 
     async getHistory() {
-        return await this.db.query("SELECT * FROM stress_test_runs ORDER BY id DESC LIMIT 20");
+        return await this.db.prepare("SELECT * FROM stress_test_runs ORDER BY id DESC LIMIT 20").all();
     }
 }

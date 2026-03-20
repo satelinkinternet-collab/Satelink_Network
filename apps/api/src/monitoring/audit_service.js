@@ -11,9 +11,9 @@ export class AuditService {
     async logAction({ actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash }) {
         const now = Date.now();
 
-        return await this.db.transaction(async (tx) => {
+        const txFn = this.db.transaction(async () => {
             // 1. Get previous hash
-            const last = await tx.get("SELECT entry_hash FROM admin_audit_log ORDER BY id DESC LIMIT 1");
+            const last = await this.db.prepare("SELECT entry_hash FROM admin_audit_log ORDER BY id DESC LIMIT 1").get();
             const prevHash = last ? last.entry_hash : 'GENESIS';
 
             // 2. Prepare entry data for hashing
@@ -33,24 +33,25 @@ export class AuditService {
             const entryHash = hashObject(entryData);
 
             // 4. Insert
-            await tx.query(`
+            await this.db.prepare(`
                 INSERT INTO admin_audit_log 
                 (actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash, created_at, prev_hash, entry_hash)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `, [actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash, now, prevHash, entryHash]);
+            `).run([actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash, now, prevHash, entryHash]);
 
             return { entryHash, prevHash };
         });
+
+        return await txFn();
     }
 
     /**
      * Verify the entire audit chain
      */
     async verifyChain(limit = 5000) {
-        const logs = await this.db.query(
-            "SELECT * FROM admin_audit_log ORDER BY id ASC LIMIT ?",
-            [limit]
-        );
+        const logs = await this.db.prepare(
+            "SELECT * FROM admin_audit_log ORDER BY id ASC LIMIT ?"
+        ).all([limit]);
 
         let prevHash = 'GENESIS';
         let firstBreakAt = null;

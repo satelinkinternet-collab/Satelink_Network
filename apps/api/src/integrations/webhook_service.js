@@ -22,7 +22,7 @@ export class WebhookService {
             args.push(partnerId);
         }
 
-        const webhooks = await this.db.query(query, args);
+        const webhooks = await this.db.prepare(query).all(args);
 
         for (const wh of webhooks) {
             const events = JSON.parse(wh.events_json || '[]');
@@ -38,11 +38,11 @@ export class WebhookService {
 
         console.log(`[Webhook] Queuing ${eventType} for ${webhook.id}`);
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO webhook_delivery_attempts 
             (id, webhook_id, event_type, payload_json, status, created_at, next_retry_at)
             VALUES (?, ?, ?, ?, 'pending', ?, ?)
-        `, [attemptId, webhook.id, eventType, JSON.stringify(payload), now, now]);
+        `).run([attemptId, webhook.id, eventType, JSON.stringify(payload), now, now]);
 
         // In a real message queue system, we'd trigger a worker. 
         // Here we attempt immediately async
@@ -50,12 +50,12 @@ export class WebhookService {
     }
 
     async _attemptDelivery(attemptId) {
-        const attempt = await this.db.get(`
+        const attempt = await this.db.prepare(`
             SELECT a.*, w.url, w.secret_hash 
             FROM webhook_delivery_attempts a
             JOIN partner_webhooks w ON a.webhook_id = w.id
             WHERE a.id = ?
-        `, [attemptId]);
+        `).get([attemptId]);
 
         if (!attempt) return;
 
@@ -77,10 +77,9 @@ export class WebhookService {
             });
 
             if (res.ok) {
-                await this.db.query(
-                    `UPDATE webhook_delivery_attempts SET status = 'success', last_attempt_at = ? WHERE id = ?`,
-                    [Date.now(), attemptId]
-                );
+                await this.db.prepare(
+                    `UPDATE webhook_delivery_attempts SET status = 'success', last_attempt_at = ? WHERE id = ?`
+                ).run([Date.now(), attemptId]);
             } else {
                 throw new Error(`HTTP ${res.status}`);
             }
@@ -89,11 +88,11 @@ export class WebhookService {
             const nextRetry = this._calculateNextRetry(attempt.attempt_count);
             const status = nextRetry ? 'retrying' : 'failed';
 
-            await this.db.query(`
+            await this.db.prepare(`
                 UPDATE webhook_delivery_attempts 
                 SET status = ?, error_message = ?, attempt_count = attempt_count + 1, last_attempt_at = ?, next_retry_at = ?
                 WHERE id = ?
-            `, [status, e.message, Date.now(), nextRetry, attemptId]);
+            `).run([status, e.message, Date.now(), nextRetry, attemptId]);
         }
     }
 

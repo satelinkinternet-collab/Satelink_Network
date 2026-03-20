@@ -1,8 +1,7 @@
-import { UniversalDB } from './src/db/index.js';
+import { PgDatabase } from './apps/api/src/database/pg_adapter.js';
 
 (async () => {
-    const db = new UniversalDB({ type: 'sqlite', connectionString: './satelink.db' });
-    await db.init();
+    const db = await PgDatabase.create(process.env.DATABASE_URL);
 
     console.log("🌱 Seeding Rich Data for Dashboards...");
 
@@ -21,7 +20,7 @@ import { UniversalDB } from './src/db/index.js';
         const lastSeen = Math.floor(Date.now() / 1000) - (status === 'online' ? Math.floor(Math.random() * 300) : Math.floor(Math.random() * 86400));
 
         await db.query(`INSERT INTO nodes (node_id, wallet, device_type, status, last_seen, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+            VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,
             [id, `0xnode_${i}`, type, status, lastSeen, Math.floor(Date.now() / 1000)]);
     }
 
@@ -32,19 +31,19 @@ import { UniversalDB } from './src/db/index.js';
     const nodeOpId = 'node_active_01';
 
     // Ensure Node exists
-    await db.query("INSERT INTO nodes (node_id, wallet, device_type, status, last_seen, created_at) VALUES (?, ?, 'starlink_v2', 'online', ?, ?) ON CONFLICT(node_id) DO UPDATE SET status='online', last_seen=?", [nodeOpId, nodeOpWallet, now, now, now]);
+    await db.query("INSERT INTO nodes (node_id, wallet, device_type, status, last_seen, created_at) VALUES ($1, $2, 'starlink_v2', 'online', $3, $4) ON CONFLICT(node_id) DO UPDATE SET status='online', last_seen=EXCLUDED.last_seen", [nodeOpId, nodeOpWallet, now, now]);
 
     // Ensure Role exists
-    await db.query("INSERT INTO user_roles (wallet, role, updated_at) VALUES (?, 'node_operator', ?) ON CONFLICT(wallet) DO UPDATE SET role=excluded.role", [nodeOpWallet, now]);
+    await db.query("INSERT INTO user_roles (wallet, role, updated_at) VALUES ($1, 'node_operator', $2) ON CONFLICT(wallet) DO UPDATE SET role=excluded.role", [nodeOpWallet, now]);
 
     // Earnings for Node Operator
-    await db.query("DELETE FROM epoch_earnings WHERE wallet_or_node_id = ?", [nodeOpWallet]);
+    await db.query("DELETE FROM epoch_earnings WHERE wallet_or_node_id = $1", [nodeOpWallet]);
     for (let i = 1; i <= 5; i++) {
-        await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, ?, 'PAID', ?)",
+        await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'node_operator', $2, $3, 'PAID', $4)",
             [i, nodeOpWallet, (Math.random() * 5).toFixed(2), now - (86400 * (6 - i))]);
     }
     // Unpaid/Claimable
-    await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, ?, 'UNPAID', ?)",
+    await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'node_operator', $2, $3, 'UNPAID', $4)",
         [6, nodeOpWallet, '12.50', now]);
 
     // 3. Seed Revenue Events
@@ -67,7 +66,7 @@ import { UniversalDB } from './src/db/index.js';
         const nodeId = nodeIds[Math.floor(Math.random() * nodeIds.length)];
 
         await db.query(`INSERT INTO revenue_events_v2 (client_id, node_id, op_type, amount_usdt, created_at)
-            VALUES (?, ?, ?, ?, ?)`,
+            VALUES ($1, $2, $3, $4, $5)`,
             [`client_${Math.floor(Math.random() * 100)}`, nodeId, op, amount, time]);
     }
 
@@ -79,7 +78,7 @@ import { UniversalDB } from './src/db/index.js';
         { wallet: '0xenterprise', role: 'enterprise' }
     ];
     for (const r of roles) {
-        await db.query("INSERT INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?) ON CONFLICT(wallet) DO UPDATE SET role=excluded.role", [r.wallet, r.role, now]);
+        await db.query("INSERT INTO user_roles (wallet, role, updated_at) VALUES ($1, $2, $3) ON CONFLICT(wallet) DO UPDATE SET role=excluded.role", [r.wallet, r.role, Math.floor(Date.now() / 1000)]);
     }
 
     console.log("✅ Seeded 50 Nodes.");

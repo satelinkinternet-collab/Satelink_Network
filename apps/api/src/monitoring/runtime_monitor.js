@@ -11,6 +11,8 @@ export class RuntimeMonitor {
     }
 
     async init() {
+        // Table runtime_metrics handled by init.sql
+        /*
         await this.db.exec(`
             CREATE TABLE IF NOT EXISTS runtime_metrics (
                 id SERIAL PRIMARY KEY,
@@ -20,10 +22,11 @@ export class RuntimeMonitor {
                 created_at BIGINT
             )
         `);
+        */
         console.log("[Runtime] Monitor initialized.");
     }
 
-    collect() {
+    async collect() {
         try {
             const now = Date.now();
 
@@ -39,7 +42,7 @@ export class RuntimeMonitor {
             const lag = 0;
 
             // 3. Store
-            this.db.prepare(
+            await this.db.prepare(
                 `INSERT INTO runtime_metrics (heap_used_mb, rss_mb, event_loop_lag_ms, created_at) VALUES (?, ?, ?, ?)`
             ).run([heapMB, rssMB, lag, now]);
 

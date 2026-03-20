@@ -16,10 +16,10 @@ export class LifecycleManager {
         const pairingCode = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = Date.now() + 15 * 60 * 1000; // 15 mins
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO node_setup_sessions (setup_id, owner_wallet, pairing_code, status, created_at, expires_at)
             VALUES (?, ?, ?, 'pending', ?, ?)
-        `, [setupId, ownerWallet, pairingCode, Date.now(), expiresAt]);
+        `).run([setupId, ownerWallet, pairingCode, Date.now(), expiresAt]);
 
         return {
             setup_id: setupId,
@@ -48,10 +48,9 @@ export class LifecycleManager {
         }
 
         // 3. Find Session
-        const session = await this.db.get(
-            "SELECT * FROM node_setup_sessions WHERE pairing_code = ? AND status = 'pending'",
-            [pairing_code]
-        );
+        const session = await this.db.prepare(
+            "SELECT * FROM node_setup_sessions WHERE pairing_code = ? AND status = 'pending'"
+        ).get([pairing_code]);
 
         if (!session) throw new Error("Invalid or expired pairing code");
         if (Date.now() > session.expires_at) throw new Error("Pairing code expired");
@@ -74,31 +73,30 @@ export class LifecycleManager {
         const now = Date.now();
 
         // A. Mark session paired
-        await this.db.query(
-            "UPDATE node_setup_sessions SET status = 'paired' WHERE setup_id = ?",
-            [session.setup_id]
-        );
+        await this.db.prepare(
+            "UPDATE node_setup_sessions SET status = 'paired' WHERE setup_id = ?"
+        ).run([session.setup_id]);
 
         // B. Record Ownership
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO node_ownership (node_id, owner_wallet, paired_at)
             VALUES (?, ?, ?)
             ON CONFLICT(node_id) DO UPDATE SET
                 owner_wallet = excluded.owner_wallet,
                 paired_at = excluded.paired_at,
                 revoked_at = NULL
-        `, [node_wallet, session.owner_wallet, now]);
+        `).run([node_wallet, session.owner_wallet, now]);
 
         // C. Ensure Node Record Exists (Legacy compat)
         // We use node_wallet as node_id usually
-        const existingNode = await this.db.get("SELECT 1 FROM nodes WHERE node_id = ?", [node_wallet]);
+        const existingNode = await this.db.prepare("SELECT 1 FROM nodes WHERE node_id = ?").get([node_wallet]);
         if (!existingNode) {
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO nodes (node_id, wallet, device_type, status, created_at, last_seen)
                 VALUES (?, ?, 'manual_paired', 'active', ?, ?)
-            `, [node_wallet, node_wallet, now, now]);
+            `).run([node_wallet, node_wallet, now, now]);
         } else {
-            await this.db.query("UPDATE nodes SET wallet = ?, status = 'active' WHERE node_id = ?", [node_wallet, node_wallet]);
+            await this.db.prepare("UPDATE nodes SET wallet = ?, status = 'active' WHERE node_id = ?").run([node_wallet, node_wallet]);
         }
 
         return {
@@ -115,10 +113,10 @@ export class LifecycleManager {
         // Redact secrets before storage
         const redacted = this._redactBundle(bundle);
 
-        await this.db.query(`
+        await this.db.prepare(`
             INSERT INTO node_diag_bundles (node_id, bundle_json, created_at)
             VALUES (?, ?, ?)
-        `, [nodeId, JSON.stringify(redacted), Date.now()]);
+        `).run([nodeId, JSON.stringify(redacted), Date.now()]);
 
         // O4: Trigger Remediation Analysis
         await this._analyzeForRemediation(nodeId, redacted);
@@ -159,10 +157,10 @@ export class LifecycleManager {
 
         // Persist suggestions
         for (const s of suggestions) {
-            await this.db.query(`
+            await this.db.prepare(`
                 INSERT INTO node_remediation_suggestions (node_id, suggestion_json, severity, created_at)
                 VALUES (?, ?, ?, ?)
-            `, [nodeId, JSON.stringify(s), s.severity, Date.now()]);
+            `).run([nodeId, JSON.stringify(s), s.severity, Date.now()]);
         }
     }
 }

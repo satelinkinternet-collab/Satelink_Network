@@ -11,13 +11,12 @@ export class BootstrapLayer {
     async evaluateCapacity(chain) {
         let activeCommunityNodes = 0;
         try {
-            const stmt = this.db.prepare(`
-                SELECT COUNT(*) as count 
+            const result = await this.db.prepare(`
+                SELECT COUNT(*) as count
                 FROM registered_nodes n
                 JOIN node_capabilities c ON n.wallet = c.node_id
                 WHERE n.active = 1 AND c.capability = 'rpc' AND c.chain = ?
-            `);
-            const result = stmt.get(chain);
+            `).get(chain);
             if (result) activeCommunityNodes = result.count;
         } catch (e) {
             // ignore before schema migration

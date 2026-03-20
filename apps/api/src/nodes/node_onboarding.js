@@ -37,11 +37,11 @@ export class NodeOnboardingService {
      * @param {number} [opts.capacity]   — initial compute units
      * @returns {Object} bootstrap package
      */
-    onboard({ node_id, node_type = 'community', region = 'global', capacity = 10 }) {
+    async onboard({ node_id, node_type = 'community', region = 'global', capacity = 10 }) {
         if (!node_id) throw new Error('[NodeOnboarding] node_id is required');
 
         // 1. Register in node_registry
-        const node = this.registry.register({ node_id, node_type, region, capacity });
+        const node = await this.registry.register({ node_id, node_type, region, capacity });
 
         // 2. Seed leaderboard entry (0 jobs so far)
         try {
@@ -49,10 +49,10 @@ export class NodeOnboardingService {
         } catch (_) { /* non-fatal */ }
 
         // 3. Preview incentives
-        const incentivePreview = this.incentives.evaluate(node_id);
+        const incentivePreview = await this.incentives.evaluate(node_id);
 
         // 4. Network position
-        const networkStats = this._networkPosition(node_id);
+        const networkStats = await this._networkPosition(node_id);
 
         return {
             ok: true,
@@ -107,13 +107,13 @@ export class NodeOnboardingService {
         };
     }
 
-    _networkPosition(node_id) {
+    async _networkPosition(node_id) {
         try {
-            const total = this.db.prepare('SELECT COUNT(*) as c FROM node_registry').get()?.c || 0;
-            const rank = this.db.prepare(`
+            const total = (await this.db.prepare('SELECT COUNT(*) as c FROM node_registry').get())?.c || 0;
+            const rank = (await this.db.prepare(`
                 SELECT COUNT(*) AS pos FROM node_registry
                 WHERE created_at <= (SELECT created_at FROM node_registry WHERE node_id = ?)
-            `).get(node_id)?.pos || total;
+            `).get(node_id))?.pos || total;
 
             return {
                 total_nodes: total,

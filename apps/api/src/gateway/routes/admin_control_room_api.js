@@ -49,10 +49,10 @@ async function auditLog(db, { actor, action, target_type, target_id, before, aft
     }
 
     try {
-        await db.query(`
+        await db.prepare(`
             INSERT INTO admin_audit_log (actor_wallet, action_type, target_type, target_id, before_json, after_json, ip_hash, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [actor, action, target_type, target_id || null,
+        `).run([actor, action, target_type, target_id || null,
             before ? JSON.stringify(redactSensitive(before)) : null,
             after ? JSON.stringify(redactSensitive(after)) : null,
             hashIp(ip), Date.now()]);
@@ -111,7 +111,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     router.get('/command/summary', async (req, res) => {
         try {
-            const flags = await db.query("SELECT key, value FROM system_flags");
+            const flags = await db.prepare("SELECT key, value FROM system_flags").all();
             const flagsMap = flags.reduce((acc, r) => ({ ...acc, [r.key]: r.value }), {});
 
             const fiveMinAgo = Math.floor(Date.now() / 1000) - 300;
@@ -120,16 +120,16 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
             const [opsCount, activeNodes, successRate, revenue24h, alertsOpen, errors1h, slowQueries1h] =
                 await Promise.all([
-                    db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
-                    db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinAgo]),
-                    db.get("SELECT ROUND(AVG(CASE WHEN status_code < 500 THEN 100.0 ELSE 0.0 END), 1) as rate FROM request_traces WHERE created_at > ?", [Date.now() - 300000]),
-                    db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
-                    db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
-                    db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [hourAgoMs]),
-                    db.get("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?", [hourAgoMs]),
+                    db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?").get([fiveMinAgo]),
+                    db.prepare("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?").get([fiveMinAgo]),
+                    db.prepare("SELECT ROUND(AVG(CASE WHEN status_code < 500 THEN 100.0 ELSE 0.0 END), 1) as rate FROM request_traces WHERE created_at > ?").get([Date.now() - 300000]),
+                    db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?").get([dayAgo]),
+                    db.prepare("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'").get(),
+                    db.prepare("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?").get([hourAgoMs]),
+                    db.prepare("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?").get([hourAgoMs]),
                 ]);
 
-            const p95Row = await db.get("SELECT duration_ms FROM request_traces WHERE created_at > ? ORDER BY duration_ms DESC LIMIT 1 OFFSET (SELECT COUNT(*) * 5 / 100 FROM request_traces WHERE created_at > ?)", [Date.now() - 300000, Date.now() - 300000]);
+            const p95Row = await db.prepare("SELECT duration_ms FROM request_traces WHERE created_at > ? ORDER BY duration_ms DESC LIMIT 1 OFFSET (SELECT COUNT(*) * 5 / 100 FROM request_traces WHERE created_at > ?)").get([Date.now() - 300000, Date.now() - 300000]);
 
             res.json({
                 ok: true,
@@ -171,13 +171,13 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
                 const poll = setInterval(async () => {
                     try {
                         const [revenue, errors, audit, alerts, slowQs, incidents, heartbeats] = await Promise.all([
-                            db.query("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 WHERE created_at * 1000 > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at DESC", [lastTs]),
-                            db.query("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at DESC", [lastTs]),
-                            db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'heartbeat' as type, wallet as id, active as value, updatedAt * 1000 as ts, wallet as label FROM registered_nodes WHERE updatedAt * 1000 > ? ORDER BY updatedAt DESC", [lastTs]),
+                            db.prepare("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 WHERE created_at * 1000 > ? ORDER BY created_at DESC").all([lastTs]),
+                            db.prepare("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at DESC").all([lastTs]),
+                            db.prepare("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log WHERE created_at > ? ORDER BY created_at DESC").all([lastTs]),
+                            db.prepare("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts WHERE created_at > ? ORDER BY created_at DESC").all([lastTs]),
+                            db.prepare("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at DESC").all([lastTs]),
+                            db.prepare("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles WHERE created_at > ? ORDER BY created_at DESC").all([lastTs]),
+                            db.prepare("SELECT 'heartbeat' as type, wallet as id, active as value, updatedAt * 1000 as ts, wallet as label FROM registered_nodes WHERE updatedAt * 1000 > ? ORDER BY updatedAt DESC").all([lastTs]),
                         ]);
 
                         const updates = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents, ...heartbeats]
@@ -208,12 +208,12 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const feedLimit = Math.min(limit, 200);
 
             const [revenue, errors, audit, alerts, slowQs, incidents] = await Promise.all([
-                db.query("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles ORDER BY created_at DESC LIMIT ?", [feedLimit]),
+                db.prepare("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?").all([feedLimit]),
+                db.prepare("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events ORDER BY last_seen_at DESC LIMIT ?").all([feedLimit]),
+                db.prepare("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log ORDER BY created_at DESC LIMIT ?").all([feedLimit]),
+                db.prepare("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts ORDER BY created_at DESC LIMIT ?").all([feedLimit]),
+                db.prepare("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries ORDER BY last_seen_at DESC LIMIT ?").all([feedLimit]),
+                db.prepare("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles ORDER BY created_at DESC LIMIT ?").all([feedLimit]),
             ]);
 
             const feed = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents]
@@ -260,7 +260,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             params.push(Math.min(limit, 500));
             params.push(offset);
 
-            const nodes = await db.query(sql, params);
+            const nodes = await db.prepare(sql).all(params);
             res.json({ ok: true, nodes: redactSensitive(nodes), count: nodes.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -270,15 +270,15 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/network/services/nodes/:node_id', async (req, res) => {
         try {
             const { node_id } = req.params;
-            const node = await db.get("SELECT * FROM nodes WHERE node_id = ?", [node_id]);
+            const node = await db.prepare("SELECT * FROM nodes WHERE node_id = ?").get([node_id]);
             if (!node) return res.status(404).json({ ok: false, error: 'Node not found' });
 
-            const recentRevenue = await db.query("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20", [node_id]);
+            const recentRevenue = await db.prepare("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20").all([node_id]);
 
             // Try heartbeats
             let heartbeats = [];
             try {
-                heartbeats = await db.query("SELECT * FROM registered_nodes WHERE wallet = ? LIMIT 1", [node_id]);
+                heartbeats = await db.prepare("SELECT * FROM registered_nodes WHERE wallet = ? LIMIT 1").all([node_id]);
             } catch (_) { }
 
             res.json({
@@ -315,7 +315,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             sql += " ORDER BY created_at DESC LIMIT ?";
             params.push(Math.min(limit, 500));
 
-            const executions = await db.query(sql, params);
+            const executions = await db.prepare(sql).all(params);
             res.json({ ok: true, executions, count: executions.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -339,7 +339,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             params.push(Math.min(limit, 500));
             params.push(offset);
 
-            const errors = await db.query(sql, params);
+            const errors = await db.prepare(sql).all(params);
             res.json({ ok: true, errors: redactSensitive(errors), count: errors.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -348,13 +348,13 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     router.get('/ops/errors/:id', async (req, res) => {
         try {
-            const error = await db.get("SELECT * FROM error_events WHERE id = ?", [req.params.id]);
+            const error = await db.prepare("SELECT * FROM error_events WHERE id = ?").get([req.params.id]);
             if (!error) return res.status(404).json({ ok: false, error: 'Error event not found' });
 
             // Try to find related traces
             let relatedTraces = [];
             if (error.trace_id) {
-                relatedTraces = await db.query("SELECT * FROM request_traces WHERE trace_id = ?", [error.trace_id]);
+                relatedTraces = await db.prepare("SELECT * FROM request_traces WHERE trace_id = ?").all([error.trace_id]);
             }
 
             res.json({ ok: true, error: redactSensitive(error), related_traces: relatedTraces });
@@ -367,7 +367,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
         try {
             const limit = parseIntParam(req.query.limit, 200);
             const offset = parseIntParam(req.query.offset, 0);
-            const queries = await db.query("SELECT * FROM slow_queries ORDER BY last_seen_at DESC LIMIT ? OFFSET ?", [Math.min(limit, 500), offset]);
+            const queries = await db.prepare("SELECT * FROM slow_queries ORDER BY last_seen_at DESC LIMIT ? OFFSET ?").all([Math.min(limit, 500), offset]);
             res.json({ ok: true, queries: redactSensitive(queries), count: queries.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -393,7 +393,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             params.push(Math.min(limit, 500));
             params.push(offset);
 
-            const traces = await db.query(sql, params);
+            const traces = await db.prepare(sql).all(params);
             res.json({ ok: true, traces: redactSensitive(traces), count: traces.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -410,11 +410,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const weekAgo = Math.floor(Date.now() / 1000) - 604800;
 
             const [total24h, totalWeek, byOpType, byClient, byNode] = await Promise.all([
-                db.get("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
-                db.get("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at > ?", [weekAgo]),
-                db.query("SELECT op_type, SUM(amount_usdt) as total, COUNT(*) as count FROM revenue_events_v2 WHERE created_at > ? GROUP BY op_type ORDER BY total DESC", [weekAgo]),
-                db.query("SELECT client_id, SUM(amount_usdt) as total, COUNT(*) as count FROM revenue_events_v2 WHERE created_at > ? GROUP BY client_id ORDER BY total DESC LIMIT 20", [weekAgo]),
-                db.query("SELECT node_id, SUM(amount_usdt) as total, COUNT(*) as count FROM revenue_events_v2 WHERE created_at > ? GROUP BY node_id ORDER BY total DESC LIMIT 20", [weekAgo]),
+                db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at > ?").get([dayAgo]),
+                db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at > ?").get([weekAgo]),
+                db.prepare("SELECT op_type, SUM(amount_usdt) as total, COUNT(*) as count FROM revenue_events_v2 WHERE created_at > ? GROUP BY op_type ORDER BY total DESC").all([weekAgo]),
+                db.prepare("SELECT client_id, SUM(amount_usdt) as total, COUNT(*) as count FROM revenue_events_v2 WHERE created_at > ? GROUP BY client_id ORDER BY total DESC LIMIT 20").all([weekAgo]),
+                db.prepare("SELECT node_id, SUM(amount_usdt) as total, COUNT(*) as count FROM revenue_events_v2 WHERE created_at > ? GROUP BY node_id ORDER BY total DESC LIMIT 20").all([weekAgo]),
             ]);
 
             res.json({
@@ -448,7 +448,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             sql += " ORDER BY created_at DESC LIMIT ?";
             params.push(Math.min(limit, 500));
 
-            const events = await db.query(sql, params);
+            const events = await db.prepare(sql).all(params);
             res.json({ ok: true, events: redactSensitive(events), count: events.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -462,7 +462,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/rewards/epochs', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 50);
-            const epochs = await db.query("SELECT * FROM epochs ORDER BY id DESC LIMIT ?", [limit]);
+            const epochs = await db.prepare("SELECT * FROM epochs ORDER BY id DESC LIMIT ?").all([limit]);
             res.json({ ok: true, epochs });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -472,11 +472,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.post('/rewards/epochs/:id/finalize', requireOps, async (req, res) => {
         try {
             const { id } = req.params;
-            const epoch = await db.get("SELECT * FROM epochs WHERE id = ?", [id]);
+            const epoch = await db.prepare("SELECT * FROM epochs WHERE id = ?").get([id]);
             if (!epoch) return res.status(404).json({ ok: false, error: 'Epoch not found' });
 
             const before = { ...epoch };
-            await db.query("UPDATE epochs SET status = 'FINALIZED', finalized_at = ? WHERE id = ?", [Math.floor(Date.now() / 1000), id]);
+            await db.prepare("UPDATE epochs SET status = 'FINALIZED', finalized_at = ? WHERE id = ?").run([Math.floor(Date.now() / 1000), id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'FINALIZE_EPOCH',
@@ -497,7 +497,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
         try {
             const { id } = req.params;
             const { confirm_token } = req.body;
-            const epoch = await db.get("SELECT * FROM epochs WHERE id = ?", [id]);
+            const epoch = await db.prepare("SELECT * FROM epochs WHERE id = ?").get([id]);
             if (!epoch) return res.status(404).json({ ok: false, error: 'Epoch not found' });
 
             if (!confirm_token) {
@@ -521,7 +521,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             recomputeTokens.delete(String(id));
 
             const before = { ...epoch };
-            await db.query("UPDATE epochs SET status = 'RECOMPUTING', updated_at = ? WHERE id = ?", [Math.floor(Date.now() / 1000), id]);
+            await db.prepare("UPDATE epochs SET status = 'RECOMPUTING', updated_at = ? WHERE id = ?").run([Math.floor(Date.now() / 1000), id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'RECOMPUTE_EPOCH',
@@ -547,7 +547,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             }
 
             sql += " ORDER BY epoch_id DESC, amount_usdt DESC LIMIT 200";
-            const earnings = await db.query(sql, params);
+            const earnings = await db.prepare(sql).all(params);
             res.json({ ok: true, earnings: redactSensitive(earnings) });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -556,7 +556,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     router.get('/rewards/simulated-list', async (req, res) => {
         try {
-            const payouts = await db.query("SELECT * FROM withdrawals WHERE status = 'SIMULATED' ORDER BY created_at DESC LIMIT 100");
+            const payouts = await db.prepare("SELECT * FROM withdrawals WHERE status = 'SIMULATED' ORDER BY created_at DESC LIMIT 100").all();
             res.json({ ok: true, payouts: redactSensitive(payouts) });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -602,7 +602,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             sql += " ORDER BY created_at DESC LIMIT ?";
             params.push(Math.min(limit, 500));
 
-            const alerts = await db.query(sql, params);
+            const alerts = await db.prepare(sql).all(params);
             res.json({ ok: true, alerts: redactSensitive(alerts), count: alerts.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -614,11 +614,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { id } = req.params;
             const { assigned_to, notes } = req.body;
 
-            const alert = await db.get("SELECT * FROM security_alerts WHERE id = ?", [id]);
+            const alert = await db.prepare("SELECT * FROM security_alerts WHERE id = ?").get([id]);
             if (!alert) return res.status(404).json({ ok: false, error: 'Alert not found' });
 
             const before = { status: alert.status, assigned_to: alert.assigned_to };
-            await db.query("UPDATE security_alerts SET status = 'triaged', assigned_to = ?, resolution_notes = ? WHERE id = ?",
+            await db.prepare("UPDATE security_alerts SET status = 'triaged', assigned_to = ?, resolution_notes = ? WHERE id = ?").run(
                 [assigned_to || req.user.wallet, notes || '', id]);
 
             await auditLog(db, {
@@ -638,11 +638,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { id } = req.params;
             const { notes } = req.body;
 
-            const alert = await db.get("SELECT * FROM security_alerts WHERE id = ?", [id]);
+            const alert = await db.prepare("SELECT * FROM security_alerts WHERE id = ?").get([id]);
             if (!alert) return res.status(404).json({ ok: false, error: 'Alert not found' });
 
             const before = { status: alert.status };
-            await db.query("UPDATE security_alerts SET status = 'closed', resolved_by = ?, resolved_at = ?, resolution_notes = ? WHERE id = ?",
+            await db.prepare("UPDATE security_alerts SET status = 'closed', resolved_by = ?, resolved_at = ?, resolution_notes = ? WHERE id = ?").run(
                 [req.user.wallet, Date.now(), notes || '', id]);
 
             await auditLog(db, {
@@ -662,11 +662,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { wallet, reason } = req.body;
             if (!wallet) return res.status(400).json({ ok: false, error: 'Wallet required' });
 
-            const before = await db.get("SELECT * FROM user_roles WHERE wallet = ?", [wallet]);
-            await db.query(`
+            const before = await db.prepare("SELECT * FROM user_roles WHERE wallet = ?").get([wallet]);
+            await db.prepare(`
                 INSERT INTO user_roles (wallet, role, updated_at) VALUES (?, 'held', ?)
                 ON CONFLICT(wallet) DO UPDATE SET role = 'held', updated_at = excluded.updated_at
-            `, [wallet, Date.now()]);
+            `).run([wallet, Date.now()]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'HOLD_WALLET',
@@ -685,8 +685,8 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { node_id, reason } = req.body;
             if (!node_id) return res.status(400).json({ ok: false, error: 'node_id required' });
 
-            const before = await db.get("SELECT status FROM nodes WHERE node_id = ?", [node_id]);
-            await db.query("UPDATE nodes SET status = 'banned' WHERE node_id = ?", [node_id]);
+            const before = await db.prepare("SELECT status FROM nodes WHERE node_id = ?").get([node_id]);
+            await db.prepare("UPDATE nodes SET status = 'banned' WHERE node_id = ?").run([node_id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'BAN_NODE',
@@ -720,7 +720,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             sql += " ORDER BY created_at DESC LIMIT ?";
             params.push(Math.min(limit, 500));
 
-            const logs = await db.query(sql, params);
+            const logs = await db.prepare(sql).all(params);
             res.json({ ok: true, logs: redactSensitive(logs), count: logs.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -733,7 +733,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     router.get('/settings/feature-flags', async (req, res) => {
         try {
-            const flags = await db.query("SELECT * FROM system_flags ORDER BY key");
+            const flags = await db.prepare("SELECT * FROM system_flags ORDER BY key").all();
             res.json({ ok: true, flags });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -745,12 +745,12 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { key, value } = req.body;
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
 
-            const before = await db.get("SELECT * FROM system_flags WHERE key = ?", [key]);
-            await db.query(`
+            const before = await db.prepare("SELECT * FROM system_flags WHERE key = ?").get([key]);
+            await db.prepare(`
                 INSERT INTO system_flags (key, value, updated_by, updated_at)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at
-            `, [key, value, req.user.wallet, Math.floor(Date.now() / 1000)]);
+            `).run([key, value, req.user.wallet, Math.floor(Date.now() / 1000)]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'UPDATE_FLAG',
@@ -766,7 +766,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     router.get('/settings/limits', async (req, res) => {
         try {
-            const limits = await db.query("SELECT * FROM config_limits ORDER BY key");
+            const limits = await db.prepare("SELECT * FROM config_limits ORDER BY key").all();
             res.json({ ok: true, limits });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -778,12 +778,12 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { key, value } = req.body;
             if (!key) return res.status(400).json({ ok: false, error: 'Key required' });
 
-            const before = await db.get("SELECT * FROM config_limits WHERE key = ?", [key]);
-            await db.query(`
+            const before = await db.prepare("SELECT * FROM config_limits WHERE key = ?").get([key]);
+            await db.prepare(`
                 INSERT INTO config_limits (key, value, updated_by, updated_at)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at
-            `, [key, value, req.user.wallet, Math.floor(Date.now() / 1000)]);
+            `).run([key, value, req.user.wallet, Math.floor(Date.now() / 1000)]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'UPDATE_LIMIT',
@@ -804,12 +804,12 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.post('/controls/pause-withdrawals', requireOps, async (req, res) => {
         try {
             const { paused } = req.body;
-            const before = await db.get("SELECT value FROM system_flags WHERE key = 'withdrawals_paused'");
+            const before = await db.prepare("SELECT value FROM system_flags WHERE key = 'withdrawals_paused'").get();
 
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO system_flags (key, value, updated_by, updated_at) VALUES ('withdrawals_paused', ?, ?, ?)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at
-            `, [paused ? '1' : '0', req.user.wallet, Math.floor(Date.now() / 1000)]);
+            `).run([paused ? '1' : '0', req.user.wallet, Math.floor(Date.now() / 1000)]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'PAUSE_WITHDRAWALS',
@@ -826,12 +826,12 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.post('/controls/security-freeze', requireOps, async (req, res) => {
         try {
             const { frozen } = req.body;
-            const before = await db.get("SELECT value FROM system_flags WHERE key = 'security_freeze'");
+            const before = await db.prepare("SELECT value FROM system_flags WHERE key = 'security_freeze'").get();
 
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO system_flags (key, value, updated_by, updated_at) VALUES ('security_freeze', ?, ?, ?)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at
-            `, [frozen ? '1' : '0', req.user.wallet, Math.floor(Date.now() / 1000)]);
+            `).run([frozen ? '1' : '0', req.user.wallet, Math.floor(Date.now() / 1000)]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'SECURITY_FREEZE',
@@ -853,10 +853,9 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/diagnostics/self-tests', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 50);
-            const tests = await db.query(
-                "SELECT * FROM self_test_runs ORDER BY created_at DESC LIMIT ?",
-                [Math.min(limit, 200)]
-            );
+            const tests = await db.prepare(
+                "SELECT * FROM self_test_runs ORDER BY created_at DESC LIMIT ?"
+            ).all([Math.min(limit, 200)]);
             res.json({ ok: true, tests, count: tests.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -905,7 +904,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             params.push(Math.min(limit, 200));
             params.push(offset);
 
-            const incidents = await db.query(sql, params);
+            const incidents = await db.prepare(sql).all(params);
             res.json({ ok: true, incidents, count: incidents.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -915,10 +914,9 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     // GET /admin/diagnostics/incidents/:incident_id
     router.get('/diagnostics/incidents/:incident_id', async (req, res) => {
         try {
-            const incident = await db.get(
-                "SELECT * FROM incident_bundles WHERE id = ?",
-                [req.params.incident_id]
-            );
+            const incident = await db.prepare(
+                "SELECT * FROM incident_bundles WHERE id = ?"
+            ).get([req.params.incident_id]);
             if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
 
             // Parse context_json
@@ -934,10 +932,9 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     // GET /admin/diagnostics/incidents/:incident_id/export
     router.get('/diagnostics/incidents/:incident_id/export', async (req, res) => {
         try {
-            const incident = await db.get(
-                "SELECT * FROM incident_bundles WHERE id = ?",
-                [req.params.incident_id]
-            );
+            const incident = await db.prepare(
+                "SELECT * FROM incident_bundles WHERE id = ?"
+            ).get([req.params.incident_id]);
             if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
 
             let bundleJson;
@@ -965,14 +962,13 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.post('/diagnostics/incidents/:incident_id/mark-sent', requireOps, async (req, res) => {
         try {
             const { incident_id } = req.params;
-            const incident = await db.get("SELECT * FROM incident_bundles WHERE id = ?", [incident_id]);
+            const incident = await db.prepare("SELECT * FROM incident_bundles WHERE id = ?").get([incident_id]);
             if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
 
             const before = { status: incident.status };
-            await db.query(
-                "UPDATE incident_bundles SET status = 'sent_to_agent' WHERE id = ?",
-                [incident_id]
-            );
+            await db.prepare(
+                "UPDATE incident_bundles SET status = 'sent_to_agent' WHERE id = ?"
+            ).run([incident_id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'MARK_INCIDENT_SENT',
@@ -991,14 +987,13 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
         try {
             const { incident_id } = req.params;
             const { notes } = req.body;
-            const incident = await db.get("SELECT * FROM incident_bundles WHERE id = ?", [incident_id]);
+            const incident = await db.prepare("SELECT * FROM incident_bundles WHERE id = ?").get([incident_id]);
             if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
 
             const before = { status: incident.status };
-            await db.query(
-                "UPDATE incident_bundles SET status = 'resolved', resolved_by = ?, resolved_at = ?, request_notes = ? WHERE id = ?",
-                [req.user.wallet, Date.now(), notes || '', incident_id]
-            );
+            await db.prepare(
+                "UPDATE incident_bundles SET status = 'resolved', resolved_by = ?, resolved_at = ?, request_notes = ? WHERE id = ?"
+            ).run([req.user.wallet, Date.now(), notes || '', incident_id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'RESOLVE_INCIDENT',
@@ -1018,7 +1013,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { incident_id, agent, request_notes, preferred_scope, max_risk } = req.body;
             if (!incident_id) return res.status(400).json({ ok: false, error: 'incident_id required' });
 
-            const incident = await db.get("SELECT * FROM incident_bundles WHERE id = ?", [incident_id]);
+            const incident = await db.prepare("SELECT * FROM incident_bundles WHERE id = ?").get([incident_id]);
             if (!incident) return res.status(404).json({ ok: false, error: 'Incident not found' });
 
             // Build correlated bundle
@@ -1068,11 +1063,10 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             };
 
             // Update incident
-            await db.query(
-                `UPDATE incident_bundles SET status = 'sent_to_agent', request_notes = ?, preferred_scope = ?, max_risk = ?, task_spec_json = ? WHERE id = ?`,
-                [request_notes || '', JSON.stringify(preferred_scope || ['backend', 'web', 'db']),
-                max_risk || 'low', JSON.stringify(taskSpec), incident_id]
-            );
+            await db.prepare(
+                `UPDATE incident_bundles SET status = 'sent_to_agent', request_notes = ?, preferred_scope = ?, max_risk = ?, task_spec_json = ? WHERE id = ?`
+            ).run([request_notes || '', JSON.stringify(preferred_scope || ['backend', 'web', 'db']),
+                max_risk || 'low', JSON.stringify(taskSpec), incident_id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'FIX_REQUEST',
@@ -1100,29 +1094,20 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     // GET /admin/ops/db/health (admin_super only)
     router.get('/ops/db/health', requireSuper, async (req, res) => {
         try {
-            // Get DB size stats
-            const fs = await import('fs');
-            const path = await import('path');
-            const dbPath = process.env.SQLITE_PATH || 'satelink.db';
-            const walPath = `${dbPath}-wal`;
-
-            let dbSize = 0;
-            let walSize = 0;
-
-            try { dbSize = fs.statSync(path.resolve(dbPath)).size; } catch { }
-            try { walSize = fs.statSync(path.resolve(walPath)).size; } catch { }
-
-            // Journal mode check
-            const mode = await db.get("PRAGMA journal_mode");
-            const walCheck = await db.get("PRAGMA wal_checkpoint(PASSIVE)");
+            // Get PostgreSQL size stats
+            const sizeRes = await db.prepare("SELECT pg_database_size(current_database()) as size_bytes").all();
+            const dbSize = sizeRes[0]?.size_bytes || 0;
 
             res.json({
                 ok: true,
                 stats: {
+                    db_type: 'postgres',
                     db_size_bytes: dbSize,
-                    wal_size_bytes: walSize,
-                    journal_mode: mode?.journal_mode,
-                    checkpoint_passive: walCheck
+                    pool: {
+                        total: db.pool.totalCount,
+                        idle: db.pool.idleCount,
+                        waiting: db.pool.waitingCount
+                    }
                 }
             });
         } catch (e) {
@@ -1133,24 +1118,18 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     // POST /admin/ops/db/checkpoint (admin_super only)
     router.post('/ops/db/checkpoint', requireSuper, async (req, res) => {
         try {
-            const mode = req.body.mode || 'TRUNCATE'; // PASSIVE, FULL, RESTART, TRUNCATE
-            if (!['PASSIVE', 'FULL', 'RESTART', 'TRUNCATE'].includes(mode)) {
-                return res.status(400).json({ ok: false, error: 'Invalid checkpoint mode' });
-            }
-
             const start = Date.now();
-            // This might block if not PASSIVE, but that's expected for maintenance
-            const result = await db.get(`PRAGMA wal_checkpoint(${mode})`);
+            await db.prepare("CHECKPOINT").run();
             const duration = Date.now() - start;
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'DB_CHECKPOINT',
                 target_type: 'system', target_id: 'db',
-                before: null, after: { mode, result, duration_ms: duration },
+                before: null, after: { mode: 'POSTGRES_CHECKPOINT', duration_ms: duration },
                 ip: req.ip
             });
 
-            res.json({ ok: true, mode, result, duration_ms: duration });
+            res.json({ ok: true, mode: 'CHECKPOINT', duration_ms: duration });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
@@ -1165,19 +1144,19 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
         try {
             // Calculate metrics
             // 1. Beta Users
-            const userCount = (await db.get("SELECT COUNT(*) as c FROM beta_users WHERE status='active'")).c;
+            const userCount = (await db.prepare("SELECT COUNT(*) as c FROM beta_users WHERE status='active'").get()).c;
 
             // 2. High Sev Incidents (Open)
-            const openIncidents = (await db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE severity='high' AND status != 'resolved'")).c;
+            const openIncidents = (await db.prepare("SELECT COUNT(*) as c FROM incident_bundles WHERE severity='high' AND status != 'resolved'").get()).c;
 
             // 3. Error Rate (Last 24h)
             const now = Date.now();
             const yest = now - 86400000;
-            const errorCount = (await db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [yest])).c;
+            const errorCount = (await db.prepare("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?").get([yest])).c;
             // Est. trace count if request_traces table exists (Phase 9)
             let traceCount = 0;
             try {
-                traceCount = (await db.get("SELECT COUNT(*) as c FROM request_traces WHERE timestamp > ?", [yest])).c;
+                traceCount = (await db.prepare("SELECT COUNT(*) as c FROM request_traces WHERE timestamp > ?").get([yest])).c;
             } catch (e) {
                 // table might not exist or be empty
             }
@@ -1203,7 +1182,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/beta/invites', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 50);
-            const invites = await db.query("SELECT * FROM beta_invites ORDER BY created_at DESC LIMIT ?", [limit]);
+            const invites = await db.prepare("SELECT * FROM beta_invites ORDER BY created_at DESC LIMIT ?").all([limit]);
             res.json({ ok: true, invites });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -1218,10 +1197,10 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const max = parseInt(max_uses) || 100;
             const expires = expires_in_days ? Date.now() + (expires_in_days * 86400000) : null;
 
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO beta_invites (invite_code, created_by_wallet, max_uses, created_at, expires_at)
                 VALUES (?, ?, ?, ?, ?)
-            `, [inviteCode, req.user.wallet, max, Date.now(), expires]);
+            `).run([inviteCode, req.user.wallet, max, Date.now(), expires]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'CREATE_INVITE',
@@ -1240,7 +1219,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/beta/users', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 50);
-            const users = await db.query("SELECT * FROM beta_users ORDER BY created_at DESC LIMIT ?", [limit]);
+            const users = await db.prepare("SELECT * FROM beta_users ORDER BY created_at DESC LIMIT ?").all([limit]);
             res.json({ ok: true, users: redactSensitive(users) });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -1251,11 +1230,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.post('/beta/users/:id/suspend', requireOps, async (req, res) => {
         try {
             const { id } = req.params;
-            const user = await db.get("SELECT * FROM beta_users WHERE id = ?", [id]);
+            const user = await db.prepare("SELECT * FROM beta_users WHERE id = ?").get([id]);
             if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
 
             const newStatus = user.status === 'active' ? 'suspended' : 'active';
-            await db.query("UPDATE beta_users SET status = ? WHERE id = ?", [newStatus, id]);
+            await db.prepare("UPDATE beta_users SET status = ? WHERE id = ?").run([newStatus, id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'SUSPEND_USER',
@@ -1274,13 +1253,13 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/beta/feedback', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 50);
-            const rawFeed = await db.query("SELECT * FROM beta_feedback ORDER BY created_at DESC LIMIT ?", [limit]);
+            const rawFeed = await db.prepare("SELECT * FROM beta_feedback ORDER BY created_at DESC LIMIT ?").all([limit]);
 
             // Enrich with trace info if trace_id exists
             const enriched = await Promise.all(rawFeed.map(async (f) => {
                 let traceInfo = null;
                 if (f.trace_id) {
-                    const trace = await db.get("SELECT status_code, duration_ms, route FROM request_traces WHERE trace_id = ?", [f.trace_id]);
+                    const trace = await db.prepare("SELECT status_code, duration_ms, route FROM request_traces WHERE trace_id = ?").get([f.trace_id]);
                     if (trace) traceInfo = trace;
                 }
                 return { ...f, trace_summary: traceInfo };
@@ -1319,7 +1298,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/security/enforcement', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 50);
-            const events = await db.query("SELECT * FROM enforcement_events ORDER BY created_at DESC LIMIT ?", [limit]);
+            const events = await db.prepare("SELECT * FROM enforcement_events ORDER BY created_at DESC LIMIT ?").all([limit]);
             res.json({ ok: true, events: redactSensitive(events) });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -1533,15 +1512,15 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
             // Remove old if provided
             if (old_wallet) {
-                await db.query("DELETE FROM user_roles WHERE wallet = ?", [old_wallet]);
+                await db.prepare("DELETE FROM user_roles WHERE wallet = ?").run([old_wallet]);
             }
 
             // Add new
-            await db.query(`
+            await db.prepare(`
                 INSERT INTO user_roles (wallet, role, updated_at) 
                 VALUES (?, ?, ?)
                 ON CONFLICT(wallet) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at
-            `, [new_wallet, role, Date.now()]);
+            `).run([new_wallet, role, Date.now()]);
 
             await auditLog(req.app.get('db'), {
                 actor: req.user.wallet,
@@ -1654,13 +1633,13 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const engine = req.app.get('settlementEngine');
             const db = req.app.get('db');
 
-            const queued = await db.get("SELECT count(*) as c FROM payout_batches_v2 WHERE status='queued'");
-            const processing = await db.get("SELECT count(*) as c FROM payout_batches_v2 WHERE status='processing'");
-            const failed = await db.get("SELECT count(*) as c FROM payout_batches_v2 WHERE status='failed'");
+            const queued = await db.prepare("SELECT count(*) as c FROM payout_batches_v2 WHERE status='queued'").get();
+            const processing = await db.prepare("SELECT count(*) as c FROM payout_batches_v2 WHERE status='processing'").get();
+            const failed = await db.prepare("SELECT count(*) as c FROM payout_batches_v2 WHERE status='failed'").get();
 
-            const activeAdapter = await db.get("SELECT value FROM system_flags WHERE key='settlement_adapter'");
-            const dryRun = await db.get("SELECT value FROM system_flags WHERE key='settlement_dry_run'");
-            const shadowMode = await db.get("SELECT value FROM system_flags WHERE key='settlement_shadow_mode'");
+            const activeAdapter = await db.prepare("SELECT value FROM system_flags WHERE key='settlement_adapter'").get();
+            const dryRun = await db.prepare("SELECT value FROM system_flags WHERE key='settlement_dry_run'").get();
+            const shadowMode = await db.prepare("SELECT value FROM system_flags WHERE key='settlement_shadow_mode'").get();
 
             // Health
             const adapterName = activeAdapter?.value || 'SIMULATED';
@@ -1686,11 +1665,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
         try {
             const limit = parseIntParam(req.query.limit, 50);
             const offset = parseIntParam(req.query.offset, 0);
-            const batches = await req.app.get('db').query(`
+            const batches = await req.app.get('db').prepare(`
                 SELECT * FROM payout_batches_v2 
                 ORDER BY created_at DESC 
                 LIMIT ? OFFSET ?
-            `, [limit, offset]);
+            `).all([limit, offset]);
             res.json({ ok: true, data: batches });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -1699,11 +1678,11 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     router.get('/services/settlement/shadow-logs', requireAdmin, async (req, res) => {
         try {
-            const logs = await req.app.get('db').query(`
+            const logs = await req.app.get('db').prepare(`
                 SELECT * FROM settlement_shadow_log 
                 ORDER BY created_at DESC 
                 LIMIT 50
-            `);
+            `).all();
             res.json({ ok: true, data: logs });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -1718,9 +1697,9 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { adapter, dry_run, shadow_mode } = req.body;
             const db = req.app.get('db');
 
-            if (adapter) await db.query("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_adapter'", [adapter, Date.now()]);
-            if (dry_run !== undefined) await db.query("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_dry_run'", [dry_run ? '1' : '0', Date.now()]);
-            if (shadow_mode !== undefined) await db.query("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_shadow_mode'", [shadow_mode ? '1' : '0', Date.now()]);
+            if (adapter) await db.prepare("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_adapter'").run([adapter, Date.now()]);
+            if (dry_run !== undefined) await db.prepare("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_dry_run'").run([dry_run ? '1' : '0', Date.now()]);
+            if (shadow_mode !== undefined) await db.prepare("UPDATE system_flags SET value=?, updated_at=? WHERE key='settlement_shadow_mode'").run([shadow_mode ? '1' : '0', Date.now()]);
 
             // If switching adapter, notify registry? 
             // Registry checks flag on demand in engine, but we might want to update local cache if we had one.
@@ -1756,7 +1735,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     router.get('/services/settlement/evm/batch/:batch_id', requireAdmin, async (req, res) => {
         try {
             const db = req.app.get('db');
-            const txs = await db.query("SELECT * FROM settlement_evm_txs WHERE batch_id=? ORDER BY item_id ASC", [req.params.batch_id]);
+            const txs = await db.prepare("SELECT * FROM settlement_evm_txs WHERE batch_id=? ORDER BY item_id ASC").all([req.params.batch_id]);
             res.json({ ok: true, data: txs });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });

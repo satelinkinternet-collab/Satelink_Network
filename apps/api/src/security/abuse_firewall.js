@@ -18,6 +18,8 @@ export class AbuseFirewall {
 
     async init() {
         // Ensure required tables exist (boot-safe)
+        // Tables enforcement_events, indices handled by init.sql
+        /*
         await this.db.exec(`
       CREATE TABLE IF NOT EXISTS enforcement_events (
         id SERIAL PRIMARY KEY,
@@ -37,6 +39,7 @@ export class AbuseFirewall {
       CREATE INDEX IF NOT EXISTS idx_enforcement_events_entity
       ON enforcement_events(entity_type, entity_id);
     `);
+    */
 
         // Load active blocks from DB into cache
         const now = Date.now(); // ms
@@ -74,22 +77,22 @@ export class AbuseFirewall {
 
     // ─── 1. Metrics Recording ─────────────────────────────────────────
 
-    recordMetric({ key_type, key_value, metric, inc = 1, now = Date.now() }) {
+    async recordMetric({ key_type, key_value, metric, inc = 1, now = Date.now() }) {
         if (!key_value) return;
 
         // 5-minute window bucket (in seconds)
         const windowStart = Math.floor(now / 1000 / 300) * 300;
 
         try {
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO abuse_counters_5m (window_start, key_type, key_value, metric, count, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(window_start, key_type, key_value, metric) 
+                ON CONFLICT(window_start, key_type, key_value, metric)
                 DO UPDATE SET count = count + ?, updated_at = ?
             `).run([windowStart, key_type, key_value, metric, inc, now, inc, now]);
 
             // Post-metric check: should we block?
-            this.evaluateRules({ key_type, key_value, windowStart, now });
+            await this.evaluateRules({ key_type, key_value, windowStart, now });
 
         } catch (e) {
             console.error('[Firewall] Metric record error:', e.message);
@@ -130,14 +133,14 @@ export class AbuseFirewall {
 
     // ─── 3. Rule Evaluation (Reactive) ────────────────────────────────
 
-    evaluateRules({ key_type, key_value, windowStart, now }) {
+    async evaluateRules({ key_type, key_value, windowStart, now }) {
         // Only check rules relevant to the updated metric key
 
         // Rule 1: IP Auth Failures
         if (key_type === 'ip_hash') {
-            const stats = this.getCounter(windowStart, 'ip_hash', key_value, 'auth_fail');
+            const stats = await this.getCounter(windowStart, 'ip_hash', key_value, 'auth_fail');
             if (stats >= this.RULES.ip_auth_fail_limit) {
-                this.enforce({
+                await this.enforce({
                     entity_type: 'ip_hash', entity_id: key_value,
                     decision: 'block', reason: 'excessive_auth_failures',
                     ttl: 1800 // 30m
@@ -145,9 +148,9 @@ export class AbuseFirewall {
                 return;
             }
 
-            const reqs = this.getCounter(windowStart, 'ip_hash', key_value, 'req');
+            const reqs = await this.getCounter(windowStart, 'ip_hash', key_value, 'req');
             if (reqs >= this.RULES.ip_req_limit) {
-                this.enforce({
+                await this.enforce({
                     entity_type: 'ip_hash', entity_id: key_value,
                     decision: 'throttle', reason: 'high_request_rate',
                     ttl: 900 // 15m
@@ -157,9 +160,9 @@ export class AbuseFirewall {
 
         // Rule 2: Wallet/Client RL Hits
         if (key_type === 'wallet' || key_type === 'client_id') {
-            const hits = this.getCounter(windowStart, key_type, key_value, 'rl_hit');
+            const hits = await this.getCounter(windowStart, key_type, key_value, 'rl_hit');
             if (hits >= this.RULES.wallet_rl_hit_limit) {
-                this.enforce({
+                await this.enforce({
                     entity_type: key_type, entity_id: key_value,
                     decision: 'throttle', reason: 'excessive_rate_limits',
                     ttl: 900 // 15m
@@ -169,11 +172,11 @@ export class AbuseFirewall {
 
         // Rule 3: Node Op Failure Rate
         if (key_type === 'node_id') {
-            const fails = this.getCounter(windowStart, 'node_id', key_value, 'op_fail');
-            const total = this.getCounter(windowStart, 'node_id', key_value, 'op_total');
+            const fails = await this.getCounter(windowStart, 'node_id', key_value, 'op_fail');
+            const total = await this.getCounter(windowStart, 'node_id', key_value, 'op_total');
 
             if (total >= 50 && (fails / total) >= this.RULES.node_op_fail_rate) {
-                this.enforce({
+                await this.enforce({
                     entity_type: 'node_id', entity_id: key_value,
                     decision: 'throttle', reason: 'high_op_failure_rate',
                     ttl: 1800 // 30m
@@ -182,14 +185,14 @@ export class AbuseFirewall {
         }
     }
 
-    getCounter(windowStart, type, value, metric) {
-        const row = this.db.prepare(
+    async getCounter(windowStart, type, value, metric) {
+        const row = await this.db.prepare(
             `SELECT count FROM abuse_counters_5m WHERE window_start=? AND key_type=? AND key_value=? AND metric=?`
         ).get([windowStart, type, value, metric]);
         return row ? row.count : 0;
     }
 
-    enforce({ entity_type, entity_id, decision, reason, ttl, createdBy = 'system' }) {
+    async enforce({ entity_type, entity_id, decision, reason, ttl, createdBy = 'system' }) {
         // Idempotency check (cache)
         const key = `${entity_type}:${entity_id}`;
         const cached = this.cache.get(key);
@@ -199,7 +202,7 @@ export class AbuseFirewall {
         const expiresAt = now + (ttl * 1000);
 
         // Persist
-        this.db.prepare(`
+        await this.db.prepare(`
             INSERT INTO enforcement_events (entity_type, entity_id, decision, reason_codes_json, ttl_seconds, created_at, expires_at, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run([entity_type, entity_id, decision, JSON.stringify([reason]), ttl, now, expiresAt, createdBy]);
@@ -221,8 +224,8 @@ export class AbuseFirewall {
     }
 
     // For admin to clear
-    clearDecision(type, id) {
-        this.db.prepare(`UPDATE enforcement_events SET expires_at = ? WHERE entity_type = ? AND entity_id = ?`).run([Date.now(), type, id]);
+    async clearDecision(type, id) {
+        await this.db.prepare(`UPDATE enforcement_events SET expires_at = ? WHERE entity_type = ? AND entity_id = ?`).run([Date.now(), type, id]);
         this.cache.delete(`${type}:${id}`);
     }
 }

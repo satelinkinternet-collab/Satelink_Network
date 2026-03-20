@@ -15,17 +15,15 @@ import { FuturesEscrow } from '../settlement/futures_escrow.js';
  * 5. Handles zero total ops count gracefully without inserting node_epoch_earnings.
  */
 
-export function closeEpoch(db, epochId) {
+export async function closeEpoch(db, epochId) {
     if (!epochId) throw new Error("epochId is required");
 
     let resultSummary = null;
 
-    // Use a deferred transaction to acquire a lock and ensure atomicity 
-    // SQLite implements locks at the database level when a transaction begins for writing
-    const transaction = db.transaction(() => {
-        // 1. Fetch and Lock the epoch row (in SQLite, the transaction itself is the lock for concurrent writes)
-        // If we were in Postgres, we'd use FOR UPDATE. However, better-sqlite3 handles this via its synchronous lock.
-        const epochRow = db.prepare(`SELECT * FROM epochs WHERE id = ?`).get(epochId);
+    // Use a deferred transaction to acquire a lock and ensure atomicity
+    await db.transaction(async () => {
+        // 1. Fetch and Lock the epoch row (In Postgres, PgDatabase handles the BEGIN/COMMIT logic)
+        const epochRow = await db.prepare(`SELECT * FROM epochs WHERE id = ?`).get(epochId);
 
         if (!epochRow) {
             throw new Error(`Epoch ${epochId} not found`);
@@ -36,7 +34,7 @@ export function closeEpoch(db, epochId) {
         }
 
         // 2. Aggregate Revenue from revenue_events_v2 (the active revenue table)
-        const revenueResult = db.prepare(`
+        const revenueResult = await db.prepare(`
             SELECT COALESCE(SUM(amount_usdt), 0) AS totalRevenue
             FROM revenue_events_v2
             WHERE epoch_id = ?
@@ -50,7 +48,7 @@ export function closeEpoch(db, epochId) {
         const distributorShare = totalRevenue * 0.2;
 
         // 4. Calculate Node Ops Counts
-        const opsQuery = db.prepare(`
+        const opsQuery = await db.prepare(`
             SELECT user_wallet as node_id, COALESCE(SUM(ops), 0) as ops
             FROM op_counts
             WHERE epoch_id = ?
@@ -64,11 +62,6 @@ export function closeEpoch(db, epochId) {
         }
 
         // 5. Node Distribution
-        const insertEarning = db.prepare(`
-            INSERT INTO node_epoch_earnings (node_id, epoch_id, earnings_usdt, ops_processed, weight)
-            VALUES (?, ?, ?, ?, ?)
-        `);
-
         if (totalNodeOps > 0) {
             const escrow = new FuturesEscrow(db);
             for (const row of opsQuery) {
@@ -79,7 +72,10 @@ export function closeEpoch(db, epochId) {
                 // Deduct any forward contract obligations, emitting investor USDT directly.
                 share = escrow.settleEpochObligations(epochId, row.node_id, share);
 
-                insertEarning.run(
+                await db.prepare(`
+            INSERT INTO node_epoch_earnings (node_id, epoch_id, earnings_usdt, ops_processed, weight)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(
                     row.node_id,
                     epochId,
                     share,
@@ -90,9 +86,9 @@ export function closeEpoch(db, epochId) {
         }
 
         // 6. Finalize Epoch
-        const updateEpoch = db.prepare(`
+        await db.prepare(`
             UPDATE epochs
-            SET 
+            SET
                 total_revenue_usdt = ?,
                 node_pool_usdt = ?,
                 platform_share_usdt = ?,
@@ -101,9 +97,7 @@ export function closeEpoch(db, epochId) {
                 status = 'CLOSED',
                 closed_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        `);
-
-        updateEpoch.run(
+        `).run(
             totalRevenue,
             nodePool,
             platformShare,
@@ -124,9 +118,6 @@ export function closeEpoch(db, epochId) {
             nodes_distributed: totalNodeOps > 0 ? opsQuery.length : 0
         };
     });
-
-    // Execute the transaction
-    transaction();
 
     return resultSummary;
 }

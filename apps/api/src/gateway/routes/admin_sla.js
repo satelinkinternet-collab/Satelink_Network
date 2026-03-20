@@ -21,7 +21,7 @@ export function createAdminSLARouter(db, slaEngine) {
     router.get('/:id/limits', async (req, res) => {
         try {
             const limits = await slaEngine.getLimits(req.params.id);
-            const circuit = await db.get("SELECT * FROM tenant_circuit_state WHERE partner_id = ?", [req.params.id]);
+            const circuit = await db.prepare("SELECT * FROM tenant_circuit_state WHERE partner_id = ?").get([req.params.id]);
             res.json({ ok: true, limits, circuit });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
@@ -31,11 +31,10 @@ export function createAdminSLARouter(db, slaEngine) {
             const result = await slaEngine.setLimits(req.params.id, req.body);
 
             // Audit
-            await db.query(
-                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
-                [req.user?.wallet || 'admin', 'SET_TENANT_LIMITS',
-                JSON.stringify({ partner_id: req.params.id, ...req.body }), Date.now()]
-            );
+            await db.prepare(
+                "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)"
+            ).run([req.user?.wallet || 'admin', 'SET_TENANT_LIMITS',
+                JSON.stringify({ partner_id: req.params.id, ...req.body }), Date.now()]);
 
             res.json(result);
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -45,13 +44,13 @@ export function createAdminSLARouter(db, slaEngine) {
 
     router.get('/sla', async (req, res) => {
         try {
-            const partners = await db.query("SELECT partner_id FROM tenant_limits");
+            const partners = await db.prepare("SELECT partner_id FROM tenant_limits").all();
             const results = [];
 
             for (const p of partners) {
                 const budget = await slaEngine.getErrorBudget(p.partner_id);
-                const circuit = await db.get("SELECT state, reason FROM tenant_circuit_state WHERE partner_id = ?", [p.partner_id]);
-                const info = await db.get("SELECT partner_name, status FROM partner_registry WHERE partner_id = ?", [p.partner_id]);
+                const circuit = await db.prepare("SELECT state, reason FROM tenant_circuit_state WHERE partner_id = ?").get([p.partner_id]);
+                const info = await db.prepare("SELECT partner_name, status FROM partner_registry WHERE partner_id = ?").get([p.partner_id]);
                 results.push({
                     ...budget,
                     name: info?.partner_name || p.partner_id,
