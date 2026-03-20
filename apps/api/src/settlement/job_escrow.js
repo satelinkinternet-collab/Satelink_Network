@@ -50,10 +50,7 @@ export class JobEscrow {
                 SET jobs_executed = jobs_executed + 1, revenue_generated = revenue_generated + ?
                 WHERE id = 1
             `).run(payout);
-        });
 
-        try {
-            release();
             console.log(`[JobEscrow] Released ${payout} USDT to node ${executingNodeWallet} for finishing job ${jobId}`);
             return true;
         } catch (e) {

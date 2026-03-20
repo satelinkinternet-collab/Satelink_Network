@@ -277,18 +277,8 @@ export class OperationsEngine {
     console.log('[REVENUE_TRACE] revenue_recorded');
 
     if (this.ledger && billingAmount > 0) {
-      // Wrap revenue INSERT + ledger double-entry in one transaction
-      const recordRevenueWithLedger = this.db.transaction(() => {
-        res = this.db.prepare(`
-            INSERT INTO revenue_events_v2
-            (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at, metadata_hash,
-             price_version, surge_multiplier, unit_cost, unit_count)
-            VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1)
-        `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
-          priceVersion, surgeMultiplier, unitCost]);
-
-        // Ledger double-entry within the same transaction
-        this.ledger.createTxnSync({
+      try {
+        await this.ledger.createTxn({
           event_type: 'revenue',
           reference_type: 'revenue_event',
           reference_id: request_id,
