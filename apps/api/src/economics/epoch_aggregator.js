@@ -48,13 +48,32 @@ export async function closeEpoch(db, epochId) {
         const distributorShare = totalRevenue * 0.2;
 
         // 4. Calculate Node Ops Counts
-        const opsQuery = await db.prepare(`
-            SELECT user_wallet as node_id, COALESCE(SUM(ops), 0) as ops
-            FROM op_counts
-            WHERE epoch_id = ?
-            AND node_id IS NOT NULL
-            GROUP BY node_id
-        `).all(epochId);
+        // C-08: Fixed — use user_wallet consistently (not non-existent node_id column)
+        // Also query revenue_events_v2 as fallback if op_counts is empty
+        let opsQuery = [];
+        try {
+            opsQuery = await db.prepare(`
+                SELECT user_wallet as node_id, COALESCE(SUM(ops), 0) as ops
+                FROM op_counts
+                WHERE epoch_id = ?
+                AND user_wallet IS NOT NULL
+                GROUP BY user_wallet
+            `).all(epochId);
+        } catch (e) {
+            // op_counts table may not exist or be empty — fallback to revenue_events_v2
+            console.warn(`[epoch_aggregator] op_counts query failed: ${e.message}, falling back to revenue_events_v2`);
+        }
+
+        // C-08: Fallback — if op_counts is empty, derive from revenue_events_v2
+        if (opsQuery.length === 0) {
+            opsQuery = await db.prepare(`
+                SELECT node_id, COUNT(*) as ops
+                FROM revenue_events_v2
+                WHERE epoch_id = ?
+                AND node_id IS NOT NULL
+                GROUP BY node_id
+            `).all(epochId);
+        }
 
         let totalNodeOps = 0;
         for (const row of opsQuery) {

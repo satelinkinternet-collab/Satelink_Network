@@ -46,10 +46,17 @@ export function createBillingMiddleware(db) {
                         WHERE client_id = ?
                     `).run(newBalance, client.client_id);
 
+                    // C-01: Write to revenue_events_v2 with epoch_id for proper aggregation
+                    let epochId = null;
+                    try {
+                        const epochRow = await db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                        epochId = epochRow?.id || null;
+                    } catch (e) { /* fallback */ }
+
                     await db.prepare(`
-                        INSERT INTO revenue_events (amount, token, source, enterprise_id, created_at)
-                        VALUES (?, 'USDT', ?, ?, ?)
-                    `).run(cost, opType, client.client_id, Date.now());
+                        INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                        VALUES (?, ?, NULL, ?, ?, 'success', ?, ?)
+                    `).run([epochId, opType, client.client_id, cost, `billing_${client.client_id}_${Date.now()}`, Date.now()]);
 
                     return newBalance;
                 });

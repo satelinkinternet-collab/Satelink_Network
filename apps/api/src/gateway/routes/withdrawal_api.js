@@ -1,14 +1,16 @@
 import express from 'express';
 import crypto from 'crypto';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createWithdrawalRouter(db) {
     const router = express.Router();
 
     /**
      * POST /api/withdraw
+     * C-03: Protected by JWT + node_operator role + wallet ownership check
      * Accepts: { wallet, amount_usdt }
      */
-    router.post('/withdraw', async (req, res) => {
+    router.post('/withdraw', requireJWT, requireRole(['node_operator', 'admin_super']), async (req, res) => {
         console.log('[WITHDRAW] request_received');
 
         const { wallet, amount_usdt } = req.body;
@@ -18,11 +20,13 @@ export function createWithdrawalRouter(db) {
             console.error('[WITHDRAW] validation_failed: invalid input');
             return res.status(400).json({ ok: false, error: 'Invalid input' });
         }
-        console.log('[WITHDRAW] validation_passed');
 
-        // Note: In a production system, here we would lock the user's ledger balance.
-        // For this audit, we log the intent as requested.
-        console.log('[WITHDRAW] ledger_locked');
+        // C-03: Ownership check — user can only withdraw to their own wallet (admins exempt)
+        if (req.user.role !== 'admin_super' && req.user.wallet?.toLowerCase() !== wallet.toLowerCase()) {
+            console.error('[WITHDRAW] ownership_failed: wallet mismatch');
+            return res.status(403).json({ ok: false, error: 'Cannot withdraw to a wallet you do not own' });
+        }
+        console.log('[WITHDRAW] validation_passed');
 
         const id = crypto.randomUUID();
 

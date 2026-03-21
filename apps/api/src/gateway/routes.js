@@ -80,10 +80,13 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
     const requireEnterprise = [requireJWT, requireRole('enterprise')];
 
-    app.post('/demo/traffic-spike', (req, res) => { demoState = { active: 'spike', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
-    app.post('/demo/failure', (req, res) => { demoState = { active: 'failure', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
-    app.post('/demo/revenue-drop', (req, res) => { demoState = { active: 'drop', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
-    app.post('/demo/reset', (req, res) => { demoState = { active: null, expiry: 0 }; res.json({ ok: true }); });
+    // Demo endpoints — admin-only, disabled in production
+    if (process.env.NODE_ENV !== 'production') {
+        app.post('/demo/traffic-spike', requireAdmin, (req, res) => { demoState = { active: 'spike', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
+        app.post('/demo/failure', requireAdmin, (req, res) => { demoState = { active: 'failure', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
+        app.post('/demo/revenue-drop', requireAdmin, (req, res) => { demoState = { active: 'drop', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
+        app.post('/demo/reset', requireAdmin, (req, res) => { demoState = { active: null, expiry: 0 }; res.json({ ok: true }); });
+    }
 
     const { middleware: gwMiddleware, router: gwRouter } = createGatewayLayer(db, {});
     app.use(gwMiddleware);
@@ -144,8 +147,10 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     // Builder auth — separate session domain (HMAC cookie + JWT)
     app.use(createBuilderAuthRouter(opsEngine));
 
-    // Dev-only test auth (auto-disabled in production via internal guard)
-    app.use('/__test/auth', createDevAuthRouter({ db }));
+    // Dev-only test auth — gated at mount site AND inside router
+    if (process.env.NODE_ENV !== 'production') {
+        app.use('/__test/auth', createDevAuthRouter({ db }));
+    }
 
     // ── Dashboard Query Layer (read-only, separated from operational APIs) ──
     app.use('/dashboard-api', createDashboardApiRouter(db));
@@ -207,53 +212,57 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
-    app.get('/debug/run-epoch', async (req, res) => {
-        try {
-            const now = Math.floor(Date.now() / 1000);
-            let targetEpochId = req.query.epoch_id;
-            
-            if (!targetEpochId) {
-                let epoch = await db.get("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
-                if (!epoch) {
-                    const r = await db.query("INSERT INTO epochs (starts_at, status) VALUES ($1, 'OPEN') RETURNING id", [now]);
-                    epoch = { id: r[0].id };
+    // C-02: /debug/run-epoch — protected by admin auth, disabled in production
+    if (process.env.NODE_ENV !== 'production') {
+        app.get('/debug/run-epoch', requireAdmin, async (req, res) => {
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                let targetEpochId = req.query.epoch_id;
+
+                if (!targetEpochId) {
+                    let epoch = await db.get("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
+                    if (!epoch) {
+                        const r = await db.query("INSERT INTO epochs (starts_at, status) VALUES ($1, 'OPEN') RETURNING id", [now]);
+                        epoch = { id: r[0].id };
+                    }
+                    targetEpochId = epoch.id;
                 }
-                targetEpochId = epoch.id;
+                const epochId = parseInt(targetEpochId);
+
+                const revCount = await db.get("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE epoch_id = $1", [epochId]);
+                if (Number(revCount.count) === 0) return res.json({ ok: true, warning: "No revenue", epoch_id: epochId });
+
+                const nodePool = Number(revCount.total) * 0.50;
+                const platformFee = Number(revCount.total) * 0.30;
+                const distroPool = Number(revCount.total) * 0.20;
+
+                const nodeContributions = await db.query(`SELECT node_id, SUM(amount_usdt) as revenue FROM revenue_events_v2 WHERE epoch_id = $1 AND node_id IS NOT NULL GROUP BY node_id`, [epochId]);
+                const totalNodeRevenue = nodeContributions.reduce((s, n) => s + Number(n.revenue), 0);
+
+                // C-04 safety: use INSERT ... ON CONFLICT DO NOTHING to prevent duplicate epoch_earnings
+                const task = db.transaction(async () => {
+                    await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'platform', 'PLATFORM_TREASURY', $2, 'UNPAID', $3) ON CONFLICT DO NOTHING", [epochId, platformFee, now]);
+                    await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'distribution_pool', 'DIST_POOL', $2, 'UNPAID', $3) ON CONFLICT DO NOTHING", [epochId, distroPool, now]);
+                    for (const node of nodeContributions) {
+                        const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
+                        if (share > 0) await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'node_operator', $2, $3, 'UNPAID', $4) ON CONFLICT DO NOTHING", [epochId, node.node_id, share, now]);
+                    }
+                    await db.query("UPDATE epochs SET status = 'FINALIZED', ends_at = $1, total_revenue_usdt = $2 WHERE id = $3", [now, revCount.total, epochId]);
+
+                    for (const node of nodeContributions) {
+                        const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
+                        await db.query(`INSERT INTO balances (wallet, amount_usdt, updated_at) VALUES ($1, $2, $3) ON CONFLICT (wallet) DO UPDATE SET amount_usdt = balances.amount_usdt + EXCLUDED.amount_usdt, updated_at = EXCLUDED.updated_at`, [node.node_id, share, now]);
+                    }
+                });
+                await task();
+
+                res.json({ ok: true, epoch_id: epochId, revenue: revCount.total, nodes: nodeContributions.length });
+            } catch (e) {
+                console.error("run-epoch error:", e.message);
+                res.status(500).json({ ok: false, error: e.message });
             }
-            const epochId = parseInt(targetEpochId);
-
-            const revCount = await db.get("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE epoch_id = $1", [epochId]);
-            if (Number(revCount.count) === 0) return res.json({ ok: true, warning: "No revenue", epoch_id: epochId });
-
-            const nodePool = Number(revCount.total) * 0.50;
-            const platformFee = Number(revCount.total) * 0.30;
-            const distroPool = Number(revCount.total) * 0.20;
-
-            const nodeContributions = await db.query(`SELECT node_id, SUM(amount_usdt) as revenue FROM revenue_events_v2 WHERE epoch_id = $1 AND node_id IS NOT NULL GROUP BY node_id`, [epochId]);
-            const totalNodeRevenue = nodeContributions.reduce((s, n) => s + Number(n.revenue), 0);
-
-            const task = db.transaction(async () => {
-                await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'platform', 'PLATFORM_TREASURY', $2, 'UNPAID', $3)", [epochId, platformFee, now]);
-                await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'distribution_pool', 'DIST_POOL', $2, 'UNPAID', $3)", [epochId, distroPool, now]);
-                for (const node of nodeContributions) {
-                    const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
-                    if (share > 0) await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'node_operator', $2, $3, 'UNPAID', $4)", [epochId, node.node_id, share, now]);
-                }
-                await db.query("UPDATE epochs SET status = 'FINALIZED', ends_at = $1, total_revenue_usdt = $2 WHERE id = $3", [now, revCount.total, epochId]);
-                
-                for (const node of nodeContributions) {
-                    const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
-                    await db.query(`INSERT INTO balances (wallet, amount_usdt, updated_at) VALUES ($1, $2, $3) ON CONFLICT (wallet) DO UPDATE SET amount_usdt = balances.amount_usdt + EXCLUDED.amount_usdt, updated_at = EXCLUDED.updated_at`, [node.node_id, share, now]);
-                }
-            });
-            await task();
-
-            res.json({ ok: true, epoch_id: epochId, revenue: revCount.total, nodes: nodeContributions.length });
-        } catch (e) {
-            console.error("run-epoch error:", e.message);
-            res.status(500).json({ ok: false, error: e.message });
-        }
-    });
+        });
+    }
 
     app.all('*catchall', (req, res) => res.status(404).json({ ok: false, error: "Not Found" }));
 }

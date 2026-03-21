@@ -392,10 +392,33 @@ export class OperationsEngine {
 
   async initEpoch() {
     const now = Math.floor(Date.now() / 1000);
-    const existing = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get([]);
+    // C-07: Check for existing OPEN epoch first (fast path)
+    const existing = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
     if (existing) { this.currentEpochId = existing.id; return existing.id; }
-    const res = await this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-    this.currentEpochId = res.lastInsertRowid;
+
+    // C-07: Race-safe epoch creation using epoch_slot unique constraint
+    // epoch_slot = hour-granularity bucket prevents duplicate epochs in the same window
+    const epochSlot = Math.floor(now / 3600);
+    try {
+      const res = await this.db.prepare(
+        "INSERT INTO epochs (starts_at, status, epoch_slot) VALUES (?, 'OPEN', ?) ON CONFLICT (epoch_slot) DO NOTHING"
+      ).run([now, epochSlot]);
+
+      if (res.changes > 0 && res.lastInsertRowid) {
+        this.currentEpochId = res.lastInsertRowid;
+        return this.currentEpochId;
+      }
+    } catch (e) {
+      // Constraint violation or concurrent insert — fall through to re-select
+    }
+
+    // Re-select after insert attempt (handles race condition)
+    const recheck = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+    if (recheck) { this.currentEpochId = recheck.id; return recheck.id; }
+
+    // Last resort: create without slot constraint (should never reach here)
+    const fallback = await this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
+    this.currentEpochId = fallback.lastInsertRowid;
     return this.currentEpochId;
   }
 
@@ -421,21 +444,38 @@ export class OperationsEngine {
       const recovered = ethers.verifyMessage(message, signature);
       if (recovered.toLowerCase() !== wallet.toLowerCase()) throw new Error("Invalid signature");
     } catch (e) { throw new Error("Invalid signature"); }
-    const unclaimed = await this.db.prepare("SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'").all([wallet]);
-    if (unclaimed.length === 0) throw new Error("No unclaimed rewards");
+
     let total = 0;
+    let withdrawalId = null;
     const now = Math.floor(Date.now() / 1000);
+
+    // C-04: Entire claim + withdrawal inside a single atomic transaction
+    // The UPDATE with WHERE status = 'UNPAID' acts as a row-level lock —
+    // concurrent claims will find 0 rows to update (optimistic locking)
     await (this.db.transaction(async () => {
-      for (const r of unclaimed) {
-        total += r.amount_usdt;
-        await this.db.prepare("UPDATE epoch_earnings SET status = 'CLAIMED' WHERE epoch_id = ? AND role = ? AND wallet_or_node_id = ?").run([r.epoch_id, r.role, r.wallet_or_node_id]);
-      }
+      // Atomically mark UNPAID → CLAIMED and get affected rows
+      const result = await this.db.prepare(
+        "UPDATE epoch_earnings SET status = 'CLAIMED' WHERE wallet_or_node_id = ? AND status = 'UNPAID'"
+      ).run([wallet]);
+
+      if (result.changes === 0) throw new Error("No unclaimed rewards");
+
+      // Sum claimed amounts
+      const sumRow = await this.db.prepare(
+        "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'CLAIMED' AND created_at <= ?"
+      ).get([wallet, now + 1]);
+      total = sumRow?.total || 0;
+      if (total <= 0) throw new Error("No unclaimed rewards");
+
       const simFlag = await this.db.prepare("SELECT value FROM system_config WHERE key = 'rewards_simulation'").get([]);
       const status = (simFlag?.value === '1') ? 'SIMULATED' : 'PENDING';
-      const withdrawalId = crypto.randomUUID();
+
+      // C-05: Idempotency key for withdrawal
+      withdrawalId = crypto.randomUUID();
       await this.db.prepare("INSERT INTO withdrawals (id, wallet, amount_usdt, status, retry_count, created_at) VALUES (?, ?, ?, ?, ?, ?)").run([withdrawalId, wallet, total, status, 0, now]);
     }))();
-    console.log(`[E2E] ✅ claim created: ${total} USDT for ${wallet}`);
-    return { wallet, claimed: total };
+
+    console.log(`[E2E] ✅ claim created: ${total} USDT for ${wallet} (withdrawal: ${withdrawalId})`);
+    return { wallet, claimed: total, withdrawalId };
   }
 }

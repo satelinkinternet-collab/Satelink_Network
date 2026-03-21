@@ -194,12 +194,18 @@ export class JobDispatcher {
     async finalizeJob(job, node, result) {
         logger.info({ job_id: job.job_id, node_id: node.node_id, execution_id: result.execution_id }, 'job_completed');
 
-        // Record revenue event
+        // C-01: Record revenue in revenue_events_v2 with epoch_id
         try {
+            let epochId = null;
+            try {
+                const epochRow = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                epochId = epochRow?.id || null;
+            } catch (e) { /* fallback */ }
+
             await this.db.prepare(`
-                INSERT INTO revenue_events (amount, token, source, created_at)
-                VALUES (?, ?, ?, ?)
-            `).run(result.revenue, 'USDT', `job:${job.job_id}`, Date.now());
+                INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                VALUES (?, 'job_execution', ?, ?, ?, 'success', ?, ?)
+            `).run([epochId, node.node_id, job.client_id || 'system', result.revenue, `job_${job.job_id}`, Date.now()]);
         } catch (e) {
             logger.error({ err: e.message }, 'Failed to record revenue event');
         }

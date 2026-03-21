@@ -1,7 +1,12 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createAdminForensicsRouter(db, forensicsServices) {
     const router = Router();
+
+    // C-02: Enforce admin auth on all forensics endpoints
+    router.use(requireJWT, requireRole(['admin_super', 'admin_ops']));
+
     const { snapshotService, replayEngine, auditService, integrityJob } = forensicsServices;
 
     // ─── SNAPSHOTS ───

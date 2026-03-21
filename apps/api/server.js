@@ -29,6 +29,26 @@ process.on("uncaughtException", (err) => {
     process.exit(1);
 });
 
+// Graceful shutdown handler — drain in-flight work before exit
+let _shutdownInProgress = false;
+function gracefulShutdown(signal) {
+    if (_shutdownInProgress) return;
+    _shutdownInProgress = true;
+    logger.info(`[SHUTDOWN] Received ${signal}, starting graceful shutdown...`);
+    console.log(`[SHUTDOWN] Received ${signal}, draining connections...`);
+
+    // Give in-flight requests 10 seconds to complete
+    setTimeout(() => {
+        logger.warn("[SHUTDOWN] Forced exit after timeout");
+        process.exit(1);
+    }, 10000).unref();
+
+    // The actual cleanup happens in the app.listen block where we have access to server/db
+    process.emit('app:shutdown');
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,8 +103,21 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         logger.info("[BOOT] App initialized");
         const PORT = process.env.PORT || 8080;
 
-        app.listen(PORT, async () => {
+        const server = app.listen(PORT, async () => {
             logger.info(`Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: "postgres" });
+
+            // Wire graceful shutdown to this server + DB instance
+            process.on('app:shutdown', async () => {
+                try {
+                    server.close(() => logger.info("[SHUTDOWN] HTTP server closed"));
+                    await db.close();
+                    logger.info("[SHUTDOWN] DB pool closed");
+                    process.exit(0);
+                } catch (e) {
+                    logger.error("[SHUTDOWN] Error during cleanup", { error: e.message });
+                    process.exit(1);
+                }
+            });
 
             // Hardened: Mandatory REAL mode for payouts
             if (process.env.FEATURE_REAL_SETTLEMENT !== "true") {
