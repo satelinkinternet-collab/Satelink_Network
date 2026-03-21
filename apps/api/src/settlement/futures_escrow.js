@@ -37,11 +37,18 @@ export class FuturesEscrow {
             // Advance the payout straight to the Node Operator
             // In reality, this might be heavily staggered based on the Epoch timeline
             // But for MVPs, forward contracts often pay the principal immediately.
+            // C-01: Write to revenue_events_v2 with epoch_id
             const contractDetails = await this.db.prepare(`SELECT node_id FROM node_futures_contracts WHERE contract_id = ?`).get(contractId);
+            let epochId = null;
+            try {
+                const epochRow = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                epochId = epochRow?.id || null;
+            } catch (e) { /* fallback */ }
+
             await this.db.prepare(`
-                INSERT INTO revenue_events (amount, token, source, created_at)
-                VALUES (?, 'USDT', ?, ?)
-            `).run(price, `futures_${contractId}_sale_advance`, Date.now());
+                INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                VALUES (?, 'futures_sale', ?, ?, ?, 'success', ?, ?)
+            `).run([epochId, contractDetails?.node_id, investorWallet, price, `futures_${contractId}_sale`, Date.now()]);
 
             return true;
         } catch (e) {
@@ -75,11 +82,11 @@ export class FuturesEscrow {
 
             console.log(`[FuturesEscrow] Epoch ${epochId}: Diverting ${investorCut} USDT from ${nodeId} to Investor ${contract.buyer_wallet} (Contract: ${contract.contract_id})`);
 
-            // Mint revenue event for the investor
+            // C-01: Record investor yield in revenue_events_v2 with proper epoch_id
             await this.db.prepare(`
-                INSERT INTO revenue_events (amount, token, source, created_at)
-                VALUES (?, 'USDT', ?, ?)
-            `).run(investorCut, `futures_${contract.contract_id}_yield`, Date.now());
+                INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                VALUES (?, 'futures_yield', ?, ?, ?, 'success', ?, ?)
+            `).run([epochId, nodeId, contract.buyer_wallet, investorCut, `futures_${contract.contract_id}_yield_${epochId}`, Date.now()]);
 
             // Update stats
             await this.db.prepare(`

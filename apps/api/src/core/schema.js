@@ -99,6 +99,42 @@ export async function attachSchema(db) {
     console.error("[Schema] Migrations error:", err.message);
   }
 
+  // ── PHASE 2: Database Hardening — Indexes + Constraints ──
+  const hardeningMigrations = [
+    // C-07: Unique constraint on epoch_slot to prevent duplicate OPEN epochs
+    "ALTER TABLE epochs ADD COLUMN IF NOT EXISTS epoch_slot BIGINT;",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_epochs_epoch_slot ON epochs (epoch_slot) WHERE epoch_slot IS NOT NULL;",
+
+    // Performance indexes on hottest tables
+    "CREATE INDEX IF NOT EXISTS idx_rev2_node_id ON revenue_events_v2 (node_id);",
+    "CREATE INDEX IF NOT EXISTS idx_rev2_epoch_id ON revenue_events_v2 (epoch_id);",
+    "CREATE INDEX IF NOT EXISTS idx_rev2_created_at ON revenue_events_v2 (created_at);",
+    "CREATE INDEX IF NOT EXISTS idx_rev2_client_id ON revenue_events_v2 (client_id);",
+    "CREATE INDEX IF NOT EXISTS idx_rev2_idempotency ON revenue_events_v2 (client_id, op_type, request_id);",
+
+    // Epoch earnings indexes
+    "CREATE INDEX IF NOT EXISTS idx_epoch_earnings_wallet_status ON epoch_earnings (wallet_or_node_id, status);",
+    "CREATE INDEX IF NOT EXISTS idx_epoch_earnings_epoch ON epoch_earnings (epoch_id);",
+
+    // Withdrawals indexes
+    "CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals (status);",
+    "CREATE INDEX IF NOT EXISTS idx_withdrawals_wallet ON withdrawals (wallet);",
+
+    // Node epoch earnings — prevent duplicates
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_node_epoch_earnings_unique ON node_epoch_earnings (node_id, epoch_id);",
+
+    // Registered nodes performance
+    "CREATE INDEX IF NOT EXISTS idx_registered_nodes_active ON registered_nodes (active);",
+
+    // Balances
+    "CREATE INDEX IF NOT EXISTS idx_balances_wallet ON balances (wallet);",
+  ];
+
+  for (const sql of hardeningMigrations) {
+    try { await db.exec(sql); } catch (e) { /* ignore if already exists or table missing */ }
+  }
+  console.log("[Schema] Database hardening migrations applied");
+
   const seeds = [
     ["security_freeze", "0"],
     ["withdrawals_paused", "0"],

@@ -39,10 +39,17 @@ export class JobEscrow {
         // In the operations engine paradigm, nodes get paid during epoch rollups based on op_counts weight.
         // For direct escrow payouts, we can simulate depositing directly into the revenue_events ledger mapping the node.
         try {
+            // C-01: Write to revenue_events_v2 with valid epoch_id (not legacy table without epoch)
+            let epochId = null;
+            try {
+                const epochRow = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                epochId = epochRow?.id || null;
+            } catch (e) { /* fallback: null epoch_id will be caught by audit */ }
+
             await this.db.prepare(`
-                INSERT INTO revenue_events (amount, token, source, created_at)
-                VALUES (?, 'USDT', ?, ?)
-            `).run(payout, `marketplace_${jobId}_${executingNodeWallet}`, Date.now());
+                INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                VALUES (?, 'marketplace_escrow', ?, ?, ?, 'success', ?, ?)
+            `).run([epochId, executingNodeWallet, `marketplace_${jobId}`, payout, `escrow_${jobId}`, Date.now()]);
 
             // Increment the Marketplace global metrics to show the loop finished successfully
             await this.db.prepare(`

@@ -4,14 +4,11 @@ export function validateEnv() {
         process.env.NODE_ENV = 'development';
     }
 
+    // C-06: JWT_SECRET required in ALL environments — no fallback, no hardcoded defaults
     if (!process.env.JWT_SECRET) {
-        if (process.env.NODE_ENV === 'production') {
-            console.error('JWT_SECRET is not defined');
-            process.exit(1);
-        }
-        // Fallback for dev/Docker — 64-char default
-        process.env.JWT_SECRET = 'dev_secret__0123456789abcdef0123456789abcdef0123456789abcdef0123';
-        console.warn('[validateEnv] JWT_SECRET not set — using dev default (NOT safe for production)');
+        console.error('[FATAL] JWT_SECRET is not defined. Required in ALL environments.');
+        console.error('Set JWT_SECRET in .env or .env.local before starting the server.');
+        process.exit(1);
     }
 
     // JWT Length assertion (production only)
