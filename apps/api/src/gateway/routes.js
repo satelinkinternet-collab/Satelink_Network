@@ -37,7 +37,6 @@ import { createAiRouter } from './routes/ai_api.js';
 import { createJobSubmitRouter } from './routes/job_submit.js';
 import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
-import { OperationsEngine } from '../core/operations_engine.js';
 import { schedulerStatus } from '../economics/epoch_scheduler.js';
 
 // ── Previously Unmounted Route Modules ──
@@ -77,8 +76,9 @@ client.collectDefaultMetrics();
 
 let demoState = { active: null, expiry: 0 };
 
-export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } = {}) {
+export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, opsEngine } = {}) {
     const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
+    const requireEnterprise = [requireJWT, requireRole('enterprise')];
 
     app.post('/demo/traffic-spike', (req, res) => { demoState = { active: 'spike', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
     app.post('/demo/failure', (req, res) => { demoState = { active: 'failure', expiry: Date.now() + 60000 }; res.json({ ok: true }); });
@@ -206,8 +206,6 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             res.json({ ok: true, total_revenue: Number(totalRevenue?.total || 0), total_balances: Number(totalBalances?.total || 0) });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
-
-    const opsEngine = new OperationsEngine(db, null, null);
 
     app.get('/debug/run-epoch', async (req, res) => {
         try {

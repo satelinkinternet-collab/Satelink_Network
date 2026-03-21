@@ -7,17 +7,38 @@ import { attachHeartbeat, startHeartbeatWatchdog } from "./src/nodes/heartbeat.j
 import { attachRoutes } from "./src/gateway/routes.js";
 import { attachUI } from "./src/gateway/ui.js";
 import { EconomicLedger } from "./src/economics/economic_ledger.js";
+import { OperationsEngine } from "./src/core/operations_engine.js";
+
+// Minimal stubs for missing settlement engine components (Post-Merge Fix)
+class AdapterRegistry {
+  constructor() { this.adapters = new Map(); }
+  register(adapter) { this.adapters.set(adapter?.name || adapter?.constructor?.name, adapter); }
+  get(name) { return this.adapters.get(name); }
+}
+
+class SettlementEngine {
+  constructor(db, ledger, registry, opts) {
+    this.db = db;
+    this.ledger = ledger;
+    this.registry = registry;
+    this.opts = opts;
+  }
+}
+
+class SimulatedAdapter { name = 'SimulatedAdapter'; }
+class ShadowAdapter { name = 'ShadowAdapter'; }
 
 export async function createApp(db) {
   const app = express();
   const ledger = new EconomicLedger(db);
+  const opsEngine = new OperationsEngine(db, null, null);
 
   // Attach modules in same order as server.js
   attachBaseMiddleware(app);
   await attachSchema(db);
   attachSecurity(app, db);
   attachHeartbeat(app, db);
-  attachRoutes(app, db, { ledger });
+  attachRoutes(app, db, { ledger, opsEngine });
   attachUI(app, db);
 
   // ── Settlement Engine Initialization ──

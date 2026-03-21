@@ -12,7 +12,9 @@ const OP_CONFIG = {
   'claim_validation_op': { price: 0.02, limit: 20, node_limit: 40 },
   'withdraw_execution_op': { price: 0.05, limit: 10, node_limit: 20 },
   'epoch_score_compute': { price: 0.05, limit: 5, node_limit: 10 },
-  'ai_inference': { price: 0.05, limit: 60, node_limit: 120 }
+  'ai_inference': { price: 0.05, limit: 60, node_limit: 120 },
+  'rpc_call': { price: 0.01, limit: 100, node_limit: 200 },
+  'ai_task': { price: 0.05, limit: 60, node_limit: 120 }
 };
 
 export class OperationsEngine {
@@ -73,18 +75,23 @@ export class OperationsEngine {
           INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node) 
           VALUES (?, ?, 1, ?, ?) 
           ON CONFLICT(op_type) DO UPDATE SET 
+            enabled = 1,
             max_per_minute_per_client = EXCLUDED.max_per_minute_per_client,
             max_per_minute_per_node = EXCLUDED.max_per_minute_per_node
         `).run([op, conf.price, conf.limit || 60, conf.node_limit || 120]);
       }
     } catch (e) { console.error("Error seeding pricing:", e); }
 
-    const row = await this.db.prepare("SELECT COUNT(*) as c FROM op_weights").get([]);
-    if (row && row.c == 0) {
+    try {
       const ops = Object.keys(OP_CONFIG);
       for (const op of ops) {
-        await this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run([op, 1.0]);
+        await this.db.prepare(`
+          INSERT INTO op_weights (op_type, weight) VALUES (?, ?)
+          ON CONFLICT(op_type) DO UPDATE SET weight = EXCLUDED.weight
+        `).run([op, 1.0]);
       }
+    } catch (e) {
+      console.error("Error seeding op_weights:", e);
     }
 
     /*

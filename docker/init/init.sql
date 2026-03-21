@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS registered_nodes (
     node_type TEXT DEFAULT 'edge',
     active INTEGER DEFAULT 1,
     is_flagged INTEGER DEFAULT 0,
-    last_heartbeat INTEGER,
+    last_heartbeat BIGINT,
     last_nonce INTEGER DEFAULT 0,
     infra_reserved REAL DEFAULT 0,
-    "updatedAt" INTEGER,
+    "updatedAt" BIGINT,
     latency INTEGER DEFAULT 0,
     bandwidth REAL DEFAULT 0
 );
@@ -34,14 +34,14 @@ CREATE TABLE IF NOT EXISTS op_counts (
     op_type TEXT NOT NULL,
     ops REAL DEFAULT 0,
     weight REAL DEFAULT 1.0,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY (epoch_id, user_wallet, op_type)
 );
 
 CREATE TABLE IF NOT EXISTS rate_limits (
     node_wallet TEXT NOT NULL,
     op_type TEXT NOT NULL,
-    window_start INTEGER NOT NULL,
+    window_start BIGINT NOT NULL,
     count INTEGER DEFAULT 0,
     PRIMARY KEY (node_wallet, op_type)
 );
@@ -51,14 +51,14 @@ CREATE TABLE IF NOT EXISTS heartbeat_security_log (
     node_wallet TEXT NOT NULL,
     event_type TEXT NOT NULL,
     details TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS auth_failures (
     id SERIAL PRIMARY KEY,
     path TEXT NOT NULL,
     ip TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 -- ── Revenue tables ──────────────────────────────────────────────
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS payments_inbox (
     event_id TEXT NOT NULL,
     status TEXT NOT NULL,
     payload_json TEXT,
-    created_at INTEGER NOT NULL,
+    created_at BIGINT NOT NULL,
     PRIMARY KEY (provider, event_id)
 );
 
@@ -85,14 +85,14 @@ CREATE TABLE IF NOT EXISTS revenue_events (
     epoch_id INTEGER,
     on_chain_tx TEXT,
     enterprise_id TEXT,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 -- ── Epoch Revenue Pipeline V2 ───────────────────────────────────
 CREATE TABLE IF NOT EXISTS epochs (
     id SERIAL PRIMARY KEY,
-    starts_at INTEGER NOT NULL,
-    ends_at INTEGER,
+    starts_at BIGINT NOT NULL,
+    ends_at BIGINT,
     status TEXT DEFAULT 'OPEN',
     total_revenue_usdt REAL DEFAULT 0,
     node_pool_usdt REAL DEFAULT 0,
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS execution_metrics (
     chain TEXT,
     requests_handled INTEGER DEFAULT 0,
     latency_avg REAL DEFAULT 0,
-    updated_at INTEGER
+    updated_at BIGINT
 );
 
 -- ── Enterprise ──────────────────────────────────────────────────
@@ -183,13 +183,13 @@ CREATE TABLE IF NOT EXISTS enterprise_clients (
     monthly_minimum REAL DEFAULT 1000,
     deposit_balance REAL DEFAULT 0,
     status TEXT DEFAULT 'ACTIVE',
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS enterprise_api_keys (
     api_key TEXT PRIMARY KEY,
     client_id TEXT REFERENCES enterprise_clients(client_id),
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- ── Genesis nodes ───────────────────────────────────────────────
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS genesis_nodes (
     region TEXT,
     capabilities TEXT,
     status TEXT DEFAULT 'ACTIVE',
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS external_providers (
@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS external_providers (
     supported_chains TEXT,
     latency_score REAL DEFAULT 0,
     cost_per_request REAL DEFAULT 0,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS node_capabilities (
@@ -217,7 +217,7 @@ CREATE TABLE IF NOT EXISTS node_capabilities (
     capability TEXT,
     chain TEXT,
     endpoint TEXT,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS settlement_evm_txs (
@@ -247,15 +247,15 @@ CREATE TABLE IF NOT EXISTS job_queue_log (
     reward REAL,
     status TEXT,
     route TEXT DEFAULT 'INTERNAL',
-    created_at INTEGER,
-    completed_at INTEGER
+    created_at BIGINT,
+    completed_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS workload_pricing (
     workload_type TEXT PRIMARY KEY,
     base_cost_usdt REAL NOT NULL,
     base_reward_usdt REAL NOT NULL,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 -- ── Workload discovery ──────────────────────────────────────────
@@ -343,9 +343,9 @@ CREATE TABLE IF NOT EXISTS pair_codes (
     wallet TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     device_id TEXT,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    used_at INTEGER
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    used_at BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_pair_codes_wallet ON pair_codes(wallet);
@@ -355,9 +355,10 @@ CREATE TABLE IF NOT EXISTS nodes (
     node_id TEXT PRIMARY KEY,
     wallet TEXT,
     device_type TEXT DEFAULT 'undefined',
+    management_type TEXT DEFAULT 'community',
     status TEXT DEFAULT 'pending',
-    last_seen INTEGER,
-    created_at INTEGER
+    last_seen BIGINT,
+    created_at BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_nodes_wallet ON nodes(wallet);
@@ -369,7 +370,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     action_type TEXT NOT NULL,
     target_id TEXT,
     metadata TEXT,
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_wallet);
@@ -379,17 +380,17 @@ CREATE TABLE IF NOT EXISTS users (
     primary_wallet TEXT UNIQUE NOT NULL,
     role TEXT DEFAULT 'user',
     status TEXT DEFAULT 'active',
-    created_at INTEGER,
-    last_login_at INTEGER
+    created_at BIGINT,
+    last_login_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS auth_nonces (
     id SERIAL PRIMARY KEY,
     address TEXT NOT NULL,
     nonce TEXT NOT NULL,
-    expires_at INTEGER NOT NULL,
-    used_at INTEGER,
-    created_at INTEGER NOT NULL
+    expires_at BIGINT NOT NULL,
+    used_at BIGINT,
+    created_at BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_auth_nonces_address ON auth_nonces(address);
@@ -403,7 +404,7 @@ CREATE TABLE IF NOT EXISTS api_usage (
     method TEXT,
     status_code INTEGER,
     latency_ms INTEGER,
-    created_at INTEGER NOT NULL
+    created_at BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS error_events (
@@ -419,8 +420,8 @@ CREATE TABLE IF NOT EXISTS error_events (
     request_id TEXT,
     client_id TEXT,
     count INTEGER DEFAULT 1,
-    first_seen_at INTEGER,
-    last_seen_at INTEGER
+    first_seen_at BIGINT,
+    last_seen_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS conversions (
@@ -439,7 +440,7 @@ CREATE TABLE IF NOT EXISTS slow_queries (
     avg_ms REAL,
     p95_ms REAL,
     count INTEGER DEFAULT 1,
-    last_seen_at INTEGER,
+    last_seen_at BIGINT,
     sample_sql TEXT,
     source TEXT,
     trace_id TEXT
@@ -460,7 +461,7 @@ CREATE TABLE IF NOT EXISTS security_alerts (
     assigned_to TEXT,
     created_at BIGINT,
     resolved_by TEXT,
-    resolved_at INTEGER,
+    resolved_at BIGINT,
     resolution_notes TEXT
 );
 
@@ -490,8 +491,8 @@ CREATE TABLE IF NOT EXISTS automation_jobs (
     interval_ms INTEGER NOT NULL,
     payload TEXT NOT NULL DEFAULT '{}',
     status TEXT NOT NULL DEFAULT 'active',
-    created_at INTEGER NOT NULL,
-    last_fire INTEGER
+    created_at BIGINT NOT NULL,
+    last_fire BIGINT
 );
 
 -- ── Referrals ───────────────────────────────────────────────────
@@ -657,35 +658,35 @@ CREATE TABLE IF NOT EXISTS abuse_events (
 CREATE TABLE IF NOT EXISTS operator_billing (
     operator_id TEXT PRIMARY KEY,
     nodeops_monthly_cost_usdt REAL NOT NULL DEFAULT 0,
-    prepaid_until INTEGER, 
-    reserve_start_date INTEGER, 
+    prepaid_until BIGINT, 
+    reserve_start_date BIGINT, 
     reserve_months_total INTEGER DEFAULT 6,
     reserve_rate REAL DEFAULT 0.10,
     reserve_balance_usdt REAL DEFAULT 0,
     reserve_target_usdt REAL,
     arrears_usdt REAL DEFAULT 0,
-    created_at INTEGER,
-    updated_at INTEGER
+    created_at BIGINT,
+    updated_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS ledger_entries (
     id TEXT PRIMARY KEY,
     operator_id TEXT NOT NULL,
-    period_start INTEGER,
-    period_end INTEGER,
+    period_start BIGINT,
+    period_end BIGINT,
     type TEXT NOT NULL,
     amount_usdt REAL NOT NULL,
     direction TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     reference_id TEXT,
-    created_at INTEGER,
-    updated_at INTEGER
+    created_at BIGINT,
+    updated_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS daily_ops_reports (
     id SERIAL PRIMARY KEY,
-    start_ts INTEGER,
-    end_ts INTEGER,
+    start_ts BIGINT,
+    end_ts BIGINT,
     error_count INTEGER,
     slow_query_count INTEGER,
     incident_count INTEGER,
@@ -693,7 +694,7 @@ CREATE TABLE IF NOT EXISTS daily_ops_reports (
     active_invites INTEGER,
     top_errors TEXT, -- JSON
     top_slow_queries TEXT, -- JSON
-    created_at INTEGER
+    created_at BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS node_registry (
@@ -703,7 +704,7 @@ CREATE TABLE IF NOT EXISTS node_registry (
     capacity    REAL NOT NULL DEFAULT 10,
     reputation  REAL NOT NULL DEFAULT 100,
     status      TEXT NOT NULL DEFAULT 'ACTIVE',
-    created_at  INTEGER NOT NULL
+    created_at  BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS backup_log (
