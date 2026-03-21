@@ -15,7 +15,7 @@
  */
 
 import { Router } from 'express';
-import { rateLimit } from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 import crypto from 'crypto';
 
 import { generateNonce, verifySignature } from './wallet_auth.js';
@@ -35,10 +35,7 @@ export function createAuthController(db) {
     const challengeLimiter = rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
         max: 20,
-        keyGenerator: (req) => {
-            const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-            return crypto.createHash('sha256').update(ip + process.env.IP_HASH_SALT).digest('hex').substring(0, 16);
-        },
+        keyGenerator: (req) => ipKeyGenerator(req),
         message: { ok: false, error: 'Too many requests. Please try again later.' },
     });
 
