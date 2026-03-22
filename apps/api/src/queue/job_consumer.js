@@ -61,8 +61,9 @@ export class JobConsumer {
         try {
             const result = await this._executeWorkload(job);
 
+            let revenueRecorded = false;
             if (this.opsEngine) {
-                await this.opsEngine.executeOp({
+                const revenueResult = await this.opsEngine.executeOp({
                     op_type: job.job_type || 'ai_inference',
                     client_id: job.client_id,
                     node_id: result?.node_id || this.consumerName,

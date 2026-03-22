@@ -38,9 +38,14 @@ export class ProfitProtection {
         const result = calculateMargin(userPrice, totalCost);
 
         // 1. Determine Dynamic Threshold
-        const threshold = this.dynamicGuard
+        let threshold = this.dynamicGuard
             ? this.dynamicGuard.calculateTargetMargin(networkStats)
             : 30; // Fallback to 30% if no dynamic guard
+
+        // 1b. Configurable Override (Phase 2 & 3)
+        if (process.env.PROFIT_THRESHOLD !== undefined) {
+            threshold = parseFloat(process.env.PROFIT_THRESHOLD) || 10;
+        }
 
         profitMarginThreshold.set(threshold);
         profitMarginCurrent.set(result.margin_percentage);
@@ -58,9 +63,11 @@ export class ProfitProtection {
             if (adjustedValidation.status === 'ok') {
                 logger.info({
                     job_id: workload.id,
-                    old_margin: result.margin_percentage,
-                    new_margin: adjustedResult.margin_percentage,
-                    threshold
+                    revenue: userPrice,
+                    cost: adjustedCost,
+                    margin: adjustedResult.margin_percentage,
+                    threshold,
+                    decision: 'accepted_with_adjustment'
                 }, 'profit_guard_adjust');
 
                 this._recordSuccess(adjustedResult);
@@ -71,12 +78,33 @@ export class ProfitProtection {
                 };
             }
 
+            // PHASE 5: SMART TUNING (TESTING MODE)
+            if (process.env.NODE_ENV !== 'production' && result.margin_percentage > 5) {
+                logger.warn({
+                    job_id: workload.id,
+                    revenue: userPrice,
+                    cost: totalCost,
+                    margin: result.margin_percentage,
+                    threshold,
+                    decision: 'accepted_test_mode'
+                }, 'profit_guard_smart_tune_pass');
+                
+                this._recordSuccess(result);
+                return {
+                    allowed_execution: true,
+                    adjusted_node_reward: nodeReward,
+                    expected_profit: result.profit
+                };
+            }
+
+            // PHASE 4: SAFETY LOGGING (REJECT)
             logger.warn({
                 job_id: workload.id,
                 revenue: userPrice,
                 cost: totalCost,
                 margin: result.margin_percentage,
-                threshold
+                threshold,
+                decision: 'rejected'
             }, 'profit_guard_reject');
 
             jobsRejectedLowMargin.inc();
@@ -88,7 +116,15 @@ export class ProfitProtection {
             };
         }
 
-        logger.info({ job_id: workload.id, margin: result.margin_percentage, threshold }, 'profit_guard_pass');
+        // PHASE 4: SAFETY LOGGING (PASS)
+        logger.info({ 
+            job_id: workload.id, 
+            revenue: userPrice,
+            cost: totalCost,
+            margin: result.margin_percentage, 
+            threshold,
+            decision: 'accepted'
+        }, 'profit_guard_pass');
         this._recordSuccess(result);
 
         return {

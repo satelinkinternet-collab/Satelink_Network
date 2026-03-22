@@ -59,26 +59,42 @@ function pickWorkload() {
     return WORKLOAD_TYPES[0];
 }
 
-// Submit one operation via the ledger execute endpoint
+// Submit one operation via the demand entry endpoint
 async function submitOp(workload) {
+    let payload = {};
+    const reqId = requestId();
+    switch (workload.category) {
+        case 'rpc_call':
+            payload = { method: 'eth_call', params: [reqId] };
+            break;
+        case 'ai_inference':
+            payload = { model: 'gpt-4', prompt: `simulate inference ${reqId}` };
+            break;
+        case 'data_processing':
+            payload = { event: 'data.process', data: { id: reqId } };
+            break;
+        case 'automation_job':
+            payload = { trigger_type: 'cron', action: `run_job_${reqId}` };
+            break;
+    }
+
     const body = {
-        op_type: workload.op_type,
-        node_id: pick(NODE_IDS),
-        client_id: pick(CLIENT_IDS),
-        request_id: requestId(),
-        timestamp: Math.floor(Date.now() / 1000),
-        payload_hash: `sim-${Math.random().toString(36).slice(2, 14)}`,
+        ...payload,
+        reward: Math.random() * 0.01 + 0.001,
+        hint: workload.category === 'rpc_call' ? 'rpc' :
+              workload.category === 'ai_inference' ? 'ai' :
+              workload.category === 'data_processing' ? 'webhook' : 'automation',
     };
 
     stats.total++;
     stats.byCategory[workload.category].sent++;
 
     try {
-        const res = await fetch(`${API_BASE}/api/admin/ledger/execute`, {
+        const res = await fetch(`${API_BASE}/api/demand/submit`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...(ADMIN_TOKEN ? { Authorization: `Bearer ${ADMIN_TOKEN}` } : {}),
+                ...(ADMIN_TOKEN ? { 'x-api-key': ADMIN_TOKEN } : {}),
             },
             body: JSON.stringify(body),
         });
