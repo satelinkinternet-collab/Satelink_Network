@@ -28,20 +28,17 @@ services:
       dockerfile: Dockerfile.api
     container_name: satelink-api
     environment:
-      - NODE_ENV=production
-      - PORT=8080
-      - LOG_LEVEL=info
-      - JWT_SECRET=devsecret_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abc
-      - DB_TYPE=postgres
-      - REDIS_HOST=satelink-redis
-      - REDIS_PORT=6379
-      - FEATURE_REAL_SETTLEMENT=true
-      - SATELINK_MODE=production
-      - DATABASE_URL=postgres://satelink:satelinkpass@satelink-db:5432/satelink
-      - FUSE_USDT_CONTRACT=0x5FbDB2315678afecb367f032d93F642f64180aa3
-      - FUSE_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-      - FUSE_RPC_URL=http://host.docker.internal:8545
-      - FUSE_CHAIN_ID=31337
+      <<: *common-env
+      PORT: 8080
+      LOG_LEVEL: info
+      DB_TYPE: postgres
+      REDIS_HOST: satelink-redis
+      REDIS_PORT: 6379
+      SATELINK_MODE: production
+      FUSE_USDT_CONTRACT: ${FUSE_USDT_CONTRACT:-}
+      FUSE_PRIVATE_KEY: ${FUSE_PRIVATE_KEY:-}
+      FUSE_RPC_URL: ${FUSE_RPC_URL:-http://host.docker.internal:8545}
+      FUSE_CHAIN_ID: ${FUSE_CHAIN_ID:-122}
 
     ports:
       - "8080:8080"
@@ -68,14 +65,12 @@ services:
     container_name: satelink-worker
     command: node apps/api/worker.js
     environment:
-      - NODE_ENV=development
-      - PORT=8081
-      - LOG_LEVEL=info
-      - JWT_SECRET=devsecret_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abc
-      - DB_TYPE=postgres
-      - REDIS_HOST=satelink-redis
-      - REDIS_PORT=6379
-      - DATABASE_URL=postgres://satelink:satelinkpass@satelink-db:5432/satelink
+      <<: *common-env
+      PORT: 8081
+      LOG_LEVEL: info
+      DB_TYPE: postgres
+      REDIS_HOST: satelink-redis
+      REDIS_PORT: 6379
     ports:
       - "8081:8081"
     volumes:
@@ -90,23 +85,14 @@ services:
   # ── Dashboard (Next.js) ──
   dashboard:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./apps/web
+      dockerfile: Dockerfile
     container_name: satelink-dashboard
+    ports:
+      - "3000:3000"
     environment:
-      - NODE_ENV=development
-      - LOG_LEVEL=info
-      - WORKER_INTERVAL_MS=10000
-      - JWT_SECRET=devsecret_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abc
-      - DB_TYPE=postgres
-      - REDIS_HOST=satelink-redis
-      - REDIS_PORT=6379
-      - DATABASE_URL=postgres://satelink:satelinkpass@satelink-db:5432/satelink
-      - FEATURE_REAL_SETTLEMENT=true
-      - FUSE_USDT_CONTRACT=0x5FbDB2315678afecb367f032d93F642f64180aa3
-      - FUSE_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-      - FUSE_RPC_URL=http://host.docker.internal:8545
-      - FUSE_CHAIN_ID=31337
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://api:8080
     volumes:
       - satelink-data:/usr/src/app/data
     restart: unless-stopped
@@ -182,5 +168,6 @@ services:
 
 volumes:
   postgres-data:
+  satelink-data:
   prometheus-data:
   grafana-data:

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "dev:all": "cd .. && bash dev.sh",
     "dev:full": "cd .. && bash dev.sh",
     "dev:backend": "cd .. && node server.js",

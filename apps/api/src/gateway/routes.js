@@ -71,6 +71,7 @@ import { createEntApiRouter } from './routes/ent_api_v2.js';
 import { createPublicPartnersRouter } from './routes/public_partners.js';
 import { createAdminAutonomousRouter } from './routes/admin_autonomous.js';
 import { createDashboardApiRouter } from '../dashboard_api/index.js';
+import { createWithdrawalRouter } from './routes/withdrawal_api.js';
 
 client.collectDefaultMetrics();
 
@@ -184,7 +185,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     // ── Economics summary (used by RevenueSplitChart) ──
     app.get('/api/economics/summary', async (req, res) => {
         try {
-            const summary = getEconomicsSummary(db);
+            const summary = await getEconomicsSummary(db);
             res.json({ ok: true, ...summary });
         } catch (e) {
             res.json({ ok: true, total_revenue: 0, node_share: 0, platform_share: 0, distribution_share: 0 });
@@ -203,6 +204,22 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
 
     if (futuresEscrow) app.use('/v1/futures', createFuturesRouter(db, futuresEscrow));
     if (opsAdapter) app.use('/v1/ops', createOpsRouter(db, opsAdapter));
+
+    // ── Workload execution via OperationsEngine (cert: POST /v1/ops/execute) ──
+    app.post('/v1/ops/execute', async (req, res) => {
+        try {
+            if (!opsEngine) return res.status(503).json({ ok: false, error: 'OperationsEngine not initialized' });
+            const { op_type, node_id, client_id, request_id, timestamp, payload_hash, amount_usdt } = req.body;
+            const result = await opsEngine.executeOp({ op_type, node_id, client_id, request_id, timestamp, payload_hash, amount_usdt });
+            res.json(result);
+        } catch (e) {
+            console.error('[/v1/ops/execute]', e.message);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ── Demand submit alias at /api/demand/submit ──
+    app.use('/api/demand', demandApiRouter);
 
     app.get('/system/status', async (req, res) => {
         try {
@@ -262,6 +279,48 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
                 res.status(500).json({ ok: false, error: e.message });
             }
         });
+    }
+
+    // ── Admin API aliases (cert: /admin-api/economics, /admin-api/settlement-mode) ──
+    app.get('/admin-api/economics', async (req, res) => {
+        try {
+            const summary = await getEconomicsSummary(db);
+            res.json({ ok: true, ...summary });
+        } catch (e) {
+            res.json({ ok: true, total_revenue: 0, node_share: 0, platform_share: 0, distribution_share: 0 });
+        }
+    });
+
+    app.get('/admin-api/settlement-mode', (req, res) => {
+        const mode = process.env.FEATURE_REAL_SETTLEMENT === 'true' ? 'live' : 'simulated';
+        res.json({ ok: true, mode, adapter: mode === 'live' ? 'evm' : 'simulated' });
+    });
+
+    // ── Withdrawal API (must be before catch-all) ──
+    app.use('/api', createWithdrawalRouter(db));
+
+    // ── Route debug log ──
+    if (process.env.NODE_ENV !== 'production') {
+        try {
+            const stack = app._router?.stack || [];
+            const routes = [];
+            stack.forEach((layer) => {
+                if (layer.route) {
+                    const methods = Object.keys(layer.route.methods).join(',').toUpperCase();
+                    routes.push(`  ${methods} ${layer.route.path}`);
+                } else if (layer.name === 'router' && layer.handle?.stack) {
+                    layer.handle.stack.forEach((r) => {
+                        if (r.route) {
+                            const methods = Object.keys(r.route.methods).join(',').toUpperCase();
+                            routes.push(`  ${methods} ${r.route.path}`);
+                        }
+                    });
+                }
+            });
+            console.log(`[ROUTES] ${routes.length} registered endpoints`);
+        } catch (e) {
+            console.log('[ROUTES] Route enumeration not available in this Express version');
+        }
     }
 
     app.all('*catchall', (req, res) => res.status(404).json({ ok: false, error: "Not Found" }));

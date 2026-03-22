@@ -30,8 +30,9 @@ export async function generateNonce(db, address) {
 
     // Persist nonce in DB — replaces any existing nonce for this address
     await db.query(
-        `INSERT OR REPLACE INTO auth_nonces (address, nonce, created_at, expires_at)
-         VALUES (?, ?, ?, ?)`,
+        `INSERT INTO auth_nonces (address, nonce, created_at, expires_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (address) DO UPDATE SET nonce = EXCLUDED.nonce, created_at = EXCLUDED.created_at, expires_at = EXCLUDED.expires_at`,
         [address.toLowerCase(), nonce, now, expiresAt]
     );
 

@@ -126,8 +126,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
                 console.log('REAL SETTLEMENT: ACTIVE');
             }
 
-            // Register Withdrawal API Route (Critical fix)
-            app.use('/api', createWithdrawalRouter(db));
+            // Withdrawal API Route is now mounted in routes.js (before catch-all 404)
 
             try {
                 const detector = new DepositDetector(db);

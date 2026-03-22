@@ -30,6 +30,12 @@
     "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast",
     "start": "node apps/api/server.js",
     "gateway": "node apps/api/gateway.js",
-    "worker": "node apps/api/worker.js"
+    "worker": "node apps/api/worker.js",
+    "certify": "mkdir -p logs && node scripts/certify_satelink.js",
+    "soak-test": "bash scripts/run_72h_test.sh --local",
+    "soak-test:1h": "DURATION_HOURS=1 bash scripts/run_72h_test.sh --local",
+    "soak-test:docker": "bash scripts/run_72h_test.sh",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:skip-cert": "bash scripts/deploy.sh --skip-cert"
   }
 }
