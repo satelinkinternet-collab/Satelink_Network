@@ -51,18 +51,28 @@ async function runEpochCycle(db) {
         console.log("[AUTO-EPOCH] Checking epoch");
         const now = Math.floor(Date.now() / 1000);
 
-        // 1. Find OPEN epoch
-        let epoch = await db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get([]);
+        // 1. Find oldest OPEN epoch with revenue first; fall back to any OPEN epoch
+        let epoch = await db.prepare(`
+            SELECT e.id, COUNT(r.id) as rev_count, COALESCE(SUM(r.amount_usdt), 0) as rev_total
+            FROM epochs e
+            LEFT JOIN revenue_events_v2 r ON r.epoch_id = e.id
+            WHERE e.status = 'OPEN'
+            GROUP BY e.id
+            ORDER BY COUNT(r.id) DESC, e.id ASC
+            LIMIT 1
+        `).get([]);
         if (!epoch) {
             const r = await db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-            epoch = { id: r.lastInsertRowid };
+            epoch = { id: r.lastInsertRowid, rev_count: 0, rev_total: 0 };
         }
         const epochId = epoch.id;
 
-        // 2. Check revenue
-        const rev = await db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE epoch_id = ?").get([epochId]);
+        // 2. Check revenue (use pre-fetched counts if available, otherwise query)
+        const revCount = Number(epoch.rev_count || 0);
+        const revTotal = Number(epoch.rev_total || 0);
+        const rev = { count: revCount, total: revTotal };
 
-        if (rev.count === 0) {
+        if (revCount === 0) {
             console.log("[AUTO-EPOCH] No revenue, skipping aggregation");
             schedulerStatus.last_run_time = Date.now();
             schedulerStatus.last_status = "skipped";
@@ -72,7 +82,7 @@ async function runEpochCycle(db) {
 
         // 3. Idempotency: skip if already has earnings
         const existing = await db.prepare("SELECT COUNT(*) as count FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
-        if (existing.count > 0) {
+        if (Number(existing.count) > 0) {
             console.log("[AUTO-EPOCH] Epoch", epochId, "already finalized, skipping");
             schedulerStatus.last_run_time = Date.now();
             schedulerStatus.last_status = "skipped";
@@ -83,7 +93,7 @@ async function runEpochCycle(db) {
         console.log("[AUTO-EPOCH] Closing epoch", epochId, "| revenue:", rev.count, "events,", rev.total, "USDT");
 
         // 4. 50/30/20 split
-        const totalRevenue = rev.total;
+        const totalRevenue = Number(rev.total);
         const nodePool = totalRevenue * 0.50;
         const platformFee = totalRevenue * 0.30;
         const distroPool = totalRevenue * 0.20;
@@ -96,24 +106,26 @@ async function runEpochCycle(db) {
             GROUP BY node_id
         `).all([epochId]);
 
-        const totalNodeRevenue = nodeContributions.reduce((s, n) => s + n.revenue, 0);
+        const totalNodeRevenue = nodeContributions.reduce((s, n) => s + Number(n.revenue), 0);
 
-        // 6. Atomic aggregation
-        await db.transaction(async () => {
+        // 6. Atomic aggregation — C-01 fix: invoke returned function with ()
+        const txFn = db.transaction(async () => {
             await db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, 'UNPAID', ?)").run([epochId, platformFee, now]);
             await db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'distribution_pool', 'DIST_POOL', ?, 'UNPAID', ?)").run([epochId, distroPool, now]);
 
             for (const node of nodeContributions) {
                 const share = totalNodeRevenue > 0
-                    ? (node.revenue / totalNodeRevenue) * nodePool
+                    ? (Number(node.revenue) / totalNodeRevenue) * nodePool
                     : 0;
                 if (share > 0) {
                     await db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, ?, 'UNPAID', ?)").run([epochId, node.node_id, share, now]);
                 }
             }
 
-            await db.prepare("UPDATE epochs SET status = 'FINALIZED', ends_at = ?, total_revenue_usdt = ?, node_pool_usdt = ?, platform_share_usdt = ?, distributor_share_usdt = ? WHERE id = ?").run([now, totalRevenue, nodePool, platformFee, distroPool, epochId]);
+            // C-02 fix: use 'CLOSED' (matches economics_stats.js queries)
+            await db.prepare("UPDATE epochs SET status = 'CLOSED', ends_at = ?, total_revenue_usdt = ?, node_pool_usdt = ?, platform_share_usdt = ?, distributor_share_usdt = ? WHERE id = ?").run([now, totalRevenue, nodePool, platformFee, distroPool, epochId]);
         });
+        await txFn();
         
         console.log('[REVENUE_TRACE] revenue_recorded');
 

@@ -53,13 +53,13 @@ export function createNodeNetworkRouter(db, opsEngine) {
                 const wallet = req.body.wallet || node_id;
                 const mgmt = req.body.management_type || 'self_hosted';
                 db.prepare(`
-                    INSERT INTO registered_nodes (wallet, node_id, node_type, active, last_heartbeat, updatedAt, management_type)
+                    INSERT INTO registered_nodes (wallet, node_id, node_type, active, last_heartbeat, updated_at, management_type)
                     VALUES (?, ?, ?, 1, ?, ?, ?)
                     ON CONFLICT(wallet) DO UPDATE SET
                         node_id = excluded.node_id,
                         node_type = excluded.node_type,
                         active = 1,
-                        updatedAt = excluded.updatedAt
+                        updated_at = excluded.updated_at
                 `).run(wallet, node_id, node_type || 'community', now, now, mgmt);
             } catch (e) {
                 // Best-effort persistence

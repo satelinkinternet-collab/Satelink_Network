@@ -1,31 +1,32 @@
 /**
  * Aggregates Economics Revenue Split information directly from the database schema.
- * Operates purely on `epochs` where `status = 'CLOSED'`.
+ * Operates on `epochs` where `status = 'CLOSED'` (canonical) or 'FINALIZED' (legacy).
  */
 export async function getEconomicsSummary(db) {
-    // 1. Total Allocations (All Closed Epochs)
+    // 1. Total Allocations (All Closed/Finalized Epochs)
     const totals = await db.prepare(`
         SELECT
-            SUM(total_revenue_usdt) as totalRevenueUsdt,
-            SUM(node_pool_usdt) as totalNodePoolUsdt,
-            SUM(platform_share_usdt) as totalPlatformShareUsdt,
-            SUM(distributor_share_usdt) as totalDistributorShareUsdt
+            SUM(total_revenue_usdt) as totalrevenueusdt,
+            SUM(node_pool_usdt) as totalnodepoolusdt,
+            SUM(platform_share_usdt) as totalplatformshareusdt,
+            SUM(distributor_share_usdt) as totaldistributorshareusdt
         FROM epochs
-        WHERE status = 'CLOSED'
+        WHERE status IN ('CLOSED', 'FINALIZED')
     `).get() || {};
 
     const coalesce = (val) => val === null || val === undefined ? 0 : Number(val);
 
-    const totalRevenueUsdt = coalesce(totals.totalRevenueUsdt);
-    const totalNodePoolUsdt = coalesce(totals.totalNodePoolUsdt);
-    const totalPlatformShareUsdt = coalesce(totals.totalPlatformShareUsdt);
-    const totalDistributorShareUsdt = coalesce(totals.totalDistributorShareUsdt);
+    // PostgreSQL lowercases unquoted column aliases
+    const totalRevenueUsdt = coalesce(totals.totalrevenueusdt);
+    const totalNodePoolUsdt = coalesce(totals.totalnodepoolusdt);
+    const totalPlatformShareUsdt = coalesce(totals.totalplatformshareusdt);
+    const totalDistributorShareUsdt = coalesce(totals.totaldistributorshareusdt);
 
     // 2. Last Closed Epoch Properties
     const lastEpoch = await db.prepare(`
         SELECT id, total_revenue_usdt, closed_at
         FROM epochs
-        WHERE status = 'CLOSED'
+        WHERE status IN ('CLOSED', 'FINALIZED')
         ORDER BY id DESC
         LIMIT 1
     `).get() || { id: 0, total_revenue_usdt: 0, closed_at: null };

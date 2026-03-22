@@ -93,7 +93,29 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.use(gwMiddleware);
     app.use('/v1/gateway', gwRouter);
 
-    app.get("/health", (req, res) => res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" }));
+    app.get("/health", async (req, res) => {
+        const checks = { db: "unknown", redis: "unknown" };
+        let healthy = true;
+        // DB check
+        try {
+            await db.prepare("SELECT 1 as ping").get();
+            checks.db = "connected";
+        } catch (e) {
+            checks.db = "disconnected";
+            healthy = false;
+        }
+        // Redis check
+        try {
+            const { connection: redisConn } = await import('../queue/redisClient.js');
+            await redisConn.ping();
+            checks.redis = "connected";
+        } catch (e) {
+            checks.redis = "disconnected";
+            healthy = false;
+        }
+        const status = healthy ? "ok" : "degraded";
+        res.status(healthy ? 200 : 503).json({ status, uptime: process.uptime(), ...checks });
+    });
     app.get("/metrics", async (req, res) => { res.set('Content-Type', client.register.contentType); res.end(await client.register.metrics()); });
 
     app.use('/v1/jobs', createJobSubmitRouter(db));
@@ -264,7 +286,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
                         const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;
                         if (share > 0) await db.query("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES ($1, 'node_operator', $2, $3, 'UNPAID', $4) ON CONFLICT DO NOTHING", [epochId, node.node_id, share, now]);
                     }
-                    await db.query("UPDATE epochs SET status = 'FINALIZED', ends_at = $1, total_revenue_usdt = $2 WHERE id = $3", [now, revCount.total, epochId]);
+                    await db.query("UPDATE epochs SET status = 'CLOSED', ends_at = $1, total_revenue_usdt = $2, node_pool_usdt = $3, platform_share_usdt = $4, distributor_share_usdt = $5 WHERE id = $6", [now, revCount.total, nodePool, platformFee, distroPool, epochId]);
 
                     for (const node of nodeContributions) {
                         const share = (Number(node.revenue) / totalNodeRevenue) * nodePool;

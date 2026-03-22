@@ -57,7 +57,7 @@ export function createDevSeedRouter(opsEngine) {
 
                 // Legacy table (Sync)
                 await opsEngine.db.prepare(
-                    `INSERT INTO registered_nodes (wallet, last_heartbeat, active, updatedAt)
+                    `INSERT INTO registered_nodes (wallet, last_heartbeat, active, updated_at)
                     VALUES (?, ?, ?, ?)
                     ON CONFLICT(wallet) DO UPDATE SET active = excluded.active, last_heartbeat = excluded.last_heartbeat`
                 ).run([n.wallet, n.last_seen, n.status === 'active' ? 1 : 0, now]);

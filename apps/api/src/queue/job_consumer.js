@@ -22,6 +22,19 @@ export class JobConsumer {
 
         await JobQueue.initGroups();
 
+        // H-01: Reclaim stale messages from dead consumers on startup
+        try {
+            const reclaimed = await JobQueue.reclaimStale(this.consumerName, 60000, 20);
+            if (reclaimed.length > 0) {
+                logger.info({ count: reclaimed.length }, 'Reclaimed stale jobs from dead consumers');
+                for (const job of reclaimed) {
+                    await this._processJob(job);
+                }
+            }
+        } catch (e) {
+            logger.warn({ error: e.message }, 'Stale job reclaim failed (non-fatal)');
+        }
+
         for (let i = 0; i < this.concurrency; i++) {
             this._runLoop(i);
         }

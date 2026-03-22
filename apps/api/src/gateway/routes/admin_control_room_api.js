@@ -177,7 +177,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
                             db.prepare("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts WHERE created_at > ? ORDER BY created_at DESC").all([lastTs]),
                             db.prepare("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at DESC").all([lastTs]),
                             db.prepare("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles WHERE created_at > ? ORDER BY created_at DESC").all([lastTs]),
-                            db.prepare("SELECT 'heartbeat' as type, wallet as id, active as value, updatedAt * 1000 as ts, wallet as label FROM registered_nodes WHERE updatedAt * 1000 > ? ORDER BY updatedAt DESC").all([lastTs]),
+                            db.prepare("SELECT 'heartbeat' as type, wallet as id, active as value, updated_at * 1000 as ts, wallet as label FROM registered_nodes WHERE updated_at * 1000 > ? ORDER BY updated_at DESC").all([lastTs]),
                         ]);
 
                         const updates = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents, ...heartbeats]
