@@ -57,6 +57,48 @@ export class JobQueue {
         }
     }
 
+    /**
+     * Reclaim stale messages from dead consumers (H-01 fix).
+     * Claims messages idle for > minIdleMs and returns them for reprocessing.
+     */
+    static async reclaimStale(consumerName, minIdleMs = 60000, count = 10) {
+        const reclaimed = [];
+        const priorityOrder = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW'];
+        for (const p of priorityOrder) {
+            const stream = STREAMS[p];
+            try {
+                // Check for pending messages older than minIdleMs
+                const pending = await redis.xpending(stream, GROUP_NAME, '-', '+', count);
+                for (const entry of pending) {
+                    const [messageId, , idleTime] = entry;
+                    if (idleTime >= minIdleMs) {
+                        // Claim the stale message for this consumer
+                        const claimed = await redis.xclaim(
+                            stream, GROUP_NAME, consumerName, minIdleMs, messageId
+                        );
+                        if (claimed && claimed.length > 0) {
+                            for (const [streamId, fields] of claimed) {
+                                const job = {};
+                                for (let i = 0; i < fields.length; i += 2) {
+                                    job[fields[i]] = fields[i + 1];
+                                }
+                                job.payload = typeof job.payload === 'string' ? JSON.parse(job.payload) : job.payload;
+                                job.streamId = streamId;
+                                job.priority = p;
+                                job.sourceStream = stream;
+                                job.reclaimed = true;
+                                reclaimed.push(job);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                logger.warn({ error: error.message, stream }, 'XCLAIM scan failed (non-fatal)');
+            }
+        }
+        return reclaimed;
+    }
+
     static async getLength(priority) {
         try {
             if (priority) {
