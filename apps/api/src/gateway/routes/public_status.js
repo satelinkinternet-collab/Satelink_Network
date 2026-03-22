@@ -44,6 +44,7 @@ export function createPublicStatusRouter(db, preflightCheck) {
             else if (hasIncidents) systemStatus = 'DEGRADED';
 
             res.json({
+                ok: true,
                 status: systemStatus,
                 incidents: hasIncidents ? 'Active Issue' : 'None',
                 active_nodes: stats?.active_nodes || 0,

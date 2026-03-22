@@ -128,6 +128,10 @@ export async function attachSchema(db) {
 
     // Balances
     "CREATE INDEX IF NOT EXISTS idx_balances_wallet ON balances (wallet);",
+
+    // Auth nonces — unique address for ON CONFLICT upsert
+    "DROP INDEX IF EXISTS idx_auth_nonces_address;",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_nonces_address ON auth_nonces (address);",
   ];
 
   for (const sql of hardeningMigrations) {
