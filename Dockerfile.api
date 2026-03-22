@@ -3,10 +3,11 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
-# Copy manifests first for layer-cache efficiency
+# Copy all package manifests first (root + workspaces) for layer-cache efficiency
 COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
 
-# Use install instead of ci for reliability in this env
+# Install all workspace dependencies
 RUN npm install --prefer-offline --no-audit --no-fund
 
 # Copy the rest of the source
@@ -31,4 +32,4 @@ USER satelink
 EXPOSE 8080
 
 # NODE_ENV is injected by docker-compose; not baked in here
-CMD ["node", "server.js"]
+CMD ["node", "apps/api/server.js"]

@@ -7,8 +7,8 @@
 # ──────────────────────────────────────────────────────────────────────────────
 
 x-common-env: &common-env
-  NODE_ENV: production
-  DATABASE_URL: postgresql://satelink:satelinkpassword@database:5432/satelink_prod
+  NODE_ENV: ${NODE_ENV:-staging}
+  DATABASE_URL: postgresql://satelink:satelinkpass@database:5432/satelink
   REDIS_URL: redis://redis:6379
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
   JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
@@ -32,9 +32,9 @@ services:
       PORT: 8080
       LOG_LEVEL: info
       DB_TYPE: postgres
-      REDIS_HOST: satelink-redis
+      REDIS_HOST: redis
       REDIS_PORT: 6379
-      SATELINK_MODE: production
+      SATELINK_MODE: ${SATELINK_MODE:-staging}
       FUSE_USDT_CONTRACT: ${FUSE_USDT_CONTRACT:-}
       FUSE_PRIVATE_KEY: ${FUSE_PRIVATE_KEY:-}
       FUSE_RPC_URL: ${FUSE_RPC_URL:-http://host.docker.internal:8545}
@@ -69,7 +69,7 @@ services:
       PORT: 8081
       LOG_LEVEL: info
       DB_TYPE: postgres
-      REDIS_HOST: satelink-redis
+      REDIS_HOST: redis
       REDIS_PORT: 6379
     ports:
       - "8081:8081"
@@ -80,6 +80,8 @@ services:
       database:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      api:
         condition: service_healthy
 
   # ── Dashboard (Next.js) ──
@@ -93,15 +95,11 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://api:8080
-    volumes:
-      - satelink-data:/usr/src/app/data
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      database:
-        condition: service_healthy
-      redis:
+      api:
         condition: service_healthy
 
   # ── PostgreSQL ──
