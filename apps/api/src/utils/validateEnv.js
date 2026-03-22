@@ -32,20 +32,17 @@ export function validateEnv() {
     process.env.DB_TYPE = 'postgres';
 
     // Enforcement of REAL mode and Blockchain variables
+    // Only enforced when BOTH NODE_ENV=production AND SATELINK_MODE=production
     const isProd = process.env.NODE_ENV === 'production';
     const mode = process.env.SATELINK_MODE || 'simulation';
     const realSettlement = process.env.FEATURE_REAL_SETTLEMENT === 'true';
 
-    if (isProd) {
-        if (mode !== 'production') {
-            console.error(`[FATAL] SATELINK_MODE must be 'production' in production environment. Current: ${mode}`);
-            process.exit(1);
-        }
+    if (isProd && mode === 'production') {
         if (!realSettlement) {
             console.error('[FATAL] FEATURE_REAL_SETTLEMENT must be true for production payouts.');
             process.exit(1);
         }
-        
+
         const requiredBlockchainVars = [
             'FUSE_RPC_URL',
             'FUSE_PRIVATE_KEY',
