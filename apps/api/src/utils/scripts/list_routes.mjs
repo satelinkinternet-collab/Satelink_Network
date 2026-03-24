@@ -1,10 +1,10 @@
 import listEndpoints from "express-list-endpoints";
-import Database from "better-sqlite3";
+import { PgDatabase } from "../../database/pg_adapter.js";
 import { createApp } from "../../../app_factory.mjs";
 
 async function run() {
-    // In-memory or temporary DB for route listing without side effects
-    const db = new Database(":memory:");
+    // Connect to Postgres for route listing
+    const db = await PgDatabase.create(process.env.DATABASE_URL);
     const app = createApp(db);
 
     // Fallback for Express 5 if listEndpoints doesn't catch them

@@ -29,9 +29,8 @@ export function migrate(db) {
 
 // CLI entry
 if (process.argv[1] && process.argv[1].endsWith('migrate.js')) {
-    const Database = (await import("better-sqlite3")).default;
-    const dbPath = process.env.SQLITE_PATH || "satelink.db";
-    const db = new Database(dbPath);
+    const { PgDatabase } = await import("../../database/pg_adapter.js");
+    const db = await PgDatabase.create(process.env.DATABASE_URL);
     migrate(db);
-    db.close();
+    await db.close();
 }

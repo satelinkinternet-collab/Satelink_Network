@@ -1,7 +1,8 @@
 import { SelfTestRunner } from '../../../../src/monitoring/self_test_runner.js';
 import { OpsEngine } from '../../../../src/core/operations_engine.js';
-import db from '../../core/db/sqlite.js';
+import { PgDatabase } from '../../database/pg_adapter.js';
 
+const db = await PgDatabase.create(process.env.DATABASE_URL);
 const mockOpsEngine = { db };
 const runner = new SelfTestRunner(mockOpsEngine, 8080);
 

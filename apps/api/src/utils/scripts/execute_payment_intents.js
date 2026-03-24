@@ -28,7 +28,7 @@ async function run() {
 
     console.log(`📅 Target Period: ${periodStr} (End: ${period.end})`);
 
-    const config = { dbUrl: process.env.DATABASE_URL || "sqlite://satelink.db" };
+    const config = { dbUrl: process.env.DATABASE_URL };
     const db = getValidatedDB(config);
     await db.init();
 

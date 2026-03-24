@@ -1,11 +1,11 @@
 import request from 'supertest';
 import { createApp } from '../../../app_factory.mjs';
-import Database from 'better-sqlite3';
+import { PgDatabase } from '../../database/pg_adapter.js';
 import jwt from 'jsonwebtoken';
 
 async function runTests() {
     console.log("Starting Auth Validation Tests...");
-    const db = new Database(':memory:');
+    const db = await PgDatabase.create(process.env.DATABASE_URL);
 
     // Minimal schema for auth
     db.exec(`
