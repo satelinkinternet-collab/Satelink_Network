@@ -4,7 +4,7 @@ import { NodeopsWaterfallService } from "../../../ops-agent/nodeops_waterfall.js
 import crypto from 'crypto';
 
 async function run() {
-    const config = { dbUrl: process.env.DATABASE_URL || "sqlite://satelink.db" };
+    const config = { dbUrl: process.env.DATABASE_URL };
     const db = getValidatedDB(config);
     await db.init();
     const service = new NodeopsWaterfallService(db);

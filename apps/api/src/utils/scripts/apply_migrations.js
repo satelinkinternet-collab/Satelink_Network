@@ -1,11 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { openDb } from "../../core/db/sqlite.js";
+import { PgDatabase } from "../../database/pg_adapter.js";
 
 const sqlFile = path.resolve("sql/antigravity_day1_revenue.sql");
 
-export function applyMigrations() {
-    const db = openDb();
+export async function applyMigrations() {
+    const db = await PgDatabase.create(process.env.DATABASE_URL);
 
     console.log("[MIGRATION] Starting drift repair...");
 
