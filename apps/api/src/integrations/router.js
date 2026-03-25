@@ -282,62 +282,6 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
             const r = await opsEngine.db.query("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?,?,'PENDING',?) RETURNING id",
                 [wallet, amount, now]);
 
-            let id = r.lastInsertRowid;
-            if (!id && r.length > 0) id = r[0].id;
-            // Also handle Postgres returning array
-            if (!id && r && r.rows && r.rows.length > 0) id = r.rows[0].id; // Wait, our adapter normalizes? 
-            // Our adapter .query returns { lastInsertRowid } for SQLite if not SELECT.
-            // But for Postgres we likely need RETURNING id to get it.
-            // In the adapter, for Postgres non-select, it returns { changes }.
-            // So we need to ensure the SQL has RETURNING ID and check the result properly.
-            // Our adapter returns res.rows if SQL starts with SELECT.
-            // INSERT ... RETURNING ... starts with INSERT.
-            // My adapter logic: "if (sql.trim().toUpperCase().startsWith("SELECT")) ... else ... { changes ... }"
-            // I need to fix the adapter to handle RETURNING for non-selects in Postgres!
-
-            // Wait, let's look at my Adapter implementation (Step 176).
-            /*
-            async query(sql, params = []) {
-                if (this.type === 'sqlite') { ... } 
-                else {
-                    const res = await this.pool.query(this._formatSql(sql), params);
-                    if (sql.trim().toUpperCase().startsWith("SELECT")) {
-                        return res.rows;
-                    } else {
-                        return { 
-                            lastInsertRowid: res.rows[0]?.id || 0, // specific handling needed for RETURNING id
-                            changes: res.rowCount 
-                        }; 
-                    }
-                }
-            }
-            */
-            // Yes, I handled `res.rows[0]?.id` in the `else` block for Postgres.
-            // So `r.lastInsertRowid` should work if I added `RETURNING id` to SQL.
-            // But SQLite doesn't support `RETURNING id` in standard `better-sqlite3` run().
-            // `run()` returns `lastInsertRowid` from the context.
-            // So I need to use `RETURNING id` ONLY for Postgres?
-            // SQLite `better-sqlite3` fails on `RETURNING` clauses usually (unless newer version).
-            // This is a compatibility issue.
-            // Strategy: 
-            // Use `lastInsertRowid` property from adapter result. 
-            // For SQLite, it comes from `run()`.
-            // For Postgres, the adapter extracts it from `rows[0].id`.
-            // BUT Postgres requires `RETURNING id` in the SQL string.
-            // If I put `RETURNING id` in the SQL, SQLite might choke.
-            // I should assume the adapter handles this? NO, the adapter just regex replaces params.
-
-            // Fix: In `withdraw`, `epoch init` etc., I need ID.
-            // I should use a separate SELECT for ID if generic compatibility is needed, OR
-            // update the adapter to handle this difference.
-            // Or just check if `this.db.type === 'postgres'` inside `router.js`?
-            // No, `router.js` shouldn't know about db type.
-
-            // Simpler fix for `withdraw`:
-            // `run` -> `lastInsertRowid`.
-            // If postgres, I need RETURNING id.
-            // I will use a helper or just append `RETURNING id` if likely Postgres.
-            // But I want specific code here.
 
             // For now, I will assume the SQL `RETURNING id` works or I don't strictly need the ID for the response in Micro-Prod?
             // The response includes `withdrawalId`.

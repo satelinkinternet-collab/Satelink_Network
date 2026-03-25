@@ -979,7 +979,7 @@ export class SelfTestRunner {
         try {
             // Verify table schema
             const schema = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_limits'"
+                "SELECT table_name FROM information_schema.tables WHERE table_name='tenant_limits'"
             );
             if (!schema || schema.length === 0) {
                 return { _fail: 'tenant_limits table not found' };
@@ -987,7 +987,7 @@ export class SelfTestRunner {
 
             // Verify circuit state table
             const csSchema = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_circuit_state'"
+                "SELECT table_name FROM information_schema.tables WHERE table_name='tenant_circuit_state'"
             );
             if (!csSchema || csSchema.length === 0) {
                 return { _fail: 'tenant_circuit_state table not found' };
@@ -1003,7 +1003,7 @@ export class SelfTestRunner {
         // Verify tenant_op_slo_daily table exists
         try {
             const schema = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='tenant_op_slo_daily'"
+                "SELECT table_name FROM information_schema.tables WHERE table_name='tenant_op_slo_daily'"
             );
             if (!schema || schema.length === 0) {
                 return { _fail: 'tenant_op_slo_daily table not found' };
@@ -1019,10 +1019,10 @@ export class SelfTestRunner {
         // Verify sla_reports + sla_credits tables exist
         try {
             const reports = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='sla_reports'"
+                "SELECT table_name FROM information_schema.tables WHERE table_name='sla_reports'"
             );
             const credits = await this.db.query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='sla_credits'"
+                "SELECT table_name FROM information_schema.tables WHERE table_name='sla_credits'"
             );
             if (!reports?.length) return { _fail: 'sla_reports table not found' };
             if (!credits?.length) return { _fail: 'sla_credits table not found' };
