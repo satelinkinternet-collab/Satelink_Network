@@ -102,7 +102,7 @@ export class JobConsumer {
         if (!this.executionRouter) {
             const { ExecutionRouter } = await import('../execution/executionRouter.js');
             const { getValidatedDB } = await import('../../src/core/db/index.js');
-            const db = getValidatedDB({ sqlitePath: process.env.SQLITE_PATH || 'satelink.db' });
+            const db = getValidatedDB();
             await db.init();
             this.executionRouter = new ExecutionRouter(db);
         }

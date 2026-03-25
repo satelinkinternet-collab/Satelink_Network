@@ -21,29 +21,13 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
     router.get('/database', async (req, res) => {
         try {
             const db = opsEngine.db;
-            const [pageCount, pageFree, walSize] = await Promise.all([
-                db.get("PRAGMA page_count"),
-                db.get("PRAGMA freelist_count"),
-                db.get("PRAGMA wal_checkpoint(GET)") // Note: GET doesn't checkpoint, just returns status usually? 
-                // Actually `block_checkpoint` isn't a read pragma. 
-                // We'll trust file size or approximate from wal_checkpoint(PASSIVE)?
-                // `PRAGMA wal_checkpoint(PASSIVE)` returns [busy, log, checkpointed]
-            ]);
-
-            // Get WAL size from filesystem 
-            // We assume local sqlite path from env or default
-            // But we can use PRAGMA functionality
-            const walStatus = await db.query("PRAGMA wal_checkpoint(PASSIVE)");
+            const stats = await db.query("SELECT pg_database_size(current_database()) as size_bytes");
+            const size = stats[0]?.size_bytes || (stats.rows && stats.rows[0]?.size_bytes) || 0;
 
             res.json({
                 ok: true,
-                pages: {
-                    total: pageCount?.page_count,
-                    free: pageFree?.freelist_count
-                },
-                wal: {
-                    // This returns row [0, nLog, nCkpt] usually
-                    status: walStatus
+                postgres: {
+                    size_bytes: parseInt(size, 10)
                 }
             });
         } catch (e) {
