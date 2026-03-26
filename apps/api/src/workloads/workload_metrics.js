@@ -7,8 +7,8 @@
  *   automation_jobs   — total automation jobs triggered
  *   daily_revenue     — cumulative estimated revenue (USD)
  *
- * SQLite-backed with an in-memory mirror for zero-latency reads.
- * Auto-creates the workload_metrics table on construction.
+ * PostgreSQL-backed with an in-memory mirror for zero-latency reads.
+ * Auto-creates the workload_metrics table on init().
  */
 
 export class WorkloadMetrics {
@@ -17,8 +17,11 @@ export class WorkloadMetrics {
     constructor(db) {
         this.db = db;
         this._mem = { rpc_requests: 0, webhook_events: 0, automation_jobs: 0, daily_revenue: 0 };
-        this._ensureTable();
-        this._load();
+    }
+
+    async init() {
+        await this._ensureTable();
+        await this._load();
     }
 
     // ─── Increment helpers ────────────────────────────────────────────────────
@@ -43,25 +46,25 @@ export class WorkloadMetrics {
         return this._mem[key];
     }
 
-    _ensureTable() {
+    async _ensureTable() {
         try {
-            this.db.prepare(`
+            await this.db.prepare(`
                 CREATE TABLE IF NOT EXISTS workload_metrics (
                     key   TEXT PRIMARY KEY,
                     value REAL NOT NULL DEFAULT 0
                 )
             `).run();
             for (const key of WorkloadMetrics.KEYS) {
-                this.db.prepare(`INSERT OR IGNORE INTO workload_metrics (key, value) VALUES (?, 0)`).run(key);
+                await this.db.prepare(`INSERT INTO workload_metrics (key, value) VALUES (?, 0) ON CONFLICT DO NOTHING`).run(key);
             }
         } catch (e) {
             console.warn('[WorkloadMetrics] Init warning:', e.message);
         }
     }
 
-    _load() {
+    async _load() {
         try {
-            const rows = this.db.prepare('SELECT key, value FROM workload_metrics').all();
+            const rows = await this.db.prepare('SELECT key, value FROM workload_metrics').all();
             for (const { key, value } of rows) {
                 if (key in this._mem) this._mem[key] = value;
             }
@@ -69,8 +72,8 @@ export class WorkloadMetrics {
     }
 
     _persist(key, value) {
-        try {
-            this.db.prepare('UPDATE workload_metrics SET value = ? WHERE key = ?').run(value, key);
-        } catch (_) { /* non-fatal */ }
+        // Fire-and-forget: write to DB but don't block the caller
+        this.db.prepare('UPDATE workload_metrics SET value = ? WHERE key = ?').run(value, key)
+            .catch(() => { /* non-fatal */ });
     }
 }

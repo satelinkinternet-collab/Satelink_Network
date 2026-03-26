@@ -25,10 +25,6 @@ export class OperationsEngine {
 
   async init() {
     if (this.initialized) return;
-    if (this.db && typeof this.db.init === 'function') {
-      // For SQLite, initialization is typically synchronous or already handled.
-      // We don't await here because we're moving to a synchronous model for SQLite.
-    }
     await this.seed();
     this.initialized = true;
     console.log("OperationsEngine initialized. DB ready:", typeof this.db.prepare);
@@ -56,12 +52,12 @@ export class OperationsEngine {
       );
     `);
 
-    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['withdrawals_paused', '0']);
-    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['security_freeze', '0']);
-    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['safety_threshold', '0']);
-    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['system_state', 'LIVE']);
-    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['revenue_mode', 'ACTIVE']);
-    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['monitoring_status', 'ENFORCED']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('withdrawals_paused', '0');
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('security_freeze', '0');
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('safety_threshold', '0');
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('system_state', 'LIVE');
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('revenue_mode', 'ACTIVE');
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('monitoring_status', 'ENFORCED');
 
     // Seed pricing from OP_CONFIG if table exists
     try {
@@ -69,20 +65,20 @@ export class OperationsEngine {
       for (const op of ops) {
         const conf = OP_CONFIG[op];
         await this.db.prepare(`
-          INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node) 
-          VALUES (?, ?, 1, ?, ?) 
-          ON CONFLICT(op_type) DO UPDATE SET 
+          INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node)
+          VALUES (?, ?, 1, ?, ?)
+          ON CONFLICT(op_type) DO UPDATE SET
             max_per_minute_per_client = EXCLUDED.max_per_minute_per_client,
             max_per_minute_per_node = EXCLUDED.max_per_minute_per_node
-        `).run([op, conf.price, conf.limit || 60, conf.node_limit || 120]);
+        `).run(op, conf.price, conf.limit || 60, conf.node_limit || 120);
       }
     } catch (e) { console.error("Error seeding pricing:", e); }
 
-    const row = await this.db.prepare("SELECT COUNT(*) as c FROM op_weights").get([]);
+    const row = await this.db.prepare("SELECT COUNT(*) as c FROM op_weights").get();
     if (row && row.c == 0) {
       const ops = Object.keys(OP_CONFIG);
       for (const op of ops) {
-        await this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run([op, 1.0]);
+        await this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run(op, 1.0);
       }
     }
 
@@ -106,7 +102,7 @@ export class OperationsEngine {
       node_id TEXT PRIMARY KEY,
       wallet TEXT,
       device_type TEXT,
-      management_type TEXT DEFAULT 'self_hosted', -- 'managed' or 'self_hosted'
+      management_type TEXT DEFAULT 'self_hosted',
       status TEXT,
       last_seen BIGINT,
       created_at BIGINT
@@ -116,7 +112,7 @@ export class OperationsEngine {
       code TEXT PRIMARY KEY,
       wallet TEXT,
       device_id TEXT,
-      status TEXT, -- pending, used, expired
+      status TEXT,
       created_at BIGINT,
       expires_at BIGINT,
       used_at BIGINT
@@ -168,7 +164,7 @@ export class OperationsEngine {
    * PHASE A: Paid Ops Engine
    */
   async executeOp({ op_type, node_id, client_id, request_id, timestamp, payload_hash }) {
-    this.checkSafeMode();
+    await this.checkSafeMode();
 
     // [Phase Q4] Circuit Breaker — per-tenant throttling
     if (this.slaEngine && client_id) {
@@ -179,11 +175,11 @@ export class OperationsEngine {
     }
 
     // 1. Validate pricing and existence
-    const pricing = this.db.prepare("SELECT * FROM ops_pricing WHERE op_type = ? AND enabled = 1").get([op_type]);
+    const pricing = await this.db.prepare("SELECT * FROM ops_pricing WHERE op_type = ? AND enabled = 1").get(op_type);
     if (!pricing) throw new Error(`Operation type ${op_type} is disabled or invalid`);
 
     // 2. Idempotency Check
-    const existing = this.db.prepare("SELECT id FROM revenue_events_v2 WHERE client_id = ? AND op_type = ? AND request_id = ?").get([client_id, op_type, request_id]);
+    const existing = await this.db.prepare("SELECT id FROM revenue_events_v2 WHERE client_id = ? AND op_type = ? AND request_id = ?").get(client_id, op_type, request_id);
     if (existing) return { ok: true, note: "Already processed", id: existing.id };
 
     // 3. Rate Limiting (Phase 28)
@@ -195,16 +191,15 @@ export class OperationsEngine {
 
     // Client limit checks
     if (limitClient > 0) {
-      const clientUsage = this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE client_id = ? AND created_at > ?").get([client_id, minuteAgo]);
+      const clientUsage = await this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE client_id = ? AND created_at > ?").get(client_id, minuteAgo);
       if (clientUsage.c >= limitClient) {
-        // Failsafe: Return 429-like structure (throw error caught by API)
         throw new Error("rate_limited");
       }
     }
 
     // Node limit checks
     if (limitNode > 0) {
-      const nodeUsage = this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?").get([node_id, minuteAgo]);
+      const nodeUsage = await this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?").get(node_id, minuteAgo);
       if (nodeUsage.c >= limitNode) {
         throw new Error("rate_limited");
       }
@@ -215,13 +210,13 @@ export class OperationsEngine {
     let priceVersion = 1;
     let surgeMultiplier = 1.0;
 
-    const dynamicRule = this.db.prepare("SELECT * FROM pricing_rules WHERE op_type = ?").get([op_type]);
+    const dynamicRule = await this.db.prepare("SELECT * FROM pricing_rules WHERE op_type = ?").get(op_type);
     if (dynamicRule) {
       finalPrice = dynamicRule.base_price_usdt;
       priceVersion = dynamicRule.version;
 
       if (dynamicRule.surge_enabled) {
-        const load = this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?").get([minuteAgo]);
+        const load = await this.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?").get(minuteAgo);
         if (load.c > dynamicRule.surge_threshold) {
           surgeMultiplier = dynamicRule.surge_multiplier;
           finalPrice = finalPrice * surgeMultiplier;
@@ -232,17 +227,17 @@ export class OperationsEngine {
     }
 
     // 5. Record Revenue Event (Phase 34 Hardened — full billing columns)
-    const epochId = this.initEpoch();
+    const epochId = await this.initEpoch();
     const billingAmount = finalPrice;
     const unitCost = dynamicRule?.base_price_usdt || pricing.price_usdt || 0;
 
-    const res = this.db.prepare(`
-        INSERT INTO revenue_events_v2 
+    const res = await this.db.prepare(`
+        INSERT INTO revenue_events_v2
         (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at, metadata_hash,
          price_version, surge_multiplier, unit_cost, unit_count)
         VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1)
-    `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
-      priceVersion, surgeMultiplier, unitCost]);
+    `).run(epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
+      priceVersion, surgeMultiplier, unitCost);
 
     // [Phase 26] Economic Ledger Recording
     if (this.ledger && billingAmount > 0) {
@@ -295,12 +290,12 @@ export class OperationsEngine {
     const id = epochId || this.currentEpochId;
     const now = Math.floor(Date.now() / 1000);
 
-    await this.db.transaction(async (tx) => {
-      const result = tx.prepare("UPDATE epochs SET status = 'FINALIZED', ends_at = ? WHERE id = ? AND status = 'OPEN'").run([now, id]);
+    const txFn = db.transaction(async () => {
+      const result = await this.db.prepare("UPDATE epochs SET status = 'FINALIZED', ends_at = ? WHERE id = ? AND status = 'OPEN'").run(now, id);
       if (result.changes === 0) throw new Error("Epoch not found or already finalized");
 
       // Compute Splits
-      const revRow = tx.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE epoch_id = ?").get([id]);
+      const revRow = await this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE epoch_id = ?").get(id);
       const totalRevenue = revRow?.total || 0;
 
       if (totalRevenue > 0) {
@@ -309,30 +304,27 @@ export class OperationsEngine {
         const distroPool = totalRevenue * 0.20;
 
         // Record immutable splits
-        tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, ?)").run([id, platformFee, now]);
+        await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, ?)").run(id, platformFee, now);
 
         // Phase 28: Distributor Split Logic
-        const hasDistributors = tx.prepare("SELECT 1 FROM conversions LIMIT 1").get([]);
+        const hasDistributors = await this.db.prepare("SELECT 1 FROM conversions LIMIT 1").get();
 
         if (hasDistributors) {
           const lcoShare = distroPool * 0.60;
           const infShare = distroPool * 0.40;
-          tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distributor_lco', 'DIST_LCO_POOL', ?, ?)").run([id, lcoShare, now]);
-          tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distributor_influencer', 'DIST_INF_POOL', ?, ?)").run([id, infShare, now]);
+          await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distributor_lco', 'DIST_LCO_POOL', ?, ?)").run(id, lcoShare, now);
+          await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distributor_influencer', 'DIST_INF_POOL', ?, ?)").run(id, infShare, now);
         } else {
-          // Fallback to DAO/Platform if no distributors
-          tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distribution_pool', 'DAO_POOL', ?, ?)").run([id, distroPool, now]);
+          await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distribution_pool', 'DAO_POOL', ?, ?)").run(id, distroPool, now);
         }
 
-        // Ensure 'management_type' column exists (Moved to Phase 3 SQL Migrations)
-
         // Node rewards distribution
-        const nodes = tx.prepare(`
+        const nodes = await this.db.prepare(`
                 SELECT u.node_wallet, u.uptime_seconds, n.node_type, n.management_type
                 FROM node_uptime u
                 JOIN registered_nodes n ON u.node_wallet = n.wallet
                 WHERE u.epoch_id = ?
-            `).all([id]);
+            `).all(id);
 
         const totalUptime = nodes.reduce((s, n) => s + n.uptime_seconds, 0);
         if (totalUptime > 0) {
@@ -343,20 +335,22 @@ export class OperationsEngine {
             if (n.management_type === 'managed') {
               const deduction = share * 0.10;
               share = share - deduction;
-              tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'infra_reserve', 'INFRA_RESERVE_POOL', ?, ?)").run([id, deduction, now]);
+              await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'infra_reserve', 'INFRA_RESERVE_POOL', ?, ?)").run(id, deduction, now);
             }
 
             if (share > 0) {
-              tx.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'node_operator', ?, ?, ?)").run([id, n.node_wallet, share, now]);
+              await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'node_operator', ?, ?, ?)").run(id, n.node_wallet, share, now);
             }
           }
         }
       }
     });
 
+    await txFn();
+
     if (this.ledger) {
       try {
-        const earnings = this.db.prepare("SELECT role, amount_usdt FROM epoch_earnings WHERE epoch_id = ?").all([id]);
+        const earnings = await this.db.prepare("SELECT role, amount_usdt FROM epoch_earnings WHERE epoch_id = ?").all(id);
         const totalLiability = earnings
           .filter(e => e.role !== 'platform' && e.role !== 'infra_reserve')
           .reduce((sum, e) => sum + e.amount_usdt, 0);
@@ -379,67 +373,67 @@ export class OperationsEngine {
       }
     }
 
-    this.initEpoch();
+    await this.initEpoch();
     return { ok: true, epochId: id, finalizedAt: now };
   }
 
   /**
    * Security Logging
    */
-  recordAuthFailure(path, ip) {
+  async recordAuthFailure(path, ip) {
     try {
-      this.db.prepare("INSERT INTO auth_failures (path, ip, created_at) VALUES (?, ?, ?)").run([path, ip, Date.now()]);
+      await this.db.prepare("INSERT INTO auth_failures (path, ip, created_at) VALUES (?, ?, ?)").run(path, ip, Date.now());
     } catch (e) {
       console.error("Failed to record auth failure", e);
     }
   }
 
-  updateSystemConfig(key, value) {
-    const existing = this.db.prepare("SELECT 1 FROM system_config WHERE key = ?").get([key]);
+  async updateSystemConfig(key, value) {
+    const existing = await this.db.prepare("SELECT 1 FROM system_config WHERE key = ?").get(key);
     if (existing) {
-      this.db.prepare("UPDATE system_config SET value = ? WHERE key = ?").run([value, key]);
+      await this.db.prepare("UPDATE system_config SET value = ? WHERE key = ?").run(value, key);
     } else {
-      this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?)").run([key, value]);
+      await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?)").run(key, value);
     }
     return { key, value };
   }
 
-  isSystemSafe() {
-    const paused = this.db.prepare("SELECT value FROM system_config WHERE key = 'withdrawals_paused'").get([]);
-    const frozen = this.db.prepare("SELECT value FROM system_config WHERE key = 'security_freeze'").get([]);
+  async isSystemSafe() {
+    const paused = await this.db.prepare("SELECT value FROM system_config WHERE key = 'withdrawals_paused'").get();
+    const frozen = await this.db.prepare("SELECT value FROM system_config WHERE key = 'security_freeze'").get();
     if (paused?.value === '1' || frozen?.value === '1') return false;
     return true;
   }
 
-  initEpoch() {
+  async initEpoch() {
     const now = Math.floor(Date.now() / 1000);
-    const existing = this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get([]);
+    const existing = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN'").get();
     if (existing) {
       this.currentEpochId = existing.id;
       return existing.id;
     }
 
-    const res = this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
+    const res = await this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run(now);
     this.currentEpochId = res.lastInsertRowid;
     return this.currentEpochId;
   }
 
-  checkSafeMode() {
-    const state = this.db.prepare("SELECT value FROM system_config WHERE key = 'system_state'").get([]);
+  async checkSafeMode() {
+    const state = await this.db.prepare("SELECT value FROM system_config WHERE key = 'system_state'").get();
     if (state?.value === 'SAFE_MODE') {
       throw new Error("System is in SAFE MODE. Operations locked.");
     }
   }
 
-  setSafeMode(reason) {
+  async setSafeMode(reason) {
     console.error(`[SAFETY] Entering SAFE MODE: ${reason}`);
-    this.updateSystemConfig('system_state', 'SAFE_MODE');
-    this.updateSystemConfig('withdrawals_paused', '1');
+    await this.updateSystemConfig('system_state', 'SAFE_MODE');
+    await this.updateSystemConfig('withdrawals_paused', '1');
     return { ok: true, mode: 'SAFE_MODE', reason };
   }
 
-  validateDistributionMath(epochId) {
-    const revRow = this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE epoch_id = ?").get([epochId]);
+  async validateDistributionMath(epochId) {
+    const revRow = await this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE epoch_id = ?").get(epochId);
     const totalRevenue = revRow.total || 0;
 
     const platformFee = totalRevenue * 0.30;
@@ -460,23 +454,23 @@ export class OperationsEngine {
     return { epochId, status: "legacy_auto_dist_enabled" };
   }
 
-  getLedger(epochId) {
-    return this.db.prepare("SELECT * FROM epoch_earnings WHERE epoch_id = ?").all([epochId]);
+  async getLedger(epochId) {
+    return await this.db.prepare("SELECT * FROM epoch_earnings WHERE epoch_id = ?").all(epochId);
   }
 
-  getBalance(wallet) {
-    const row = this.db.prepare("SELECT SUM(amount_usdt) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'").get([wallet]);
+  async getBalance(wallet) {
+    const row = await this.db.prepare("SELECT SUM(amount_usdt) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'").get(wallet);
     return row ? (row.total || 0) : 0;
   }
 
-  getPayoutQueue(status = 'PENDING') {
-    return this.db.prepare("SELECT * FROM withdrawals WHERE status = ?").all([status]);
+  async getPayoutQueue(status = 'PENDING') {
+    return await this.db.prepare("SELECT * FROM withdrawals WHERE status = ?").all(status);
   }
 
-  getTreasuryAvailable() {
+  async getTreasuryAvailable() {
     // Sum of all revenue - sum of all completed withdrawals
-    const rev = this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2").get([]);
-    const paid = this.db.prepare("SELECT SUM(amount_usdt) as total FROM withdrawals WHERE status = 'COMPLETED'").get([]);
+    const rev = await this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2").get();
+    const paid = await this.db.prepare("SELECT SUM(amount_usdt) as total FROM withdrawals WHERE status = 'COMPLETED'").get();
     return (rev.total || 0) - (paid.total || 0);
   }
 
@@ -489,7 +483,7 @@ export class OperationsEngine {
     const fortyEightDays = 48 * 24 * 60 * 60;
     const threshold = now - fortyEightDays;
 
-    const res = this.db.prepare("UPDATE epoch_earnings SET status = 'FORFEITED' WHERE status = 'CLAIMED' AND created_at < ?").run([threshold]);
+    const res = await this.db.prepare("UPDATE epoch_earnings SET status = 'FORFEITED' WHERE status = 'CLAIMED' AND created_at < ?").run(threshold);
     const count = res.changes;
 
     if (count > 0) {
@@ -499,8 +493,8 @@ export class OperationsEngine {
     return count;
   }
 
-  getAllEpochs() {
-    return this.db.prepare("SELECT * FROM epochs ORDER BY id DESC LIMIT 50").all([]);
+  async getAllEpochs() {
+    return await this.db.prepare("SELECT * FROM epochs ORDER BY id DESC LIMIT 50").all();
   }
 
   async claim(wallet, signature) {
@@ -512,23 +506,28 @@ export class OperationsEngine {
       throw new Error("Invalid signature");
     }
 
-    const unclaimed = this.db.prepare("SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'").all([wallet]);
+    const unclaimed = await this.db.prepare("SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'").all(wallet);
     if (unclaimed.length === 0) throw new Error("No unclaimed rewards");
 
     let total = 0;
     const now = Math.floor(Date.now() / 1000);
 
-    await this.db.transaction(async (tx) => {
+    const txFn = this.db.transaction(async () => {
       for (const r of unclaimed) {
         total += r.amount_usdt;
-        tx.prepare("UPDATE epoch_earnings SET status = 'CLAIMED' WHERE epoch_id = ? AND role = ? AND wallet_or_node_id = ?").run([r.epoch_id, r.role, r.wallet_or_node_id]);
+        await this.db.prepare("UPDATE epoch_earnings SET status = 'CLAIMED' WHERE epoch_id = ? AND role = ? AND wallet_or_node_id = ?").run(r.epoch_id, r.role, r.wallet_or_node_id);
       }
 
-      const simFlag = tx.prepare("SELECT value FROM system_flags WHERE key = 'rewards_simulation'").get([]);
-      const status = (simFlag?.value === '1') ? 'SIMULATED' : 'PENDING';
+      let status = 'PENDING';
+      try {
+        const simFlag = await this.db.prepare("SELECT value FROM system_flags WHERE key = 'rewards_simulation'").get();
+        if (simFlag?.value === '1') status = 'SIMULATED';
+      } catch (_) { /* system_flags may not exist */ }
 
-      tx.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?, ?, ?, ?)").run([wallet, total, status, now]);
+      await this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?, ?, ?, ?)").run(wallet, total, status, now);
     });
+
+    await txFn();
 
     // [Phase 26] Ledger: Move from Rewards Payable to Payouts Payable
     if (this.ledger) {
@@ -553,41 +552,43 @@ export class OperationsEngine {
   /**
    * Uptime Tracking
    */
-  recordHeartbeatUptime(nodeWallet) {
+  async recordHeartbeatUptime(nodeWallet) {
     const now = Math.floor(Date.now() / 1000);
-    const epochId = this.initEpoch();
+    const epochId = await this.initEpoch();
 
-    const node = this.db.prepare("SELECT last_heartbeat FROM registered_nodes WHERE wallet = ?").get([nodeWallet]);
+    const node = await this.db.prepare("SELECT last_heartbeat FROM registered_nodes WHERE wallet = ?").get(nodeWallet);
     let uptimeToAdd = 60;
     if (node && node.last_heartbeat) {
       const diff = now - node.last_heartbeat;
       if (diff > 0 && diff < 900) uptimeToAdd = diff;
     }
 
-    const existing = this.db.prepare("SELECT 1 FROM node_uptime WHERE node_wallet = ? AND epoch_id = ?").get([nodeWallet, epochId]);
+    const existing = await this.db.prepare("SELECT 1 FROM node_uptime WHERE node_wallet = ? AND epoch_id = ?").get(nodeWallet, epochId);
     if (existing) {
-      this.db.prepare("UPDATE node_uptime SET uptime_seconds = uptime_seconds + ?, score = score + ? WHERE node_wallet = ? AND epoch_id = ?")
-        .run([uptimeToAdd, uptimeToAdd, nodeWallet, epochId]);
+      await this.db.prepare("UPDATE node_uptime SET uptime_seconds = uptime_seconds + ?, score = score + ? WHERE node_wallet = ? AND epoch_id = ?")
+        .run(uptimeToAdd, uptimeToAdd, nodeWallet, epochId);
     } else {
-      this.db.prepare("INSERT INTO node_uptime (node_wallet, epoch_id, uptime_seconds, score) VALUES (?, ?, ?, ?)")
-        .run([nodeWallet, epochId, uptimeToAdd, uptimeToAdd]);
+      await this.db.prepare("INSERT INTO node_uptime (node_wallet, epoch_id, uptime_seconds, score) VALUES (?, ?, ?, ?)")
+        .run(nodeWallet, epochId, uptimeToAdd, uptimeToAdd);
     }
 
     return uptimeToAdd;
   }
 
   async withdrawFunds(nodeWallet, amount) {
-    const bal = this.getBalance(nodeWallet);
+    const bal = await this.getBalance(nodeWallet);
     if (bal < amount) throw new Error("Insufficient balance");
 
     const now = Math.floor(Date.now() / 1000);
-    const simFlag = this.db.prepare("SELECT value FROM system_flags WHERE key = 'rewards_simulation'").get([]);
-    const status = (simFlag?.value === '1') ? 'SIMULATED' : 'PENDING';
+    let status = 'PENDING';
+    try {
+      const simFlag = await this.db.prepare("SELECT value FROM system_flags WHERE key = 'rewards_simulation'").get();
+      if (simFlag?.value === '1') status = 'SIMULATED';
+    } catch (_) { /* system_flags may not exist */ }
 
-    this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?, ?, ?, ?)").run([nodeWallet, amount, status, now]);
+    await this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?, ?, ?, ?)").run(nodeWallet, amount, status, now);
 
     // [Phase 26] Ledger: Move from Rewards Payable to Payouts Payable (Manual Withdraw)
-    // Assuming "Balance" comes from Rewards Payable bucket.
     if (this.ledger) {
       try {
         await this.ledger.createTxn({
@@ -622,8 +623,8 @@ export class OperationsEngine {
     return { ok: true, bytes: bytesRouted };
   }
 
-  enterSafeMode(reason) {
-    this.updateSystemConfig('system_state', 'SAFE_MODE');
-    this.updateSystemConfig('withdrawals_paused', '1');
+  async enterSafeMode(reason) {
+    await this.updateSystemConfig('system_state', 'SAFE_MODE');
+    await this.updateSystemConfig('withdrawals_paused', '1');
   }
 }

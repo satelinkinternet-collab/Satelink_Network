@@ -17,7 +17,7 @@ export function createFuturesRouter(db, futuresEscrow) {
      * PART 3: POST /v1/futures
      * Node operators list a forward contract
      */
-    router.post('/', authenticate, (req, res) => {
+    router.post('/', authenticate, async (req, res) => {
         try {
             const { node_id, revenue_share, epoch_range, price } = req.body;
 
@@ -31,15 +31,15 @@ export function createFuturesRouter(db, futuresEscrow) {
             }
 
             // Check active status and current obligations
-            const nodeCheck = db.prepare(`SELECT active FROM registered_nodes WHERE wallet = ?`).get(node_id);
+            const nodeCheck = await db.prepare(`SELECT active FROM registered_nodes WHERE wallet = ?`).get(node_id);
             if (!nodeCheck || nodeCheck.active === 0) {
                 return res.status(403).json({ error: 'Node must be active and registered' });
             }
 
             // Verify they aren't already over the 40% threshold across multiple overlapping contracts
-            const overlapping = db.prepare(`
-                SELECT SUM(revenue_share) as total_share 
-                FROM node_futures_contracts 
+            const overlapping = await db.prepare(`
+                SELECT SUM(revenue_share) as total_share
+                FROM node_futures_contracts
                 WHERE node_id = ? AND status IN ('listed', 'sold') AND
                 (epoch_start <= ? AND epoch_end >= ?)
             `).get(node_id, epoch_range[1], epoch_range[0]);
@@ -51,12 +51,12 @@ export function createFuturesRouter(db, futuresEscrow) {
 
             const contractId = `fut_${crypto.randomBytes(4).toString('hex')}`;
 
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO node_futures_contracts (contract_id, node_id, epoch_start, epoch_end, revenue_share, price, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, 'listed', ?)
             `).run(contractId, node_id, epoch_range[0], epoch_range[1], revenue_share, price, Date.now());
 
-            db.prepare(`UPDATE futures_metrics SET contracts_listed = contracts_listed + 1 WHERE id = 1`).run();
+            await db.prepare(`UPDATE futures_metrics SET contracts_listed = contracts_listed + 1 WHERE id = 1`).run();
 
             res.status(201).json({
                 message: 'Futures contract listed successfully',
@@ -100,11 +100,11 @@ export function createFuturesRouter(db, futuresEscrow) {
      * PART 8: GET /v1/futures
      * List open market orders
      */
-    router.get('/', (req, res) => {
+    router.get('/', async (req, res) => {
         try {
-            const contracts = db.prepare(`SELECT * FROM node_futures_contracts WHERE status = 'listed' ORDER BY created_at DESC`).all();
+            const contracts = await db.prepare(`SELECT * FROM node_futures_contracts WHERE status = 'listed' ORDER BY created_at DESC`).all();
 
-            const metrics = db.prepare(`SELECT * FROM futures_metrics WHERE id = 1`).get();
+            const metrics = await db.prepare(`SELECT * FROM futures_metrics WHERE id = 1`).get();
 
             res.status(200).json({ contracts, metrics });
         } catch (error) {

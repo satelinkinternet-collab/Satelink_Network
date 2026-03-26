@@ -75,13 +75,23 @@ export class PgDatabase {
         let converted = sql.replace(/\?/g, () => `$${++idx}`);
         const hasOrIgnore = /INSERT\s+OR\s+IGNORE\s+INTO/i.test(converted);
         if (hasOrIgnore) converted = converted.replace(/INSERT\s+OR\s+IGNORE\s+INTO/gi, "INSERT INTO");
+        const hasOrReplace = /INSERT\s+OR\s+REPLACE\s+INTO/i.test(converted);
+        if (hasOrReplace) converted = converted.replace(/INSERT\s+OR\s+REPLACE\s+INTO/gi, "INSERT INTO");
         converted = converted.replace(/INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT/gi, "SERIAL PRIMARY KEY");
-        return { sql: converted, hasOrIgnore };
+        // Convert SQLite strftime('%s', 'now') to PostgreSQL EXTRACT(EPOCH FROM NOW())
+        converted = converted.replace(/strftime\s*\(\s*'%s'\s*,\s*'now'\s*\)/gi, "EXTRACT(EPOCH FROM NOW())::bigint");
+        // Convert PRAGMA table_info(X) to information_schema query
+        const pragmaMatch = converted.match(/PRAGMA\s+table_info\((\w+)\)/i);
+        if (pragmaMatch) {
+            const table = pragmaMatch[1];
+            converted = `SELECT column_name as name FROM information_schema.columns WHERE table_name = '${table}'`;
+        }
+        return { sql: converted, hasOrIgnore, hasOrReplace };
     }
 
     prepare(sql) {
         const self = this;
-        const { sql: pgSql, hasOrIgnore } = self._convertSql(sql);
+        const { sql: pgSql, hasOrIgnore, hasOrReplace } = self._convertSql(sql);
         return {
             async run(...args) {
                 const params = self._normalizeParams(args);
@@ -89,13 +99,40 @@ export class PgDatabase {
                 let execSql = pgSql;
                 const isInsert = /^\s*INSERT\s/i.test(execSql);
                 if (hasOrIgnore && !/ON\s+CONFLICT/i.test(execSql)) execSql = execSql.trimEnd() + " ON CONFLICT DO NOTHING";
+                if (hasOrReplace && !/ON\s+CONFLICT/i.test(execSql)) {
+                    // Parse column list from INSERT INTO table (col1, col2, ...) VALUES (...)
+                    const colMatch = execSql.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+                    if (colMatch) {
+                        const cols = colMatch[1].split(',').map(c => c.trim());
+                        const conflictCol = cols[0]; // First column is assumed PK/unique
+                        const updateCols = cols.slice(1);
+                        if (updateCols.length > 0) {
+                            const setClauses = updateCols.map(c => `${c} = EXCLUDED.${c}`).join(', ');
+                            execSql = execSql.trimEnd() + ` ON CONFLICT (${conflictCol}) DO UPDATE SET ${setClauses}`;
+                        } else {
+                            execSql = execSql.trimEnd() + ` ON CONFLICT (${conflictCol}) DO NOTHING`;
+                        }
+                    }
+                }
                 if (isInsert && !/RETURNING/i.test(execSql)) execSql = execSql.trimEnd() + " RETURNING *";
                 try {
                     const res = await client.query(execSql, params);
                     return { changes: res.rowCount, lastInsertRowid: res.rows?.[0]?.id };
                 } catch (e) {
                     if (isInsert && /column|RETURNING/i.test(e.message)) {
-                        const fallbackSql = hasOrIgnore ? pgSql + " ON CONFLICT DO NOTHING" : pgSql;
+                        let fallbackSql = pgSql;
+                        if (hasOrIgnore) fallbackSql += " ON CONFLICT DO NOTHING";
+                        if (hasOrReplace) {
+                            const colMatch = pgSql.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+                            if (colMatch) {
+                                const cols = colMatch[1].split(',').map(c => c.trim());
+                                const conflictCol = cols[0];
+                                const updateCols = cols.slice(1);
+                                if (updateCols.length > 0) {
+                                    fallbackSql += ` ON CONFLICT (${conflictCol}) DO UPDATE SET ${updateCols.map(c => `${c} = EXCLUDED.${c}`).join(', ')}`;
+                                }
+                            }
+                        }
                         const res = await client.query(fallbackSql, params);
                         return { changes: res.rowCount };
                     }

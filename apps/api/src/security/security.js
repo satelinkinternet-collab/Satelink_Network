@@ -1,10 +1,10 @@
 export function attachSecurity(app, db) {
     const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 
-    const setFreeze = () => {
+    const setFreeze = async () => {
         try {
-            db.prepare("UPDATE system_config SET value='1' WHERE key='security_freeze'").run();
-            db.prepare("UPDATE system_config SET value='1' WHERE key='withdrawals_paused'").run();
+            await db.prepare("UPDATE system_config SET value='1' WHERE key='security_freeze'").run();
+            await db.prepare("UPDATE system_config SET value='1' WHERE key='withdrawals_paused'").run();
         } catch (e) { }
     };
 
@@ -30,12 +30,12 @@ export function attachSecurity(app, db) {
     app.locals.requireAdminKey = requireAdminKey;
 
     // Abuse guard
-    app.use((req, res, next) => {
+    app.use(async (req, res, next) => {
         if (req.method === "POST" && (req.path === "/operations/execute" || req.path === "/usage/record")) {
             const { nodeWallet, opType } = req.body || {};
             if (nodeWallet && opType) {
                 try {
-                    const row = db
+                    const row = await db
                         .prepare("SELECT SUM(ops) as totalOps FROM op_counts WHERE user_wallet=? AND op_type=?")
                         .get(nodeWallet, opType);
                     if (row?.totalOps >= 5000) {
@@ -48,13 +48,13 @@ export function attachSecurity(app, db) {
     });
 
     // Treasury guard
-    app.use((req, res, next) => {
+    app.use(async (req, res, next) => {
         if (req.method === "POST" && req.path === "/ledger/withdraw") {
             try {
-                const row = db.prepare("SELECT SUM(amount) as s FROM revenue_events").get();
+                const row = await db.prepare("SELECT SUM(amount) as s FROM revenue_events").get();
                 const treasury = Number(row?.s || 0);
                 if (treasury < 0) {
-                    setFreeze();
+                    await setFreeze();
                     return res.status(500).json({ ok: false, error: "WITHDRAWALS PAUSED: treasury unsafe" });
                 }
             } catch (e) { }

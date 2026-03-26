@@ -11,6 +11,10 @@ COPY apps/dashboard ./apps/dashboard
 
 WORKDIR /app/apps/dashboard
 
+# INTERNAL_API_URL is used by next.config.ts rewrites (baked at build time)
+ARG INTERNAL_API_URL=http://satelink-core:8080
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
+
 RUN npm run build
 
 # ── Stage 2: runtime ───────────────────────────────────────────────────────────
@@ -18,11 +22,20 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/apps/dashboard/public ./public
-COPY --from=builder /app/apps/dashboard/.next ./.next
-COPY --from=builder /app/apps/dashboard/node_modules ./node_modules
-COPY --from=builder /app/apps/dashboard/package.json ./package.json
+# Copy hoisted root node_modules (contains next, react, etc.)
+COPY --from=builder /app/node_modules ./node_modules
+# Copy dashboard-specific node_modules (local overrides)
+COPY --from=builder /app/apps/dashboard/node_modules ./apps/dashboard/node_modules
+# Copy dashboard build output
+COPY --from=builder /app/apps/dashboard/public ./apps/dashboard/public
+COPY --from=builder /app/apps/dashboard/.next ./apps/dashboard/.next
+COPY --from=builder /app/apps/dashboard/package.json ./apps/dashboard/package.json
+COPY --from=builder /app/apps/dashboard/next.config.ts ./apps/dashboard/next.config.ts
+# Copy root package.json for workspace resolution
+COPY --from=builder /app/package.json ./package.json
+
+WORKDIR /app/apps/dashboard
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["npx", "next", "start"]
