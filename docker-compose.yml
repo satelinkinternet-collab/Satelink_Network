@@ -1,23 +1,19 @@
 services:
   satelink-core:
     build: .
-    # container_name removed — ghost container metadata in Docker VM prevents named containers
-    command: npm run start
     environment:
       - NODE_ENV=production
       - PORT=8080
       - LOG_LEVEL=info
       - DATABASE_URL=postgresql://satelink:satelinkpass@database:5432/satelink
       - REDIS_URL=redis://redis:6379
-      - REDIS_HOST=redis
-      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "8080:8080"
     volumes:
       - satelink-data:/usr/src/app/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/health" ]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -33,7 +29,6 @@ services:
       dockerfile: apps/dashboard/Dockerfile.web
       args:
         - INTERNAL_API_URL=http://satelink-core:8080
-    # container_name removed — ghost container metadata in Docker VM
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -47,7 +42,6 @@ services:
 
   satelink-node-worker:
     build: .
-    # container_name removed — ghost container metadata in Docker VM
     command: npm run worker
     environment:
       - NODE_ENV=production
@@ -67,9 +61,7 @@ services:
         condition: service_healthy
 
   database:
-    # PostgreSQL 15 — production database (SQLite fully removed)
     image: postgres:15-alpine
-    # container_name removed — ghost container metadata in Docker VM
     environment:
       POSTGRES_USER: satelink
       POSTGRES_PASSWORD: satelinkpass
@@ -80,19 +72,18 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U satelink" ]
+      test: ["CMD-SHELL", "pg_isready -U satelink"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    # container_name removed — ghost container metadata in Docker VM
     ports:
       - "6379:6379"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
