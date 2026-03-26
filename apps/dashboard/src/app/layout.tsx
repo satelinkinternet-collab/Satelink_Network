@@ -15,10 +15,7 @@ const geistMono = Geist_Mono({
 
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
-import { AppShell } from "@/components/layout/AppShell";
-import { BetaFeedbackButton } from "@/components/beta/BetaFeedbackButton";
-import { BackupNudge } from "@/components/auth/BackupNudge";
-import { SigningGuard } from "@/components/auth/SigningGuard";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Satelink MVP Dashboard",
@@ -39,9 +36,6 @@ export default function RootLayout({
           <AppShell>
             {children}
           </AppShell>
-          <BackupNudge />
-          <BetaFeedbackButton />
-          <SigningGuard />
           <Toaster position="top-right" />
         </AuthProvider>
       </body>

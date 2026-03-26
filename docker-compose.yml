@@ -11,6 +11,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - REDIS_HOST=redis
       - JWT_SECRET=${JWT_SECRET}
+      - DISABLE_PROFIT_GUARD=true
     ports:
       - "8080:8080"
     volumes:
