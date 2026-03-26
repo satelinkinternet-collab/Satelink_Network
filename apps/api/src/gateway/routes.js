@@ -331,13 +331,19 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     app.get('/dev/seed-job', async (req, res) => {
         try {
+            const jobId = `job_${Math.random().toString(36).substr(2, 9)}`;
             await redis.xadd(
                 'satelink_jobs_normal',
                 '*',
-                'type', 'test_job',
-                'payload', JSON.stringify({ value: Math.random() })
+                'job_id', jobId,
+                'job_type', 'compute_task_standard',
+                'client_id', 'client_001',
+                'payload', JSON.stringify({ value: Math.random() }),
+                'reward_usdt', '0.005',
+                'priority', 'NORMAL',
+                'created_at', Date.now().toString()
             );
-            res.json({ ok: true, message: "Job seeded" });
+            res.json({ ok: true, message: "Job seeded", job_id: jobId });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
