@@ -10,6 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: satelink
+          POSTGRES_PASSWORD: satelinkpass
+          POSTGRES_DB: satelink
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,16 +55,12 @@ jobs:
           NODE_ENV=test
           JWT_SECRET=ci_e2e_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           JWT_REFRESH_SECRET=ci_e2e_refresh_secret_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbb
-          SQLITE_PATH=./test_e2e.db
+          DATABASE_URL=postgresql://satelink:satelinkpass@localhost:5432/satelink
+          REDIS_HOST=localhost
+          REDIS_URL=redis://localhost:6379
           FEATURE_REAL_SETTLEMENT=false
           FEATURE_MOONPAY=false
           EOF
 
       - name: Run E2E
-        run: |
-          chmod +x scripts/test.sh || true
-          if [ -f scripts/test.sh ]; then
-            ./scripts/test.sh
-          else
-            npm test
-          fi
+        run: npm test

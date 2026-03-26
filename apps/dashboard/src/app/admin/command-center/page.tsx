@@ -57,15 +57,25 @@ export default function CommandCenterPage() {
     const fetchData = useCallback(async () => {
         try {
             setError('');
-            const [summaryRes, feedRes] = await Promise.all([
+            const [summaryRes, feedRes, systemStatusRes] = await Promise.all([
                 api.get('/admin/command/summary'),
                 api.get('/admin/command/live-feed?limit=50'),
+                api.get('/system/status')
             ]);
+            
             if (summaryRes.data.ok) {
                 setSystem(summaryRes.data.system);
-                setKpis(summaryRes.data.kpis);
                 setAlertsCount(summaryRes.data.alerts_open_count);
                 setErrorsCount(summaryRes.data.errors_1h_count);
+                
+                // Merge data from /system/status into KPIs
+                const systemData = systemStatusRes.data;
+                setKpis({
+                    ...summaryRes.data.kpis,
+                    ops_5m: systemData.ops_per_min || 0,
+                    revenue_24h_usdt: systemData.total_revenue?.toLocaleString() || "0.00",
+                    success_rate_5m: systemData.success_rate || summaryRes.data.kpis.success_rate_5m
+                });
             }
             if (feedRes.data.ok) setFeed(feedRes.data.feed);
         } catch (e: any) {
@@ -111,10 +121,10 @@ export default function CommandCenterPage() {
 
     const kpiCards = [
         { label: 'Active Nodes (5m)', value: kpis.active_nodes_5m, icon: Cpu, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
-        { label: 'Ops / 5min', value: kpis.ops_5m, icon: Zap, color: 'text-blue-400', bg: 'from-blue-500/10 to-blue-500/5' },
+        { label: 'Ops/min', value: kpis.ops_5m, icon: Zap, color: 'text-blue-400', bg: 'from-blue-500/10 to-blue-500/5' },
         { label: 'Success Rate', value: `${kpis.success_rate_5m}%`, icon: Activity, color: 'text-purple-400', bg: 'from-purple-500/10 to-purple-500/5' },
         { label: 'p95 Latency', value: `${kpis.p95_latency_ms_5m}ms`, icon: Clock, color: 'text-amber-400', bg: 'from-amber-500/10 to-amber-500/5' },
-        { label: 'Revenue (24h)', value: `$${kpis.revenue_24h_usdt}`, icon: TrendingUp, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
+        { label: 'Revenue', value: `$${kpis.revenue_24h_usdt}`, icon: TrendingUp, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
         { label: 'Open Alerts', value: alertsCount, icon: Shield, color: alertsCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: alertsCount > 0 ? 'from-red-500/10 to-red-500/5' : 'from-emerald-500/10 to-emerald-500/5' },
         { label: 'Errors (1h)', value: errorsCount, icon: AlertTriangle, color: errorsCount > 0 ? 'text-amber-400' : 'text-emerald-400', bg: errorsCount > 0 ? 'from-amber-500/10 to-amber-500/5' : 'from-emerald-500/10 to-emerald-500/5' },
     ];

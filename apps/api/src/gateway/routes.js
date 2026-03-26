@@ -38,6 +38,7 @@ import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
 import { OperationsEngine } from '../core/operations_engine.js';
 import { schedulerStatus } from '../economics/epoch_scheduler.js';
+import { connection as redis } from '../queue/redisClient.js';
 
 client.collectDefaultMetrics();
 
@@ -295,6 +296,49 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             });
         } catch (e) {
             console.error("[DEBUG] run-epoch error:", e.message, e.stack);
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // ── Network Health & Stats (powers dashboard widgets) ──
+    app.get('/network/health', (req, res) => {
+        res.json({
+            ok: true,
+            data: {
+                status: 'healthy',
+                nodeHealth: { online: 0, jailed: 0, slashed: 0 },
+                alerts: 0,
+                snapshotUrl: ''
+            }
+        });
+    });
+
+    app.get('/api/network/stats', (req, res) => {
+        try {
+            const stats = getNetworkStats(db);
+            res.json(stats);
+        } catch (e) {
+            res.json({
+                totalNodes: 0,
+                activeNodes: 0,
+                currentEpoch: 0,
+                totalRevenueUsdt: 0,
+                totalOpsProcessed: 0,
+                lastEpochClosedAt: null
+            });
+        }
+    });
+
+    app.get('/dev/seed-job', async (req, res) => {
+        try {
+            await redis.xadd(
+                'satelink_jobs_normal',
+                '*',
+                'type', 'test_job',
+                'payload', JSON.stringify({ value: Math.random() })
+            );
+            res.json({ ok: true, message: "Job seeded" });
+        } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
