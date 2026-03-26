@@ -16,13 +16,17 @@ export class AutomationScheduler {
         this.producer = new JobProducer(db);
         this._timers = new Map();
         this._running = false;
-        this._ensureTable();
+        // Fire-and-forget async init
+        this._initPromise = this._ensureTable().catch(e => {
+            console.warn('[AutomationScheduler] Init warning:', e.message);
+        });
     }
 
     start() {
         if (this._running) return;
         this._running = true;
-        this._reloadPersistedJobs();
+        // Wait for table creation before reloading
+        this._initPromise.then(() => this._reloadPersistedJobs()).catch(() => {});
         console.log('[AutomationScheduler] Started.');
     }
 
@@ -33,7 +37,7 @@ export class AutomationScheduler {
         console.log('[AutomationScheduler] Stopped.');
     }
 
-    register({ job_type, schedule, payload }) {
+    async register({ job_type, schedule, payload }) {
         if (!job_type) throw new Error('job_type is required');
         if (!VALID_SCHEDULES.has(schedule)) throw new Error('invalid schedule');
         if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
@@ -42,7 +46,7 @@ export class AutomationScheduler {
         const interval = SCHEDULE_INTERVALS_MS[schedule];
 
         try {
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT INTO automation_jobs (job_id, job_type, schedule, interval_ms, payload, status, created_at)
                 VALUES (?, ?, ?, ?, ?, 'active', ?)
             `).run(job_id, job_type, schedule, interval, JSON.stringify(payload), Date.now());
@@ -54,44 +58,42 @@ export class AutomationScheduler {
         return { ok: true, job_id, schedule, interval_ms: interval };
     }
 
-    cancel(job_id) {
+    async cancel(job_id) {
         const timer = this._timers.get(job_id);
         if (timer) {
             clearInterval(timer);
             this._timers.delete(job_id);
         }
         try {
-            this.db.prepare(`UPDATE automation_jobs SET status = 'cancelled' WHERE job_id = ?`).run(job_id);
+            await this.db.prepare(`UPDATE automation_jobs SET status = 'cancelled' WHERE job_id = ?`).run(job_id);
         } catch (_) { }
         return { ok: true, job_id };
     }
 
-    list() {
+    async list() {
         try {
-            return this.db.prepare('SELECT * FROM automation_jobs ORDER BY created_at DESC').all();
+            return await this.db.prepare('SELECT * FROM automation_jobs ORDER BY created_at DESC').all();
         } catch (_) { return []; }
     }
 
-    _ensureTable() {
-        try {
-            this.db.prepare(`
-                CREATE TABLE IF NOT EXISTS automation_jobs (
-                    job_id      TEXT PRIMARY KEY,
-                    job_type    TEXT NOT NULL,
-                    schedule    TEXT NOT NULL,
-                    interval_ms INTEGER NOT NULL,
-                    payload     TEXT NOT NULL DEFAULT '{}',
-                    status      TEXT NOT NULL DEFAULT 'active',
-                    created_at  INTEGER NOT NULL,
-                    last_fire   INTEGER
-                )
-            `).run();
-        } catch (e) { }
+    async _ensureTable() {
+        await this.db.prepare(`
+            CREATE TABLE IF NOT EXISTS automation_jobs (
+                job_id      TEXT PRIMARY KEY,
+                job_type    TEXT NOT NULL,
+                schedule    TEXT NOT NULL,
+                interval_ms INTEGER NOT NULL,
+                payload     TEXT NOT NULL DEFAULT '{}',
+                status      TEXT NOT NULL DEFAULT 'active',
+                created_at  INTEGER NOT NULL,
+                last_fire   INTEGER
+            )
+        `).run();
     }
 
-    _reloadPersistedJobs() {
+    async _reloadPersistedJobs() {
         try {
-            const active = this.db.prepare(`SELECT * FROM automation_jobs WHERE status = 'active'`).all();
+            const active = await this.db.prepare(`SELECT * FROM automation_jobs WHERE status = 'active'`).all();
             for (const row of active) {
                 const payload = JSON.parse(row.payload || '{}');
                 this._scheduleTimer(row.job_id, row.job_type, row.interval_ms, payload);
@@ -113,12 +115,12 @@ export class AutomationScheduler {
                 type: 'automation_job',
                 client_id: 'automation_scheduler',
                 payload: { job_id, job_type, context: payload },
-                reward: 0.10, // Automation reward
+                reward: 0.10,
                 priority: 'NORMAL'
             });
 
             try {
-                this.db.prepare(`UPDATE automation_jobs SET last_fire = ? WHERE job_id = ?`).run(Date.now(), job_id);
+                await this.db.prepare(`UPDATE automation_jobs SET last_fire = ? WHERE job_id = ?`).run(Date.now(), job_id);
             } catch (_) { }
             console.log(`[AutomationScheduler] Fired ${job_id}`);
         } catch (err) {
@@ -129,15 +131,15 @@ export class AutomationScheduler {
 
 export function createAutomationRouter(scheduler) {
     const router = Router();
-    router.post('/', (req, res) => {
+    router.post('/', async (req, res) => {
         try {
-            const result = scheduler.register(req.body);
+            const result = await scheduler.register(req.body);
             res.status(201).json(result);
         } catch (err) {
             res.status(400).json({ ok: false, error: err.message });
         }
     });
-    router.get('/', (req, res) => res.status(200).json({ ok: true, jobs: scheduler.list() }));
-    router.delete('/:id', (req, res) => res.status(200).json(scheduler.cancel(req.params.id)));
+    router.get('/', async (req, res) => res.status(200).json({ ok: true, jobs: await scheduler.list() }));
+    router.delete('/:id', async (req, res) => res.status(200).json(await scheduler.cancel(req.params.id)));
     return router;
 }

@@ -49,15 +49,14 @@ export function createOpsRouter(db, opsExecutionAdapter) {
             const opId = `op_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
             // Insert into ops_registry internal persistence (Part 2 Registry Integration)
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO ops_registry (op_id, op_type, target, payload, reward, status, created_at)
                 VALUES (?, ?, ?, ?, ?, 'pending', ?)
             `).run(opId, op_type, target || 'generic', payloadString, baseReward, Date.now());
 
-            db.prepare(`UPDATE universal_ops_metrics SET operations_received = operations_received + 1 WHERE id = 1`).run();
+            await db.prepare(`UPDATE universal_ops_metrics SET operations_received = operations_received + 1 WHERE id = 1`).run();
 
             // Pass execution abstractly to the unified pipeline adapter (Part 4 integration)
-            // It will map it to jobQueue explicitly
             await opsExecutionAdapter.dispatchOperation({
                 id: opId,
                 type: op_type,
@@ -67,8 +66,8 @@ export function createOpsRouter(db, opsExecutionAdapter) {
                 client_id: req.developerId
             });
 
-            // Status logically turns scheduled 
-            db.prepare(`UPDATE ops_registry SET status = 'scheduled' WHERE op_id = ?`).run(opId);
+            // Status logically turns scheduled
+            await db.prepare(`UPDATE ops_registry SET status = 'scheduled' WHERE op_id = ?`).run(opId);
 
             res.status(201).json({
                 message: 'Operation accepted and scheduled successfully',

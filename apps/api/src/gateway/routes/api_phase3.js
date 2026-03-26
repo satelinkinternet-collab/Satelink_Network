@@ -13,7 +13,7 @@ export function createPhase3Router(db) {
     router.get('/treasury/status', async (req, res) => {
         try {
             // Ideally we capture snapshot periodically, but for MVP we can proxy it or fetch latest
-            const latest = treasury.getLatestSnapshot();
+            const latest = await treasury.getLatestSnapshot();
             if (latest) {
                 res.json({ ok: true, data: latest });
             } else {
@@ -53,7 +53,7 @@ export function createPhase3Router(db) {
                 return res.status(400).json({ ok: false, error: 'epochId is required' });
             }
 
-            const claimData = oracle.getClaimData(epochId, wallet);
+            const claimData = await oracle.getClaimData(epochId, wallet);
 
             if (!claimData) {
                 return res.status(404).json({ ok: false, error: 'No claim entitlement found for this epoch' });
@@ -81,7 +81,7 @@ export function createPhase3Router(db) {
             const wallet = req.user.wallet;
 
             // Record the withdrawal intent/success in DB
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO claim_withdrawals (operator_wallet, amount_usdt, tx_hash, withdrawn_at)
                 VALUES (?, ?, ?, ?)
             `).run(wallet, amount, txHash, Date.now());

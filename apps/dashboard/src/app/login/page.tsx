@@ -12,7 +12,7 @@ export default function LoginPage() {
     const handleLogin = async (role: string, wallet: string, redirect: string) => {
         setLoading(true);
         try {
-            const res = await api.post('/__test/auth/login', { wallet, role });
+            const res = await api.post('/auth/login', { wallet, role });
             if (res.data?.token) {
                 localStorage.setItem('satelink_token', res.data.token);
                 toast.success(`Logged in as ${role}`);
@@ -40,35 +40,35 @@ export default function LoginPage() {
 
                 <div className="space-y-4">
                     <button
-                        onClick={() => handleLogin('admin_super', '0xadmin_super', '/admin')}
+                        onClick={() => handleLogin('admin_super', '0xadmin_super', '/dashboard')}
                         disabled={loading}
                         className="w-full py-3 rounded-xl bg-white text-black font-semibold hover:bg-white/90 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
                     >
                         Login as Super Admin
                     </button>
                     <button
-                        onClick={() => handleLogin('node_operator', '0xnode_op_1', '/node')}
+                        onClick={() => handleLogin('node_operator', '0xnode_op_1', '/dashboard')}
                         disabled={loading}
                         className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
                     >
                         Login as Node Operator
                     </button>
                     <button
-                        onClick={() => handleLogin('builder', '0xbuilder_1', '/builder')}
+                        onClick={() => handleLogin('builder', '0xbuilder_1', '/dashboard')}
                         disabled={loading}
                         className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
                     >
                         Login as Builder
                     </button>
                     <button
-                        onClick={() => handleLogin('distributor_lco', '0xdist_1', '/distributor')}
+                        onClick={() => handleLogin('distributor_lco', '0xdist_1', '/dashboard')}
                         disabled={loading}
                         className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
                     >
                         Login as Distributor
                     </button>
                     <button
-                        onClick={() => handleLogin('enterprise', '0xent_1', '/enterprise')}
+                        onClick={() => handleLogin('enterprise', '0xent_1', '/dashboard')}
                         disabled={loading}
                         className="w-full py-3 rounded-xl border border-white/20 hover:bg-white/5 transition-all text-sm font-medium text-white/90"
                     >

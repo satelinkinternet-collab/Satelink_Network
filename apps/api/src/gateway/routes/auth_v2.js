@@ -57,11 +57,44 @@ export function createUnifiedAuthRouter(opsEngine) {
         }
         return res.json({
             ok: true,
-            user: req.user
+            user: {
+                ...req.user,
+                permissions: req.user.permissions || getPermissionsForRole(req.user.role)
+            }
         });
     });
 
-    // Mock Login REMOVED
+    // ── Diagnostic role-based login (wallet + role) ──
+    // Non-destructive: does NOT override /login (email+password) above.
+    // Disabled when DISABLE_DEV_LOGIN=true (set in real production deploys).
+    if (process.env.DISABLE_DEV_LOGIN !== 'true') {
+        router.post('/auth/login', (req, res) => {
+            const { wallet, role } = req.body;
+            if (!wallet) {
+                return res.status(400).json({ ok: false, error: 'wallet is required' });
+            }
+            const assignedRole = role || 'node_operator';
+            const secret = process.env.JWT_SECRET;
+            if (!secret) {
+                return res.status(500).json({ ok: false, error: 'JWT_SECRET not configured' });
+            }
+            const token = jwt.sign(
+                {
+                    wallet,
+                    role: assignedRole,
+                    type: 'access',
+                    dev: true
+                },
+                secret,
+                { expiresIn: process.env.JWT_TTL || '24h', issuer: process.env.JWT_ISSUER || 'satelink-network', algorithm: 'HS256' }
+            );
+            res.json({
+                ok: true,
+                token,
+                user: { wallet, role: assignedRole, permissions: getPermissionsForRole(assignedRole) }
+            });
+        });
+    }
 
     // IP Hashing helper for rate limits
     const hashIp = (ip) => {

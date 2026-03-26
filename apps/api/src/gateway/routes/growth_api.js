@@ -49,12 +49,12 @@ export function createGrowthRouter(db) {
     });
 
     // ── GET /v1/nodes/leaderboard ─────────────────────────────────────────────
-    router.get('/services/nodes/leaderboard', (req, res) => {
+    router.get('/services/nodes/leaderboard', async (req, res) => {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-            const entries = leaderboard.getLeaderboard(limit);
-            const summary = leaderboard.summary();
-            res.status(200).json({ ok: true, summary, leaderboard: entries });
+            const entries = await leaderboard.getLeaderboard(limit);
+            const summaryData = await leaderboard.summary();
+            res.status(200).json({ ok: true, summary: summaryData, leaderboard: entries });
         } catch (e) {
             console.error('[Growth] /services/nodes/leaderboard error:', e.message);
             res.status(500).json({ ok: false, error: e.message });

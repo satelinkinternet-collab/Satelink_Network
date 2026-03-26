@@ -10,38 +10,25 @@ const API_BASE =
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
-      // Auth
-      { source: '/auth/:path*', destination: 'http://localhost:8080/auth/:path*' },
-      // User settings
-      { source: '/me/:path*', destination: 'http://localhost:8080/me/:path*' },
-      // Admin API (NOT admin pages — those are frontend)
-      { source: '/admin-api/:path*', destination: 'http://localhost:8080/admin-api/:path*' },
-      // Node API
-      { source: '/node-api/:path*', destination: 'http://localhost:8080/node-api/:path*' },
-      // Builder API
-      { source: '/builder-api/:path*', destination: 'http://localhost:8080/builder-api/:path*' },
-      // Distributor API
-      { source: '/dist-api/:path*', destination: 'http://localhost:8080/dist-api/:path*' },
-      // Enterprise API
-      { source: '/ent-api/:path*', destination: 'http://localhost:8080/ent-api/:path*' },
-      // Pairing
-      { source: '/pair/:path*', destination: 'http://localhost:8080/pair/:path*' },
-      // SSE Stream
-      { source: '/stream/:path*', destination: 'http://localhost:8080/stream/:path*' },
-      // Support
-      { source: '/support/:path*', destination: 'http://localhost:8080/support/:path*' },
-      // Beta
-      { source: '/beta/:path*', destination: 'http://localhost:8080/beta/:path*' },
-      // Health
-      { source: '/health', destination: 'http://localhost:8080/health' },
-      // Test routes (dev only)
-      { source: '/__test/:path*', destination: 'http://localhost:8080/__test/:path*' },
-      // Webhooks
-      { source: '/webhooks/:path*', destination: 'http://localhost:8080/webhooks/:path*' },
-      // Network stats
-      { source: '/network-stats/:path*', destination: 'http://localhost:8080/network-stats/:path*' },
-      // Partners
-      { source: '/partners/:path*', destination: 'http://localhost:8080/partners/:path*' },
+      { source: '/auth/:path*', destination: `${API_BASE}/auth/:path*` },
+      { source: '/me/:path*', destination: `${API_BASE}/me/:path*` },
+      { source: '/admin-api/:path*', destination: `${API_BASE}/admin-api/:path*` },
+      { source: '/node-api/:path*', destination: `${API_BASE}/node-api/:path*` },
+      { source: '/builder-api/:path*', destination: `${API_BASE}/builder-api/:path*` },
+      { source: '/dist-api/:path*', destination: `${API_BASE}/dist-api/:path*` },
+      { source: '/ent-api/:path*', destination: `${API_BASE}/ent-api/:path*` },
+      { source: '/pair/:path*', destination: `${API_BASE}/pair/:path*` },
+      { source: '/stream/:path*', destination: `${API_BASE}/stream/:path*` },
+      { source: '/support/:path*', destination: `${API_BASE}/support/:path*` },
+      { source: '/beta/:path*', destination: `${API_BASE}/beta/:path*` },
+      { source: '/health', destination: `${API_BASE}/health` },
+      { source: '/__test/:path*', destination: `${API_BASE}/__test/:path*` },
+      { source: '/webhooks/:path*', destination: `${API_BASE}/webhooks/:path*` },
+      { source: '/network-stats/:path*', destination: `${API_BASE}/network-stats/:path*` },
+      { source: '/partners/:path*', destination: `${API_BASE}/partners/:path*` },
+      { source: '/system/:path*', destination: `${API_BASE}/system/:path*` },
+      { source: '/api/:path*', destination: `${API_BASE}/api/:path*` },
+      { source: '/network/:path(health|stats)$', destination: `${API_BASE}/network/:path*` },
     ];
   },
 };
