@@ -2,10 +2,9 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
 export function createDevAuthRouter(opsEngine) {
     const router = Router();
+    const JWT_SECRET = process.env.JWT_SECRET;
 
     // Guard: strictly dev only
     router.use((req, res, next) => {

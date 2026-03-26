@@ -1,7 +1,7 @@
 services:
   satelink-core:
     build: .
-    container_name: satelink-core
+    # container_name removed — ghost container metadata in Docker VM prevents named containers
     command: npm run start
     environment:
       - NODE_ENV=production
@@ -9,6 +9,7 @@ services:
       - LOG_LEVEL=info
       - DATABASE_URL=postgresql://satelink:satelinkpass@database:5432/satelink
       - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
       - JWT_SECRET=${JWT_SECRET}
     ports:
       - "8080:8080"
@@ -21,44 +22,54 @@ services:
       timeout: 10s
       retries: 3
     depends_on:
-      - database
-      - redis
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  satelink-gateway:
-    build: .
-    container_name: satelink-gateway
-    command: npm run gateway
+  satelink-dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile.web
+      args:
+        - INTERNAL_API_URL=http://satelink-core:8080
+    # container_name removed — ghost container metadata in Docker VM
     environment:
       - NODE_ENV=production
-      - PORT=8081
-      - LOG_LEVEL=info
+      - PORT=3000
+      - INTERNAL_API_URL=http://satelink-core:8080
     ports:
-      - "8081:8081"
-    volumes:
-      - satelink-data:/usr/src/app/data
+      - "3000:3000"
     restart: unless-stopped
     depends_on:
-      - satelink-core
+      satelink-core:
+        condition: service_healthy
 
   satelink-node-worker:
     build: .
-    container_name: satelink-node-worker
+    # container_name removed — ghost container metadata in Docker VM
     command: npm run worker
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=info
       - WORKER_INTERVAL_MS=10000
+      - DATABASE_URL=postgresql://satelink:satelinkpass@database:5432/satelink
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - satelink-data:/usr/src/app/data
     restart: unless-stopped
     depends_on:
-      - database
-      - redis
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   database:
     # PostgreSQL 15 — production database (SQLite fully removed)
     image: postgres:15-alpine
-    container_name: satelink-db
+    # container_name removed — ghost container metadata in Docker VM
     environment:
       POSTGRES_USER: satelink
       POSTGRES_PASSWORD: satelinkpass
@@ -76,7 +87,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: satelink-redis
+    # container_name removed — ghost container metadata in Docker VM
     ports:
       - "6379:6379"
     restart: unless-stopped
