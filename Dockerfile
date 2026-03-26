@@ -13,6 +13,9 @@ COPY apps/api/package*.json ./apps/api/
 COPY apps/dashboard/package*.json ./apps/dashboard/
 
 # Install all workspace dependencies (production only)
+RUN npm config set fetch-retry-maxtimeout 600000
+RUN npm config set fetch-retries 5
+RUN npm config set fetch-timeout 600000
 RUN npm ci --omit=dev
 
 # Copy full source
