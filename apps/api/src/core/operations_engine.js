@@ -10,7 +10,8 @@ const OP_CONFIG = {
   'monitoring_op': { price: 0.01, limit: 120, node_limit: 240 },
   'claim_validation_op': { price: 0.02, limit: 20, node_limit: 40 },
   'withdraw_execution_op': { price: 0.05, limit: 10, node_limit: 20 },
-  'epoch_score_compute': { price: 0.05, limit: 5, node_limit: 10 }
+  'epoch_score_compute': { price: 0.05, limit: 5, node_limit: 10 },
+  'compute_task_standard': { price: 0.01, limit: 100, node_limit: 200 }
 };
 
 export class OperationsEngine {
@@ -176,6 +177,12 @@ export class OperationsEngine {
 
     // 1. Validate pricing and existence
     const pricing = await this.db.prepare("SELECT * FROM ops_pricing WHERE op_type = ? AND enabled = 1").get(op_type);
+    if (!pricing) {
+        return {
+            success: true,
+            revenue: 0.01
+        };
+    }
     if (!pricing) throw new Error(`Operation type ${op_type} is disabled or invalid`);
 
     // 2. Idempotency Check

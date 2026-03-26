@@ -1,6 +1,7 @@
 import { JobQueue } from './job_queue.js';
 import { logger } from '../monitoring/logger.js';
 import { v4 as uuidv4 } from 'uuid';
+import { ExecutionRouter } from '../execution/executionRouter.js';
 
 export class JobConsumer {
     constructor(opts = {}) {
@@ -8,6 +9,7 @@ export class JobConsumer {
         this.concurrency = opts.concurrency || 5;
         this.running = false;
         this.opsEngine = opts.opsEngine;
+        this.executionRouter = new ExecutionRouter(opts.db || opts.opsEngine?.db);
         this.visibilityTimeout = opts.visibilityTimeout || 30000; // 30s
     }
 
@@ -69,13 +71,13 @@ export class JobConsumer {
 
             // 2. Integration with OpsEngine (Revenue/Accounting)
             if (this.opsEngine) {
-                await this.opsEngine.execute({
-                    job_id: job.job_id,
-                    client_id: job.client_id,
+                await this.opsEngine.executeOp({
+                    op_type: job.job_type,
                     node_id: this.consumerName,
-                    amount_usdt: job.reward_usdt,
-                    status: 'COMPLETED',
-                    duration: Date.now() - startTime
+                    client_id: job.client_id,
+                    request_id: job.job_id,
+                    timestamp: Date.now(),
+                    payload_hash: job.payload_hash || '0x'
                 });
             }
 
