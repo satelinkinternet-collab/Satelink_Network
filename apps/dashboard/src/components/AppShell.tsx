@@ -10,7 +10,7 @@ import { Sidebar } from '@/components/sidebar';
 import { MobileNav } from '@/components/mobile-nav';
 import { Notifications } from '@/components/notifications';
 
-export function LayoutShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();

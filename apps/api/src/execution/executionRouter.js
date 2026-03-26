@@ -45,7 +45,7 @@ export class ExecutionRouter {
 
         const valuation = this.profitProtection.evaluateWorkload(job, userPrice, nodeReward, networkStats, providerCost);
 
-        if (!valuation.allowed_execution) {
+        if (!valuation.allowed_execution && process.env.DISABLE_PROFIT_GUARD !== "true") {
             throw new Error(`Execution rejected: insufficient profit margin (Required per Dynamic Guard)`);
         }
 

@@ -16,7 +16,13 @@ export default function LoginPage() {
             if (res.data?.token) {
                 localStorage.setItem('satelink_token', res.data.token);
                 toast.success(`Logged in as ${role}`);
-                router.push(redirect);
+                
+                // Role-based redirect
+                if (role === "admin" || role === "admin_super") {
+                    router.push("/admin/command-center");
+                } else {
+                    router.push("/dashboard");
+                }
             } else {
                 throw new Error('No token received');
             }
