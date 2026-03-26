@@ -57,9 +57,11 @@ export class RevenueOracle {
     constructor(fuseService, dbInstance) {
         this.fuse = fuseService;
         this.db = dbInstance;
+    }
 
+    async init() {
         // Ensure table exists for epoch anchoring
-        this.db.prepare(`
+        await this.db.prepare(`
             CREATE TABLE IF NOT EXISTS epoch_anchors (
                 epoch_id INTEGER PRIMARY KEY,
                 merkle_root TEXT NOT NULL,
@@ -70,9 +72,9 @@ export class RevenueOracle {
             )
         `).run();
 
-        this.db.prepare(`
+        await this.db.prepare(`
             CREATE TABLE IF NOT EXISTS epoch_claims (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 epoch_id INTEGER NOT NULL,
                 operator_wallet TEXT NOT NULL,
                 amount_usdt TEXT NOT NULL,
@@ -81,12 +83,13 @@ export class RevenueOracle {
                 UNIQUE(epoch_id, operator_wallet)
             )
         `).run();
+
+        return true;
     }
 
     async anchorEpoch(epochId) {
-        // 1. Fetch all rewards for this epoch (from economic_ledger_entries or similar)
-        // For phase 3, we define the canonical query or just sum up node rewards
-        const rewards = this.db.prepare(`
+        // 1. Fetch all rewards for this epoch
+        const rewards = await this.db.prepare(`
             SELECT operator_wallet, SUM(reward_amount) as total
             FROM node_rewards
             WHERE epoch_id = ? AND status = 'FINALIZED'
@@ -103,7 +106,6 @@ export class RevenueOracle {
 
         // 2. Generate Leaves
         for (const r of rewards) {
-            const amountStr = Math.floor(r.total * 10 ** 6).toString(); // Assuming API provides human readable, we convert to 6 decimals (USDT)
             const amountBN = ethers.parseUnits(r.total.toString(), 6);
             totalRevenue += amountBN;
 
@@ -125,25 +127,25 @@ export class RevenueOracle {
         // Save proofs
         for (const l of leaves) {
             const proof = tree.getProof(l.leaf);
-            this.db.prepare(`
+            await this.db.prepare(`
                 INSERT OR IGNORE INTO epoch_claims (epoch_id, operator_wallet, amount_usdt, leaf_hash, proof)
                 VALUES (?, ?, ?, ?, ?)
             `).run(epochId, l.operator, l.amount, l.leaf, JSON.stringify(proof));
         }
 
         // 4. Record to DB
-        this.db.prepare(`
+        await this.db.prepare(`
             INSERT OR REPLACE INTO epoch_anchors (epoch_id, merkle_root, total_revenue, status)
             VALUES (?, ?, ?, 'PENDING')
         `).run(epochId, root, totalRevenue.toString());
 
-        // 5. Submit to Fuse via fuseService (assuming fuseService wraps contract calls)
+        // 5. Submit to Fuse via fuseService
         try {
             console.log(`[RevenueOracle] Submitting root ${root} for epoch ${epochId}`);
             const tx = await this.fuse.submitEpochRoot(epochId, root, totalRevenue.toString());
 
-            this.db.prepare(`
-                UPDATE epoch_anchors 
+            await this.db.prepare(`
+                UPDATE epoch_anchors
                 SET status = 'ANCHORED', tx_hash = ?, anchored_at = ?
                 WHERE epoch_id = ?
             `).run(tx.hash, Date.now(), epochId);
@@ -152,8 +154,8 @@ export class RevenueOracle {
             return tx.hash;
         } catch (error) {
             console.error(`[RevenueOracle] Failed to anchor epoch ${epochId}:`, error);
-            this.db.prepare(`
-                UPDATE epoch_anchors 
+            await this.db.prepare(`
+                UPDATE epoch_anchors
                 SET status = 'FAILED'
                 WHERE epoch_id = ?
             `).run(epochId);
@@ -161,8 +163,8 @@ export class RevenueOracle {
         }
     }
 
-    getClaimData(epochId, operatorWallet) {
-        const row = this.db.prepare(`
+    async getClaimData(epochId, operatorWallet) {
+        const row = await this.db.prepare(`
             SELECT * FROM epoch_claims WHERE epoch_id = ? AND operator_wallet = ?
         `).get(epochId, operatorWallet);
         if (!row) return null;

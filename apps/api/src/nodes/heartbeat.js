@@ -10,7 +10,7 @@ export function attachHeartbeat(app, db) {
 
         // Ensure row exists in registered_nodes
         try {
-            db.prepare(
+            await db.prepare(
                 "INSERT OR IGNORE INTO registered_nodes (wallet, is_flagged, last_nonce) VALUES (?, 0, -1)"
             ).run(nodeWallet);
         } catch (e) { }
@@ -18,7 +18,7 @@ export function attachHeartbeat(app, db) {
         // Read node state
         let node;
         try {
-            node = db.prepare("SELECT is_flagged, last_nonce FROM registered_nodes WHERE wallet = ?").get(nodeWallet);
+            node = await db.prepare("SELECT is_flagged, last_nonce FROM registered_nodes WHERE wallet = ?").get(nodeWallet);
         } catch (e) { }
 
         if (!node) return res.status(500).json({ error: "Database error" });
@@ -40,24 +40,24 @@ export function attachHeartbeat(app, db) {
 
             const recovered = ethers.verifyMessage(message, signature);
             if (recovered.toLowerCase() !== nodeWallet.toLowerCase()) {
-                db.prepare("UPDATE registered_nodes SET is_flagged = 1 WHERE wallet = ?").run(nodeWallet);
+                await db.prepare("UPDATE registered_nodes SET is_flagged = 1 WHERE wallet = ?").run(nodeWallet);
                 return res.status(401).json({ error: "Bad signature" });
             }
         } catch (e) {
-            db.prepare("UPDATE registered_nodes SET is_flagged = 1 WHERE wallet = ?").run(nodeWallet);
+            await db.prepare("UPDATE registered_nodes SET is_flagged = 1 WHERE wallet = ?").run(nodeWallet);
             return res.status(401).json({ error: "Bad signature" });
         }
 
         // Nonce checks AFTER signature valid
         const lastNonce = Number(node.last_nonce);
         if (Number(nonce) <= lastNonce) {
-            db.prepare("UPDATE registered_nodes SET is_flagged = 1 WHERE wallet = ?").run(nodeWallet);
+            await db.prepare("UPDATE registered_nodes SET is_flagged = 1 WHERE wallet = ?").run(nodeWallet);
             return res.status(409).json({ error: "Replay or lower nonce" });
         }
 
         // On success: update last_nonce
         try {
-            db.prepare("UPDATE registered_nodes SET last_nonce = ? WHERE wallet = ?").run(Number(nonce), nodeWallet);
+            await db.prepare("UPDATE registered_nodes SET last_nonce = ? WHERE wallet = ?").run(Number(nonce), nodeWallet);
         } catch (e) { }
 
         return res.status(200).json({ status: "ok" });

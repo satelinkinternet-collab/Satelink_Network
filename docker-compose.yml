@@ -1,13 +1,15 @@
-version: '3.8'
-
 services:
   satelink-core:
     build: .
     container_name: satelink-core
+    command: npm run start
     environment:
       - NODE_ENV=production
       - PORT=8080
       - LOG_LEVEL=info
+      - DATABASE_URL=postgresql://satelink:satelinkpass@database:5432/satelink
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "8080:8080"
     volumes:
@@ -54,15 +56,13 @@ services:
       - redis
 
   database:
-    # We provision a PostgreSQL database as requested for production readiness.
-    # The application currently uses better-sqlite3 heavily, but this establishes
-    # the container architecture for the upcoming migration.
+    # PostgreSQL 15 — production database (SQLite fully removed)
     image: postgres:15-alpine
     container_name: satelink-db
     environment:
       POSTGRES_USER: satelink
-      POSTGRES_PASSWORD: satelinkpassword
-      POSTGRES_DB: satelink_prod
+      POSTGRES_PASSWORD: satelinkpass
+      POSTGRES_DB: satelink
     ports:
       - "5432:5432"
     volumes:

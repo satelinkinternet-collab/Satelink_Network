@@ -1,18 +1,17 @@
 import "dotenv/config";
 import express from "express";
 import { attachBaseMiddleware } from "./src/security/middleware.js";
-import { attachSchema } from "./src/core/schema.js";
 import { attachSecurity } from "./src/security/security.js";
 import { attachHeartbeat } from "./src/nodes/heartbeat.js";
 import { attachRoutes } from "./src/gateway/routes.js";
 import { attachUI } from "./src/gateway/ui.js";
 
-export function createApp(db) {
+export async function createApp(db) {
   const app = express();
 
   // Attach modules in same order as server.js
+  // Note: attachSchema is called separately in server.js before createApp
   attachBaseMiddleware(app);
-  attachSchema(db);
   attachSecurity(app, db);
   attachHeartbeat(app, db);
   attachRoutes(app, db);
