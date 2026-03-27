@@ -122,9 +122,9 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             const oneMinAgo = nowSec - 60;
             const fiveMinAgo = nowSec - 300;
 
-            // Count ops from revenue_events_v2 with conversion to seconds
-            const opsLastMin = await db.prepare("SELECT COUNT(*) as count FROM revenue_events_v2 WHERE (created_at / 1000) >= ?").get(oneMinAgo);
-            const opsLast5Min = await db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total_usdt FROM revenue_events_v2 WHERE (created_at / 1000) >= ?").get(fiveMinAgo);
+            // created_at is already epoch SECONDS (stored via Math.floor(Date.now()/1000) in OpsEngine)
+            const opsLastMin = await db.prepare("SELECT COUNT(*) as count FROM revenue_events_v2 WHERE created_at >= ?").get(oneMinAgo);
+            const opsLast5Min = await db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total_usdt FROM revenue_events_v2 WHERE created_at >= ?").get(fiveMinAgo);
             console.log("[system/status] ops_last_min:", opsLastMin?.count, "ops_last_5min:", opsLast5Min?.count, "rev_5min:", opsLast5Min?.total_usdt);
             
             res.json({
