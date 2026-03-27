@@ -69,6 +69,18 @@ export class JobConsumer {
             // In a real system, this would call a router or specific executor
             const result = await this._executeWorkload(job);
 
+            // TASK 2 — RECORD EXECUTION RESULT
+            if (result && result.success) {
+                const db = this.opsEngine?.db || this.executionRouter?.db;
+                if (db && typeof db.recordExecution === 'function') {
+                    await db.recordExecution({
+                        job_id: job.job_id || job.id,
+                        revenue: result.revenue || 0,
+                        cost: result.cost || 0
+                    });
+                }
+            }
+
             // 2. Integration with OpsEngine (Revenue/Accounting)
             if (this.opsEngine) {
                 await this.opsEngine.executeOp({
