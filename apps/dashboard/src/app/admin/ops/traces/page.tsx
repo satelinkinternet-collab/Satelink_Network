@@ -31,7 +31,11 @@ export default function TracesPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 5000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
     // When a trace is selected, load linked errors and slow queries
     const openDetail = async (row: any) => {

@@ -102,12 +102,18 @@ export function authenticate(req, res, next) {
     const decoded = verifyAccessToken(token);
 
     if (decoded.type !== 'access') {
+      console.warn(`[AUTH] Invalid token type: ${decoded.type} for path: ${req.path}`);
       return res.status(401).json({ error: 'Unauthorized', message: 'Invalid token type' });
     }
 
     req.user = decoded;
     next();
   } catch (err) {
+    console.error(`[AUTH] Token verification failed: ${err.message} (Path: ${req.path})`);
+    if (err.message.includes("signature")) {
+      console.error(`[AUTH] Signature mismatch. Secret length: ${JWT_SECRET?.length}, Issuer: ${ISSUER}`);
+    }
+
     // Preserve abuse firewall recording from original
     if (req.abuseFirewall) {
       const ipHash = req.ipHash || crypto.createHash('sha256').update(req.ip + (process.env.IP_HASH_SALT || '')).digest('hex');

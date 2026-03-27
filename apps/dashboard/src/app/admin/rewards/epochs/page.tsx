@@ -29,7 +29,11 @@ export default function EpochsPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const executeAction = async () => {
         if (!confirmAction) return;

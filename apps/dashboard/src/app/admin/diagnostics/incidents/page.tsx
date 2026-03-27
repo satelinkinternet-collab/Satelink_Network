@@ -41,7 +41,11 @@ export default function IncidentsPage() {
         } finally { setLoading(false); }
     }, [statusFilter]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 5000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
     const markSent = async (id: number) => {
         setActionLoading(true);

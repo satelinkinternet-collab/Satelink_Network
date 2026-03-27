@@ -1,3 +1,20 @@
+// server.js
+// Global Resilience: Prevent process exit on database connection loss (placed at the absolute top)
+function globalErrorHandler(err) {
+    console.error("[CRITICAL] Uncaught Exception:", err.message);
+    if (err.message.includes("terminating connection") || err.message.includes("closed") || err.message.includes("ECONNREFUSED") || err.message.includes("admin")) {
+        console.warn("[RECOVERY] Database connection lost. Server staying alive to serve 500 errors.");
+        return; // Do not exit
+    } else {
+        console.error(err.stack);
+        console.warn("[RECOVERY] Potential critical error. Staying alive for stability.");
+    }
+}
+process.prependListener('uncaughtException', globalErrorHandler);
+process.prependListener('unhandledRejection', (reason, promise) => {
+    console.error("[CRITICAL] Unhandled Rejection at:", promise, "reason:", reason);
+});
+
 import "./src/core/config/dotenv_boot.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -13,21 +30,7 @@ import { NodeLeaderboard } from "./src/monitoring/node_leaderboard.js";
 import { TreasuryMonitor } from "./src/monitoring/treasury_monitor.js";
 import { BackupService } from "./src/utils/backup_service.js";
 import { NodeopsWaterfallService } from "./src/ops-agent/nodeops_waterfall.js";
-import { WithdrawalProcessor } from "./src/settlement/withdrawal_processor.js";
-import { createWithdrawalRouter } from "./src/gateway/routes/withdrawal_api.js";
-
 import { runSatelinkSelfTest } from "./src/utils/self_test.js";
-
-// Global error handlers
-process.on("unhandledRejection", (reason) => {
-    console.error("Unhandled Rejection:", reason?.stack || reason);
-    logger.error("Unhandled Rejection", { reason: reason?.stack || reason });
-});
-process.on("uncaughtException", (err) => {
-    console.error("Uncaught Exception:", err.stack);
-    logger.error("Uncaught Exception", { error: err.stack });
-    process.exit(1);
-});
 
 // Graceful shutdown handler — drain in-flight work before exit
 let _shutdownInProgress = false;
@@ -61,6 +64,7 @@ if (process.cwd() !== __dirname) {
 // Start server.js with validateEnv directly
 validateEnv();
 
+
 export { createApp };
 export default createApp;
 
@@ -68,36 +72,52 @@ export default createApp;
 if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
     const DATABASE_URL = process.env.DATABASE_URL;
     console.log('[BOOT] Starting database connection...');
+    
     try {
+        // Create DB instance immediately (does not block)
         const db = await PgDatabase.create(DATABASE_URL);
 
-        let dbReady = false;
-        while (!dbReady) {
+        // Start checking DB health in background
+        let dbReadyRaw = false;
+        const checkDb = async () => {
             try {
                 await db.prepare('SELECT 1').get();
-                dbReady = true;
-                logger.info("[BOOT] DB connected");
+                if (!dbReadyRaw) {
+                    dbReadyRaw = true;
+                    logger.info("[BOOT] DB connected and ready");
+                }
             } catch (e) {
-                logger.warn("[BOOT] Waiting for Postgres healthy...");
-                await new Promise(r => setTimeout(r, 2000));
+                dbReadyRaw = false;
+                logger.warn("[BOOT] Database currently unavailable...");
             }
+        };
+        
+        // Initial check
+        await checkDb();
+
+        // Continue with initialization even if DB is not ready yet
+        // attachSchema and other modules will be called. 
+        // They should have their own try/catches or handle the delay.
+        try {
+            await attachSchema(db);
+        } catch (e) {
+            console.warn("[BOOT] Could not attach schema yet (DB down). Will retry on first query.");
         }
 
-        await attachSchema(db);
-
-        // Initialize modules
+        // Initialize modules (most have their own internal retries or lazy init)
         const oracle = new RevenueOracle(null, db);
-        await oracle.init();
         const leaderboard = new NodeLeaderboard(db);
-        await leaderboard.init();
         const treasury = new TreasuryMonitor(null, db);
-        await treasury.init();
         const backup = new BackupService(db);
-        await backup.init();
         const opsWaterfall = new NodeopsWaterfallService(db);
-        await opsWaterfall.init();
 
-        logger.info("[BOOT] Modules initialized");
+        try { await oracle.init(); } catch (e) { console.warn("[BOOT] oracle init failed", e.message); }
+        try { await leaderboard.init(); } catch (e) { console.warn("[BOOT] leaderboard init failed", e.message); }
+        try { await treasury.init(); } catch (e) { console.warn("[BOOT] treasury init failed", e.message); }
+        try { await backup.init(); } catch (e) { console.warn("[BOOT] backup init failed", e.message); }
+        try { await opsWaterfall.init(); } catch (e) { console.warn("[BOOT] opsWaterfall init failed", e.message); }
+
+        logger.info("[BOOT] Modules initialized (some may be in degraded state)");
 
         const app = await createApp(db);
         logger.info("[BOOT] App initialized");
@@ -128,15 +148,9 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             }
 
             try {
-                const detector = new DepositDetector(db);
-                await detector.start();
-                logger.info("Deposit Detector activated natively on-chain");
-
-                const processor = new WithdrawalProcessor(db);
-                await processor.start();
-                logger.info("Withdrawal Processor activated natively on-chain");
+                const depositDetector = new DepositDetector(db);
+                await depositDetector.start();
             } catch (e) {
-                console.error("❌ SETTLEMENT SERVICE FAILURE:", e);
                 logger.error("Settlement Services failed to start", { error: e.stack });
             }
 
@@ -150,11 +164,17 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             console.log('REAL DEMAND STATUS: ACTIVE');
 
             // Start automatic epoch aggregation scheduler
-            startEpochScheduler(db);
+            try {
+                startEpochScheduler(db);
+            } catch (e) {
+                console.error("[BOOT] Failed to start Epoch Scheduler:", e.message);
+            }
         });
     } catch (e) {
         console.error("BOOT FAILURE IN SERVER:", e);
         logger.error("Fatal: Could not start server", { error: e.message });
+        // Even on boot failure, we might want to try starting the app if possible, 
+        // but here we exit because we can't even create the DB wrapper.
         process.exit(1);
     }
 }

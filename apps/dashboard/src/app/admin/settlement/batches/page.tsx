@@ -11,7 +11,7 @@ export default function SettlementBatchesPage() {
 
     const fetchBatches = async () => {
         const res = await fetch('/admin/settlement/batches?limit=50', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
         });
         const json = await res.json();
         if (json.ok) setBatches(json.data);

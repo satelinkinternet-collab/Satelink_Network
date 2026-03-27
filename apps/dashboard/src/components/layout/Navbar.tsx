@@ -2,21 +2,18 @@
 
 import Link from "next/link";
 import useSWR from "swr";
-import { useAuth } from "@/hooks/use-auth";
+import api from "@/lib/api";
 import { LayoutDashboard, LogOut, Wallet, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-    if (!res.ok) throw new Error("Failed to fetch");
-    return res.json();
-});
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 export function Navbar() {
     const { user, logout } = useAuth();
 
-    // Auto-refresh every 30s
+    // Auto-refresh every 5s (Real-time requested)
     const { data: stats, error } = useSWR('/api/network/stats', fetcher, {
-        refreshInterval: 30000,
+        refreshInterval: 5000,
         revalidateOnFocus: false
     });
 

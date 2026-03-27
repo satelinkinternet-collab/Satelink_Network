@@ -11,7 +11,7 @@ export default function SettlementShadowPage() {
 
     const fetchLogs = async () => {
         const res = await fetch('/admin/settlement/shadow-logs', {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
         });
         const json = await res.json();
         if (json.ok) setLogs(json.data);

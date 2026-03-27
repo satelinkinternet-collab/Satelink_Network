@@ -35,7 +35,11 @@ export default function SecurityAlertsPage() {
         } finally { setLoading(false); }
     }, [statusFilter]);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const triageAlert = async (id: number) => {
         setActionLoading(true);

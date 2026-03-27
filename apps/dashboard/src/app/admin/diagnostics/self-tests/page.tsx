@@ -49,7 +49,11 @@ export default function SelfTestsPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 5000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
     const runTests = async (kind?: string) => {
         setRunning(true);

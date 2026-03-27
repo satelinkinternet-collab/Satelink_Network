@@ -2,7 +2,9 @@
 import useSWR from 'swr';
 import api from '@/lib/api';
 
-const fetcher = (url: string) => api.get(url).then(res => res.data);
+const fetcher = (url: string) => api.get(url, {
+    params: { _t: Date.now() },
+}).then(res => res.data);
 
 interface NetworkStats {
     totalNodes: number;
@@ -18,11 +20,13 @@ interface NetworkStats {
 export function useNetworkStats() {
     const { data: netData, error: netError, isLoading: netLoading } = useSWR('/api/network/stats', fetcher, {
         refreshInterval: 5000,
+        dedupingInterval: 0,
         shouldRetryOnError: false,
     });
 
     const { data: sysData, error: sysError, isLoading: sysLoading } = useSWR('/system/status', fetcher, {
         refreshInterval: 5000,
+        dedupingInterval: 0,
         shouldRetryOnError: false,
     });
 

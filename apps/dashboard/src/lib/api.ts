@@ -2,6 +2,11 @@ import axios from 'axios';
 
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
+    headers: {
+        'Cache-Control': 'no-cache, no-store',
+        'Pragma': 'no-cache',
+        'X-API-Call': '1',  // Signals Next.js rewrites to proxy to backend (vs page navigation)
+    },
 });
 
 // Request interceptor to add JWT token

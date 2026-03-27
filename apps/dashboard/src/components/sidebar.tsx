@@ -7,6 +7,8 @@ import { LayoutDashboard, LogOut, ChevronRight, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/use-auth';
+import { useNetworkHealth } from '@/hooks/useNetworkHealth';
+import { useNetworkStats } from '@/hooks/useNetworkStats';
 import { motion } from 'framer-motion';
 
 interface SidebarProps {
@@ -16,6 +18,8 @@ interface SidebarProps {
 export function Sidebar({ items }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { health } = useNetworkHealth();
+    const { statsData } = useNetworkStats();
 
     if (!user) return null;
 
@@ -92,11 +96,11 @@ export function Sidebar({ items }: SidebarProps) {
                             <span className="text-xs font-semibold uppercase tracking-wider">Network Health</span>
                         </div>
                         <div className="h-1.5 w-full bg-zinc-700 rounded-full overflow-hidden mb-1">
-                            <div className="h-full bg-emerald-500 w-[98%] shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                            <div className={`h-full shadow-[0_0_10px_rgba(16,185,129,0.5)] ${health?.status === 'healthy' ? 'bg-emerald-500 w-full' : health?.status === 'degraded' ? 'bg-amber-500 w-[60%]' : 'bg-red-500 w-[20%]'}`} />
                         </div>
                         <div className="flex justify-between text-[10px] text-zinc-500">
-                            <span>Upload: 1.2TB</span>
-                            <span className="text-emerald-400">99.9%</span>
+                            <span>Nodes: {statsData.activeNodes}/{statsData.totalNodes}</span>
+                            <span className={health?.status === 'healthy' ? 'text-emerald-400' : 'text-amber-400'}>{health?.status || 'loading'}</span>
                         </div>
                     </div>
                 </div>
