@@ -26,7 +26,11 @@ export default function FeatureFlagsPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const save = async () => {
         if (!editing) return;

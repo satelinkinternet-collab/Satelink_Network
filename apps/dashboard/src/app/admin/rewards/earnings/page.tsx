@@ -22,7 +22,11 @@ export default function EarningsPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const columns = [
         { key: 'epoch_id', label: 'Epoch' },

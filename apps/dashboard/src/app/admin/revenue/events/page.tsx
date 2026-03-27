@@ -23,7 +23,11 @@ export default function RevenueEventsPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const columns = [
         { key: 'id', label: 'ID' },

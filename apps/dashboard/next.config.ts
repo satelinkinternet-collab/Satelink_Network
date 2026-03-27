@@ -8,8 +8,55 @@ const API_BASE =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
+  // Prevent Next.js from adding its own caching headers to proxied API responses
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+      {
+        source: '/system/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+      {
+        source: '/network/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+      {
+        source: '/admin/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+      {
+        source: '/admin-api/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
+      // Admin API calls: only proxy when X-API-Call header is present (from axios)
+      // This prevents conflicts with Next.js page routes at the same paths
+      {
+        source: '/admin/:path*',
+        has: [{ type: 'header', key: 'x-api-call' }],
+        destination: `${API_BASE}/admin/:path*`,
+      },
       { source: '/auth/:path*', destination: `${API_BASE}/auth/:path*` },
       { source: '/me/:path*', destination: `${API_BASE}/me/:path*` },
       { source: '/admin-api/:path*', destination: `${API_BASE}/admin-api/:path*` },

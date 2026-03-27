@@ -24,7 +24,11 @@ export default function SlowQueriesPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const columns = [
         { key: 'query_hash', label: 'Hash', render: (r: any) => <span className="font-mono text-xs text-blue-400">{r.query_hash}</span> },

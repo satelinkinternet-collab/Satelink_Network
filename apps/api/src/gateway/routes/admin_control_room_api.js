@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { adminReadLimiter, adminWriteLimiter } from '../../security/middleware/rate_limits.js';
 
 const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
-const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly'];
+const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly', 'admin'];
 const OPS_ROLES = ['admin_super', 'admin_ops'];
 const SENSITIVE_KEYS = ['private_key', 'secret', 'token', 'password', 'jwt', 'api_key'];
 

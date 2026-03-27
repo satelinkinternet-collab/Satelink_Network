@@ -47,7 +47,11 @@ export default function NetworkNodesPage() {
         }
     }, [statusFilter]);
 
-    useEffect(() => { fetchNodes(); }, [fetchNodes]);
+    useEffect(() => {
+        fetchNodes();
+        const interval = setInterval(fetchNodes, 5000);
+        return () => clearInterval(interval);
+    }, [fetchNodes]);
 
     const openDetail = async (node: Node) => {
         setSelected(node);

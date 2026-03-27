@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { InfraCard } from '../ui/InfraCard';
 
 interface MetricCardProps {
@@ -12,22 +12,9 @@ interface MetricCardProps {
 }
 
 export function MetricCard({ title, value, trend, icon, loading }: MetricCardProps) {
-    const [displayValue, setDisplayValue] = useState(value);
-
-    // [TASK] Add loading and fallback states
     if (loading) return <InfraCard className="flex flex-col gap-2"><div className="text-zinc-500 text-sm animate-pulse">Loading...</div></InfraCard>;
-    
-    const finalValue = (value === 0 || value === '0') ? "—" : displayValue;
 
-    // Optional mock dynamic increment effect
-    useEffect(() => {
-        if (typeof value === 'number') {
-            const interval = setInterval(() => {
-                setDisplayValue(prev => (prev as number) + Math.floor(Math.random() * 3));
-            }, 3000);
-            return () => clearInterval(interval);
-        }
-    }, [value]);
+    const finalValue = (value === 0 || value === '0') ? "—" : value;
 
     return (
         <InfraCard className="flex flex-col gap-2 transition-colors hover:border-zinc-700">

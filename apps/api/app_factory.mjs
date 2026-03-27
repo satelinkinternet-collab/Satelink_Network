@@ -9,6 +9,16 @@ import { attachUI } from "./src/gateway/ui.js";
 export async function createApp(db) {
   const app = express();
 
+  // ── Kill all caching: real-time financial data must NEVER be cached ──
+  app.disable('etag');
+  app.use((req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    next();
+  });
+
   // Attach modules in same order as server.js
   // Note: attachSchema is called separately in server.js before createApp
   attachBaseMiddleware(app);

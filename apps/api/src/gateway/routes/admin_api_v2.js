@@ -6,10 +6,11 @@ export function createAdminApiRouter(opsEngine) {
 
     // Step A1: Strict JWT-only auth for all admin API routes
     router.use(requireJWT);
-    router.use(requireRole(['admin_super', 'admin_ops']));
+    router.use(requireRole(['admin_super', 'admin_ops', 'admin']));
 
     // GET /admin-api/stats - Unified stats for admin dashboard
     router.get('/stats', async (req, res) => {
+        console.log("[DEBUG] /admin-api/stats hit by", req.user?.role);
         try {
             const now = Date.now();
             const todayStart = new Date().setHours(0, 0, 0, 0);

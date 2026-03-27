@@ -24,7 +24,11 @@ export default function AuditPage() {
         } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => {
+        fetch();
+        const interval = setInterval(fetch, 5000);
+        return () => clearInterval(interval);
+    }, [fetch]);
 
     const actionColors: Record<string, string> = {
         PAUSE_WITHDRAWALS: 'bg-red-500/10 text-red-400 border-red-500/20',

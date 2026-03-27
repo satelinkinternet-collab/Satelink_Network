@@ -17,8 +17,8 @@ export class PgDatabase {
     async init() {
         if (this.pool) return;
         const connectionString = process.env.DATABASE_URL;
-        if (!connectionString) {
-            throw new Error("[PgDatabase] DATABASE_URL is not set. Cannot connect.");
+        if (!connectionString || (!connectionString.startsWith("postgres://") && !connectionString.startsWith("postgresql://"))) {
+            throw new Error("[PgDatabase] Invalid or missing DATABASE_URL. PostgreSQL is the only supported database.");
         }
         console.log("[PgDatabase] FINAL_DB_URL:", connectionString.replace(/\/\/.*@/, '//<credentials>@'));
         this.pool = new Pool({
@@ -158,6 +158,13 @@ export class PgDatabase {
         const self = this;
         return async function () {
             const client = await self.pool.connect();
+            
+            // Critical Resilience: Handle connection errors while client is checked out
+            const errorHandler = (err) => {
+                console.error("[PgDatabase] Client error during transaction:", err.message);
+            };
+            client.once('error', errorHandler);
+
             const prevClient = self._txClient;
             try {
                 await client.query("BEGIN");
@@ -166,10 +173,12 @@ export class PgDatabase {
                 await client.query("COMMIT");
                 return result;
             } catch (e) {
-                await client.query("ROLLBACK");
+                // Ignore error on ROLLBACK if connection is already lost
+                try { await client.query("ROLLBACK"); } catch (rbErr) { /* ignore */ }
                 throw e;
             } finally {
                 self._txClient = prevClient;
+                client.removeListener('error', errorHandler);
                 client.release();
             }
         };
