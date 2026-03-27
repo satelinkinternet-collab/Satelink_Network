@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Server, Activity, Coins, Zap, Shield, ArrowUpRight, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useNetworkStats } from "@/hooks/useNetworkStats";
@@ -21,19 +21,47 @@ export default function DashboardPage() {
     const { stats, isLoading: statsLoading } = useNetworkStats();
     const { health } = useNetworkHealth();
     const [systemStatus, setSystemStatus] = useState<any>(null);
+    const [chartHistory, setChartHistory] = useState<{ name: string; value: number }[]>([]);
+    const chartHistoryRef = useRef<{ name: string; value: number }[]>([]);
+    const prevStatusRef = useRef<string>("");
 
     useEffect(() => {
+        let isMounted = true;
+
         const fetchSystemStatus = async () => {
             try {
                 const { data } = await api.get('/system/status');
-                if (data.ok) {
+                if (!isMounted || !data.ok) return;
+
+                // Only update state if data actually changed (prevents flicker)
+                const fingerprint = JSON.stringify({
+                    ops_per_min: data.ops_per_min,
+                    total_revenue: data.total_revenue,
+                    epoch_id: data.epoch_id,
+                    revenue_last_5min: data.revenue_last_5min
+                });
+                if (fingerprint !== prevStatusRef.current) {
+                    prevStatusRef.current = fingerprint;
                     setSystemStatus(data);
                 }
+
+                // Always append to chart (uses seconds-precision label for uniqueness)
+                const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const point = { name: timeLabel, value: data.ops_per_min || 0 };
+                const updated = [...chartHistoryRef.current, point].slice(-30);
+                chartHistoryRef.current = updated;
+                setChartHistory(updated);
             } catch (err) {
                 console.error("Failed to fetch system status", err);
             }
         };
+
         fetchSystemStatus();
+        const interval = setInterval(fetchSystemStatus, 5000);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
     }, []);
 
     if (authLoading) {
@@ -118,9 +146,9 @@ export default function DashboardPage() {
                     </div>
                     
                     <div className="h-[300px] w-full flex items-center justify-center">
-                        {stats ? (
+                        {chartHistory.length > 1 ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={chartData}>
+                                <AreaChart data={chartHistory}>
                                     <defs>
                                         <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
@@ -129,8 +157,8 @@ export default function DashboardPage() {
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1F1F1F" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#52525B', fontSize: 12}} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#52525B', fontSize: 12}} tickFormatter={(v) => `$${v}`} />
-                                    <Tooltip 
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#52525B', fontSize: 12}} tickFormatter={(v) => `${v} ops`} />
+                                    <Tooltip
                                         contentStyle={{backgroundColor: '#0A0A0A', border: '1px solid #27272A', borderRadius: '12px'}}
                                         itemStyle={{color: '#3B82F6'}}
                                     />
@@ -140,7 +168,7 @@ export default function DashboardPage() {
                         ) : (
                             <div className="flex flex-col items-center gap-2 text-zinc-600 font-mono text-sm tracking-widest uppercase">
                                 <Activity className="w-8 h-8 opacity-20" />
-                                Live Throughput Data Unavailable
+                                {systemStatus ? 'Collecting live data...' : 'Connecting to network...'}
                             </div>
                         )}
                     </div>
@@ -175,16 +203,6 @@ export default function DashboardPage() {
         </div>
     );
 }
-
-const chartData = [
-    { name: '08:00', value: 400 },
-    { name: '10:00', value: 300 },
-    { name: '12:00', value: 600 },
-    { name: '14:00', value: 800 },
-    { name: '16:00', value: 500 },
-    { name: '18:00', value: 900 },
-    { name: '20:00', value: 750 },
-];
 
 function MetricCard({ title, value, unit = "", trend, icon: Icon, color, loading }: any) {
     const colors: any = {
