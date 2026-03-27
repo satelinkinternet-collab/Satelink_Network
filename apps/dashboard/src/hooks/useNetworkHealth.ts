@@ -17,7 +17,7 @@ interface HealthResponse {
 
 export function useNetworkHealth() {
     const { data, error, isLoading } = useSWR<{ ok: boolean, data: HealthResponse }>('/network/health', fetcher, {
-        refreshInterval: 60000, // 1 min poll
+        refreshInterval: 5000, // 5 second poll
         shouldRetryOnError: false, // handeled by axios interceptor
     });
 
