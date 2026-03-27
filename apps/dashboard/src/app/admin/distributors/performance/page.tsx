@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 
 interface Distributor {
     distributor_wallet: string;
@@ -25,16 +26,13 @@ export default function DistributorPerformancePage() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetch('/admin/distributors/performance', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
-        })
-            .then(r => r.json())
-            .then(d => {
-                setDistributors(d.distributors || []);
-                setFraudAlerts(d.fraud_summary?.alerts || []);
+        api.get('/admin/distributors/performance')
+            .then(r => {
+                setDistributors(r.data.distributors || []);
+                setFraudAlerts(r.data.fraud_summary?.alerts || []);
                 setLoading(false);
             })
-            .catch(e => { setError(e.message); setLoading(false); });
+            .catch(e => { console.error('[DistributorPerformance]', e); setError(e.message); setLoading(false); });
     }, []);
 
     if (loading) return <div className="p-8 text-center text-slate-400">Loading distributor data...</div>;
@@ -58,7 +56,7 @@ export default function DistributorPerformancePage() {
             {/* Fraud Alerts Banner */}
             {fraudAlerts.length > 0 && (
                 <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
-                    <h3 className="text-red-400 font-semibold text-sm mb-2">⚠️ Active Fraud Alerts ({fraudAlerts.length})</h3>
+                    <h3 className="text-red-400 font-semibold text-sm mb-2">Active Fraud Alerts ({fraudAlerts.length})</h3>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                         {fraudAlerts.map((a, i) => (
                             <div key={i} className="text-xs text-red-300 flex gap-2">

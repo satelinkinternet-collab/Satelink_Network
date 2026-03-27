@@ -39,11 +39,17 @@ import { QueueBackpressure } from '../queue/queue_backpressure.js';
 import { OperationsEngine } from '../core/operations_engine.js';
 import { schedulerStatus } from '../economics/epoch_scheduler.js';
 import { connection as redis } from '../queue/redisClient.js';
+import { createAdminControlRoomRouter } from './routes/admin_control_room_api.js';
+import { createAdminApiRouter } from './routes/admin_api_v2.js';
+import { createNodeApiRouter } from './routes/node_api_v2.js';
+import { createBuilderApiV2Router } from './routes/builder_api_v2.js';
+import { createDistApiRouter } from './routes/dist_api_v2.js';
+import { createEntApiRouter } from './routes/ent_api_v2.js';
 
 client.collectDefaultMetrics();
 
 export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } = {}) {
-    const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
+    const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops', 'admin'])];
     const requireEnterprise = [requireJWT, requireRole('enterprise')];
     const requireNode = [requireJWT, requireRole('node_operator')];
 
@@ -54,9 +60,20 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Health & Metrics ──
     app.get("/health", (req, res) => res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" }));
+    app.get("/admin/health", requireJWT, (req, res) => res.status(200).json({ status: "ok", uptime: process.uptime(), role: req.user.role }));
     app.get("/metrics", async (req, res) => {
         res.set('Content-Type', client.register.contentType);
         res.end(await client.register.metrics());
+    });
+ 
+    // TASK 2 — VERIFY REAL DB CONNECTION
+    app.get("/debug/db-check", async (req, res) => {
+        try {
+            const result = await db.prepare("SELECT NOW() as now").get();
+            res.json({ ok: true, now: result.now, adapter: "PgDatabase" });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
     });
 
     // ── New Distributed Job Queue Ingestion Layer ──
@@ -103,7 +120,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // Admin
     app.use('/api/demand', requireAdmin, createDemandMetricsRouter(db));
-    app.all(/^\/admin-api(\/.*)?$/, requireAdmin, (req, res) => res.status(200).json({ ok: true }));
+    // admin-api catch-all REMOVED — real routers mounted below after opsEngine init
 
     // ── System Health (powers dashboard UI) ──
     app.get('/system/status', async (req, res) => {
@@ -157,6 +174,16 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Debug / Pipeline Routes ──
     const opsEngine = new OperationsEngine(db, null, null);
+
+    // ── Role-Based Dashboard Routers (V2) ──
+    // These were defined but NEVER mounted — root cause of empty dashboards
+    // admin_control_room_api has its own requireAdmin (role-only), so add requireJWT here
+    app.use('/admin', requireJWT, createAdminControlRoomRouter(opsEngine));
+    app.use('/admin-api', createAdminApiRouter(opsEngine));       // has own JWT + role
+    app.use('/node-api', createNodeApiRouter(opsEngine));         // has own JWT + role
+    app.use('/builder-api', requireJWT, createBuilderApiV2Router(opsEngine)); // no JWT internally
+    app.use('/dist-api', createDistApiRouter(opsEngine));         // has own JWT + role
+    app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role
 
     app.get('/debug/pipeline-status', async (req, res) => {
         try {
@@ -308,7 +335,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── Network Health & Stats (powers dashboard widgets) ──
     app.get('/network/health', async (req, res) => {
         try {
-            const nodes = db.prepare(`
+            const nodes = await db.prepare(`
                 SELECT
                     SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as online,
                     SUM(CASE WHEN is_flagged = 1 THEN 1 ELSE 0 END) as flagged
@@ -333,18 +360,14 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         }
     });
 
-    app.get('/api/network/stats', (req, res) => {
+    app.get('/api/network/stats', async (req, res) => {
         try {
-            const stats = getNetworkStats(db);
+            const stats = await getNetworkStats(db);
             res.json(stats);
         } catch (e) {
-            res.json({
-                totalNodes: 0,
-                activeNodes: 0,
-                currentEpoch: 0,
-                totalRevenueUsdt: 0,
-                totalOpsProcessed: 0,
-                lastEpochClosedAt: null
+            console.error("[STATS_API_FAILURE]", e.message);
+            res.status(500).json({
+                error: "database_unavailable"
             });
         }
     });

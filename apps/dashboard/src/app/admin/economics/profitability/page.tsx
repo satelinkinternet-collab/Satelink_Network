@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import api from '@/lib/api';
 
 export default function ProfitabilityPage() {
     const [data, setData] = useState<any[]>([]);
@@ -8,12 +9,9 @@ export default function ProfitabilityPage() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        fetch('/admin/revenue/profitability', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
-        })
-            .then(r => r.json())
-            .then(d => { setData(d.data || []); setLoading(false); })
-            .catch(e => { setError(e.message); setLoading(false); });
+        api.get('/admin/revenue/profitability')
+            .then(r => { setData(r.data.data || []); setLoading(false); })
+            .catch(e => { console.error('[ProfitabilityPage]', e); setError(e.message); setLoading(false); });
     }, []);
 
     if (loading) return <div className="p-8 text-center text-slate-400">Loading profitability data...</div>;

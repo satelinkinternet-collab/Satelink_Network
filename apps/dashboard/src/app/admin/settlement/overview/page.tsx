@@ -13,7 +13,7 @@ export default function SettlementOverviewPage() {
     const fetchOverview = async () => {
         try {
             const res = await fetch('/admin/settlement/overview', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
             });
             const json = await res.json();
             if (json.ok) setData(json);
@@ -36,7 +36,8 @@ export default function SettlementOverviewPage() {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Call': '1'
             },
             body: JSON.stringify({ [key]: value })
         });
@@ -133,7 +134,7 @@ export default function SettlementOverviewPage() {
                         onClick={async () => {
                             await fetch('/admin/settlement/process-queue', {
                                 method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
+                                headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
                             });
                             alert('Queue Processing Triggered');
                             fetchOverview();

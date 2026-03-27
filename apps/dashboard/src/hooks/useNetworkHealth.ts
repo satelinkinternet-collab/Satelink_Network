@@ -2,7 +2,9 @@
 import useSWR from 'swr';
 import api from '@/lib/api';
 
-const fetcher = (url: string) => api.get(url).then(res => res.data);
+const fetcher = (url: string) => api.get(url, {
+    params: { _t: Date.now() },
+}).then(res => res.data);
 
 interface HealthResponse {
     status: 'healthy' | 'degraded' | 'offline';
@@ -18,7 +20,8 @@ interface HealthResponse {
 export function useNetworkHealth() {
     const { data, error, isLoading } = useSWR<{ ok: boolean, data: HealthResponse }>('/network/health', fetcher, {
         refreshInterval: 5000, // 5 second poll
-        shouldRetryOnError: false, // handeled by axios interceptor
+        dedupingInterval: 0,
+        shouldRetryOnError: false,
     });
 
     if (error) {

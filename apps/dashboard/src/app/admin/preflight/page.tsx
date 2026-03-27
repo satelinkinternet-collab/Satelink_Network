@@ -12,7 +12,7 @@ export default function PreflightPage() {
         setLoading(true);
         try {
             const res = await fetch('/admin/preflight/status', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('satelink_token')}` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('satelink_token')}`, 'X-API-Call': '1' }
             });
             const data = await res.json();
             if (data.ok) {
