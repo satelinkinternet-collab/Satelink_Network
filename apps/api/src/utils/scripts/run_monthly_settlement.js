@@ -67,7 +67,7 @@ async function run() {
             grossRewardUsdt = DUMMY_GROSS_REWARD;
             rewardTypeStr = "(simulated)";
         } else {
-            grossRewardUsdt = getGrossRewardUSDT(db, op.operator_id, period.start, period.end);
+            grossRewardUsdt = await getGrossRewardUSDT(db, op.operator_id, period.start, period.end);
             rewardTypeStr = "(real)";
         }
 
