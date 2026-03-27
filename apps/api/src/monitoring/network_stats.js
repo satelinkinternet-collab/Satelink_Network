@@ -13,10 +13,10 @@ export function getNetworkStats(db) {
 
     // 3, 4, 6. Epoch Info (Current Epoch, Total Revenue USDT, Last Close)
     const epochInfo = db.prepare(`
-        SELECT 
+        SELECT
             MAX(id) as currentEpoch,
-            SUM(CASE WHEN status = 'CLOSED' THEN total_revenue_usdt ELSE 0 END) as totalRevenueUsdt,
-            MAX(CASE WHEN status = 'CLOSED' THEN closed_at ELSE NULL END) as lastEpochClosedAt
+            SUM(CASE WHEN status IN ('CLOSED', 'FINALIZED') THEN total_revenue_usdt ELSE 0 END) as totalRevenueUsdt,
+            MAX(CASE WHEN status IN ('CLOSED', 'FINALIZED') THEN ends_at ELSE NULL END) as lastEpochClosedAt
         FROM epochs
     `).get() || { currentEpoch: 0, totalRevenueUsdt: 0, lastEpochClosedAt: null };
 
