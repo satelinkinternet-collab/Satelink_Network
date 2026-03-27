@@ -8,10 +8,16 @@ interface MetricCardProps {
     value: string | number;
     trend?: string;
     icon?: React.ReactNode;
+    loading?: boolean;
 }
 
-export function MetricCard({ title, value, trend, icon }: MetricCardProps) {
+export function MetricCard({ title, value, trend, icon, loading }: MetricCardProps) {
     const [displayValue, setDisplayValue] = useState(value);
+
+    // [TASK] Add loading and fallback states
+    if (loading) return <InfraCard className="flex flex-col gap-2"><div className="text-zinc-500 text-sm animate-pulse">Loading...</div></InfraCard>;
+    
+    const finalValue = (value === 0 || value === '0') ? "—" : displayValue;
 
     // Optional mock dynamic increment effect
     useEffect(() => {
@@ -30,7 +36,7 @@ export function MetricCard({ title, value, trend, icon }: MetricCardProps) {
                 {icon && <div className="text-zinc-500">{icon}</div>}
             </div>
             <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-bold text-white tracking-tight">{displayValue}</h3>
+                <h3 className="text-3xl font-bold text-white tracking-tight">{finalValue}</h3>
                 {trend && <span className="text-success text-sm font-medium">{trend}</span>}
             </div>
         </InfraCard>

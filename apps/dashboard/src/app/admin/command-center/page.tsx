@@ -85,7 +85,15 @@ export default function CommandCenterPage() {
         }
     }, []);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => {
+        fetchData();
+
+        const interval = setInterval(() => {
+            fetchData();
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [fetchData]);
 
     // Update from SSE
     useEffect(() => {

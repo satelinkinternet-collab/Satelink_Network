@@ -1,5 +1,5 @@
-export function getGrossRewardUSDT(db, operatorId, periodStart, periodEnd) {
-    const row = db.prepare(`
+export async function getGrossRewardUSDT(db, operatorId, periodStart, periodEnd) {
+    const row = await db.prepare(`
         SELECT SUM(amount_usdt) as total
         FROM epoch_earnings
         WHERE role = 'node_operator'

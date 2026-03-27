@@ -181,4 +181,24 @@ export class PgDatabase {
     async run(sql, ...args) { return this.prepare(sql).run(...args); }
     async exec(sql) { return this.pool.query(sql); }
     async close() { if (this.pool) await this.pool.end(); }
+
+    /**
+     * TASK 2 — RECORD EXECUTION RESULT
+     */
+    async recordExecution({ job_id, revenue, cost }) {
+        await this.exec(`
+            CREATE TABLE IF NOT EXISTS executions (
+                id SERIAL PRIMARY KEY,
+                job_id TEXT NOT NULL,
+                revenue REAL NOT NULL,
+                cost REAL NOT NULL,
+                created_at BIGINT NOT NULL
+            )
+        `);
+
+        return this.run(`
+            INSERT INTO executions (job_id, revenue, cost, created_at)
+            VALUES (?, ?, ?, ?)
+        `, [job_id, revenue, cost, Date.now()]);
+    }
 }

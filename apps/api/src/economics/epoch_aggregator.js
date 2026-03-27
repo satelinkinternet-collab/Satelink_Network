@@ -15,17 +15,17 @@ import { FuturesEscrow } from '../settlement/futures_escrow.js';
  * 5. Handles zero total ops count gracefully without inserting node_epoch_earnings.
  */
 
-export function closeEpoch(db, epochId) {
+export async function closeEpoch(db, epochId) {
     if (!epochId) throw new Error("epochId is required");
 
     let resultSummary = null;
 
     // Use a deferred transaction to acquire a lock and ensure atomicity 
     // SQLite implements locks at the database level when a transaction begins for writing
-    const transaction = db.transaction(() => {
+    const transaction = db.transaction(async () => {
         // 1. Fetch and Lock the epoch row (in SQLite, the transaction itself is the lock for concurrent writes)
         // If we were in Postgres, we'd use FOR UPDATE. However, better-sqlite3 handles this via its synchronous lock.
-        const epochRow = db.prepare(`SELECT * FROM epochs WHERE id = ?`).get(epochId);
+        const epochRow = await db.prepare(`SELECT * FROM epochs WHERE id = ?`).get(epochId);
 
         if (!epochRow) {
             throw new Error(`Epoch ${epochId} not found`);
@@ -36,7 +36,7 @@ export function closeEpoch(db, epochId) {
         }
 
         // 2. Aggregate Revenue from revenue_events_v2 (the active revenue table)
-        const revenueResult = db.prepare(`
+        const revenueResult = await db.prepare(`
             SELECT COALESCE(SUM(amount_usdt), 0) AS totalRevenue
             FROM revenue_events_v2
             WHERE epoch_id = ?
@@ -50,7 +50,7 @@ export function closeEpoch(db, epochId) {
         const distributorShare = totalRevenue * 0.2;
 
         // 4. Calculate Node Ops Counts
-        const opsQuery = db.prepare(`
+        const opsQuery = await db.prepare(`
             SELECT user_wallet as node_id, COALESCE(SUM(ops), 0) as ops
             FROM op_counts
             WHERE epoch_id = ?
@@ -79,7 +79,7 @@ export function closeEpoch(db, epochId) {
                 // Deduct any forward contract obligations, emitting investor USDT directly.
                 share = escrow.settleEpochObligations(epochId, row.node_id, share);
 
-                insertEarning.run(
+                await insertEarning.run(
                     row.node_id,
                     epochId,
                     share,
@@ -103,7 +103,7 @@ export function closeEpoch(db, epochId) {
             WHERE id = ?
         `);
 
-        updateEpoch.run(
+        await updateEpoch.run(
             totalRevenue,
             nodePool,
             platformShare,
@@ -126,7 +126,7 @@ export function closeEpoch(db, epochId) {
     });
 
     // Execute the transaction
-    transaction();
+    await transaction();
 
     return resultSummary;
 }
