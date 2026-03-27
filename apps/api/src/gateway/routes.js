@@ -111,21 +111,21 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             const currentEpoch = await db.prepare("SELECT id, status, starts_at FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get();
             const lastClosed = await db.prepare("SELECT id, ends_at, total_revenue_usdt FROM epochs WHERE status = 'FINALIZED' ORDER BY ends_at DESC LIMIT 1").get();
             
-            // TASK 3 — FIX system/status DATA SOURCE
-            const totalRevenue = await db.prepare("SELECT COALESCE(SUM(revenue), 0) as total FROM executions").get();
-            
+            // Revenue from revenue_events_v2 (populated by OpsEngine, the actual execution path)
+            const totalRevenue = await db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2").get();
+
             const totalBalances = await db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as wallets FROM balances").get();
             const totalEarnings = await db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings").get();
             const epochCount = await db.prepare("SELECT COUNT(*) as total FROM epochs WHERE status = 'FINALIZED'").get();
+            // Live metrics for dashboard graphs — Adjusted for timestamp mismatch (ms to s)
+            const nowSec = Math.floor(Date.now() / 1000);
+            const oneMinAgo = nowSec - 60;
+            const fiveMinAgo = nowSec - 300;
 
-            // Live metrics for dashboard graphs
-            const now = Math.floor(Date.now() / 1000);
-            const oneMinAgo = Date.now() - 60000;
-            const fiveMinAgo = now - 300;
-            const oneHourAgo = now - 3600;
-
-            // Updated to use REAL DB values from executions table
-            const opsLastMin = await db.prepare("SELECT COUNT(*) as count FROM executions WHERE created_at >= ?").get(oneMinAgo);
+            // Count ops from revenue_events_v2 with conversion to seconds
+            const opsLastMin = await db.prepare("SELECT COUNT(*) as count FROM revenue_events_v2 WHERE (created_at / 1000) >= ?").get(oneMinAgo);
+            const opsLast5Min = await db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total_usdt FROM revenue_events_v2 WHERE (created_at / 1000) >= ?").get(fiveMinAgo);
+            console.log("[system/status] ops_last_min:", opsLastMin?.count, "ops_last_5min:", opsLast5Min?.count, "rev_5min:", opsLast5Min?.total_usdt);
             
             res.json({
                 ok: true,
@@ -140,8 +140,11 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
                 last_epoch_close_time: lastClosed?.ends_at ?? null,
                 last_epoch_revenue: lastClosed?.total_revenue_usdt ?? 0,
                 ops_per_min: opsLastMin.count,
-                revenue_last_5min: { count: opsLastMin.count, total_usdt: totalRevenue.total }, // simplified for surgical fix
-                epochs_last_hour: 0, // Placeholder as per minimal fix strategy
+                revenue_last_5min: { 
+                    count: opsLast5Min.count, 
+                    total_usdt: opsLast5Min.total_usdt 
+                },
+                epochs_last_hour: 0, // Placeholder
                 scheduler_active: true,
                 scheduler_last_run_time: schedulerStatus.last_run_time,
                 scheduler_last_status: schedulerStatus.last_status,
@@ -303,16 +306,31 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     });
 
     // ── Network Health & Stats (powers dashboard widgets) ──
-    app.get('/network/health', (req, res) => {
-        res.json({
-            ok: true,
-            data: {
-                status: 'healthy',
-                nodeHealth: { online: 0, jailed: 0, slashed: 0 },
-                alerts: 0,
-                snapshotUrl: ''
-            }
-        });
+    app.get('/network/health', async (req, res) => {
+        try {
+            const nodes = db.prepare(`
+                SELECT
+                    SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as online,
+                    SUM(CASE WHEN is_flagged = 1 THEN 1 ELSE 0 END) as flagged
+                FROM registered_nodes
+            `).get() || { online: 0, flagged: 0 };
+
+            const onlineCount = nodes.online || 0;
+            res.json({
+                ok: true,
+                data: {
+                    status: onlineCount > 0 ? 'healthy' : 'degraded',
+                    nodeHealth: { online: onlineCount, jailed: nodes.flagged || 0, slashed: 0 },
+                    alerts: 0,
+                    snapshotUrl: ''
+                }
+            });
+        } catch (e) {
+            res.json({
+                ok: true,
+                data: { status: 'degraded', nodeHealth: { online: 0, jailed: 0, slashed: 0 }, alerts: 0, snapshotUrl: '' }
+            });
+        }
     });
 
     app.get('/api/network/stats', (req, res) => {
