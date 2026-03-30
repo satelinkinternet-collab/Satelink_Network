@@ -10,7 +10,7 @@ export function createBuilderApiV2Router(opsEngine) {
             const wallet = req.user.wallet;
 
             // Usage stats
-            const usage = await opsEngine.db.query(`
+            const usage = await global.opsEngine.db.query(`
                 SELECT op_type, COUNT(*) as count, SUM(amount_usdt) as total_usdt
                 FROM revenue_events_v2
                 WHERE client_id = ?
@@ -48,7 +48,7 @@ export function createBuilderApiV2Router(opsEngine) {
             const results = [];
 
             for (let i = 0; i < n; i++) {
-                const result = await opsEngine.executeOp({
+                const result = await global.opsEngine.executeOp({
                     op_type: op_type,
                     client_id: wallet,
                     node_id: 'sim_node_1',
@@ -93,7 +93,7 @@ export function createBuilderApiV2Router(opsEngine) {
             const wallet = req.user.wallet;
             const limit = parseInt(req.query.limit) || 50;
 
-            const requests = await opsEngine.db.query(`
+            const requests = await global.opsEngine.db.query(`
                 SELECT * FROM revenue_events_v2 
                 WHERE client_id = ? 
                 ORDER BY created_at DESC 

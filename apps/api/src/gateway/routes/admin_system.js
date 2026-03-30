@@ -13,7 +13,7 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
     // K1: DB Health
     router.get('/database', async (req, res) => {
         try {
-            const db = opsEngine.db;
+            const db = global.opsEngine.db;
             const stats = await db.query("SELECT pg_database_size(current_database()) as size_bytes");
             const size = stats[0]?.size_bytes || (stats.rows && stats.rows[0]?.size_bytes) || 0;
 
@@ -31,7 +31,7 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
     // K2: Runtime Metrics
     router.get('/runtime', async (req, res) => {
         try {
-            const history = await opsEngine.db.query(
+            const history = await global.opsEngine.db.query(
                 `SELECT * FROM runtime_metrics ORDER BY created_at DESC LIMIT 60`
             );
 
@@ -54,10 +54,10 @@ export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService
         try {
             // Count rows in major tables
             const [traces, errors, slow, audits] = await Promise.all([
-                opsEngine.db.get("SELECT COUNT(*) as c FROM request_traces"),
-                opsEngine.db.get("SELECT COUNT(*) as c FROM error_events"),
-                opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries"),
-                opsEngine.db.get("SELECT COUNT(*) as c FROM admin_audit_log"),
+                global.opsEngine.db.get("SELECT COUNT(*) as c FROM request_traces"),
+                global.opsEngine.db.get("SELECT COUNT(*) as c FROM error_events"),
+                global.opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries"),
+                global.opsEngine.db.get("SELECT COUNT(*) as c FROM admin_audit_log"),
             ]);
 
             res.json({

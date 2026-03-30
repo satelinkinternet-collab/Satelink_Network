@@ -43,7 +43,7 @@ export function createBuilderAuthRouter(opsEngine) {
             }
 
             // Success: Create/Update Builder
-            await opsEngine.db.query(
+            await global.opsEngine.db.query(
                 "INSERT OR IGNORE INTO builders (wallet, created_at) VALUES (?, ?)",
                 [wallet.toLowerCase(), Date.now()]
             );
@@ -82,7 +82,7 @@ export function createBuilderAuthRouter(opsEngine) {
             if (!wallet) return res.status(400).json({ error: 'Wallet required' });
 
             // Create builder if not exists
-            await opsEngine.db.query("INSERT OR IGNORE INTO builders (wallet, created_at) VALUES (?, ?)", [wallet.toLowerCase(), Date.now()]);
+            await global.opsEngine.db.query("INSERT OR IGNORE INTO builders (wallet, created_at) VALUES (?, ?)", [wallet.toLowerCase(), Date.now()]);
 
             const w = wallet.toLowerCase();
             const token = jwt.sign(

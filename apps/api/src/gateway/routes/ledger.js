@@ -9,7 +9,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
         try {
             const { epochId } = req.body;
             if (!epochId) return res.status(400).json({ error: "Missing epochId" });
-            const result = await opsEngine.finalizeEpoch(epochId);
+            const result = await global.opsEngine.finalizeEpoch(epochId);
             return res.json({ ok: true, ...result });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -19,7 +19,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     // Ledger Export (Read-Only)
     router.get("/epochs/:id", async (req, res) => {
         try {
-            const ledger = await opsEngine.getLedger(req.params.id);
+            const ledger = await global.opsEngine.getLedger(req.params.id);
             return res.json({ ok: true, ledger });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -29,7 +29,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     router.get("/payouts", adminAuth, async (req, res) => {
         try {
             const { status } = req.query;
-            const payouts = await opsEngine.getPayoutQueue(status || 'PENDING');
+            const payouts = await global.opsEngine.getPayoutQueue(status || 'PENDING');
             return res.json({ ok: true, payouts });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -46,7 +46,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
             // There was NO `claimPayout` method in OperationsEngine (Step 42 check).
             // It seems `ledger.js` was calling methods that didn't exist or I missed them.
             // Step 42 snippet showed `claim(wallet, signature)`.
-            // Step 36 (ledger.js) calls `opsEngine.claimPayout(nodeWallet, payoutId)`.
+            // Step 36 (ledger.js) calls `global.opsEngine.claimPayout(nodeWallet, payoutId)`.
             // This implies `ledger.js` was broken or I implemented `claimPayout` previously?
             // I didn't implemented `claimPayout` in my refactor of OpsEngine because I didn't see it in Step 42.
             // I will map this to `claim(wallet, signature)` or just stub it if signature missing.
@@ -64,8 +64,8 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
             if (!nodeWallet || !payoutId) return res.status(400).json({ error: "Missing fields" });
 
             // Checking if method exists
-            if (opsEngine.claimPayout) {
-                const result = await opsEngine.claimPayout(nodeWallet, payoutId);
+            if (global.opsEngine.claimPayout) {
+                const result = await global.opsEngine.claimPayout(nodeWallet, payoutId);
                 return res.json({ ok: true, ...result });
             } else {
                 return res.status(501).json({ error: "Not implemented in engine" });
@@ -80,7 +80,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
         try {
             const { nodeWallet, amount } = req.body;
             if (!nodeWallet || !amount) return res.status(400).json({ error: "Missing fields" });
-            const result = await opsEngine.withdrawFunds(nodeWallet, Number(amount));
+            const result = await global.opsEngine.withdrawFunds(nodeWallet, Number(amount));
             // Ensure result has withdrawn property if test expects it
             return res.json({ ok: true, withdrawn: result.amount, ...result });
         } catch (e) {
@@ -91,7 +91,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     // Treasury Status
     router.get("/treasury", async (req, res) => {
         try {
-            const available = await opsEngine.getTreasuryAvailable();
+            const available = await global.opsEngine.getTreasuryAvailable();
             return res.json({ ok: true, available });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -101,7 +101,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     // Treasury Monitor Status (Day-1 Financial Guard)
     router.get("/treasury/monitor", async (req, res) => {
         try {
-            const status = await opsEngine.monitorTreasuryBalance();
+            const status = await global.opsEngine.monitorTreasuryBalance();
             return res.json({ ok: true, ...status });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -111,7 +111,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     // Claims Monitor Status (Day-1 Enforcement)
     router.get("/claims/monitor", async (req, res) => {
         try {
-            const forfeited = await opsEngine.forfeitExpired();
+            const forfeited = await global.opsEngine.forfeitExpired();
             return res.json({ ok: true, status: 'OK', processed: forfeited });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -121,7 +121,7 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     // All Epochs Summary
     router.get("/epochs", async (req, res) => {
         try {
-            const epochs = await opsEngine.getAllEpochs();
+            const epochs = await global.opsEngine.getAllEpochs();
             return res.json({ ok: true, epochs });
         } catch (e) {
             return res.status(500).json({ ok: false, error: String(e.message) });
@@ -132,8 +132,8 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
     router.get("/export", adminAuth, async (req, res) => {
         try {
             const { epochId } = req.query;
-            const ledger = await opsEngine.getLedger(epochId);
-            const payouts = await opsEngine.getPayoutQueue();
+            const ledger = await global.opsEngine.getLedger(epochId);
+            const payouts = await global.opsEngine.getPayoutQueue();
 
             // Format as audit report
             const report = {

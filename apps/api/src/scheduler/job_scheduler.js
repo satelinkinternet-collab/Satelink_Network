@@ -131,7 +131,7 @@ export class JobScheduler {
         const payloadHash = crypto.createHash('sha256').update(JSON.stringify(job)).digest('hex');
 
         try {
-            await this.opsEngine.executeOp({
+            await this.global.opsEngine.executeOp({
                 op_type: job.type,
                 node_id: node.id,
                 client_id: job.client_id || 'scheduler_client',

@@ -13,8 +13,8 @@ import { ExecutionAssuranceRouter } from '../../execution/bootstrap/execution_as
 export function createRpcRouter(db) {
     const router = express.Router();
 
-    const opsEngine = new OperationsEngine(db, null, null);
-    opsEngine.init().catch(e => console.error('[RPC] OperationsEngine init failed:', e.message));
+    global.opsEngine = new OperationsEngine(db, null, null);
+    global.opsEngine.init().catch(e => console.error('[RPC] OperationsEngine init failed:', e.message));
 
     const capacityRegistry = new NodeCapacityRegistry(db);
     const fallbackAdapter = new ProviderFallbackAdapter();
@@ -78,7 +78,7 @@ export function createRpcRouter(db) {
             const payloadHash = crypto.createHash('sha256').update(payloadString).digest('hex');
             const reqId = `rpc_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
-            await opsEngine.executeOp({
+            await global.opsEngine.executeOp({
                 op_type: 'api_relay_execution',
                 node_id: targetNodeId,
                 client_id: req.headers['x-api-key'] || 'anonymous_client',

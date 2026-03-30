@@ -15,12 +15,12 @@ export function createDistApiRouter(opsEngine) {
             const refCode = wallet.slice(0, 8); // Simple MVP logic
 
             // Conversions from DB
-            const conversionsCount = (await opsEngine.db.get("SELECT COUNT(*) as c FROM conversions WHERE ref_code = ?", [refCode]))?.c || 0;
+            const conversionsCount = (await global.opsEngine.db.get("SELECT COUNT(*) as c FROM conversions WHERE ref_code = ?", [refCode]))?.c || 0;
             // For MVP, referrals count is same as conversions (since we only track on login/conversion)
             const referralsCount = conversionsCount;
 
             // Earnings from pool
-            const earnings = await opsEngine.db.query("SELECT * FROM epoch_earnings WHERE role = 'distribution_pool' ORDER BY epoch_id DESC LIMIT 10");
+            const earnings = await global.opsEngine.db.query("SELECT * FROM epoch_earnings WHERE role = 'distribution_pool' ORDER BY epoch_id DESC LIMIT 10");
 
             // Simplify for this specific distributor (mocked share based on conversions)
             const myShare = conversionsCount > 0 ? 0.05 * conversionsCount : 0.01;
@@ -49,7 +49,7 @@ export function createDistApiRouter(opsEngine) {
             const refCode = wallet.slice(0, 8);
             // reusing conversions table as referrals source
             // Map table columns to frontend expectation
-            const rows = await opsEngine.db.query("SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50", [refCode]);
+            const rows = await global.opsEngine.db.query("SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50", [refCode]);
 
             const referrals = rows.map(r => ({
                 id: r.id,
@@ -69,7 +69,7 @@ export function createDistApiRouter(opsEngine) {
         try {
             const wallet = req.user.wallet;
             const refCode = wallet.slice(0, 8);
-            const rows = await opsEngine.db.query("SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50", [refCode]);
+            const rows = await global.opsEngine.db.query("SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50", [refCode]);
 
             const conversions = rows.map(r => ({
                 id: r.id,
@@ -96,13 +96,13 @@ export function createDistApiRouter(opsEngine) {
             const refCode = wallet.slice(0, 8);
 
             // 1. Get total conversions for share calc
-            const conversionsCount = (await opsEngine.db.get("SELECT COUNT(*) as c FROM conversions WHERE ref_code = ?", [refCode]))?.c || 0;
+            const conversionsCount = (await global.opsEngine.db.get("SELECT COUNT(*) as c FROM conversions WHERE ref_code = ?", [refCode]))?.c || 0;
             const myShare = conversionsCount > 0 ? 0.05 * conversionsCount : 0.01;
 
             // 2. Get past epoch earnings for the pool
             // In a real app, we'd have a 'distributor_earnings' table per user. 
             // For MVP, we derive it from the Pool's history.
-            const entries = await opsEngine.db.query(`
+            const entries = await global.opsEngine.db.query(`
                 SELECT epoch_id, amount_usdt, created_at 
                 FROM epoch_earnings 
                 WHERE role IN ('distributor_lco', 'distributor_influencer', 'distribution_pool')
@@ -130,7 +130,7 @@ export function createDistApiRouter(opsEngine) {
             const refCode = wallet.slice(0, 8);
 
             // Join conversions with registered_nodes (single source of truth)
-            const fleet = await opsEngine.db.query(`
+            const fleet = await global.opsEngine.db.query(`
                 SELECT
                     c.wallet as node_wallet,
                     n.wallet as node_id,

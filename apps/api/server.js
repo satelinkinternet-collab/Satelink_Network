@@ -1,3 +1,4 @@
+global.opsEngine = null;
 // server.js
 // Global Resilience: Prevent process exit on database connection loss (placed at the absolute top)
 function globalErrorHandler(err) {

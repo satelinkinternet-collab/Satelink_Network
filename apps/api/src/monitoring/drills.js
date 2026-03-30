@@ -24,7 +24,7 @@ export class DrillsService {
             details.push("State Verified: DEGRADED");
 
             // 3. Verify Ops Blocked (Simulated check)
-            const safe = await this.opsEngine.isSystemSafe();
+            const safe = await this.global.opsEngine.isSystemSafe();
             if (safe) throw new Error("Ops check failed: System still reports safe");
             details.push("Ops Guard Verified: Unsafe");
 
@@ -134,7 +134,7 @@ export class DrillsService {
             details.push("Safe Mode Triggered");
 
             // 4. Verify Lockdown
-            const safe = await this.opsEngine.isSystemSafe();
+            const safe = await this.global.opsEngine.isSystemSafe();
             if (safe) throw new Error("System failed to lock down!");
             details.push("Lockdown Verified");
 

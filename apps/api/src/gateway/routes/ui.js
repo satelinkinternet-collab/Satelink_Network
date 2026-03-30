@@ -38,7 +38,7 @@ export function createUIRouter(opsEngine) {
             const wallet = JSON.parse(cookie.split('.')[0]).wallet;
 
             // KPIs
-            const projects = await opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active'", [wallet]);
+            const projects = await global.opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active'", [wallet]);
             const projectIds = projects.map(p => p.id);
 
             let todayUsage = 0;
@@ -47,7 +47,7 @@ export function createUIRouter(opsEngine) {
 
             if (projectIds.length > 0) {
                 const placeholders = projectIds.map(() => '?').join(',');
-                const usage = await opsEngine.db.query(
+                const usage = await global.opsEngine.db.query(
                     `SELECT count(*) as c, sum(cost_usdt) as rev FROM api_usage WHERE project_id IN (${placeholders}) AND ts >= ?`,
                     [...projectIds, todayStart]
                 );
@@ -66,7 +66,7 @@ export function createUIRouter(opsEngine) {
         try {
             const cookie = req.cookies['builder_session'];
             const wallet = JSON.parse(cookie.split('.')[0]).wallet;
-            const projects = await opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active' ORDER BY created_at DESC", [wallet]);
+            const projects = await global.opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active' ORDER BY created_at DESC", [wallet]);
             res.render('builder', { wallet, projects, activeTab: 'projects' }); // Reuse builder.ejs or create builder_projects.ejs? Prompt implies separate or modal. Let's assume builder.ejs serves as hub.
             // Actually, prompt says "Projects: list + create project modal". 
             // We'll stick to 'builder' view as the main dashboard and maybe pass a flag or just let the view handle it.
@@ -83,12 +83,12 @@ export function createUIRouter(opsEngine) {
             const wallet = JSON.parse(cookie.split('.')[0]).wallet;
             const { id } = req.params;
 
-            const project = await opsEngine.db.get("SELECT * FROM builder_projects WHERE id = ? AND builder_wallet = ?", [id, wallet]);
+            const project = await global.opsEngine.db.get("SELECT * FROM builder_projects WHERE id = ? AND builder_wallet = ?", [id, wallet]);
             if (!project) return res.redirect('/ui/builder');
 
-            const keys = await opsEngine.db.query("SELECT * FROM api_keys WHERE project_id = ? AND status='active'", [id]);
+            const keys = await global.opsEngine.db.query("SELECT * FROM api_keys WHERE project_id = ? AND status='active'", [id]);
             // Usage limit 100 for view
-            const usage = await opsEngine.db.query("SELECT * FROM api_usage WHERE project_id = ? ORDER BY ts DESC LIMIT 100", [id]);
+            const usage = await global.opsEngine.db.query("SELECT * FROM api_usage WHERE project_id = ? ORDER BY ts DESC LIMIT 100", [id]);
 
             res.render('builder_project', {
                 wallet,
@@ -120,15 +120,15 @@ export function createUIRouter(opsEngine) {
             let filename = `${type}-${Date.now()}.csv`;
 
             if (type === 'node_rewards' && wallet) {
-                data = await opsEngine.db.query("SELECT * FROM node_rewards WHERE node_wallet = ? ORDER BY created_at DESC LIMIT 1000", [wallet]);
+                data = await global.opsEngine.db.query("SELECT * FROM node_rewards WHERE node_wallet = ? ORDER BY created_at DESC LIMIT 1000", [wallet]);
             } else if (type === 'withdrawals') {
                 if (wallet) {
-                    data = await opsEngine.db.query("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 1000", [wallet]);
+                    data = await global.opsEngine.db.query("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 1000", [wallet]);
                 } else {
                     // Admin only? For now allow if they know the URL, strict auth later or check cookie here if wanted.
                     // Let's protect generic exports with admin check if no wallet (public) implies admin export?
                     // For MVP simplicity, allow all.
-                    data = await opsEngine.db.query("SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT 1000");
+                    data = await global.opsEngine.db.query("SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT 1000");
                 }
             } else if (type === 'logs') {
                 // Check admin cookie for logs
@@ -140,11 +140,11 @@ export function createUIRouter(opsEngine) {
                 const { project_id } = req.query;
                 if (!project_id) return res.status(400).send("Missing project_id");
                 // TODO: Strict auth check (ownership). For now assuming safe if they have the link/cookie
-                data = await opsEngine.db.query("SELECT * FROM api_usage WHERE project_id = ? ORDER BY ts DESC LIMIT 5000", [project_id]);
+                data = await global.opsEngine.db.query("SELECT * FROM api_usage WHERE project_id = ? ORDER BY ts DESC LIMIT 5000", [project_id]);
             } else if (type === 'builder_revenue') {
                 const { project_id } = req.query;
                 if (!project_id) return res.status(400).send("Missing project_id");
-                data = await opsEngine.db.query("SELECT * FROM revenue_events WHERE provider='Builder' AND source_type='api_usage' ORDER BY created_at DESC LIMIT 5000");
+                data = await global.opsEngine.db.query("SELECT * FROM revenue_events WHERE provider='Builder' AND source_type='api_usage' ORDER BY created_at DESC LIMIT 5000");
                 // Filter by project if we had that link easily, but revenue_events uses payer_wallet. 
                 // We'll just dump all builder revenue for now or filter by wallet if provided.
             }
@@ -163,12 +163,12 @@ export function createUIRouter(opsEngine) {
             const todayStart = new Date().setHours(0, 0, 0, 0);
 
             // Stats
-            const revenueEvents = await opsEngine.db.query("SELECT * FROM revenue_events ORDER BY created_at DESC LIMIT 200");
+            const revenueEvents = await global.opsEngine.db.query("SELECT * FROM revenue_events ORDER BY created_at DESC LIMIT 200");
             const revenueToday = revenueEvents.filter(e => e.created_at >= todayStart).reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
             const revenueTotal = revenueEvents.reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
 
             // Nodes
-            const nodesOnline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1")).c;
+            const nodesOnline = (await global.opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1")).c;
 
             // Webhooks
             const webhooks = await req.logger.getRecentWebhooks(50);
@@ -200,7 +200,7 @@ export function createUIRouter(opsEngine) {
         const limit = 50;
         const offset = (page - 1) * limit;
 
-        const runs = await opsEngine.db.query(`SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
+        const runs = await global.opsEngine.db.query(`SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
         res.render('admin_ledger', { runs, formatCurrency, formatDate, page });
     });
 
@@ -209,7 +209,7 @@ export function createUIRouter(opsEngine) {
         const limit = 100;
         const offset = (page - 1) * limit;
 
-        const nodes = await opsEngine.db.query(`SELECT * FROM registered_nodes ORDER BY last_heartbeat DESC LIMIT ${limit} OFFSET ${offset}`);
+        const nodes = await global.opsEngine.db.query(`SELECT * FROM registered_nodes ORDER BY last_heartbeat DESC LIMIT ${limit} OFFSET ${offset}`);
         res.render('admin_nodes', { nodes, formatDate, page });
     });
 
@@ -218,7 +218,7 @@ export function createUIRouter(opsEngine) {
         const limit = 50;
         const offset = (page - 1) * limit;
 
-        const withdrawals = await opsEngine.db.query(`SELECT * FROM withdrawals WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT ${limit} OFFSET ${offset}`);
+        const withdrawals = await global.opsEngine.db.query(`SELECT * FROM withdrawals WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT ${limit} OFFSET ${offset}`);
         res.render('admin_withdrawals', { withdrawals, formatCurrency, formatDate, page });
     });
 
@@ -232,16 +232,16 @@ export function createUIRouter(opsEngine) {
     router.get('/operator/:wallet', async (req, res) => {
         try {
             const { wallet } = req.params;
-            let node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
+            let node = await global.opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
 
             // Allow viewing even if not registered (Guest View)
             if (!node) {
                 node = { wallet, node_type: 'unregistered', active: 0, last_heartbeat: 0 };
             }
 
-            const balance = await opsEngine.getBalance(wallet);
-            const rewards = await opsEngine.db.query("SELECT * FROM node_rewards WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 20", [wallet]);
-            const withdrawals = await opsEngine.db.query("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10", [wallet]);
+            const balance = await global.opsEngine.getBalance(wallet);
+            const rewards = await global.opsEngine.db.query("SELECT * FROM node_rewards WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 20", [wallet]);
+            const withdrawals = await global.opsEngine.db.query("SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10", [wallet]);
 
             res.render('operator', {
                 node,

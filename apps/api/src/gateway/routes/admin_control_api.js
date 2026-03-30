@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 export function createAdminControlRouter(opsEngine, auditService = null) {
     const router = Router();
-    const db = opsEngine.db;
+    const db = global.opsEngine.db;
 
     // ─── COMMAND CENTER ───
     router.get('/command/summary', async (req, res) => {
