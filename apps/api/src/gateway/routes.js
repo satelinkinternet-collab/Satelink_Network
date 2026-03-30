@@ -1,3 +1,4 @@
+import { createControlRouter } from "./routes/control_routes.js";
 import jwt from 'jsonwebtoken';
 import { createUserSettingsRouter } from './routes/user_settings.js';
 import { createUnifiedAuthRouter } from './routes/auth_v2.js';
@@ -58,15 +59,17 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     const { middleware: gwMiddleware, router: gwRouter } = createGatewayLayer(db, {});
     app.use(gwMiddleware);
 
-    // ── Dev token (non-production only) — includes wallet for requireJWT compat ──
-    app.get("/dev/token", (req, res) => {
-        const token = jwt.sign({
-            user_id: "dev_admin",
-            wallet: "0xDevAdmin",
-            role: "admin_super"
-        }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-        res.json({ token });
-    });
+    // ── Dev token (non-production ONLY) — includes wallet for requireJWT compat ──
+    if (process.env.NODE_ENV !== 'production') {
+        app.get("/dev/token", (req, res) => {
+            const token = jwt.sign({
+                user_id: "dev_admin",
+                wallet: "0xDevAdmin",
+                role: "admin_super"
+            }, process.env.JWT_SECRET, { expiresIn: "7d" });
+            res.json({ token });
+        });
+    }
 
     app.use('/v1/gateway', gwRouter);
 
@@ -77,15 +80,17 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         res.end(await client.register.metrics());
     });
  
-    // TASK 2 — VERIFY REAL DB CONNECTION
-    app.get("/debug/db-check", async (req, res) => {
-        try {
-            const result = await db.prepare("SELECT NOW() as now").get();
-            res.json({ ok: true, now: result.now, adapter: "PgDatabase" });
-        } catch (e) {
-            res.status(500).json({ ok: false, error: e.message });
-        }
-    });
+    // Debug routes — non-production only, admin-authed
+    if (process.env.NODE_ENV !== 'production') {
+        app.get("/debug/db-check", ...requireAdmin, async (req, res) => {
+            try {
+                const result = await db.prepare("SELECT NOW() as now").get();
+                res.json({ ok: true, now: result.now, adapter: "PgDatabase" });
+            } catch (e) {
+                res.status(500).json({ ok: false, error: e.message });
+            }
+        });
+    }
 
     // ── New Distributed Job Queue Ingestion Layer ──
     app.use('/v1/jobs', createJobSubmitRouter(db));
@@ -103,6 +108,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     const autoScheduler = new AutomationScheduler(db);
     autoScheduler.start();
+  app.use("/v1", createControlRouter(opsEngine));
     app.use('/v1/automation', createAutomationRouter(autoScheduler));
 
 
@@ -217,7 +223,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role guards
 
 
-    app.get('/debug/pipeline-status', async (req, res) => {
+    app.get('/debug/pipeline-status', ...requireAdmin, async (req, res) => {
         try {
             // Ensure tables exist (OperationsEngine seeds them)
             if (!opsEngine.initialized) await opsEngine.init();
@@ -246,7 +252,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         }
     });
 
-    app.get('/debug/run-epoch', async (req, res) => {
+    app.get('/debug/run-epoch', ...requireAdmin, async (req, res) => {
         try {
             if (!opsEngine.initialized) await opsEngine.init();
 
@@ -509,7 +515,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         }
     });
 
-    app.get('/dev/seed-job', async (req, res) => {
+    app.get('/dev/seed-job', ...requireAdmin, async (req, res) => {
         try {
             const jobId = `job_${Math.random().toString(36).substr(2, 9)}`;
             await redis.xadd(
@@ -530,8 +536,8 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     });
 
     // ── Synthetic Activity Generator (powers dashboard in dev/staging) ──
-    // Disabled in production via DISABLE_SYNTHETIC_LOAD=true
-    if (process.env.DISABLE_SYNTHETIC_LOAD !== 'true') {
+    // Synthetic activity: opt-IN for dev/staging only — never runs in production
+    if (process.env.NODE_ENV !== 'production' && process.env.DISABLE_SYNTHETIC_LOAD !== 'true') {
         const SEED_NODES = [
             { wallet: '0xNodeAlpha001', node_type: 'self_hosted', active: 1 },
             { wallet: '0xNodeBeta002',  node_type: 'self_hosted', active: 1 },

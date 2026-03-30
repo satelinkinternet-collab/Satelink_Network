@@ -1,4 +1,4 @@
-import "dotenv/config";
+// dotenv is loaded by server.js via dotenv_boot.js — do NOT re-import here
 import express from "express";
 import { attachBaseMiddleware } from "./src/security/middleware.js";
 import { attachSecurity } from "./src/security/security.js";
