@@ -38,8 +38,8 @@ export default function NetworkNodesPage() {
             setError('');
             const params = new URLSearchParams();
             if (statusFilter) params.set('status', statusFilter);
-            const res = await api.get(`/admin/network/data?${params}`);
-            if (res.data.ok) setNodes(res.data.data);
+            const res = await api.get(`/admin/network/nodes?${params}`);
+            if (res.data.ok) setNodes(res.data.nodes || []);
         } catch (e: any) {
             setError(e.response?.data?.error || 'Failed to fetch');
         } finally {
@@ -56,7 +56,7 @@ export default function NetworkNodesPage() {
     const openDetail = async (node: Node) => {
         setSelected(node);
         try {
-            const res = await api.get(`/admin/network/data/${node.node_id}`);
+            const res = await api.get(`/admin/network/services/nodes/${node.node_id}`);
             if (res.data.ok) setNodeDetail(res.data);
         } catch (e: any) {
             console.error('[NodeDetail]', e);

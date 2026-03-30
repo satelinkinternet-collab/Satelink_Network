@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import { createUserSettingsRouter } from './routes/user_settings.js';
 import { createUnifiedAuthRouter } from './routes/auth_v2.js';
 import { createStreamApiRouter } from './routes/stream_api.js';
@@ -56,23 +57,18 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── Global Gateway Layer ──
     const { middleware: gwMiddleware, router: gwRouter } = createGatewayLayer(db, {});
     app.use(gwMiddleware);
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
+    // ── Dev token (non-production only) — includes wallet for requireJWT compat ──
+    app.get("/dev/token", (req, res) => {
+        const token = jwt.sign({
+            user_id: "dev_admin",
+            wallet: "0xDevAdmin",
+            role: "admin_super"
+        }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
+        res.json({ token });
+    });
+
     app.use('/v1/gateway', gwRouter);
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
 
     // ── Health & Metrics ──
     app.get("/health", (req, res) => res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" }));
@@ -93,41 +89,13 @@ app.get("/dev/token", (req, res) => {
 
     // ── New Distributed Job Queue Ingestion Layer ──
     app.use('/v1/jobs', createJobSubmitRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/v1/workload/rpc', createRpcGateway(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/v1/webhook', createWebhookRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/v1/ai', createAiRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     const buffer = new DemandBuffer();
     const acquisitionEngine = new WorkloadAcquisitionEngine(buffer);
@@ -136,25 +104,11 @@ app.get("/dev/token", (req, res) => {
     const autoScheduler = new AutomationScheduler(db);
     autoScheduler.start();
     app.use('/v1/automation', createAutomationRouter(autoScheduler));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     // Expansion Connectors Admin
     app.use('/api/admin/workloads', requireAdmin, createWorkloadAdminRouter(acquisitionEngine));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     app.get('/health/queue', async (req, res) => {
         try {
@@ -172,89 +126,26 @@ app.get("/dev/token", (req, res) => {
 
     // ── Legacy / Marketplace Compatibility ──
     app.use("/rpc", createRpcRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/me', createUserSettingsRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use(createUnifiedAuthRouter({ db }));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/v1/node', createNodeNetworkRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/v1', createGrowthRouter(db).router);
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/stream', createStreamApiRouter({ db }));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     if (futuresEscrow) app.use('/v1/futures', createFuturesRouter(db, futuresEscrow));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     if (opsAdapter) app.use('/v1/ops', createOpsRouter(db, opsAdapter));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     // Admin
     app.use('/api/demand', createDemandMetricsRouter(db));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     // admin-api catch-all REMOVED — real routers mounted below after opsEngine init
 
     // ── System Health (powers dashboard UI) ──
@@ -312,61 +203,19 @@ app.get("/dev/token", (req, res) => {
 
     // ── Admin Control Room (legacy /admin/* mount, requires admin role) ──
     app.use('/admin', requireJWT, requireRole(ADMIN_ROLES), createAdminControlRoomRouter(opsEngine));
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     // ── Role-Based Dashboard Routers (V2) — each has own JWT + role guards ──
     app.use('/admin-api', createAdminApiRouter(opsEngine));       // has own JWT + role guards
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/node-api', createNodeApiRouter(opsEngine));         // has own JWT + role guards
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/dist-api', createDistApiRouter(opsEngine));         // has own JWT + role guards
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/builder-api', requireJWT, createBuilderApiV2Router(opsEngine)); // builder routes (JWT enforced at mount)
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
     app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role guards
-app.get("/dev/token", (req, res) => {
-  const jwt = require("jsonwebtoken");
-  const token = jwt.sign({
-    user_id: "dev_admin",
-    role: "admin_super"
-  }, process.env.JWT_SECRET || "dev_secret", { expiresIn: "7d" });
-  res.json({ token });
-});
+
 
     app.get('/debug/pipeline-status', async (req, res) => {
         try {
@@ -604,6 +453,42 @@ app.get("/dev/token", (req, res) => {
                 distributorPct: 20
             }
         });
+    });
+
+    // Treasury status (powers /admin/treasury page)
+    app.get('/treasury/status', async (req, res) => {
+        try {
+            const balances = await db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM balances").get();
+            const earnings = await db.prepare("SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status = 'UNPAID'").get();
+            res.json({
+                ok: true,
+                data: {
+                    total_balance: parseFloat(balances?.total || 0),
+                    unpaid_earnings: parseFloat(earnings?.total || 0),
+                    settlement_mode: 'SIMULATED'
+                }
+            });
+        } catch (e) {
+            res.json({ ok: true, data: { total_balance: 0, unpaid_earnings: 0, settlement_mode: 'SIMULATED' } });
+        }
+    });
+
+    // Partners CRUD (powers /admin/partners page)
+    app.get('/api/admin/partners', requireAdmin, async (req, res) => {
+        try {
+            const partners = await db.prepare("SELECT * FROM partners ORDER BY created_at DESC LIMIT 50").all();
+            res.json({ ok: true, data: partners });
+        } catch (e) {
+            res.json({ ok: true, data: [] });
+        }
+    });
+
+    app.post('/api/admin/partners/register', requireAdmin, async (req, res) => {
+        res.json({ ok: true, message: 'Partner registered (stub)' });
+    });
+
+    app.post('/api/admin/partners/:endpoint', requireAdmin, async (req, res) => {
+        res.json({ ok: true, message: `Partner action ${req.params.endpoint} (stub)` });
     });
 
     app.get('/settlement/mode', async (req, res) => {
