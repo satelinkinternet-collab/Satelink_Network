@@ -1,46 +1,33 @@
-
 "use client";
 import React, { useEffect, useState } from 'react';
-import { AdminLayout } from '../../../../components/AdminLayout'; // Adjust path
-import { useAuth } from '../../../../context/AuthContext'; // Adjust path
+import { AdminLayout } from '../../../../components/AdminLayout';
 import { Activity, Shield, Shuffle, GitMerge, CheckCircle, AlertTriangle } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function SettlementOverviewPage() {
-    const { token } = useAuth();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchOverview = async () => {
         try {
-            const res = await fetch('/admin/settlement/overview', {
-                headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
-            });
-            const json = await res.json();
-            if (json.ok) setData(json);
+            const res = await api.get('/admin/services/settlement/overview');
+            if (res.data.ok) setData(res.data);
         } catch (e) {
-            console.error(e);
+            console.error('[SettlementOverview]', e);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (token) fetchOverview();
+        fetchOverview();
         const interval = setInterval(fetchOverview, 5000);
         return () => clearInterval(interval);
-    }, [token]);
+    }, []);
 
     const toggleConfig = async (key: string, value: any) => {
         if (!confirm(`Change ${key} to ${value}?`)) return;
-        await fetch('/admin/settlement/config', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'X-API-Call': '1'
-            },
-            body: JSON.stringify({ [key]: value })
-        });
+        await api.post('/admin/services/settlement/config', { [key]: value });
         fetchOverview();
     };
 
@@ -132,10 +119,7 @@ export default function SettlementOverviewPage() {
                     <h2 className="text-lg font-bold mb-4">Manual Operations</h2>
                     <button
                         onClick={async () => {
-                            await fetch('/admin/settlement/process-queue', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
-                            });
+                            await api.post('/admin/services/settlement/process-queue');
                             alert('Queue Processing Triggered');
                             fetchOverview();
                         }}

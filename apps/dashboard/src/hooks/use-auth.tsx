@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const user = await fetchMe();
 
         if (user) {
-            if (['admin_super', 'admin_ops'].includes(user.role)) router.push('/admin');
+            if (['admin_super', 'admin_ops', 'admin', 'admin_readonly'].includes(user.role)) router.push('/admin');
             else if (user.role === 'node_operator') router.push('/node');
             else if (user.role === 'builder') router.push('/builder');
             else if (user.role.startsWith('distributor')) router.push('/distributor');

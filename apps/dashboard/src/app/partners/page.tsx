@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 interface PartnerPublic {
     partner_id: string;
@@ -18,18 +19,22 @@ export default function PublicPartnersPage() {
     const [sla, setSla] = useState<SLA | null>(null);
     const [ops, setOps] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch('/api/partners');
-                const data = await res.json();
+                const res = await api.get('/api/partners');
+                const data = res.data;
                 if (data.ok) {
                     setPartners(data.partners || []);
                     setSla(data.sla);
                     setOps(data.supported_ops || []);
                 }
-            } catch (e) { console.error(e); }
+            } catch (e: any) {
+                console.error('[Partners]', e);
+                setError(e.response?.data?.error || 'Failed to load partner data');
+            }
             setLoading(false);
         })();
     }, []);
@@ -45,6 +50,10 @@ export default function PublicPartnersPage() {
                         Enterprise-grade DePIN infrastructure, powered by a global node network.
                     </p>
                 </div>
+
+                {error && (
+                    <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>
+                )}
 
                 {/* SLA Stats */}
                 {sla && (

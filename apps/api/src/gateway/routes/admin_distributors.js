@@ -3,7 +3,7 @@ import express from 'express';
 
 /**
  * Admin Distributors Router
- * Mounted at /admin/distributors (behind verifyJWT in server.js)
+ * Mounted at /admin/distributors (behind requireJWT in server.js)
  */
 export function createAdminDistributorsRouter(db) {
     const router = express.Router();

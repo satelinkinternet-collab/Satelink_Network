@@ -1,83 +1,89 @@
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
+    baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "",
     headers: {
-        'Cache-Control': 'no-cache, no-store',
-        'Pragma': 'no-cache',
-        'X-API-Call': '1',  // Signals Next.js rewrites to proxy to backend (vs page navigation)
+        "Cache-Control": "no-cache, no-store",
+        Pragma: "no-cache",
+        "X-API-Call": "1",
     },
 });
 
-// Request interceptor to add JWT token
+// ✅ Request interceptor — FIXED TOKEN KEY
 api.interceptors.request.use((config) => {
     if (typeof window !== "undefined") {
         const token = window.localStorage.getItem("satelink_token");
+
         if (token) {
-            if (config.headers && typeof config.headers.set === 'function') {
-                config.headers.set('Authorization', `Bearer ${token}`);
-            } else {
-                config.headers = config.headers || {};
-                config.headers['Authorization'] = `Bearer ${token}`;
+            config.headers = config.headers || {};
+            config.headers["Authorization"] = `Bearer ${token}`;
+            // Debug: verify token attachment for protected endpoints
+            if (config.url && (config.url.includes('/admin') || config.url.includes('/node') || config.url.includes('/builder') || config.url.includes('/dist') || config.url.includes('/ent'))) {
+                console.log(`[AUTH] Token attached to ${config.method?.toUpperCase()} ${config.url} | token=${token.substring(0, 20)}...`);
+            }
+        } else {
+            if (config.url && !config.url.includes('/auth/') && !config.url.includes('/health') && !config.url.includes('/api/network')) {
+                console.warn(`[AUTH] No token for ${config.method?.toUpperCase()} ${config.url} — request may get 401`);
             }
         }
 
-        // Admin endpoints require the admin key from environment, never hardcoded
-        if (config.url?.includes('/api/demand/metrics')) {
+        // Admin endpoints (optional)
+        if (config.url?.includes("/api/demand/metrics")) {
             const adminKey = process.env.NEXT_PUBLIC_ADMIN_KEY;
             if (adminKey) {
                 config.headers = config.headers || {};
-                config.headers['X-Admin-Key'] = adminKey;
+                config.headers["X-Admin-Key"] = adminKey;
             }
         }
     }
+
     return config;
 });
 
-// Response interceptor to handle 401s and retries
+// ✅ Response interceptor
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const { config, response } = error;
 
-        // 1. Handle session expiry (401)
+        // 🔥 Handle auth failure
         if (response?.status === 401) {
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('satelink_token');
-                // Avoid infinite redirect loop if already on login
-                if (window.location.pathname !== '/login') {
-                    window.location.href = '/login';
+            if (typeof window !== "undefined") {
+                localStorage.removeItem("satelink_token");
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
                 }
             }
             return Promise.reject(error);
         }
 
-        // 2. Implement Retry Logic (max 2 retries) for 5xx or Network Errors
-        // Only retry GET requests (idempotent)
-        if (config && config.method === 'get' && (!config._retryCount || config._retryCount < 2)) {
-            const isRetryable = !response || (response.status >= 500 && response.status <= 599);
-            
+        // 🔁 Retry logic (GET only)
+        if (
+            config &&
+            config.method === "get" &&
+            (!config._retryCount || config._retryCount < 2)
+        ) {
+            const isRetryable =
+                !response || (response.status >= 500 && response.status <= 599);
+
             if (isRetryable) {
                 config._retryCount = (config._retryCount || 0) + 1;
-                console.warn(`[API] Retrying request (${config._retryCount}/2): ${config.url}`);
-                
-                // Exponential backoff: 500ms, 1000ms
+
                 const backoff = config._retryCount * 500;
-                await new Promise(resolve => setTimeout(resolve, backoff));
-                
+                await new Promise((resolve) => setTimeout(resolve, backoff));
+
                 return api(config);
             }
         }
 
-        // 3. Fallback: Provide a structured error object to prevent UI crashes
-        const enhancedError = {
-            message: error.response?.data?.error || error.message || 'An unexpected error occurred',
+        return Promise.reject({
+            message:
+                error.response?.data?.error ||
+                error.message ||
+                "Unexpected error",
             status: error.response?.status || 0,
             ok: false,
-            originalError: error
-        };
-
-        return Promise.reject(enhancedError);
+        });
     }
 );
 

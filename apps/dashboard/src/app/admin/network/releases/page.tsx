@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { UploadCloud, Check } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function ReleasePolicyPage() {
     const [policies, setPolicies] = useState<any[]>([]);
@@ -21,11 +22,10 @@ export default function ReleasePolicyPage() {
 
     const fetchPolicies = async () => {
         try {
-            const res = await fetch('/api/admin/network/releases');
-            const json = await res.json();
-            if (json.ok) setPolicies(json.policies);
+            const res = await api.get('/admin/network/releases');
+            if (res.data.ok) setPolicies(res.data.policies);
         } catch (e) {
-            console.error(e);
+            console.error('[ReleasePolicies]', e);
         } finally {
             setLoading(false);
         }
@@ -38,19 +38,15 @@ export default function ReleasePolicyPage() {
 
     const savePolicy = async (channel: string) => {
         try {
-            await fetch('/api/admin/network/releases', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    channel,
-                    min_version: formData.min_version,
-                    build_hash: formData.build_hash
-                })
+            await api.post('/admin/network/releases', {
+                channel,
+                min_version: formData.min_version,
+                build_hash: formData.build_hash
             });
             setEditing(null);
             fetchPolicies();
         } catch (e) {
-            console.error(e);
+            console.error('[ReleasePolicies]', e);
         }
     };
 

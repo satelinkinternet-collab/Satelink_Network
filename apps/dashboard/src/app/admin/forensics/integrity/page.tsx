@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import api from '@/lib/api';
 
 export default function IntegrityHistory() {
     const [runs, setRuns] = useState<any[]>([]);
@@ -27,10 +28,10 @@ export default function IntegrityHistory() {
     const fetchRuns = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/forensics/integrity?days=60');
-            const data = await res.json();
-            if (data.ok) setRuns(data.runs);
+            const res = await api.get('/admin/forensics/integrity', { params: { days: 60 } });
+            if (res.data.ok) setRuns(res.data.runs);
         } catch (e) {
+            console.error('[IntegrityHistory]', e);
             toast.error("Failed to load integrity history");
         } finally {
             setLoading(false);

@@ -1,18 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 export default function MarketingDashboard() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         (async () => {
             try {
-                const token = localStorage.getItem('satelink_token');
-                const res = await fetch('/api/admin/growth/marketing', { headers: { Authorization: `Bearer ${token}` } });
-                const d = await res.json();
-                if (d.ok) setData(d);
-            } catch (e) { console.error(e); }
+                const res = await api.get('/admin/growth/marketing');
+                if (res.data.ok) setData(res.data);
+            } catch (e: any) {
+                console.error('[Marketing]', e);
+                setError(e.response?.data?.error || 'Failed to load marketing data');
+            }
             setLoading(false);
         })();
     }, []);
@@ -21,6 +24,8 @@ export default function MarketingDashboard() {
         <div style={{ padding: '2rem', maxWidth: 1200, margin: '0 auto' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>📈 Marketing Performance Dashboard</h1>
             <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Scale based on data, not emotion.</p>
+
+            {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
             {loading ? <p>Loading...</p> : data && (
                 <div>
@@ -38,10 +43,10 @@ export default function MarketingDashboard() {
                     {/* Metrics Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                         {[
-                            { label: 'Active Nodes', value: data.active_nodes, color: '#3b82f6' },
-                            { label: 'Churn Rate', value: `${data.churn_rate?.toFixed(1)}%`, color: data.churn_rate > 10 ? '#ef4444' : '#22c55e' },
-                            { label: 'Ops This Week', value: data.ops_this_week?.toLocaleString(), color: '#8b5cf6' },
-                            { label: 'Ops Growth', value: `${data.ops_growth_rate > 0 ? '+' : ''}${data.ops_growth_rate?.toFixed(1)}%`, color: data.ops_growth_rate >= 0 ? '#22c55e' : '#ef4444' },
+                            { label: 'Active Nodes', value: data?.active_nodes ?? 0, color: '#3b82f6' },
+                            { label: 'Churn Rate', value: `${(data?.churn_rate ?? 0).toFixed(1)}%`, color: (data?.churn_rate ?? 0) > 10 ? '#ef4444' : '#22c55e' },
+                            { label: 'Ops This Week', value: (data?.ops_this_week ?? 0).toLocaleString(), color: '#8b5cf6' },
+                            { label: 'Ops Growth', value: `${(data?.ops_growth_rate ?? 0) > 0 ? '+' : ''}${(data?.ops_growth_rate ?? 0).toFixed(1)}%`, color: (data?.ops_growth_rate ?? 0) >= 0 ? '#22c55e' : '#ef4444' },
                         ].map((m, i) => (
                             <div key={i} style={{ background: '#1e293b', borderRadius: 12, padding: '1.25rem', border: '1px solid #334155', textAlign: 'center' }}>
                                 <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: 4 }}>{m.label}</div>
@@ -59,7 +64,7 @@ export default function MarketingDashboard() {
                             ) : (
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 120 }}>
                                     {(data.nodes_per_day || []).map((d: any, i: number) => {
-                                        const max = Math.max(...data.nodes_per_day.map((x: any) => x.count), 1);
+                                        const max = Math.max(...(data?.nodes_per_day || []).map((x: any) => x.count), 1);
                                         return (
                                             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                 <div style={{ width: '100%', background: '#3b82f6', borderRadius: 4, height: `${(d.count / max) * 100}px`, minHeight: 4 }} />

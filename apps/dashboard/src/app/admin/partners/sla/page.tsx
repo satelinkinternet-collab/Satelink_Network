@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, AlertTriangle, Activity, Zap } from 'lucide-react';
+import api from '@/lib/api';
 
 interface PartnerSLA {
     partner_id: string;
@@ -20,9 +21,9 @@ export default function AdminSLAPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/admin/partners/sla')
-            .then(r => r.json())
-            .then(d => { if (d.ok) setPartners(d.partners || []); })
+        api.get('/admin/partners/sla')
+            .then(r => { if (r.data.ok) setPartners(r.data.partners || []); })
+            .catch(e => console.error('[AdminSLA]', e))
             .finally(() => setLoading(false));
     }, []);
 

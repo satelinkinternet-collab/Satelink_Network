@@ -13,9 +13,6 @@ export default function FleetPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('satelink_token');
-            const headers = { 'Authorization': `Bearer ${token}` };
-
             const [resSum, resFlaky] = await Promise.all([
                 api.get('/admin-api/network/fleet/summary'),
                 api.get('/admin-api/network/fleet/flaky')

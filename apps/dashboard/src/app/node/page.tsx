@@ -35,7 +35,7 @@ export default function NodeDashboard() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await api.get('/node/stats');
+                const res = await api.get('/node-api/stats');
                 if (res.data.ok) {
                     const { stats, earnings, withdrawals, logs: apiLogs } = res.data;
                     setNodeStatus((prev: any) => ({

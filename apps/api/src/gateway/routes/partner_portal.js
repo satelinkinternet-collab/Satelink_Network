@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Phase P+Q — Partner Portal Routes
- * Mounted at /partner (behind verifyJWT)
+ * Mounted at /partner (behind requireJWT from auth_middleware)
  */
 export function createPartnerPortalRouter(db, slaEngine = null) {
     const router = Router();

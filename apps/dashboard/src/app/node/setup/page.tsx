@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Terminal, CheckCircle, Copy, Check } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import api from '@/lib/api';
 
 export default function NodeSetupPage() {
     const [step, setStep] = useState(1);
@@ -17,14 +18,13 @@ export default function NodeSetupPage() {
     const startSetup = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/node/setup/start', { method: 'POST' });
-            const data = await res.json();
-            if (data.ok) {
-                setSetupData(data);
+            const res = await api.post('/api/node/setup/start');
+            if (res.data.ok) {
+                setSetupData(res.data);
                 setStep(2);
             }
         } catch (e) {
-            console.error(e);
+            console.error('[NodeSetup]', e);
         } finally {
             setLoading(false);
         }
@@ -35,14 +35,13 @@ export default function NodeSetupPage() {
         if (step === 2 && setupData?.setup_id) {
             const interval = setInterval(async () => {
                 try {
-                    const res = await fetch(`/api/node/setup/${setupData.setup_id}`);
-                    const data = await res.json();
-                    if (data.ok && data.status === 'paired') {
+                    const res = await api.get(`/api/node/setup/${setupData.setup_id}`);
+                    if (res.data.ok && res.data.status === 'paired') {
                         setStatus('paired');
                         setStep(3);
                         clearInterval(interval);
                     }
-                } catch (e) { }
+                } catch (e) { console.error('[NodeSetup:poll]', e); }
             }, 3000);
             return () => clearInterval(interval);
         }

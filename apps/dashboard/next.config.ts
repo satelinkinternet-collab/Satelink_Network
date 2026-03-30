@@ -64,6 +64,12 @@ const nextConfig: NextConfig = {
       { source: '/builder-api/:path*', destination: `${API_BASE}/builder-api/:path*` },
       { source: '/dist-api/:path*', destination: `${API_BASE}/dist-api/:path*` },
       { source: '/ent-api/:path*', destination: `${API_BASE}/ent-api/:path*` },
+      // Note: /node/* frontend calls use /node-api/* which has its own rewrite above
+      // /economics/* — no page conflict, direct proxy
+      { source: '/economics/:path*', destination: `${API_BASE}/economics/:path*` },
+      // /treasury/* — no page conflict, direct proxy
+      { source: '/treasury/:path*', destination: `${API_BASE}/treasury/:path*` },
+      { source: '/settlement/:path*', destination: `${API_BASE}/settlement/:path*` },
       { source: '/pair/:path*', destination: `${API_BASE}/pair/:path*` },
       { source: '/stream/:path*', destination: `${API_BASE}/stream/:path*` },
       { source: '/support/:path*', destination: `${API_BASE}/support/:path*` },
@@ -75,7 +81,7 @@ const nextConfig: NextConfig = {
       { source: '/partners/:path*', destination: `${API_BASE}/partners/:path*` },
       { source: '/system/:path*', destination: `${API_BASE}/system/:path*` },
       { source: '/api/:path*', destination: `${API_BASE}/api/:path*` },
-      { source: '/network/:path(health|stats)$', destination: `${API_BASE}/network/:path*` },
+      { source: '/network/health', destination: `${API_BASE}/network/health` },
     ];
   },
 };

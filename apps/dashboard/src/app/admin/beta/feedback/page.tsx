@@ -1,19 +1,21 @@
-
 "use client";
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import api from '@/lib/api';
 
 export default function BetaFeedbackPage() {
     const [feedback, setFeedback] = useState<any[]>([]);
+    const [error, setError] = useState('');
 
     const fetchFeedback = async () => {
         try {
-            const res = await fetch('/api/proxy?path=/admin/beta/feedback');
-            const data = await res.json();
-            if (data.ok) setFeedback(data.feedback);
-        } catch (e) {
-            console.error(e);
+            setError('');
+            const res = await api.get('/admin/beta/feedback');
+            if (res.data.ok) setFeedback(res.data.feedback);
+        } catch (e: any) {
+            console.error('[BetaFeedback]', e);
+            setError(e.response?.data?.error || 'Failed to load feedback');
         }
     };
 
@@ -22,6 +24,10 @@ export default function BetaFeedbackPage() {
     return (
         <div className="space-y-6 p-6">
             <h1 className="text-3xl font-bold tracking-tight text-white mb-6">Beta Feedback</h1>
+
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
+            )}
 
             <div className="grid gap-4">
                 {feedback.map((f) => (

@@ -1,25 +1,27 @@
-
 "use client";
 import React, { useEffect, useState } from 'react';
 import { AdminLayout } from '../../../../components/AdminLayout';
-import { useAuth } from '../../../../context/AuthContext';
 import { RefreshCw, ExternalLink } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function SettlementBatchesPage() {
-    const { token } = useAuth();
     const [batches, setBatches] = useState<any[]>([]);
+    const [error, setError] = useState('');
 
     const fetchBatches = async () => {
-        const res = await fetch('/admin/settlement/batches?limit=50', {
-            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
-        });
-        const json = await res.json();
-        if (json.ok) setBatches(json.data);
+        try {
+            setError('');
+            const res = await api.get('/admin/services/settlement/batches', { params: { limit: 50 } });
+            if (res.data.ok) setBatches(res.data.data);
+        } catch (e: any) {
+            console.error('[SettlementBatches]', e);
+            setError(e.response?.data?.error || 'Failed to load batches');
+        }
     };
 
     useEffect(() => {
-        if (token) fetchBatches();
-    }, [token]);
+        fetchBatches();
+    }, []);
 
     return (
         <AdminLayout>
@@ -30,6 +32,8 @@ export default function SettlementBatchesPage() {
                         <RefreshCw className="w-4 h-4" />
                     </button>
                 </div>
+
+                {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
                 <div className="bg-gray-900 rounded border border-gray-700 overflow-hidden">
                     <table className="w-full text-left border-collapse">

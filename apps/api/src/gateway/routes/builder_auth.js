@@ -3,6 +3,8 @@ import { ethers } from 'ethers';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
+const JWT_ISSUER = () => process.env.JWT_ISSUER || 'satelink-network';
+
 export function createBuilderAuthRouter(opsEngine) {
     const router = Router();
 
@@ -46,15 +48,15 @@ export function createBuilderAuthRouter(opsEngine) {
                 [wallet.toLowerCase(), Date.now()]
             );
 
-            // Generate JWT
+            const w = wallet.toLowerCase();
             const token = jwt.sign(
-                { wallet: wallet.toLowerCase(), role: 'builder' },
+                { userId: w, wallet: w, role: 'builder', type: 'access' },
                 process.env.JWT_SECRET,
-                { expiresIn: '7d', issuer: 'satelink-core' }
+                { expiresIn: '7d', issuer: JWT_ISSUER(), algorithm: 'HS256' }
             );
 
             // Set Session Cookie (Legacy Support)
-            const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
+            const sessionData = JSON.stringify({ wallet: w, exp: Date.now() + 86400000 });
             const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'secret').update(sessionData).digest('hex');
             res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
 
@@ -82,14 +84,14 @@ export function createBuilderAuthRouter(opsEngine) {
             // Create builder if not exists
             await opsEngine.db.query("INSERT OR IGNORE INTO builders (wallet, created_at) VALUES (?, ?)", [wallet.toLowerCase(), Date.now()]);
 
-            // Generate JWT
+            const w = wallet.toLowerCase();
             const token = jwt.sign(
-                { wallet: wallet.toLowerCase(), role: 'builder' },
+                { userId: w, wallet: w, role: 'builder', type: 'access' },
                 process.env.JWT_SECRET,
-                { expiresIn: '7d', issuer: 'satelink-core' }
+                { expiresIn: '7d', issuer: JWT_ISSUER(), algorithm: 'HS256' }
             );
 
-            const sessionData = JSON.stringify({ wallet: wallet.toLowerCase(), exp: Date.now() + 86400000 });
+            const sessionData = JSON.stringify({ wallet: w, exp: Date.now() + 86400000 });
             const sessionSig = crypto.createHmac('sha256', process.env.ADMIN_API_KEY || 'secret').update(sessionData).digest('hex');
 
             res.cookie('builder_session', `${sessionData}.${sessionSig}`, { httpOnly: true, maxAge: 86400000 });
@@ -124,9 +126,13 @@ export function createBuilderAuthRouter(opsEngine) {
         const token = authHeader.split(' ')[1];
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-                issuer: 'satelink-core'
+                issuer: JWT_ISSUER(),
+                algorithms: ['HS256'],
             });
 
+            if (decoded.type && decoded.type !== 'access') {
+                return res.status(401).json({ ok: false, error: 'Invalid token type' });
+            }
             if (decoded.role !== 'builder') {
                 return res.status(403).json({ ok: false, error: 'Forbidden: Insufficient role' });
             }

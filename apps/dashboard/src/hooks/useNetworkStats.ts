@@ -13,19 +13,20 @@ interface NetworkStats {
     totalRevenueUsdt: number;
     totalOpsProcessed: number;
     lastEpochClosedAt: string | null;
+    settlementMode: string;
     opsPerMin: number;
     revenueLast5min: { count: number; total_usdt: number };
 }
 
 export function useNetworkStats() {
     const { data: netData, error: netError, isLoading: netLoading } = useSWR('/api/network/stats', fetcher, {
-        refreshInterval: 5000,
+        refreshInterval: 3000,
         dedupingInterval: 0,
         shouldRetryOnError: false,
     });
 
     const { data: sysData, error: sysError, isLoading: sysLoading } = useSWR('/system/status', fetcher, {
-        refreshInterval: 5000,
+        refreshInterval: 3000,
         dedupingInterval: 0,
         shouldRetryOnError: false,
     });
@@ -42,6 +43,7 @@ export function useNetworkStats() {
         totalRevenueUsdt: sysData?.total_revenue ?? netData?.totalRevenueUsdt ?? 0,
         totalOpsProcessed: netData?.totalOpsProcessed || 0,
         lastEpochClosedAt: netData?.lastEpochClosedAt || sysData?.last_epoch_close_time || null,
+        settlementMode: netData?.settlementMode || 'SIMULATED',
         opsPerMin: sysData?.ops_per_min || 0,
         revenueLast5min: sysData?.revenue_last_5min || { count: 0, total_usdt: 0 },
     } : undefined;
@@ -53,6 +55,7 @@ export function useNetworkStats() {
         totalRevenueUsdt: 0,
         totalOpsProcessed: 0,
         lastEpochClosedAt: null,
+        settlementMode: 'SIMULATED',
         opsPerMin: 0,
         revenueLast5min: { count: 0, total_usdt: 0 },
     };

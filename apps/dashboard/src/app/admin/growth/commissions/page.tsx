@@ -51,7 +51,7 @@ export default function CommissionsPage() {
                     <CardHeader><CardTitle className="text-yellow-500 flex items-center"><AlertCircle className="w-5 h-5 mr-2" /> Fraud / Risk Signals</CardTitle></CardHeader>
                     <CardContent>
                         <ul className="list-disc pl-5 text-yellow-200/80 space-y-1">
-                            {data.fraud.alerts.map((a: string, i: number) => <li key={i}>{a}</li>)}
+                            {data?.fraud?.alerts?.map((a: string, i: number) => <li key={i}>{a}</li>)}
                         </ul>
                     </CardContent>
                 </Card>
@@ -74,7 +74,7 @@ export default function CommissionsPage() {
                                 <TableRow key={i} className="border-zinc-800">
                                     <TableCell className="font-mono text-xs">{d.distributor_wallet}</TableCell>
                                     <TableCell className="text-right">{d.count}</TableCell>
-                                    <TableCell className="text-right text-green-400">${d.total.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right text-green-400">${(d.total ?? 0).toFixed(2)}</TableCell>
                                     <TableCell className="text-right"><Badge variant="outline" className="border-green-800 text-green-400">Active</Badge></TableCell>
                                 </TableRow>
                             ))}

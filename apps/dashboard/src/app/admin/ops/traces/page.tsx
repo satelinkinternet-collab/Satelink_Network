@@ -51,7 +51,9 @@ export default function TracesPage() {
                     const linked = errRes.data.errors.filter((e: any) => e.trace_id === row.trace_id);
                     setLinkedErrors(linked);
                 }
-            } catch { }
+            } catch (e: any) {
+                console.error('[TraceLinkedErrors]', e);
+            }
 
             // Fetch slow queries in a similar time window
             try {
@@ -64,7 +66,9 @@ export default function TracesPage() {
                     );
                     setLinkedQueries(linked);
                 }
-            } catch { }
+            } catch (e: any) {
+                console.error('[TraceLinkedQueries]', e);
+            }
         }
     };
 

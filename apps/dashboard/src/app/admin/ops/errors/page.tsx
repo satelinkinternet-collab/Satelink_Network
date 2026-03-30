@@ -37,7 +37,9 @@ export default function ErrorsPage() {
         try {
             const res = await api.get(`/admin/ops/errors/${row.id}`);
             if (res.data.ok) setDetail(res.data);
-        } catch { }
+        } catch (e: any) {
+            console.error('[ErrorDetail]', e);
+        }
     };
 
     const columns = [

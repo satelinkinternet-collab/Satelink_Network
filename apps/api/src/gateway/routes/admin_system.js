@@ -1,21 +1,14 @@
 
 import express from 'express';
-import { verifyJWT } from './auth_v2.js';
+import { requireJWT, requireRole, ADMIN_ROLES } from '../../security/auth_middleware.js';
 
 export function createAdminSystemRouter(opsEngine, runtimeMonitor, backupService, stressTester) {
     // Ensure stress table exists lazily if not init elsewhere
     if (stressTester) stressTester.init().catch(e => console.error("Stress init failed", e));
     const router = express.Router();
 
-    // Middleware: Admin Only
-    const requireAdmin = (req, res, next) => {
-        if (!req.user || !['admin_super', 'admin_ops'].includes(req.user.role)) {
-            return res.status(403).json({ ok: false, error: 'Admin access required' });
-        }
-        next();
-    };
-
-    router.use(verifyJWT, requireAdmin);
+    router.use(requireJWT);
+    router.use(requireRole(ADMIN_ROLES));
 
     // K1: DB Health
     router.get('/database', async (req, res) => {

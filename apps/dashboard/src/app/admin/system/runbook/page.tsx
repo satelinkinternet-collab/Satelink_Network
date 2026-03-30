@@ -3,29 +3,19 @@
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { BookOpen, AlertTriangle } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function RunbookPage() {
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // In a real app we might fetch this via API, but for MVP we can require it 
-        // or fetch from a static public path if configured. 
-        // Since Next.js Client Comps can't fs.readFileSync, we'll fetch a simple API endpoint 
-        // that serves the runbook, OR we can hardcode the content here if the requirement allows.
-        // Let's assume we need an API endpoint to serve it.
-        // I will add a quick endpoint for this or just display a placeholder if I can't read files.
-        // Wait, I can read it in the Admin API!
-
-        fetch('/admin/system/runbook-content', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('satelink_token')}`, 'X-API-Call': '1' }
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.ok) setContent(data.content);
+        api.get('/admin/system/runbook-content')
+            .then(res => {
+                if (res.data.ok) setContent(res.data.content);
                 else setContent("# Error loading runbook");
             })
-            .catch(() => setContent("# Error loading runbook"))
+            .catch(e => { console.error('[Runbook]', e); setContent("# Error loading runbook"); })
             .finally(() => setLoading(false));
     }, []);
 

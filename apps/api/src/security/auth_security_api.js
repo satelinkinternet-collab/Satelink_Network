@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
-import { verifyJWT } from '../gateway/routes/auth_v2.js';
+import { requireJWT } from './auth_middleware.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const REAUTH_TTL = 300; // 5 minutes
@@ -100,7 +100,7 @@ export function createAuthSecurityRouter(db) {
 
     // 3. Device Management (Protected by JWT)
     // List devices
-    router.get('/account/devices', verifyJWT, async (req, res) => {
+    router.get('/account/devices', requireJWT, async (req, res) => {
         try {
             if (!req.user || !req.user.wallet) return res.status(401).json({ ok: false, error: 'Unauthorized' });
 
@@ -119,7 +119,7 @@ export function createAuthSecurityRouter(db) {
     });
 
     // Revoke device (Requires Re-Auth)
-    router.post('/account/devices/revoke', verifyJWT, (req, res, next) => requireReauth(db, 'revoke_device')(req, res, next), async (req, res) => {
+    router.post('/account/devices/revoke', requireJWT, (req, res, next) => requireReauth(db, 'revoke_device')(req, res, next), async (req, res) => {
         try {
             const { device_public_id } = req.body;
             if (!device_public_id) return res.status(400).json({ ok: false, error: 'Device ID required' });

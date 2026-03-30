@@ -1,22 +1,24 @@
-
 "use client";
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
+import api from '@/lib/api';
 
 export default function BetaInvitesPage() {
     const [invites, setInvites] = useState<any[]>([]);
+    const [error, setError] = useState('');
     const [newInvite, setNewInvite] = useState({ code: '', max_uses: 100, expires_in_days: 30 });
 
     const fetchInvites = async () => {
         try {
-            const res = await fetch('/api/proxy?path=/admin/beta/invites');
-            const data = await res.json();
-            if (data.ok) setInvites(data.invites);
-        } catch (e) {
-            console.error(e);
+            setError('');
+            const res = await api.get('/admin/beta/invites');
+            if (res.data.ok) setInvites(res.data.invites);
+        } catch (e: any) {
+            console.error('[BetaInvites]', e);
+            setError(e.response?.data?.error || 'Failed to load invites');
         }
     };
 
@@ -24,16 +26,8 @@ export default function BetaInvitesPage() {
 
     const createInvite = async () => {
         try {
-            const res = await fetch('/api/proxy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    path: '/admin/beta/invites',
-                    method: 'POST',
-                    body: newInvite
-                })
-            });
-            const data = await res.json();
+            const res = await api.post('/admin/beta/invites', newInvite);
+            const data = res.data;
             if (data.ok) {
                 toast.success(`Invite created: ${data.invite_code}`);
                 fetchInvites();
@@ -48,6 +42,10 @@ export default function BetaInvitesPage() {
     return (
         <div className="space-y-6 p-6">
             <h1 className="text-3xl font-bold tracking-tight text-white mb-6">Beta Invites</h1>
+
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>
+            )}
 
             <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>

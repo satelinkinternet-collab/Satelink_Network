@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, ShieldCheck, Activity, Lock, Database } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function PreflightPage() {
     const [status, setStatus] = useState<any>(null);
@@ -11,16 +12,14 @@ export default function PreflightPage() {
     const fetchStatus = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/admin/preflight/status', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('satelink_token')}`, 'X-API-Call': '1' }
-            });
-            const data = await res.json();
-            if (data.ok) {
-                setStatus(data.data);
+            const res = await api.get('/admin/preflight/status');
+            if (res.data.ok) {
+                setStatus(res.data.data);
             } else {
-                setError(data.error);
+                setError(res.data.error);
             }
         } catch (e: any) {
+            console.error('[Preflight]', e);
             setError(e.message);
         } finally {
             setLoading(false);

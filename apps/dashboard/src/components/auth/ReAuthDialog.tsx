@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Lock } from 'lucide-react';
-import axios from 'axios';
+import api from '@/lib/api';
 import { signMessage } from '@/lib/embeddedWallet';
 import { toast } from 'sonner';
 
@@ -23,7 +23,7 @@ export function ReAuthDialog({ isOpen, onClose, onSuccess, scope, wallet }: ReAu
         setLoading(true);
         try {
             // 1. Start Reauth
-            const startRes = await axios.post('/auth/reauth/start', { wallet, scope });
+            const startRes = await api.post('/auth/reauth/start', { wallet, scope });
             if (!startRes.data.ok) throw new Error(startRes.data.error);
 
             const { nonce, message } = startRes.data;
@@ -32,7 +32,7 @@ export function ReAuthDialog({ isOpen, onClose, onSuccess, scope, wallet }: ReAu
             const signature = await signMessage(message);
 
             // 3. Finish
-            const finishRes = await axios.post('/auth/reauth/finish', {
+            const finishRes = await api.post('/auth/reauth/finish', {
                 wallet,
                 scope,
                 signature,
