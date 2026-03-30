@@ -20,6 +20,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { validateEnv } from "./src/utils/validateEnv.js";
 import { logger } from "./src/monitoring/logger.js";
+import { DATABASE_URL as RESOLVED_DB_URL, maskUrl } from "./src/core/config/db_config.js";
 import { createApp } from "./app_factory.mjs";
 import { PgDatabase } from "./src/database/pg_adapter.js";
 import { DepositDetector } from "./src/settlement/deposit_detector.js";
@@ -70,11 +71,14 @@ export default createApp;
 
 // If we are not running under Mocha (tests), boot the server
 if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
-    const DATABASE_URL = process.env.DATABASE_URL;
+    const DATABASE_URL = RESOLVED_DB_URL;
+    const isDocker = process.env.RUN_CONTEXT === 'docker' || process.env.DOCKER_ENV === 'true';
+    console.log(`[BOOT] Mode: ${isDocker ? 'DOCKER' : 'LOCAL DEV'}`);
+    console.log(`[BOOT] DB URL: ${maskUrl(DATABASE_URL)}`);
     console.log('[BOOT] Starting database connection...');
-    
+
     try {
-        // Create DB instance immediately (does not block)
+        // Create DB instance with retry logic (5 attempts, 2s delay)
         const db = await PgDatabase.create(DATABASE_URL);
 
         // Start checking DB health in background
@@ -171,10 +175,19 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             }
         });
     } catch (e) {
-        console.error("BOOT FAILURE IN SERVER:", e);
+        console.error("═══════════════════════════════════════════════════════");
+        console.error("  ❌ BOOT FAILURE — DATABASE CONNECTION FAILED");
+        console.error("═══════════════════════════════════════════════════════");
+        console.error(`  URL: ${maskUrl(DATABASE_URL)}`);
+        console.error(`  Error: ${e.message}`);
+        console.error("");
+        console.error("  Troubleshooting:");
+        console.error("  ┌─ Docker mode: docker compose up -d database");
+        console.error("  ├─ Local dev: ensure PostgreSQL is running on port 5432");
+        console.error("  ├─ Credentials: check .env.local (user=satelink, pass=satelinkpass)");
+        console.error("  └─ IPv6 issue: use 127.0.0.1 instead of localhost");
+        console.error("═══════════════════════════════════════════════════════");
         logger.error("Fatal: Could not start server", { error: e.message });
-        // Even on boot failure, we might want to try starting the app if possible, 
-        // but here we exit because we can't even create the DB wrapper.
         process.exit(1);
     }
 }

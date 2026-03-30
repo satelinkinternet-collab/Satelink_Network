@@ -10,9 +10,18 @@ export default function FleetPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const formatLastSeen = (ts: any) => {
+        if (!ts) return '—';
+        const n = typeof ts === 'string' ? Number(ts) : ts;
+        const ms = typeof n === 'number' && Number.isFinite(n) ? (n < 9999999999 ? n * 1000 : n) : Date.parse(String(ts));
+        if (!ms || !Number.isFinite(ms)) return '—';
+        return new Date(ms).toLocaleTimeString();
+    };
+
     const fetchData = async () => {
         setLoading(true);
         try {
+            setError('');
             const [resSum, resFlaky] = await Promise.all([
                 api.get('/admin-api/network/fleet/summary'),
                 api.get('/admin-api/network/fleet/flaky')
@@ -24,7 +33,7 @@ export default function FleetPage() {
             if (jsonSum.ok) setSummary(jsonSum);
             else setError(jsonSum.error || 'Failed to fetch summary');
 
-            if (jsonFlaky.ok) setFlaky(jsonFlaky.data);
+            if (jsonFlaky?.ok) setFlaky(Array.isArray(jsonFlaky.data) ? jsonFlaky.data : []);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -107,12 +116,12 @@ export default function FleetPage() {
                                 <tbody>
                                     {flaky.map((node, i) => (
                                         <tr key={i} className="border-b border-gray-800 hover:bg-[#161616] transition-colors">
-                                            <td className="p-4 font-mono text-sm text-gray-300">{node.node_id}</td>
-                                            <td className="p-4 text-yellow-400 font-bold">{node.hb_count}</td>
-                                            <td className="p-4 text-gray-500 text-sm">{new Date(node.last_seen).toLocaleTimeString()}</td>
+                                            <td className="p-4 font-mono text-sm text-gray-300">{node?.node_id ?? '—'}</td>
+                                            <td className="p-4 text-yellow-400 font-bold">{node?.hb_count ?? '—'}</td>
+                                            <td className="p-4 text-gray-500 text-sm">{formatLastSeen(node?.last_seen)}</td>
                                             <td className="p-4">
                                                 <button
-                                                    onClick={() => handleQuarantine(node.node_id)}
+                                                    onClick={() => node?.node_id && handleQuarantine(node.node_id)}
                                                     className="bg-red-900/40 text-red-300 px-3 py-1 rounded text-xs border border-red-800 hover:bg-red-900/60"
                                                 >
                                                     Quarantine
