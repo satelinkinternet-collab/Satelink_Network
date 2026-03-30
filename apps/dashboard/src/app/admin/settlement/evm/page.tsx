@@ -17,7 +17,7 @@ export default function EvmSettlementPage() {
         if (!batchId) return;
         setLoading(true);
         try {
-            const res = await api.get(`/admin-api/settlement/evm/batch/${batchId}`);
+            const res = await api.get(`/admin/services/settlement/evm/batch/${batchId}`);
             const json = res.data;
             if (json.ok) setTxs(json.data);
             else setError(json.error);
@@ -36,7 +36,7 @@ export default function EvmSettlementPage() {
         if (!batchId) return;
         setReconciling(true);
         try {
-            const res = await api.post(`/admin-api/settlement/evm/reconcile/${batchId}`);
+            const res = await api.post(`/admin/services/settlement/evm/reconcile/${batchId}`);
             const json = res.data;
             if (json.ok) {
                 alert(`Reconciled: ${json.data.previous} -> ${json.data.current}`);
@@ -54,7 +54,7 @@ export default function EvmSettlementPage() {
     const handleRetry = async (itemId: string) => {
         if (!confirm("Are you sure you want to retry this item?")) return;
         try {
-            const res = await api.post(`/admin-api/settlement/evm/retry-item`, { batch_id: batchId, item_id: itemId });
+            const res = await api.post(`/admin/services/settlement/evm/retry-item`, { batch_id: batchId, item_id: itemId });
             const json = res.data;
             if (json.ok) {
                 alert("Retry requested");

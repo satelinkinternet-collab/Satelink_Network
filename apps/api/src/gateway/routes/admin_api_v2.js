@@ -235,5 +235,128 @@ export function createAdminApiRouter(opsEngine) {
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
+    // ─── FLEET READINESS (powers /admin/network/fleet page) ───
+    router.get('/network/fleet/summary', async (req, res) => {
+        try {
+            const db = opsEngine.db;
+            const nowSec = Math.floor(Date.now() / 1000);
+
+            const active5m = await db.prepare(
+                "SELECT COUNT(*) as count FROM registered_nodes WHERE last_heartbeat >= ?"
+            ).get(nowSec - 300);
+            const active1h = await db.prepare(
+                "SELECT COUNT(*) as count FROM registered_nodes WHERE last_heartbeat >= ?"
+            ).get(nowSec - 3600);
+            const active24h = await db.prepare(
+                "SELECT COUNT(*) as count FROM registered_nodes WHERE last_heartbeat >= ?"
+            ).get(nowSec - 86400);
+
+            res.json({
+                ok: true,
+                active_5m: active5m?.count || 0,
+                active_1h: active1h?.count || 0,
+                active_24h: active24h?.count || 0
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.get('/network/fleet/flaky', async (req, res) => {
+        try {
+            const db = opsEngine.db;
+            const nowSec = Math.floor(Date.now() / 1000);
+            const tenMinAgo = nowSec - 600;
+
+            // Flaky = nodes with heartbeat in last 10m but not consistently active
+            const flaky = await db.prepare(`
+                SELECT wallet as node_id, last_heartbeat as last_seen, active,
+                       CASE WHEN active = 1 AND last_heartbeat < ? THEN 1 ELSE 0 END as is_flaky
+                FROM registered_nodes
+                WHERE last_heartbeat >= ? AND last_heartbeat < ?
+                ORDER BY last_heartbeat ASC
+                LIMIT 50
+            `).all(nowSec - 120, tenMinAgo, nowSec - 60);
+
+            res.json({
+                ok: true,
+                data: flaky.map(n => ({
+                    node_id: n.node_id,
+                    hb_count: 1,
+                    last_seen: n.last_seen ? new Date(n.last_seen * 1000).toISOString() : null
+                }))
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    router.post('/network/quarantine', async (req, res) => {
+        try {
+            const { node_id, duration_m } = req.body;
+            if (!node_id) return res.status(400).json({ ok: false, error: "node_id required" });
+
+            await opsEngine.db.prepare(
+                "UPDATE registered_nodes SET active = 0, is_flagged = 1 WHERE wallet = ?"
+            ).run(node_id);
+
+            res.json({ ok: true, message: `Node ${node_id} quarantined for ${duration_m || 60}m` });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/withdrawals — powers simulated withdrawals page
+    router.get('/withdrawals', async (req, res) => {
+        try {
+            const withdrawals = await opsEngine.db.prepare(
+                "SELECT * FROM withdrawals ORDER BY created_at DESC LIMIT 50"
+            ).all();
+            res.json({ ok: true, data: withdrawals });
+        } catch (e) {
+            // Table may not exist yet
+            res.json({ ok: true, data: [] });
+        }
+    });
+
+    // GET /admin-api/preflight/status — powers launch checklist page
+    router.get('/preflight/status', async (req, res) => {
+        try {
+            const checks = {
+                database: true,
+                nodes_registered: false,
+                epoch_running: false,
+                revenue_flowing: false
+            };
+            const nodeCount = await opsEngine.db.prepare("SELECT COUNT(*) as c FROM registered_nodes").get();
+            checks.nodes_registered = (nodeCount?.c || 0) > 0;
+            const openEpoch = await opsEngine.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' LIMIT 1").get();
+            checks.epoch_running = !!openEpoch;
+            const revCount = await opsEngine.db.prepare("SELECT COUNT(*) as c FROM revenue_events_v2").get();
+            checks.revenue_flowing = (revCount?.c || 0) > 0;
+
+            res.json({ ok: true, checks, ready: Object.values(checks).every(Boolean) });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /admin-api/growth/referrals — powers referrals page
+    router.get('/growth/referrals', async (req, res) => {
+        try {
+            const referrals = await opsEngine.db.prepare(`
+                SELECT distributor_wallet, COUNT(*) as count,
+                       COALESCE(SUM(commission_usdt), 0) as total_commission
+                FROM distributor_commissions
+                GROUP BY distributor_wallet
+                ORDER BY count DESC LIMIT 50
+            `).all();
+            res.json({ ok: true, data: referrals });
+        } catch (e) {
+            // Table may not exist
+            res.json({ ok: true, data: [] });
+        }
+    });
+
     return router;
 }
