@@ -74,6 +74,7 @@ const nextConfig: NextConfig = {
       { source: '/stream/:path*', destination: `${API_BASE}/stream/:path*` },
       { source: '/support/:path*', destination: `${API_BASE}/support/:path*` },
       { source: '/beta/:path*', destination: `${API_BASE}/beta/:path*` },
+      { source: '/dev/:path*', destination: `${API_BASE}/dev/:path*` },
       { source: '/health', destination: `${API_BASE}/health` },
       { source: '/__test/:path*', destination: `${API_BASE}/__test/:path*` },
       { source: '/webhooks/:path*', destination: `${API_BASE}/webhooks/:path*` },
