@@ -97,7 +97,7 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     try { fetch('http://127.0.0.1:7363/ingest/de7d16ec-a709-4735-b844-3889c63cdf77',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14abae'},body:JSON.stringify({sessionId:'14abae',runId:'startup',hypothesisId:'H11',location:'admin_control_room_api.js:createAdminControlRoomRouter',message:'admin control room router constructed',data:{hasOpsEngine:!!opsEngine},timestamp:Date.now()})}).catch(()=>{}); } catch {}
     // #endregion
     const router = Router();
-    const db = opsEngine.db;
+    const db = global.opsEngine.db;
     const selfTestRunner = opts.selfTestRunner || null;
     const incidentBuilder = opts.incidentBuilder || null;
     const opsReporter = opts.opsReporter || null;
@@ -1298,8 +1298,8 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     // POST /controls/exit-safe-mode
     router.post('/controls/exit-safe-mode', requireSuper, async (req, res) => {
         try {
-            await opsEngine.updateSystemConfig('system_state', 'NORMAL');
-            await opsEngine.updateSystemConfig('revenue_mode', 'ACTIVE');
+            await global.opsEngine.updateSystemConfig('system_state', 'NORMAL');
+            await global.opsEngine.updateSystemConfig('revenue_mode', 'ACTIVE');
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'EXIT_SAFE_MODE',
@@ -1506,8 +1506,8 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const reason = req.body.reason || "Manual Emergency Lockdown";
 
             // Trigger OpsEngine Safe Mode
-            const opsEngine = req.app.get('opsEngine');
-            await opsEngine.setSafeMode(reason);
+            global.opsEngine = req.app.get('opsEngine');
+            await global.opsEngine.setSafeMode(reason);
 
             // Also set a global flag if needed, but SafeModeAutopilot handles the state
             await auditLog(req.app.get('db'), {

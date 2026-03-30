@@ -71,19 +71,19 @@ export class Scheduler {
 
     async runEpochCycle() {
         try {
-            await this.opsEngine.checkSafeMode();
+            await this.global.opsEngine.checkSafeMode();
         } catch (e) {
             // Already in safe mode, skipping cycle
             return;
         }
 
         try {
-            const currentId = await this.opsEngine.initEpoch();
+            const currentId = await this.global.opsEngine.initEpoch();
             // Epoch Length Policy: 1 hour (3600s) default
             // In MVP we might use shorter epochs or check DB config?
             // Let's assume 1 hour for now or checks the epoch start time.
 
-            const epoch = await this.opsEngine.db.get("SELECT * FROM epochs WHERE id = ?", [currentId]);
+            const epoch = await this.global.opsEngine.db.get("SELECT * FROM epochs WHERE id = ?", [currentId]);
             const now = Math.floor(Date.now() / 1000);
 
             // Should we finalize? 
@@ -95,34 +95,34 @@ export class Scheduler {
                 console.log(`[SCHEDULER] Auto-finalizing Epoch ${currentId}...`);
 
                 // 1. Finalize
-                await this.opsEngine.finalizeEpoch(currentId);
+                await this.global.opsEngine.finalizeEpoch(currentId);
 
                 // Phase 5: Audit Log
                 try {
-                    await this.opsEngine.db.query(
+                    await this.global.opsEngine.db.query(
                         "INSERT INTO audit_logs (actor_wallet, action_type, metadata, created_at) VALUES (?, ?, ?, ?)",
                         ['system_scheduler', 'EPOCH_FINALIZE', JSON.stringify({ epochId: currentId }), Date.now()]
                     );
                 } catch (e) { console.error("Audit Log Error:", e.message); }
 
                 // 2. Validate Distribution Logic (Pre-flight)
-                const valid = await this.opsEngine.validateDistributionMath(currentId);
+                const valid = await this.global.opsEngine.validateDistributionMath(currentId);
                 if (!valid.valid) {
-                    await this.opsEngine.setSafeMode("Distribution Math Mismatch");
+                    await this.global.opsEngine.setSafeMode("Distribution Math Mismatch");
                     await this.alertService.send(`🚨 LOCKDOWN: Distribution Math Mismatch in Epoch ${currentId}. ${valid.error}`, 'fatal');
                     return;
                 }
 
                 // 3. Distribute
                 try {
-                    const res = await this.opsEngine.distributeRewards(currentId);
+                    const res = await this.global.opsEngine.distributeRewards(currentId);
                     await this.alertService.send(`✅ Rewards Distributed. Epoch ${res.epochId}, Rev: ${res.totalRevenue}, Nodes: ${res.totalDistributed}`);
                     this.distFailures = 0; // Reset
                 } catch (distErr) {
                     console.error("[SCHEDULER] Distribution Failed:", distErr);
                     this.distFailures++;
                     if (this.distFailures >= 3) {
-                        await this.opsEngine.setSafeMode("3 Consecutive Distribution Failures");
+                        await this.global.opsEngine.setSafeMode("3 Consecutive Distribution Failures");
                         await this.alertService.send(`🚨 LOCKDOWN: 3 Consecutive Distribution Failures!`, 'fatal');
                     } else {
                         await this.alertService.send(`⚠️ Distribution Failed for Epoch ${currentId}: ${distErr.message}`, 'error');
@@ -140,14 +140,14 @@ export class Scheduler {
         // 1. DB Connectivity (implicit if we query)
         try {
             const now = Date.now();
-            await this.opsEngine.db.get("SELECT 1");
+            await this.global.opsEngine.db.get("SELECT 1");
 
             // 2. Webhook Health (Last received)
             // Need a way to track last webhook time? Maybe check latest revenue event?
             // MVP: Just ensure scheduler is alive.
 
             // 3. Pending Withdrawals
-            const pending = (await this.opsEngine.db.get(`SELECT COUNT(*) as c FROM withdrawals WHERE status = 'PENDING'`)).c;
+            const pending = (await this.global.opsEngine.db.get(`SELECT COUNT(*) as c FROM withdrawals WHERE status = 'PENDING'`)).c;
             if (pending > 10) {
                 await this.alertService.send(`⚠️ High Pending Withdrawals: ${pending}`, 'warn');
             }
@@ -164,13 +164,13 @@ export class Scheduler {
             const cutoff = now - 60; // 60s timeout per Phase 3 requirements
 
             // 1. Mark 'nodes' offline
-            const res1 = await this.opsEngine.db.query(
+            const res1 = await this.global.opsEngine.db.query(
                 "UPDATE nodes SET status = 'offline' WHERE last_seen < ? AND status = 'active'",
                 [cutoff]
             );
 
             // 2. Mark 'registered_nodes' inactive (Legacy sync)
-            const res2 = await this.opsEngine.db.query(
+            const res2 = await this.global.opsEngine.db.query(
                 "UPDATE registered_nodes SET active = 0 WHERE last_heartbeat < ? AND active = 1",
                 [cutoff]
             );
@@ -190,9 +190,9 @@ export class Scheduler {
         console.log('[SCHEDULER] Running DB Maintenance...');
         try {
             // WAL Checkpoint (Passive)
-            await this.opsEngine.db.query("PRAGMA wal_checkpoint(PASSIVE)");
+            await this.global.opsEngine.db.query("PRAGMA wal_checkpoint(PASSIVE)");
             // Incremental Vacuum (free pages)
-            await this.opsEngine.db.query("PRAGMA incremental_vacuum(100)"); // Limit to 100 pages per run to avoid latency spikes
+            await this.global.opsEngine.db.query("PRAGMA incremental_vacuum(100)"); // Limit to 100 pages per run to avoid latency spikes
         } catch (e) {
             console.error('[SCHEDULER] Maintenance failed:', e.message);
         }
@@ -219,7 +219,7 @@ export class Scheduler {
             // Or just query the latest backup for verification.
 
             // Workaround: Query latest backup
-            const latest = await this.opsEngine.db.get("SELECT id FROM backup_log ORDER BY id DESC LIMIT 1");
+            const latest = await this.global.opsEngine.db.get("SELECT id FROM backup_log ORDER BY id DESC LIMIT 1");
             if (latest) {
                 const verify = await this.backupService.verifyBackup(latest.id);
                 if (verify.valid) {

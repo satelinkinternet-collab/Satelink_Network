@@ -51,7 +51,7 @@ async function recordTrace(req, data) {
     if (data.route.includes('/health') || data.route.includes('/stream')) return;
 
     try {
-        const db = req.opsEngine.db;
+        const db = req.global.opsEngine.db;
         // Obscure IP
         const ipHash = crypto.createHash('sha256').update(data.ip + IP_SALT).digest('hex').substring(0, 16);
 

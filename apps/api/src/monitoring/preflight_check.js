@@ -71,7 +71,7 @@ export class PreflightCheckService {
         checks.push({ name: 'Abuse Firewall', status: fwActive ? 'PASS' : 'INFO', details: 'Service active' });
 
         // 8. Treasury Runway
-        const balance = await this.opsEngine.getTreasuryAvailable();
+        const balance = await this.global.opsEngine.getTreasuryAvailable();
         const treasuryOk = balance > 1000; // Threshold example
         checks.push({ name: 'Treasury Runway', status: treasuryOk ? 'PASS' : 'WARN', details: `Balance: ${balance} USDT` });
         if (!treasuryOk) warnings.push("Treasury balance low.");

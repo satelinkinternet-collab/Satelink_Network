@@ -16,12 +16,12 @@ export function createNodeApiRouter(opsEngine) {
             const wallet = req.user.wallet;
 
             // Node Status — from registered_nodes (the actual populated table)
-            const node = await opsEngine.db.prepare(
+            const node = await global.opsEngine.db.prepare(
                 "SELECT wallet, node_type, active, last_heartbeat, is_flagged FROM registered_nodes WHERE wallet = ?"
             ).get(wallet);
 
             // Earnings — node_id in revenue_events_v2 maps to wallet in registered_nodes
-            const earnings = await opsEngine.db.prepare(
+            const earnings = await global.opsEngine.db.prepare(
                 "SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 20"
             ).all(wallet);
             const totalEarned = earnings.reduce((sum, e) => sum + (e.amount_usdt || 0), 0);
@@ -31,7 +31,7 @@ export function createNodeApiRouter(opsEngine) {
             let withdrawals = [];
             let totalWithdrawn = 0;
             try {
-                withdrawals = await opsEngine.db.prepare(
+                withdrawals = await global.opsEngine.db.prepare(
                     "SELECT * FROM withdrawals WHERE wallet = ? ORDER BY created_at DESC LIMIT 10"
                 ).all(wallet);
                 totalWithdrawn = withdrawals.filter(w => w.status === 'COMPLETED').reduce((sum, w) => sum + (w.amount_usdt || 0), 0);
@@ -40,13 +40,13 @@ export function createNodeApiRouter(opsEngine) {
             // Uptime (Last 5 epochs)
             let uptime = [];
             try {
-                uptime = await opsEngine.db.prepare(
+                uptime = await global.opsEngine.db.prepare(
                     "SELECT * FROM node_uptime WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 5"
                 ).all(wallet);
             } catch (_) { /* node_uptime table may not exist yet */ }
 
             // Logs (Recent Revenue Events) — node_id = wallet for registered_nodes
-            const recentEvents = await opsEngine.db.prepare(
+            const recentEvents = await global.opsEngine.db.prepare(
                 "SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 50"
             ).all(wallet);
             const logs = recentEvents.map(e => ({
@@ -58,7 +58,7 @@ export function createNodeApiRouter(opsEngine) {
 
             // Also include network-level stats for context (same source as /api/network/stats)
             const { getNetworkStats } = await import('../../monitoring/network_stats.js');
-            const networkStats = await getNetworkStats(opsEngine.db);
+            const networkStats = await getNetworkStats(global.opsEngine.db);
 
             res.json({
                 ok: true,
@@ -95,7 +95,7 @@ export function createNodeApiRouter(opsEngine) {
                 return res.status(400).json({ ok: false, error: "Signature required for claiming" });
             }
 
-            const result = await opsEngine.claim(wallet, signature);
+            const result = await global.opsEngine.claim(wallet, signature);
             res.json({ ok: true, ...result });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });

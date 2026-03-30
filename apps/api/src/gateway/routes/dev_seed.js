@@ -25,7 +25,7 @@ export function createDevSeedRouter(opsEngine) {
 
             // Use REPLACE or upsert logic
             for (const u of users) {
-                await opsEngine.db.query(
+                await global.opsEngine.db.query(
                     `INSERT INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?)
                      ON CONFLICT(wallet) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at`,
                     [u.wallet, u.role, Date.now()]
@@ -50,7 +50,7 @@ export function createDevSeedRouter(opsEngine) {
 
             for (const n of nodes) {
                 // New table
-                await opsEngine.db.query(
+                await global.opsEngine.db.query(
                     `INSERT INTO nodes (node_id, wallet, device_type, status, last_seen, created_at) 
                      VALUES (?, ?, 'edge', ?, ?, ?)
                      ON CONFLICT(node_id) DO UPDATE SET status = excluded.status, last_seen = excluded.last_seen`,
@@ -58,7 +58,7 @@ export function createDevSeedRouter(opsEngine) {
                 );
 
                 // Legacy table (Sync)
-                await opsEngine.db.query(
+                await global.opsEngine.db.query(
                     `INSERT INTO registered_nodes (wallet, last_heartbeat, active, updatedAt)
                     VALUES (?, ?, ?, ?)
                     ON CONFLICT(wallet) DO UPDATE SET active = excluded.active, last_heartbeat = excluded.last_heartbeat`,

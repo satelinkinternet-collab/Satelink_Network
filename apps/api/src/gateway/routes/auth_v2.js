@@ -144,29 +144,29 @@ export function createUnifiedAuthRouter(opsEngine) {
         const now = Date.now();
 
         try {
-            if (!opsEngine || !opsEngine.db) {
+            if (!opsEngine || !global.opsEngine.db) {
                 return res.status(500).json({ ok: false, error: 'Database connection not available' });
             }
 
             // Ensure schema exists robustly at runtime
-            opsEngine.db.exec(
+            global.opsEngine.db.exec(
                 "CREATE TABLE IF NOT EXISTS auth_users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
             );
 
             // Check if user exists (generic error response for UX vs Security balance as per requirements)
-            const existingUser = opsEngine.db.prepare("SELECT email FROM auth_users WHERE email = ?").get(normalizedEmail);
+            const existingUser = global.opsEngine.db.prepare("SELECT email FROM auth_users WHERE email = ?").get(normalizedEmail);
             if (existingUser) {
                 return res.status(400).json({ ok: false, error: 'Email already used' });
             }
 
             // Insert into new users schema
-            opsEngine.db.prepare(
+            global.opsEngine.db.prepare(
                 "INSERT INTO auth_users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)"
             ).run(normalizedEmail, pwdHash, role, now);
 
             // Insert into legacy user_roles for compatibility with existing RBAC
-            opsEngine.db.exec("CREATE TABLE IF NOT EXISTS user_roles (wallet TEXT PRIMARY KEY, role TEXT, updated_at INTEGER)");
-            opsEngine.db.prepare(
+            global.opsEngine.db.exec("CREATE TABLE IF NOT EXISTS user_roles (wallet TEXT PRIMARY KEY, role TEXT, updated_at INTEGER)");
+            global.opsEngine.db.prepare(
                 "INSERT OR REPLACE INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?)"
             ).run(normalizedEmail, role, now);
 
@@ -209,17 +209,17 @@ export function createUnifiedAuthRouter(opsEngine) {
         const pwdHash = hashPassword(password);
 
         try {
-            if (!opsEngine || !opsEngine.db) {
+            if (!opsEngine || !global.opsEngine.db) {
                 return res.status(500).json({ ok: false, error: 'Database connection not available' });
             }
 
             // Ensure schema exists robustly at runtime
-            opsEngine.db.exec(
+            global.opsEngine.db.exec(
                 "CREATE TABLE IF NOT EXISTS auth_users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
             );
 
             // Check user (timing attack prevention is minimal here, standard quick hash comparison)
-            const user = opsEngine.db.prepare(
+            const user = global.opsEngine.db.prepare(
                 "SELECT email, role FROM auth_users WHERE email = ? AND password_hash = ?"
             ).get(normalizedEmail, pwdHash);
 

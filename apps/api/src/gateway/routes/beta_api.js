@@ -3,7 +3,7 @@ import { Router } from 'express';
 
 export function createBetaRouter(opsEngine) {
     const router = Router();
-    const db = opsEngine.db;
+    const db = global.opsEngine.db;
 
     // Apply rate limits if not already applied globally
     // router.use(publicLimiter);

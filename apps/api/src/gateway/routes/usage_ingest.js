@@ -9,7 +9,7 @@ export function createUsageIngestRouter(opsEngine) {
     // Map<KeyHash, ProjectID>
     const keyCache = new Map();
 
-    const db = opsEngine.db;
+    const db = global.opsEngine.db;
     const isRaw = db && typeof db.prepare === 'function';
     const dbGet = async (sql, params=[]) => isRaw ? db.prepare(sql).get(params) : db.get(sql, params);
     const dbRun = async (sql, params=[]) => isRaw ? db.prepare(sql).run(params) : db.run(sql, params);

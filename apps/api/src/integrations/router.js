@@ -33,7 +33,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         res.json({
             status: "ok",
             timestamp: Date.now(),
-            db_type: opsEngine.db.type,
+            db_type: global.opsEngine.db.type,
             env: {
                 MOONPAY: !!process.env.MOONPAY_WEBHOOK_SECRET,
                 NODEOPS: !!process.env.NODEOPS_API_KEY,
@@ -45,10 +45,10 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     if (process.env.NODE_ENV !== 'production') {
         router.get("/__test/state", async (req, res) => {
             try {
-                const events = await opsEngine.db.query("SELECT * FROM revenue_events ORDER BY id DESC LIMIT 3");
-                const rewards = await opsEngine.db.query("SELECT * FROM node_rewards ORDER BY id DESC LIMIT 5");
-                const withdrawals = await opsEngine.db.query("SELECT * FROM withdrawals ORDER BY id DESC LIMIT 3");
-                const inbox = await opsEngine.db.query("SELECT provider, event_id FROM payments_inbox ORDER BY id DESC LIMIT 10");
+                const events = await global.opsEngine.db.query("SELECT * FROM revenue_events ORDER BY id DESC LIMIT 3");
+                const rewards = await global.opsEngine.db.query("SELECT * FROM node_rewards ORDER BY id DESC LIMIT 5");
+                const withdrawals = await global.opsEngine.db.query("SELECT * FROM withdrawals ORDER BY id DESC LIMIT 3");
+                const inbox = await global.opsEngine.db.query("SELECT provider, event_id FROM payments_inbox ORDER BY id DESC LIMIT 10");
 
                 res.json({ ok: true, events, rewards, withdrawals, inbox });
             } catch (e) {
@@ -61,12 +61,12 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     router.get("/services/integrations/node/:wallet", async (req, res) => {
         try {
             const { wallet } = req.params;
-            const node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
-            const balance = await opsEngine.getBalance(wallet);
+            const node = await global.opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
+            const balance = await global.opsEngine.getBalance(wallet);
 
             // Get uptime score from current epoch
-            const epochId = opsEngine.currentEpochId || await opsEngine.initEpoch();
-            const uptime = await opsEngine.db.get("SELECT uptime_seconds, score FROM node_uptime WHERE node_wallet = ? AND epoch_id = ?", [wallet, epochId]);
+            const epochId = global.opsEngine.currentEpochId || await global.opsEngine.initEpoch();
+            const uptime = await global.opsEngine.db.get("SELECT uptime_seconds, score FROM node_uptime WHERE node_wallet = ? AND epoch_id = ?", [wallet, epochId]);
 
             res.json({
                 wallet,
@@ -91,15 +91,15 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     // Dashboard Stats
     router.get("/operations/epoch-stats", async (_req, res) => {
         try {
-            const epochId = await opsEngine.initEpoch();
-            const stats = await opsEngine.db.get(`
+            const epochId = await global.opsEngine.initEpoch();
+            const stats = await global.opsEngine.db.get(`
                 SELECT 
                     COUNT(DISTINCT node_wallet) as active_nodes,
                     COALESCE(SUM(uptime_seconds), 0) as total_uptime
                 FROM node_uptime WHERE epoch_id = ?
             `, [epochId]);
 
-            const ops = await opsEngine.db.get("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as revenue FROM revenue_events WHERE epoch_id = ?", [epochId]);
+            const ops = await global.opsEngine.db.get("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as revenue FROM revenue_events WHERE epoch_id = ?", [epochId]);
 
             res.json({
                 ok: true,
@@ -140,7 +140,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         }
 
         try {
-            const existing = await opsEngine.db.get("SELECT 1 FROM payments_inbox WHERE provider = ? AND event_id = ?", ["moonpay", eventId]);
+            const existing = await global.opsEngine.db.get("SELECT 1 FROM payments_inbox WHERE provider = ? AND event_id = ?", ["moonpay", eventId]);
             if (existing) {
                 console.log(`[MoonPay] Duplicate event: ${eventId}`);
                 return res.json({ ok: true, note: "Already processed" });
@@ -148,10 +148,10 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
 
             if (!payer_wallet) return res.status(400).json({ error: "payer_wallet not found" });
 
-            const epochId = await opsEngine.initEpoch();
+            const epochId = await global.opsEngine.initEpoch();
             const now = Math.floor(Date.now() / 1000);
 
-            await opsEngine.db.transaction(async (tx) => {
+            await global.opsEngine.db.transaction(async (tx) => {
                 await tx.query("INSERT INTO payments_inbox (provider, event_id, status, payload_json, created_at) VALUES (?,?,?,?,?)",
                     ["moonpay", eventId, "processed", JSON.stringify(payload), now]);
                 await tx.query("INSERT INTO revenue_events (amount, amount_usdt, token, source, payer_wallet, tx_ref, source_type, provider, epoch_id, created_at) VALUES (?,?,'USDT','INTEGRATION',?,?,?,?,?,?)",
@@ -195,15 +195,15 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         }
 
         try {
-            const existing = await opsEngine.db.get("SELECT 1 FROM payments_inbox WHERE provider = ? AND event_id = ?", ["fuse", eventId]);
+            const existing = await global.opsEngine.db.get("SELECT 1 FROM payments_inbox WHERE provider = ? AND event_id = ?", ["fuse", eventId]);
             if (existing) {
                 console.log(`[Fuse] Duplicate event: ${eventId}`);
                 return res.json({ ok: true, note: "Already processed" });
             }
 
-            const epochId = await opsEngine.initEpoch();
+            const epochId = await global.opsEngine.initEpoch();
             const now = Math.floor(Date.now() / 1000);
-            await opsEngine.db.transaction(async (tx) => {
+            await global.opsEngine.db.transaction(async (tx) => {
                 await tx.query("INSERT INTO payments_inbox (provider, event_id, status, payload_json, created_at) VALUES (?,?,?,?,?)",
                     ["fuse", eventId, "processed", JSON.stringify(payload), now]);
                 await tx.query("INSERT INTO revenue_events (amount, amount_usdt, token, source, payer_wallet, tx_ref, source_type, provider, epoch_id, created_at) VALUES (?,?,'USDT','INTEGRATION',?,?,?,?,?,?)",
@@ -222,10 +222,10 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         const { amount_usdt, payer_wallet, source_type } = req.body || {};
         if (!amount_usdt) return res.status(400).json({ error: "Missing amount_usdt" });
         try {
-            const epochId = await opsEngine.initEpoch();
+            const epochId = await global.opsEngine.initEpoch();
             const now = Math.floor(Date.now() / 1000);
             const txRef = "manual-" + now;
-            await opsEngine.db.query("INSERT INTO revenue_events (amount, amount_usdt, token, source, payer_wallet, tx_ref, source_type, provider, epoch_id, created_at) VALUES (?,?,'USDT','INTEGRATION',?,?,?,?,?,?)",
+            await global.opsEngine.db.query("INSERT INTO revenue_events (amount, amount_usdt, token, source, payer_wallet, tx_ref, source_type, provider, epoch_id, created_at) VALUES (?,?,'USDT','INTEGRATION',?,?,?,?,?,?)",
                 [parseFloat(amount_usdt), parseFloat(amount_usdt), payer_wallet || "0x000", txRef, source_type || "managed_nodes", "manual", epochId, now]);
             res.json({ ok: true });
         } catch (e) { res.status(500).json({ error: e.message }); }
@@ -234,8 +234,8 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     // ─── EPOCHS ──────────────────────────────────────────────
     router.get("/epochs/current", async (_req, res) => {
         try {
-            const epochId = await opsEngine.initEpoch();
-            const epoch = await opsEngine.db.get("SELECT * FROM epochs WHERE id = ?", [epochId]);
+            const epochId = await global.opsEngine.initEpoch();
+            const epoch = await global.opsEngine.db.get("SELECT * FROM epochs WHERE id = ?", [epochId]);
             res.json(epoch);
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
@@ -243,7 +243,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
     router.post("/epochs/finalize", adminAuth, async (req, res) => {
         try {
             const { epochId } = req.body || {};
-            const result = await opsEngine.finalizeEpoch(epochId);
+            const result = await global.opsEngine.finalizeEpoch(epochId);
             res.json(result);
         } catch (e) { res.status(400).json({ error: e.message }); }
     });
@@ -252,14 +252,14 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         const { epochId } = req.body || {};
         if (!epochId) return res.status(400).json({ error: "Missing epochId" });
         try {
-            const result = await opsEngine.distributeRewards(epochId);
+            const result = await global.opsEngine.distributeRewards(epochId);
             res.json(result);
         } catch (e) { res.status(400).json({ error: e.message }); }
     });
 
     // ─── FINANCIAL ───────────────────────────────────────────
     router.get("/balances/:wallet", async (req, res) => {
-        const bal = await opsEngine.getBalance(req.params.wallet);
+        const bal = await global.opsEngine.getBalance(req.params.wallet);
         res.json({ wallet: req.params.wallet, amount_usdt: bal });
     });
 
@@ -267,7 +267,7 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         const { wallet, signature } = req.body || {};
         if (!wallet || !signature) return res.status(400).json({ error: "Missing wallet or signature" });
         try {
-            res.json(await opsEngine.claim(wallet, signature));
+            res.json(await global.opsEngine.claim(wallet, signature));
         } catch (e) { res.status(400).json({ error: e.message }); }
     });
 
@@ -275,11 +275,11 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         const { wallet, amount } = req.body || {};
         if (!wallet || !amount) return res.status(400).json({ error: "Missing wallet or amount" });
         try {
-            const bal = await opsEngine.getBalance(wallet);
+            const bal = await global.opsEngine.getBalance(wallet);
             if (bal < amount) return res.status(400).json({ error: "Insufficient balance" });
             const now = Math.floor(Date.now() / 1000);
 
-            const r = await opsEngine.db.query("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?,?,'PENDING',?) RETURNING id",
+            const r = await global.opsEngine.db.query("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?,?,'PENDING',?) RETURNING id",
                 [wallet, amount, now]);
 
 
@@ -302,10 +302,10 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
         const { tx_hash } = req.body || {};
         const id = req.params.id;
         try {
-            const w = await opsEngine.db.get("SELECT * FROM withdrawals WHERE id = ?", [id]);
+            const w = await global.opsEngine.db.get("SELECT * FROM withdrawals WHERE id = ?", [id]);
             if (!w) return res.status(404).json({ error: "Not found" });
 
-            await opsEngine.db.transaction(async (tx) => {
+            await global.opsEngine.db.transaction(async (tx) => {
                 await tx.query("UPDATE withdrawals SET status='COMPLETED', tx_hash=? WHERE id=?", [tx_hash || "", id]);
                 // Upsert/Update balance
                 const current = await tx.get("SELECT amount_usdt FROM balances WHERE wallet = ?", [w.wallet]);

@@ -205,7 +205,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     });
 
     // ── Debug / Pipeline Routes ──
-    const opsEngine = new OperationsEngine(db, null, null);
+    global.opsEngine = new OperationsEngine(db, null, null);
 
     // ── Admin Control Room (legacy /admin/* mount, requires admin role) ──
     app.use('/admin', requireJWT, requireRole(ADMIN_ROLES), createAdminControlRoomRouter(opsEngine));
@@ -226,7 +226,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.get('/debug/pipeline-status', ...requireAdmin, async (req, res) => {
         try {
             // Ensure tables exist (OperationsEngine seeds them)
-            if (!opsEngine.initialized) await opsEngine.init();
+            if (!global.opsEngine.initialized) await global.opsEngine.init();
 
             const revenue_v2 = await db.prepare("SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2").get();
             const exec_metrics = await db.prepare("SELECT COUNT(*) as count FROM execution_metrics").get();
@@ -254,7 +254,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     app.get('/debug/run-epoch', ...requireAdmin, async (req, res) => {
         try {
-            if (!opsEngine.initialized) await opsEngine.init();
+            if (!global.opsEngine.initialized) await global.opsEngine.init();
 
             console.log("[DEBUG] Aggregation triggered");
             const now = Math.floor(Date.now() / 1000);
@@ -560,7 +560,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         (async () => {
             try {
                 // Initialize opsEngine (creates system_config, pricing tables, etc.)
-                await opsEngine.init();
+                await global.opsEngine.init();
 
                 // Seed test nodes into registered_nodes
                 for (const node of SEED_NODES) {
@@ -573,7 +573,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
                 console.log(`[SYNTHETIC] Seeded ${SEED_NODES.length} test nodes`);
 
                 // Ensure an open epoch exists
-                await opsEngine.initEpoch();
+                await global.opsEngine.initEpoch();
 
                 // Ensure system_flags table exists (admin control room queries it)
                 await db.exec(`CREATE TABLE IF NOT EXISTS system_flags (
@@ -673,7 +673,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
                         const client = CLIENTS[Math.floor(Math.random() * CLIENTS.length)];
                         const requestId = `syn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-                        const result = await opsEngine.executeOp({
+                        const result = await global.opsEngine.executeOp({
                             op_type: opType,
                             node_id: node.wallet,
                             client_id: client,
@@ -725,7 +725,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
                 const opType = OP_TYPES[Math.floor(Math.random() * OP_TYPES.length)];
                 const requestId = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-                const result = await opsEngine.executeOp({
+                const result = await global.opsEngine.executeOp({
                     op_type: opType,
                     node_id: node.wallet,
                     client_id: 'manual_test',

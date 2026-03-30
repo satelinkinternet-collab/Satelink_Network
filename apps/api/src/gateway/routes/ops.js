@@ -7,15 +7,15 @@ export function createOpsRouter(opsEngine, adminAuth) {
     // 1. Status Endpoint
     router.get('/ops/status', adminAuth, async (req, res) => {
         try {
-            const safeMode = await opsEngine.db.get("SELECT value FROM system_config WHERE key = 'system_state'");
+            const safeMode = await global.opsEngine.db.get("SELECT value FROM system_config WHERE key = 'system_state'");
             const schedulerRunning = req.scheduler ? req.scheduler.isRunning : false;
 
             // Check DB
             let dbStatus = "OK";
-            try { await opsEngine.db.get("SELECT 1"); } catch (e) { dbStatus = "FAIL"; }
+            try { await global.opsEngine.db.get("SELECT 1"); } catch (e) { dbStatus = "FAIL"; }
 
             // Last Distrib
-            const lastDist = await opsEngine.db.get("SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 1");
+            const lastDist = await global.opsEngine.db.get("SELECT * FROM distribution_runs ORDER BY created_at DESC LIMIT 1");
 
             // Webhook Failures (Counter in memory or DB?)
             // Requirement says "webhook failure count"
@@ -43,7 +43,7 @@ export function createOpsRouter(opsEngine, adminAuth) {
     router.post('/ops/safe-mode', adminAuth, async (req, res) => {
         try {
             const { reason } = req.body;
-            await opsEngine.setSafeMode(reason || "Manual Admin Override");
+            await global.opsEngine.setSafeMode(reason || "Manual Admin Override");
             if (req.scheduler) req.scheduler.stop();
             if (req.alertService) await req.alertService.send(`🚨 MANUAL SAFE MODE ENABLED: ${reason}`, 'warn');
 
@@ -64,7 +64,7 @@ export function createOpsRouter(opsEngine, adminAuth) {
             }
 
             // Execute logic via engine
-            const result = await opsEngine.executeOp({
+            const result = await global.opsEngine.executeOp({
                 op_type, node_id, client_id, request_id, timestamp, payload_hash
             });
 
@@ -79,7 +79,7 @@ export function createOpsRouter(opsEngine, adminAuth) {
     // ─── PHASE C: CLAIM/WITHDRAW FEED ──────────────────────────
     router.get('/epochs/:id/earnings', async (req, res) => {
         try {
-            const ledger = await opsEngine.getLedger(req.params.id);
+            const ledger = await global.opsEngine.getLedger(req.params.id);
             res.json({ ok: true, epochId: req.params.id, ledger });
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
@@ -89,8 +89,8 @@ export function createOpsRouter(opsEngine, adminAuth) {
             const { wallet } = req.query;
             if (!wallet) return res.status(400).json({ error: "Wallet required" });
 
-            const bal = await opsEngine.getBalance(wallet);
-            const isSafe = await opsEngine.isSystemSafe();
+            const bal = await global.opsEngine.getBalance(wallet);
+            const isSafe = await global.opsEngine.isSystemSafe();
 
             res.json({
                 ok: true,
@@ -104,7 +104,7 @@ export function createOpsRouter(opsEngine, adminAuth) {
 
     router.get('/treasury/status', async (req, res) => {
         try {
-            const status = await opsEngine.monitorTreasuryBalance();
+            const status = await global.opsEngine.monitorTreasuryBalance();
             res.json({ ok: true, ...status });
         } catch (e) { res.status(500).json({ error: e.message }); }
     });
@@ -116,11 +116,11 @@ export function createOpsRouter(opsEngine, adminAuth) {
             let data = [];
 
             if (target === 'revenue') {
-                data = await opsEngine.db.query("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT 1000");
+                data = await global.opsEngine.db.query("SELECT * FROM revenue_events_v2 ORDER BY id DESC LIMIT 1000");
             } else if (target === 'earnings') {
-                data = await opsEngine.db.query("SELECT * FROM epoch_earnings ORDER BY created_at DESC LIMIT 1000");
+                data = await global.opsEngine.db.query("SELECT * FROM epoch_earnings ORDER BY created_at DESC LIMIT 1000");
             } else {
-                data = await opsEngine.db.query("SELECT * FROM epochs ORDER BY id DESC LIMIT 100");
+                data = await global.opsEngine.db.query("SELECT * FROM epochs ORDER BY id DESC LIMIT 100");
             }
 
             const format = req.query.format || 'json';

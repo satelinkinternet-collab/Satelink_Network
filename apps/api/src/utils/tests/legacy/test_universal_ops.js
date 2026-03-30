@@ -77,7 +77,7 @@ async function test_universal_ops() {
     db.prepare(`INSERT INTO genesis_nodes (node_id, endpoint, status) VALUES ('node_x1', 'http://node', 'ACTIVE')`).run();
 
     // Inject operations_engine dependency dynamically to intercept for test verification 
-    scheduler.opsEngine.executeOp = async (args) => {
+    scheduler.global.opsEngine.executeOp = async (args) => {
         console.log(`[Mock OpsEngine] Processing execution ${args.request_id} mapped to node ${args.node_id}`);
     };
 

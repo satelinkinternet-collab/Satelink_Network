@@ -47,7 +47,7 @@ const ALLOWED_KINDS = [
 
 export class SelfTestRunner {
     constructor(opsEngine, port = 8080, incidentBuilder = null, settlementEngine = null) {
-        this.db = opsEngine.db;
+        this.db = global.opsEngine.db;
         this.port = port;
         this.incidentBuilder = incidentBuilder;
         this.settlementEngine = settlementEngine;
