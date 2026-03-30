@@ -26,8 +26,8 @@ export const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly', 'admin
 export function requireJWT(req, res, next) {
   try {
     if (!req || !res) {
-      console.error("AUTH ERROR: req/res undefined");
-      return next ? next() : null;
+      console.error("AUTH FATAL: req/res undefined — fail closed");
+      throw new Error('requireJWT: req or res is undefined');
     }
 
     const authHeader = req.headers?.authorization;

@@ -5,6 +5,7 @@
  *           db.transaction(fn)             (returns async callable)
  */
 import pg from "pg";
+import { DATABASE_URL as RESOLVED_DB_URL, maskUrl } from "../core/config/db_config.js";
 
 const { Pool } = pg;
 
@@ -35,26 +36,43 @@ export class PgDatabase {
         console.log("[PgDatabase] Connected via init()");
     }
 
-    static async create(connectionStringParam, { retries = 15, delay = 2000 } = {}) {
-        const connectionString = connectionStringParam || process.env.DATABASE_URL;
+    static async create(connectionStringParam, { retries = 5, delay = 2000 } = {}) {
+        // Resolution: explicit param > resolved config > env var
+        let connectionString = connectionStringParam || RESOLVED_DB_URL || process.env.DATABASE_URL;
         if (!connectionString) {
             throw new Error("[PgDatabase] DATABASE_URL is not set and no connection string provided. Cannot connect.");
         }
-        console.log("[PgDatabase] FINAL_DB_URL:", connectionString.replace(/\/\/.*@/, '//<credentials>@'));
+        // Force IPv4 — avoid ::1 ECONNREFUSED on macOS/Linux
+        connectionString = connectionString.replace('://localhost:', '://127.0.0.1:');
+
+        console.log("[PgDatabase] FINAL_DB_URL:", maskUrl(connectionString));
         const pool = new Pool({
             connectionString,
             max: 20,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
         });
+        pool.on("error", (err) => {
+            console.error("[PgDatabase] Pool error:", err.message);
+        });
 
         for (let attempt = 1; attempt <= retries; attempt++) {
             try {
                 const client = await pool.connect();
                 client.release();
+                console.log(`[PgDatabase] ✅ DATABASE CONNECTED (attempt ${attempt}/${retries})`);
                 return new PgDatabase(pool);
             } catch (err) {
-                if (attempt === retries) throw err;
+                console.error(`[PgDatabase] Connection attempt ${attempt}/${retries} failed: ${err.message}`);
+                if (attempt === retries) {
+                    console.error(`[PgDatabase] ❌ ALL ${retries} CONNECTION ATTEMPTS FAILED`);
+                    console.error(`[PgDatabase] URL: ${maskUrl(connectionString)}`);
+                    console.error(`[PgDatabase] Ensure PostgreSQL is running and credentials are correct.`);
+                    console.error(`[PgDatabase] Docker: docker compose up -d database`);
+                    console.error(`[PgDatabase] Local: check .env.local DATABASE_URL`);
+                    throw err;
+                }
+                console.warn(`[PgDatabase] Retrying in ${delay}ms...`);
                 await new Promise((r) => setTimeout(r, delay));
             }
         }

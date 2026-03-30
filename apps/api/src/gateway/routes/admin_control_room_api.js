@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { adminReadLimiter, adminWriteLimiter } from '../../security/middleware/rate_limits.js';
 import { appendDebugNdjson } from '../../utils/debug_ndjson.js';
 import { getNetworkStats } from '../../monitoring/network_stats.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
 const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly', 'admin'];
@@ -125,8 +126,8 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
     // Local override for auditLog to include service [Phase R]
     const log = async (params) => auditLog(db, params, auditService);
 
-    // All routes require admin role
-    // All routes require admin role
+    // Internal defense-in-depth: JWT + admin role (not relying on mount-level only)
+    router.use(requireJWT);
     router.use(requireAdmin);
 
     // Rate Limiting (Phase 11.4)
