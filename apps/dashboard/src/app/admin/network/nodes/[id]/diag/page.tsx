@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Wrench, RefreshCw, Server, Activity, HardDrive } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import api from '@/lib/api';
 
 export default function NodeDiagPage() {
     const { id } = useParams();
@@ -23,11 +24,10 @@ export default function NodeDiagPage() {
         if (!id) return;
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/network/nodes/${id}/diag`);
-            const json = await res.json();
-            if (json.ok) setData(json.data);
+            const res = await api.get(`/admin/network/nodes/${id}/diag`);
+            if (res.data.ok) setData(res.data.data);
         } catch (e) {
-            console.error(e);
+            console.error('[NodeDiag]', e);
         } finally {
             setLoading(false);
         }

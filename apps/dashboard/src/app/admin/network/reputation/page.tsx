@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 interface NodeRep {
     node_id: string;
@@ -18,13 +19,17 @@ export default function ReputationDashboard() {
     const [loading, setLoading] = useState(true);
     const [computing, setComputing] = useState(false);
 
+    const [error, setError] = useState('');
+
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem('satelink_token');
-            const res = await fetch('/api/admin/network/reputation', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (data.ok) { setNodes(data.nodes || []); setTiers(data.tiers || {}); }
-        } catch (e) { console.error(e); }
+            setError('');
+            const res = await api.get('/admin/network/reputation');
+            if (res.data.ok) { setNodes(res.data.nodes || []); setTiers(res.data.tiers || {}); }
+        } catch (e: any) {
+            console.error('[Reputation]', e);
+            setError(e.response?.data?.error || 'Failed to load reputation data');
+        }
         setLoading(false);
     };
 
@@ -32,8 +37,7 @@ export default function ReputationDashboard() {
 
     const triggerCompute = async () => {
         setComputing(true);
-        const token = localStorage.getItem('satelink_token');
-        await fetch('/api/admin/network/reputation/compute', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        await api.post('/admin/network/reputation/compute');
         await fetchData();
         setComputing(false);
     };
@@ -70,6 +74,8 @@ export default function ReputationDashboard() {
                     </div>
                 ))}
             </div>
+
+            {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
             {loading ? <p>Loading...</p> : (
                 <div style={{ overflowX: 'auto' }}>

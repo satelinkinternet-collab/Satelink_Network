@@ -145,16 +145,18 @@ export function createEmbeddedAuthRouter(db) {
             }
 
             // Issue JWT with Session Binding (Phase I2)
+            const issuer = process.env.JWT_ISSUER || 'satelink-network';
             const token = jwt.sign(
                 {
                     wallet: addr,
                     role: user.role,
                     userId: user.id,
                     device_id: device_public_id || 'unknown',
-                    ip_hash: ipHash
+                    ip_hash: ipHash,
+                    type: 'access',
                 },
                 process.env.JWT_SECRET,
-                { expiresIn: '7d', issuer: 'satelink-core' }
+                { expiresIn: '7d', issuer, algorithm: 'HS256' }
             );
 
             // Set httpOnly cookie

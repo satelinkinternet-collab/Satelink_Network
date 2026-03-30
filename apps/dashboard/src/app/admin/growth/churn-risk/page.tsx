@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, TrendingDown } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function ChurnRiskPage() {
     const [risks, setRisks] = useState<any[]>([]);
@@ -16,11 +17,10 @@ export default function ChurnRiskPage() {
 
     const fetchRisks = async () => {
         try {
-            const res = await fetch('/api/admin/growth/churn-risk');
-            const data = await res.json();
-            setRisks(data.risks || []);
+            const res = await api.get('/admin/growth/churn-risk');
+            setRisks(res.data.risks || []);
         } catch (err) {
-            console.error(err);
+            console.error('[ChurnRisk]', err);
         } finally {
             setLoading(false);
         }

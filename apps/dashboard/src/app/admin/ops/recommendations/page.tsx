@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertCircle, CheckCircle, XCircle, Play } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function RecommendationsPage() {
     const [recs, setRecs] = useState<any[]>([]);
@@ -18,11 +19,10 @@ export default function RecommendationsPage() {
 
     const fetchRecs = async () => {
         try {
-            const res = await fetch('/api/admin/ops/recommendations?status=pending');
-            const data = await res.json();
-            setRecs(data.recommendations || []);
+            const res = await api.get('/admin/ops/recommendations', { params: { status: 'pending' } });
+            setRecs(res.data.recommendations || []);
         } catch (err) {
-            console.error(err);
+            console.error('[Recommendations]', err);
         } finally {
             setLoading(false);
         }
@@ -31,18 +31,18 @@ export default function RecommendationsPage() {
     const handleAction = async (id: string, action: 'accept' | 'reject') => {
         setProcessing(id);
         try {
-            await fetch(`/api/admin/ops/recommendations/${id}/${action}`, { method: 'POST' });
+            await api.post(`/admin/ops/recommendations/${id}/${action}`);
             await fetchRecs();
         } catch (err) {
-            console.error(err);
+            console.error('[Recommendations]', err);
         } finally {
             setProcessing(null);
         }
     };
 
     const triggerAnalysis = async () => {
-        await fetch('/api/admin/trigger', { method: 'POST' });
-        setTimeout(fetchRecs, 1000); // Wait for job
+        await api.post('/admin/trigger');
+        setTimeout(fetchRecs, 1000);
     };
 
     return (

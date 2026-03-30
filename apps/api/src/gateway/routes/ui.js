@@ -1,10 +1,10 @@
 
 import { Router } from "express";
-import { requireJWT, requireRole } from "../../security/auth_middleware.js";
+import { requireJWT } from "../../security/auth_middleware.js";
 
 export function createUIRouter(opsEngine) {
     const router = Router();
-    const adminMiddleware = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
+    const adminMiddleware = [requireJWT(['admin_super', 'admin_ops'])];
 
     // --- UTILS ---
     const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);

@@ -1,18 +1,23 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 export default function LaunchModePage() {
     const [status, setStatus] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [toggling, setToggling] = useState(false);
 
+    const [error, setError] = useState('');
+
     const fetchStatus = async () => {
         try {
-            const token = localStorage.getItem('satelink_token');
-            const res = await fetch('/api/admin/launch/mode', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (data.ok) setStatus(data);
-        } catch (e) { console.error(e); }
+            setError('');
+            const res = await api.get('/admin/launch/mode');
+            if (res.data.ok) setStatus(res.data);
+        } catch (e: any) {
+            console.error('[LaunchMode]', e);
+            setError(e.response?.data?.error || 'Failed to load launch mode');
+        }
         setLoading(false);
     };
 
@@ -20,8 +25,7 @@ export default function LaunchModePage() {
 
     const toggle = async () => {
         setToggling(true);
-        const token = localStorage.getItem('satelink_token');
-        await fetch('/api/admin/launch/mode/toggle', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        await api.post('/admin/launch/mode/toggle');
         await fetchStatus();
         setToggling(false);
     };
@@ -32,6 +36,8 @@ export default function LaunchModePage() {
         <div style={{ padding: '2rem', maxWidth: 800, margin: '0 auto' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>🚀 Launch Mode Control</h1>
             <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Marketing surge protection — tightens all safety parameters when enabled.</p>
+
+            {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
             {loading ? <p>Loading...</p> : status && (
                 <div>

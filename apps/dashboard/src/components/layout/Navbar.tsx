@@ -5,19 +5,22 @@ import useSWR from "swr";
 import api from "@/lib/api";
 import { LayoutDashboard, LogOut, Wallet, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = (url: string) => api.get(url, { params: { _t: Date.now() } }).then((res) => res.data);
 
 export function Navbar() {
     const { user, logout } = useAuth();
 
-    // Auto-refresh every 5s (Real-time requested)
+    // Auto-refresh every 3s — real-time dashboard
     const { data: stats, error } = useSWR('/api/network/stats', fetcher, {
-        refreshInterval: 5000,
-        revalidateOnFocus: false
+        refreshInterval: 3000,
+        dedupingInterval: 0,
+        revalidateOnFocus: false,
     });
 
-    const mode = stats?.settlement_mode || "LOADING";
+    // Backend now returns settlementMode from system_config (or default SIMULATED)
+    const mode = stats?.settlementMode || (stats ? "SIMULATED" : "LOADING");
 
     const getBadgeStyle = (mode: string) => {
         if (mode === "EVM_LIVE") return "bg-[#22C55E]/20 text-[#22C55E] border-[#22C55E]/30";
@@ -59,7 +62,7 @@ export function Navbar() {
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#1A1A0A] border border-[#262626] text-sm">
                     <span className="text-zinc-400">Treasury:</span>
                     <span className="text-white font-mono font-medium">
-                        {stats?.total_revenue_usdt !== undefined ? `${(stats.total_revenue_usdt).toLocaleString()} USDT` : "---"}
+                        {stats?.totalRevenueUsdt !== undefined ? `${(stats.totalRevenueUsdt).toLocaleString()} USDT` : "---"}
                     </span>
                 </div>
             </div>

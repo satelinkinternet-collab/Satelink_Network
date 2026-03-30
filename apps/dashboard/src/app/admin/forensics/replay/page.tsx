@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import api from '@/lib/api';
 
 export default function ReplayTool() {
     const [fromTs, setFromTs] = useState('');
@@ -36,16 +37,15 @@ export default function ReplayTool() {
         setResult(null);
 
         try {
-            const query = new URLSearchParams({
-                from_ts: Math.floor(new Date(fromTs).getTime() / 1000).toString(),
-                to_ts: Math.floor(new Date(toTs).getTime() / 1000).toString(),
-            });
+            const params: any = {
+                from_ts: Math.floor(new Date(fromTs).getTime() / 1000),
+                to_ts: Math.floor(new Date(toTs).getTime() / 1000),
+            };
+            if (partnerId) params.partner_id = partnerId;
+            if (nodeId) params.node_id = nodeId;
 
-            if (partnerId) query.append('partner_id', partnerId);
-            if (nodeId) query.append('node_id', nodeId);
-
-            const res = await fetch(`/api/admin/forensics/replay?${query}`);
-            const data = await res.json();
+            const res = await api.get('/admin/forensics/replay', { params });
+            const data = res.data;
 
             if (data.ok) {
                 setResult(data);

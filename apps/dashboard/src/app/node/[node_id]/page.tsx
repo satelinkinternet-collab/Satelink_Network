@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import api from '@/lib/api';
 
 export default function NodeProfilePage() {
     const params = useParams();
@@ -11,10 +12,9 @@ export default function NodeProfilePage() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch(`/api/node/${nodeId}`);
-                const d = await res.json();
-                if (d.ok) setData(d);
-            } catch (e) { console.error(e); }
+                const res = await api.get(`/api/node/${nodeId}`);
+                if (res.data.ok) setData(res.data);
+            } catch (e) { console.error('[NodeProfile]', e); }
             setLoading(false);
         })();
     }, [nodeId]);

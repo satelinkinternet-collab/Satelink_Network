@@ -28,7 +28,7 @@ export default function NodeEarningsPage() {
 
     const fetchData = async () => {
         try {
-            const res = await api.get('/node/stats');
+            const res = await api.get('/node-api/stats');
             if (res.data.ok) {
                 setStats(res.data.stats);
                 setEarnings(res.data.earnings || []);
@@ -44,7 +44,7 @@ export default function NodeEarningsPage() {
     const handleClaim = async () => {
         setClaiming(true);
         try {
-            const res = await api.post('/node/claim', { signature: 'pending' });
+            const res = await api.post('/node-api/claim', { signature: 'pending' });
             if (res.data.ok) {
                 toast.success('Claim submitted successfully');
                 fetchData();

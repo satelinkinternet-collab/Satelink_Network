@@ -14,7 +14,7 @@ export function createAdminControlRouter(opsEngine, auditService = null) {
             // KPIs (Last 5 mins)
             const fiveMinsAgo = Math.floor(Date.now() / 1000) - 300;
             const opsCount = (await db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinsAgo])).c;
-            const activeNodes = (await db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinsAgo])).c;
+            const activeNodes = (await db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1 AND last_heartbeat > ?", [fiveMinsAgo])).c;
 
             // Revenue 24h
             const dayAgo = Math.floor(Date.now() / 1000) - 86400;
@@ -70,7 +70,11 @@ export function createAdminControlRouter(opsEngine, auditService = null) {
     // ─── NETWORK ───
     router.get('/network/nodes', async (req, res) => {
         try {
-            const nodes = await db.query("SELECT * FROM nodes ORDER BY last_seen DESC LIMIT 200");
+            const rawNodes = await db.query("SELECT wallet, node_type, active, last_heartbeat, is_flagged FROM registered_nodes ORDER BY last_heartbeat DESC NULLS LAST LIMIT 200");
+            const nodes = rawNodes.map(n => ({
+                node_id: n.wallet, wallet: n.wallet, device_type: n.node_type,
+                status: n.active ? 'online' : 'offline', last_seen: n.last_heartbeat
+            }));
             res.json({ ok: true, nodes });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });

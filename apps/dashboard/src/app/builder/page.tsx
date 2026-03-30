@@ -47,9 +47,9 @@ export default function BuilderDashboard() {
                 setData((prev: any) => ({
                     ...prev,
                     summary: {
-                        ...prev.summary,
-                        count: (prev.summary.count || 0) + newEvents.length,
-                        total_usdt: (prev.summary.total_usdt || 0) + newEvents.reduce((acc: number, e: any) => acc + (Number(e.amount_usdt) || 0), 0)
+                        ...(prev?.summary || {}),
+                        count: (prev?.summary?.count || 0) + newEvents.length,
+                        total_usdt: (prev?.summary?.total_usdt || 0) + newEvents.reduce((acc: number, e: any) => acc + (Number(e.amount_usdt) || 0), 0)
                     }
                 }));
                 toast.info("Usage stats updated");
@@ -152,7 +152,7 @@ export default function BuilderDashboard() {
                                 <Cpu className="w-4 h-4 text-blue-400" />
                             </div>
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight">{data?.summary.count || 0}</div>
+                        <div className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight">{data?.summary?.count || 0}</div>
                         <p className="text-[11px] text-zinc-600 mt-2">Across all services</p>
                     </CardContent>
                 </Card>
@@ -165,7 +165,7 @@ export default function BuilderDashboard() {
                                 <BarChart3 className="w-4 h-4 text-emerald-400" />
                             </div>
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight">${data?.summary.total_usdt?.toFixed(2) || '0.00'}</div>
+                        <div className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight">${data?.summary?.total_usdt?.toFixed(2) || '0.00'}</div>
                         <p className="text-[11px] text-emerald-400 mt-2 flex items-center gap-1">
                             <Zap className="w-3 h-3" /> Satelink Token Units
                         </p>

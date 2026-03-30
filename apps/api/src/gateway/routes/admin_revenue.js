@@ -3,7 +3,7 @@ import express from 'express';
 
 export function createAdminRevenueRouter(db, auditService = null) {
     const router = express.Router();
-    // NOTE: All routes already protected by verifyJWT in server.js mounting
+    // NOTE: All routes already protected by requireJWT in server.js mounting
 
     // ── Audit helper (Phase R) ──────────────────────────────────
     async function auditLog(action, actor, details) {

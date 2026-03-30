@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import api from '@/lib/api';
 
 export default function DisputeManagement() {
     const [disputes, setDisputes] = useState<any[]>([]);
@@ -29,9 +30,8 @@ export default function DisputeManagement() {
     const fetchDisputes = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/forensics/disputes');
-            const data = await res.json();
-            if (data.ok) setDisputes(data.disputes);
+            const res = await api.get('/admin/forensics/disputes');
+            if (res.data.ok) setDisputes(res.data.disputes);
         } catch (e) {
             toast.error("Failed to load disputes");
         } finally {
@@ -44,13 +44,8 @@ export default function DisputeManagement() {
         if (!notes) return;
 
         try {
-            const res = await fetch(`/api/admin/forensics/disputes/${id}/resolve`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes })
-            });
-            const data = await res.json();
-            if (data.ok) {
+            const res = await api.post(`/admin/forensics/disputes/${id}/resolve`, { notes });
+            if (res.data.ok) {
                 toast.success("Dispute resolved");
                 fetchDisputes();
             }

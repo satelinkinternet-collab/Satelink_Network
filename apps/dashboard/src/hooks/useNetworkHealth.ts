@@ -19,7 +19,7 @@ interface HealthResponse {
 
 export function useNetworkHealth() {
     const { data, error, isLoading } = useSWR<{ ok: boolean, data: HealthResponse }>('/network/health', fetcher, {
-        refreshInterval: 5000, // 5 second poll
+        refreshInterval: 3000, // 3 second poll — real-time
         dedupingInterval: 0,
         shouldRetryOnError: false,
     });

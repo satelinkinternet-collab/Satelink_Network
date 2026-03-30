@@ -2,34 +2,34 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { rateLimit } from 'express-rate-limit';
+import { requireJWT as verifyJWT } from '../../security/auth_middleware.js';
 
+/** @deprecated Import `requireJWT` from `security/auth_middleware.js` instead */
+export { verifyJWT };
 
-export function verifyJWT(req, res, next) {
-    // ── DEV BYPASS REMOVED: ──
-
-    let authHeader = req.headers.authorization;
-    let token = null;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
-    } else if (req.cookies && req.cookies.satelink_session) {
-        token = req.cookies.satelink_session;
-    } else if (req.query.token) {
-        token = req.query.token;
-    }
-
-    if (!token) {
-        return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Unauthorized' });
-    }
-
-    try {
-        const secret = process.env.JWT_SECRET;
-        const decoded = jwt.verify(token, secret);
-        req.user = decoded;
-        next();
-    } catch (e) {
-        return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Invalid or expired token' });
-    }
+/**
+ * Staging / test helper: mint an access token with the same claims as production auth.
+ * @param {{ wallet: string, role?: string }} payload
+ */
+export function signJWT(payload) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET missing');
+    const wallet = payload.wallet;
+    const role = payload.role || 'node_operator';
+    return jwt.sign(
+        {
+            userId: wallet,
+            wallet,
+            role,
+            type: 'access',
+        },
+        secret,
+        {
+            expiresIn: process.env.JWT_TTL || '24h',
+            issuer: process.env.JWT_ISSUER || 'satelink-network',
+            algorithm: 'HS256',
+        }
+    );
 }
 
 export function createUnifiedAuthRouter(opsEngine) {

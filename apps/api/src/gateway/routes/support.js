@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyJWT } from './auth_v2.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 /**
  * Phase H4 — Support & Diagnostics
@@ -41,7 +41,7 @@ export function createSupportRouter(db) {
 
     // GET /admin/support/tickets
     // List support tickets (Admin Only)
-    router.get('/admin/tickets', verifyJWT, async (req, res) => {
+    router.get('/admin/tickets', requireJWT, async (req, res) => {
         if (req.user.role !== 'admin_super' && req.user.role !== 'admin_ops') {
             return res.status(403).json({ ok: false, error: 'Forbidden' });
         }
@@ -55,7 +55,7 @@ export function createSupportRouter(db) {
     });
 
     // POST /admin/support/tickets/:id/resolve
-    router.post('/admin/tickets/:id/resolve', verifyJWT, async (req, res) => {
+    router.post('/admin/tickets/:id/resolve', requireJWT, async (req, res) => {
         if (req.user.role !== 'admin_super' && req.user.role !== 'admin_ops') {
             return res.status(403).json({ ok: false, error: 'Forbidden' });
         }

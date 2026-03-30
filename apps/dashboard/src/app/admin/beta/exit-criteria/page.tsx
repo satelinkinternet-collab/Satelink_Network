@@ -1,4 +1,3 @@
-
 "use client";
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { PageHeader, ErrorBanner } from '@/components/admin/admin-shared';
+import api from '@/lib/api';
 
 interface Criteria {
     key: string;
@@ -18,27 +18,24 @@ interface Criteria {
 
 export default function ExitCriteriaPage() {
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [criteria, setCriteria] = useState<Criteria[]>([]);
     const [overallStatus, setOverallStatus] = useState<'NOT_READY' | 'READY'>('NOT_READY');
 
     useEffect(() => {
-        // Mock data or fetch real data
-        // Ideally fetch from /admin/beta/exit-criteria
-        // For MVP, we simulate fetching and calculating logic frontend side or backend.
-        // Let's implement real backend logic in next step.
         fetchCriteria();
     }, []);
 
     const fetchCriteria = async () => {
         try {
-            const res = await fetch('/api/proxy?path=/admin-api/beta/exit-criteria');
-            const data = await res.json();
-            if (data.ok) {
-                setCriteria(data.criteria);
-                setOverallStatus(data.overall);
+            const res = await api.get('/admin/beta/exit-criteria');
+            if (res.data.ok) {
+                setCriteria(res.data.criteria);
+                setOverallStatus(res.data.overall);
             }
-        } catch (e) {
-            console.error(e);
+        } catch (e: any) {
+            console.error('[ExitCriteria]', e);
+            setError(e.response?.data?.error || 'Failed to load exit criteria');
         } finally {
             setLoading(false);
         }
@@ -50,6 +47,7 @@ export default function ExitCriteriaPage() {
                 title="Beta Exit Criteria"
                 subtitle="Readiness for Public Mainnet Launch"
             />
+            {error && <ErrorBanner message={error} onRetry={fetchCriteria} />}
 
             <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>

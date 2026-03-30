@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { verifyJWT } from './auth_v2.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 export function createPairApiRouter(opsEngine) {
     const router = Router();
@@ -20,7 +20,7 @@ export function createPairApiRouter(opsEngine) {
      * Called by the USER (authenticated) to get a pairing code.
      * Enforce: Max 5 pending per wallet.
      */
-    router.post('/request', verifyJWT, async (req, res) => {
+    router.post('/request', requireJWT, async (req, res) => {
         try {
             const wallet = req.user?.wallet;
             if (!wallet) return res.status(401).json({ ok: false, error: "Unauthorized" });

@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { Loader2, AlertCircle, Calendar } from "lucide-react";
+import api from "@/lib/api";
 
 interface splitRatio {
     nodeOperators: number;
@@ -21,10 +22,8 @@ interface EconomicsSummary {
     lastEpochClosedAt: string | null;
 }
 
-const fetcher = (url: string) => fetch(url).then(res => {
-    if (!res.ok) throw new Error("Failed to fetch");
-    return res.json();
-});
+// Use centralized api client — ensures Authorization header is attached
+const fetcher = (url: string) => api.get(url).then(res => res.data);
 
 export function RevenueSplitChart() {
     const { data, error, isLoading } = useSWR<EconomicsSummary>('/api/economics/summary', fetcher, {

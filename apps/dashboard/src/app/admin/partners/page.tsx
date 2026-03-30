@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 interface Partner {
     partner_id: string;
@@ -21,34 +22,23 @@ export default function PartnersPage() {
 
     const fetchPartners = async () => {
         try {
-            const token = localStorage.getItem('satelink_token');
-            const res = await fetch('/api/admin/partners', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (data.ok) setPartners(data.partners || []);
-        } catch (e) { console.error(e); }
+            const res = await api.get('/api/admin/partners');
+            if (res.data.ok) setPartners(res.data.partners || []);
+        } catch (e) { console.error('[Partners]', e); }
         setLoading(false);
     };
 
     useEffect(() => { fetchPartners(); }, []);
 
     const registerPartner = async () => {
-        const token = localStorage.getItem('satelink_token');
-        const res = await fetch('/api/admin/partners/register', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify(newPartner)
-        });
-        const data = await res.json();
-        if (data.api_key) setApiKeyResult(data.api_key);
+        const res = await api.post('/api/admin/partners/register', newPartner);
+        if (res.data.api_key) setApiKeyResult(res.data.api_key);
         setShowRegister(false);
         fetchPartners();
     };
 
     const action = async (endpoint: string, partner_id: string) => {
-        const token = localStorage.getItem('satelink_token');
-        await fetch(`/api/admin/partners/${endpoint}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ partner_id })
-        });
+        await api.post(`/api/admin/partners/${endpoint}`, { partner_id });
         fetchPartners();
     };
 

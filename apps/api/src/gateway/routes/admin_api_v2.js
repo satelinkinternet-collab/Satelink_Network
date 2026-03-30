@@ -1,44 +1,53 @@
 import { Router } from 'express';
-import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { requireJWT, requireRole, ADMIN_ROLES } from '../../security/auth_middleware.js';
+import { getNetworkStats } from '../../monitoring/network_stats.js';
 
 export function createAdminApiRouter(opsEngine) {
     const router = Router();
 
-    // Step A1: Strict JWT-only auth for all admin API routes
+    // S0-008: Enforce JWT + admin role on all admin API routes
     router.use(requireJWT);
-    router.use(requireRole(['admin_super', 'admin_ops', 'admin']));
+    router.use(requireRole(ADMIN_ROLES));
 
     // GET /admin-api/stats - Unified stats for admin dashboard
+    // SINGLE SOURCE OF TRUTH: delegates to getNetworkStats() (same as /api/network/stats)
     router.get('/stats', async (req, res) => {
-        console.log("[DEBUG] /admin-api/stats hit by", req.user?.role);
         try {
-            const now = Date.now();
-            const todayStart = new Date().setHours(0, 0, 0, 0);
+            // Core stats — same function as /api/network/stats
+            const networkStats = await getNetworkStats(opsEngine.db);
 
-            // Revenue Stats
-            const revenueEvents = await opsEngine.db.query("SELECT * FROM revenue_events_v2 ORDER BY created_at DESC LIMIT 100");
-            const revenueToday = revenueEvents.filter(e => e.created_at * 1000 >= todayStart).reduce((acc, e) => acc + (e.amount_usdt || 0), 0);
+            // Admin-specific extras (augment, don't duplicate)
+            const todayStartSec = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+            const revenueToday = await opsEngine.db.prepare(
+                "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE created_at >= ?"
+            ).get(todayStartSec);
 
-            // Treasury Status
-            const treasury = await opsEngine.getTreasuryAvailable();
+            let treasury = 0;
+            try { treasury = await opsEngine.getTreasuryAvailable(); } catch (_) {}
 
-            // Epoch Status
-            const currentEpoch = await opsEngine.db.get("SELECT * FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1");
-
-            // Nodes
-            const nodesOnline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE status = 'online'")).c;
-            const nodesOffline = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE status != 'online'")).c;
+            const recentEvents = await opsEngine.db.prepare(
+                "SELECT * FROM revenue_events_v2 ORDER BY created_at DESC LIMIT 10"
+            ).all();
 
             res.json({
                 ok: true,
                 stats: {
-                    revenueToday: revenueToday.toFixed(2),
+                    // From unified source
+                    totalNodes: networkStats.totalNodes,
+                    activeNodes: networkStats.activeNodes,
+                    nodesOnline: networkStats.activeNodes,
+                    nodesOffline: networkStats.totalNodes - networkStats.activeNodes,
+                    currentEpoch: { id: networkStats.currentEpoch, status: networkStats.epochStatus },
+                    totalRevenueUsdt: networkStats.totalRevenueUsdt,
+                    totalOpsProcessed: networkStats.totalOpsProcessed,
+                    lastEpochClosedAt: networkStats.lastEpochClosedAt,
+                    settlementMode: networkStats.settlementMode,
+                    // Admin-specific extras
+                    revenueToday: parseFloat(revenueToday?.total || 0).toFixed(2),
                     treasuryAvailable: treasury.toFixed(2),
-                    nodesOnline,
-                    nodesOffline,
-                    currentEpoch: currentEpoch || { id: 'N/A', status: 'CLOSED' }
                 },
-                recentEvents: revenueEvents.slice(0, 10)
+                recentEvents,
+                _ts: networkStats._ts
             });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -138,10 +147,24 @@ export function createAdminApiRouter(opsEngine) {
     });
 
     // ─── NODE MONITORING (Phase 19) ───
+    // Uses registered_nodes (single source of truth for node data)
     router.get('/nodes', async (req, res) => {
         try {
-            const nodes = await opsEngine.db.query("SELECT * FROM nodes ORDER BY last_seen DESC LIMIT 100");
-            res.json({ ok: true, nodes });
+            const nodes = await opsEngine.db.prepare(
+                "SELECT wallet, node_type, active, last_heartbeat, is_flagged, latency, bandwidth FROM registered_nodes ORDER BY last_heartbeat DESC NULLS LAST LIMIT 100"
+            ).all();
+            // Map to consistent format expected by frontend
+            const mapped = nodes.map(n => ({
+                node_id: n.wallet,
+                wallet: n.wallet,
+                device_type: n.node_type,
+                status: n.active ? 'online' : 'offline',
+                last_seen: n.last_heartbeat,
+                is_flagged: n.is_flagged,
+                latency: n.latency,
+                bandwidth: n.bandwidth
+            }));
+            res.json({ ok: true, nodes: mapped });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
@@ -150,56 +173,65 @@ export function createAdminApiRouter(opsEngine) {
     router.get('/services/nodes/:id', async (req, res) => {
         try {
             const { id } = req.params;
-            const node = await opsEngine.db.get("SELECT * FROM nodes WHERE node_id = ?", [id]);
+            const node = await opsEngine.db.prepare(
+                "SELECT wallet, node_type, active, last_heartbeat, is_flagged, latency, bandwidth FROM registered_nodes WHERE wallet = ?"
+            ).get(id);
             if (!node) return res.status(404).json({ ok: false, error: "Node not found" });
 
-            // Fetch recent heartbeats/events if tables exist, or mock for now
-            // We can query revenue_events as a proxy for activity locally
-            const recentEvents = await opsEngine.db.query("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20", [id]);
+            const mapped = {
+                node_id: node.wallet,
+                wallet: node.wallet,
+                device_type: node.node_type,
+                status: node.active ? 'online' : 'offline',
+                last_seen: node.last_heartbeat,
+                is_flagged: node.is_flagged
+            };
 
-            res.json({ ok: true, node, activity: recentEvents });
+            const recentEvents = await opsEngine.db.prepare(
+                "SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20"
+            ).all(id);
+
+            res.json({ ok: true, node: mapped, activity: recentEvents });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
 
-    // GET /admin-api/history - Revenue Trend
+    // GET /admin-api/history - Revenue Trend (real data from epochs)
     router.get('/history', async (req, res) => {
         try {
-            // In prod: SELECT date(created_at), sum(amount) FROM revenue_events GROUP BY date
-            // MVP: Mocking a growth curve
-            const days = [];
-            let base = 1000;
-            for (let i = 29; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                base += Math.random() * 200 - 50; // Random walk
-                days.push({
-                    date: d.toLocaleDateString(),
-                    revenue: Math.max(0, base).toFixed(2)
-                });
-            }
-            res.json({ ok: true, history: days });
+            // Real revenue trend from finalized epochs
+            const epochs = await opsEngine.db.prepare(`
+                SELECT id, total_revenue_usdt, ends_at
+                FROM epochs
+                WHERE status = 'FINALIZED' AND total_revenue_usdt > 0
+                ORDER BY ends_at DESC
+                LIMIT 30
+            `).all();
+
+            const history = epochs.reverse().map(e => ({
+                epoch: e.id,
+                date: e.ends_at ? new Date(e.ends_at * 1000).toLocaleDateString() : 'N/A',
+                revenue: parseFloat(e.total_revenue_usdt || 0).toFixed(4)
+            }));
+
+            res.json({ ok: true, history });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
     // GET /admin-api/nodes/distribution - Node Types Pie Chart
+    // Uses registered_nodes (single source of truth)
     router.get('/services/nodes/distribution', async (req, res) => {
         try {
-            // Get actual counts if possible, else mock
-            const starlink = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'starlink%'"))?.c || 0;
-            const iot = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'iot%'"))?.c || 0;
-            const validator = (await opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE device_type LIKE 'validator%'"))?.c || 0;
+            const distribution = await opsEngine.db.prepare(`
+                SELECT node_type as name, COUNT(*) as value
+                FROM registered_nodes
+                GROUP BY node_type
+                ORDER BY value DESC
+            `).all();
 
-            // If DB empty, show mocks for UI demo
-            const distribution = [
-                { name: 'Starlink V2', value: starlink || 45 },
-                { name: 'Generic IoT', value: iot || 30 },
-                { name: 'Validator', value: validator || 15 },
-                { name: 'Gateway', value: 10 }
-            ];
-
-            res.json({ ok: true, distribution });
+            // If no nodes yet, return empty array (no fake data)
+            res.json({ ok: true, distribution: distribution.length > 0 ? distribution : [] });
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 

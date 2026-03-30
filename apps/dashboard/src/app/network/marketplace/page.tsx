@@ -1,17 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 export default function MarketplacePage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         (async () => {
             try {
-                const res = await fetch('/api/network/marketplace');
-                const d = await res.json();
-                if (d.ok) setData(d);
-            } catch (e) { console.error(e); }
+                const res = await api.get('/api/network/marketplace');
+                if (res.data.ok) setData(res.data);
+            } catch (e: any) {
+                console.error('[Marketplace]', e);
+                setError(e.response?.data?.error || 'Failed to load marketplace data');
+            }
             setLoading(false);
         })();
     }, []);
@@ -30,6 +34,8 @@ export default function MarketplacePage() {
                         {data?.total_ranked || 0} nodes ranked by performance. Quality wins.
                     </p>
                 </div>
+
+                {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
                 {loading ? <p>Loading...</p> : data && (
                     <div>

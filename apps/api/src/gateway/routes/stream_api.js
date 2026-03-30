@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { sseHelper } from '../../utils/sse.js';
 import { SSEManager } from '../../utils/sse_manager.js';
-import { verifyJWT } from './auth_v2.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 const sseManager = new SSEManager();
 
@@ -32,7 +32,7 @@ export function createStreamApiRouter(opsEngine) {
      * Access: Admin only (admin_super, admin_ops, admin_readonly)
      * Emits: hello, snapshot, revenue_batch, error_batch, security_alerts, audit, ping
      */
-    router.get('/admin', verifyJWT, async (req, res) => {
+    router.get('/admin', requireJWT, async (req, res) => {
         if (!['admin_super', 'admin_ops', 'admin_readonly'].includes(req.user?.role)) {
             return res.status(403).json({ error: "Access denied" });
         }
@@ -67,7 +67,7 @@ export function createStreamApiRouter(opsEngine) {
                 const hourAgoMs = Date.now() - 3600000;
 
                 const [activeNodes, opsCount, revenue24h, alertsOpen, errors1h, slowQueries1h, incidentsOpen] = await Promise.all([
-                    opsEngine.db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinAgo]),
+                    opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1 AND last_heartbeat > ?", [fiveMinAgo]),
                     opsEngine.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
                     opsEngine.db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
                     opsEngine.db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
@@ -212,7 +212,7 @@ export function createStreamApiRouter(opsEngine) {
      * GET /stream/node
      * Access: Node Operator (own node only)
      */
-    router.get('/node', verifyJWT, async (req, res) => {
+    router.get('/node', requireJWT, async (req, res) => {
         if (req.user?.role !== 'node_operator') {
             return res.status(403).json({ error: "Access denied" });
         }
@@ -264,7 +264,7 @@ export function createStreamApiRouter(opsEngine) {
      * GET /stream/builder
      * Access: Builder
      */
-    router.get('/builder', verifyJWT, async (req, res) => {
+    router.get('/builder', requireJWT, async (req, res) => {
         if (req.user?.role !== 'builder') {
             return res.status(403).json({ error: "Access denied" });
         }

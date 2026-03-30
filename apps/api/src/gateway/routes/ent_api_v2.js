@@ -6,7 +6,7 @@ export function createEntApiRouter(opsEngine) {
 
     // S0-008: Enforce JWT + enterprise role on all routes
     router.use(requireJWT);
-    router.use(requireRole(['enterprise', 'admin_super', 'admin_ops']));
+    router.use(requireRole(['enterprise']));
 
     // GET /ent-api/stats
     router.get('/stats', async (req, res) => {

@@ -1,21 +1,14 @@
 
 import express from 'express';
-import { verifyJWT, getPermissionsForRole } from './auth_v2.js';
+import { requireJWT } from '../../security/auth_middleware.js';
+import { getPermissionsForRole } from './auth_v2.js';
 
 export function createAdminGrowthRouter(db, retentionService) {
     const router = express.Router();
 
-    // Middleware: Require Admin
-    const requireAdmin = (req, res, next) => {
-        if (!req.user || !['admin_super', 'admin_ops'].includes(req.user.role)) {
-            return res.status(403).json({ ok: false, error: 'Admin access required' });
-        }
-        next();
-    };
-
     // GET /admin/growth/ux/summary
     // Metrics on UX mode adoption and onboarding
-    router.get('/ux/summary', verifyJWT, requireAdmin, async (req, res) => {
+    router.get('/ux/summary', requireJWT(['admin_super', 'admin_ops']), async (req, res) => {
         try {
             // 1. UI Mode Distribution
             const modeStats = await db.query(`

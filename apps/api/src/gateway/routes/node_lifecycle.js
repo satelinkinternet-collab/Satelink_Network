@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyJWT } from './auth_v2.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 import { LifecycleManager } from '../../core/lifecycle_manager.js';
 
 export function createNodeLifecycleRouter(db) {
@@ -10,7 +10,7 @@ export function createNodeLifecycleRouter(db) {
      * O1: Start Setup Session (User Config)
      * POST /node/setup/start
      */
-    router.post('/setup/start', verifyJWT, async (req, res) => {
+    router.post('/setup/start', requireJWT, async (req, res) => {
         try {
             const wallet = req.user.wallet;
             const session = await manager.startSetupSession(wallet);
@@ -25,7 +25,7 @@ export function createNodeLifecycleRouter(db) {
      * O1: Check Setup Status (Polling)
      * GET /node/setup/:setup_id
      */
-    router.get('/setup/:setup_id', verifyJWT, async (req, res) => {
+    router.get('/setup/:setup_id', requireJWT, async (req, res) => {
         try {
             const { setup_id } = req.params;
             const session = await db.get("SELECT status, node_id, owner_wallet FROM node_setup_sessions LEFT JOIN node_ownership ON node_ownership.owner_wallet = node_setup_sessions.owner_wallet WHERE setup_id = ?", [setup_id]);
