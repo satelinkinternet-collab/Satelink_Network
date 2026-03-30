@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
-import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 export function createEnterpriseRouter(db) {
     const router = Router();
@@ -70,7 +70,7 @@ export function createEnterpriseRouter(db) {
     /**
      * Middleware to authenticate enterprise API via JWT
      */
-    const requireEnterprise = [requireJWT, requireRole('enterprise'), (req, res, next) => {
+    const requireEnterprise = [requireJWT('enterprise'), (req, res, next) => {
         const client = db.prepare(`SELECT * FROM enterprise_clients WHERE wallet_address = ?`).get(req.user.wallet);
         if (!client) {
             return res.status(401).json({ ok: false, error: "Enterprise Client not found" });

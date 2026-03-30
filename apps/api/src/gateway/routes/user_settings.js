@@ -2,7 +2,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import base32 from 'base32.js';
-import { verifyJWT } from './auth_v2.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 export function createUserSettingsRouter(rawDb) {
     const router = express.Router();
@@ -23,7 +23,7 @@ export function createUserSettingsRouter(rawDb) {
     }
 
     // GET /me/settings
-    router.get('/settings', verifyJWT, async (req, res) => {
+    router.get('/settings', requireJWT, async (req, res) => {
         try {
             if (!req.user || !req.user.wallet) {
                 return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Authentication required' });
@@ -75,7 +75,7 @@ export function createUserSettingsRouter(rawDb) {
     });
 
     // POST /me/settings
-    router.post('/settings', verifyJWT, async (req, res) => {
+    router.post('/settings', requireJWT, async (req, res) => {
         try {
             if (!req.user || !req.user.wallet) {
                 return res.status(401).json({ ok: false, code: 'UNAUTHENTICATED', error: 'Authentication required' });
@@ -100,7 +100,7 @@ export function createUserSettingsRouter(rawDb) {
     });
 
     // POST /me/onboarding/step
-    router.post('/onboarding/step', verifyJWT, async (req, res) => {
+    router.post('/onboarding/step', requireJWT, async (req, res) => {
         try {
             const { step_id } = req.body;
             if (!step_id) return res.status(400).json({ ok: false, error: 'Missing step_id' });
@@ -131,7 +131,7 @@ export function createUserSettingsRouter(rawDb) {
     });
 
     // GET /me/balance/summary (Dual Currency)
-    router.get('/balance/summary', verifyJWT, async (req, res) => {
+    router.get('/balance/summary', requireJWT, async (req, res) => {
         try {
             const wallet = req.user.wallet;
             const balanceRow = await db.get('SELECT amount_usdt FROM balances WHERE wallet = ?', [wallet]);

@@ -1,18 +1,21 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 export default function ReputationImpactPage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         (async () => {
             try {
-                const token = localStorage.getItem('satelink_token');
-                const res = await fetch('/api/admin/economics/reputation-impact', { headers: { Authorization: `Bearer ${token}` } });
-                const d = await res.json();
-                if (d.ok) setData(d);
-            } catch (e) { console.error(e); }
+                const res = await api.get('/admin/economics/reputation-impact');
+                if (res.data.ok) setData(res.data);
+            } catch (e: any) {
+                console.error('[ReputationImpact]', e);
+                setError(e.response?.data?.error || 'Failed to load reputation impact data');
+            }
             setLoading(false);
         })();
     }, []);
@@ -23,6 +26,8 @@ export default function ReputationImpactPage() {
         <div style={{ padding: '2rem', maxWidth: 1000, margin: '0 auto' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>💰 Reputation Impact on Rewards</h1>
             <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>How tier multipliers affect the treasury and node payouts.</p>
+
+            {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
             {loading ? <p>Loading...</p> : data && (
                 <div>

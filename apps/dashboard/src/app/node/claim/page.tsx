@@ -65,7 +65,7 @@ export default function NodeClaimPage() {
     setFetching(true);
     setError(null);
     try {
-      const res = await api.post('/node/me/claim', { epochId: epochIdToClaim });
+      const res = await api.post('/node-api/claim', { epochId: epochIdToClaim });
       if (res.data.ok) {
         setClaimData(res.data.claim);
       }
@@ -105,15 +105,22 @@ export default function NodeClaimPage() {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CLAIMS_CONTRACT_ADDRESS, CLAIMS_ABI, signer);
 
-      // For Phase 3 MVP we're withdrawing the entire available balance. 
-      // The claimId needs to be constructed or fetched. Alternatively, the contract can be modified to withdraw all, 
-      // but the requirement says `withdraw(claimId, amount)`. We will construct it client side if possible
-      // claimId = keccak256(abi.encodePacked(msg.sender, epochId, timestamp))
-      // Because claimId is specific, in a real UI we fetch unwithdrawn claims. 
-      // For MVP: assume claimId is fetched or we just show a simplified interaction.
-      alert("Withdraw interaction triggered. Requires selecting a specific claimId from the backend.");
-      // Record mock withdrawal
-      await api.post('/node/me/withdraw', { claimId: 'mock-claim', amount: availableBalance, txHash: '0xMockHash' });
+      // Fetch the first unwithdrawn claim from backend
+      const claimsRes = await api.get('/node-api/claims/pending');
+      const pendingClaim = claimsRes.data?.claims?.[0];
+      if (!pendingClaim) {
+        setError("No pending claims available to withdraw");
+        return;
+      }
+
+      const tx = await contract.withdraw(pendingClaim.claim_id, ethers.parseUnits(String(availableBalance), 6));
+      await tx.wait();
+
+      await api.post('/node-api/claims/record-withdrawal', {
+        claimId: pendingClaim.claim_id,
+        amount: availableBalance,
+        txHash: tx.hash
+      });
     } catch (err: any) {
       setError(err.message || "Smart contract execution failed");
     } finally {

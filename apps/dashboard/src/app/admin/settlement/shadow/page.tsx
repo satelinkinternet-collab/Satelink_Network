@@ -1,25 +1,27 @@
-
 "use client";
 import React, { useEffect, useState } from 'react';
 import { AdminLayout } from '../../../../components/AdminLayout';
-import { useAuth } from '../../../../context/AuthContext';
 import { GitMerge, RefreshCw } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function SettlementShadowPage() {
-    const { token } = useAuth();
     const [logs, setLogs] = useState<any[]>([]);
+    const [error, setError] = useState('');
 
     const fetchLogs = async () => {
-        const res = await fetch('/admin/settlement/shadow-logs', {
-            headers: { 'Authorization': `Bearer ${token}`, 'X-API-Call': '1' }
-        });
-        const json = await res.json();
-        if (json.ok) setLogs(json.data);
+        try {
+            setError('');
+            const res = await api.get('/admin/services/settlement/shadow-logs');
+            if (res.data.ok) setLogs(res.data.data);
+        } catch (e: any) {
+            console.error('[SettlementShadow]', e);
+            setError(e.response?.data?.error || 'Failed to load shadow logs');
+        }
     };
 
     useEffect(() => {
-        if (token) fetchLogs();
-    }, [token]);
+        fetchLogs();
+    }, []);
 
     return (
         <AdminLayout>
@@ -33,6 +35,8 @@ export default function SettlementShadowPage() {
                         <RefreshCw className="w-4 h-4" />
                     </button>
                 </div>
+
+                {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
                 <div className="bg-gray-900 rounded border border-gray-700 p-6">
                     <div className="text-sm text-gray-400 mb-4">

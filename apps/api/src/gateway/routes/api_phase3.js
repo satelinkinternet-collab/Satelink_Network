@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { RevenueOracle } from '../../economics/revenue_oracle.js';
 import { TreasuryMonitor } from '../../monitoring/treasury_monitor.js';
 import fuseService from '../../security/fuse.js';
-import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { requireJWT } from '../../security/auth_middleware.js';
 
 export function createPhase3Router(db) {
     const router = Router();
@@ -41,7 +41,7 @@ export function createPhase3Router(db) {
     });
 
     // We assume authentication middleware runs before this or we check req.user
-    const requireAuth = [requireJWT, requireRole('node_operator')];
+    const requireAuth = [requireJWT('node_operator')];
 
     // POST /api/node/me/claim
     router.post('/node/me/claim', requireAuth, async (req, res) => {

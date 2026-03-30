@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import { adminReadLimiter, adminWriteLimiter } from '../../security/middleware/rate_limits.js';
+import { appendDebugNdjson } from '../../utils/debug_ndjson.js';
+import { getNetworkStats } from '../../monitoring/network_stats.js';
 
 const IP_SALT = process.env.IP_HASH_SALT || 'satelink_default_salt_change_me';
 const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly', 'admin'];
@@ -63,6 +65,10 @@ async function auditLog(db, { actor, action, target_type, target_id, before, aft
 
 // ─── RBAC Middleware ────────────────────────────────────────
 function requireAdmin(req, res, next) {
+    // #region agent log
+    appendDebugNdjson({ runId: String(req.headers['x-debug-run-id'] || 'initial'), hypothesisId: 'H6', location: 'admin_control_room_api.js:requireAdmin', message: 'requireAdmin evaluated', data: { hasUser: !!req.user, role: req.user?.role || null, allowed: !!(req.user && ADMIN_ROLES.includes(req.user.role)) } });
+    try { fetch('http://127.0.0.1:7363/ingest/de7d16ec-a709-4735-b844-3889c63cdf77',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14abae'},body:JSON.stringify({sessionId:'14abae',runId:String(req.headers['x-debug-run-id'] || 'initial'),hypothesisId:'H6',location:'admin_control_room_api.js:requireAdmin',message:'requireAdmin evaluated',data:{hasUser:!!req.user,role:req.user?.role||null,allowed:!!(req.user && ADMIN_ROLES.includes(req.user.role))},timestamp:Date.now()})}).catch(()=>{}); } catch {}
+    // #endregion
     if (!req.user || !ADMIN_ROLES.includes(req.user.role)) {
         return res.status(403).json({ ok: false, error: 'Admin role required' });
     }
@@ -85,12 +91,36 @@ function requireSuper(req, res, next) {
 
 // ─── Router ────────────────────────────────────────────────
 export function createAdminControlRoomRouter(opsEngine, opts = {}) {
+    // #region agent log
+    appendDebugNdjson({ runId: 'startup', hypothesisId: 'H11', location: 'admin_control_room_api.js:createAdminControlRoomRouter', message: 'admin control room router constructed', data: { hasOpsEngine: !!opsEngine } });
+    try { fetch('http://127.0.0.1:7363/ingest/de7d16ec-a709-4735-b844-3889c63cdf77',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14abae'},body:JSON.stringify({sessionId:'14abae',runId:'startup',hypothesisId:'H11',location:'admin_control_room_api.js:createAdminControlRoomRouter',message:'admin control room router constructed',data:{hasOpsEngine:!!opsEngine},timestamp:Date.now()})}).catch(()=>{}); } catch {}
+    // #endregion
     const router = Router();
     const db = opsEngine.db;
     const selfTestRunner = opts.selfTestRunner || null;
     const incidentBuilder = opts.incidentBuilder || null;
     const opsReporter = opts.opsReporter || null;
     const auditService = opts.auditService || null;
+    const DEBUG_INGEST_URL = 'http://127.0.0.1:7363/ingest/de7d16ec-a709-4735-b844-3889c63cdf77';
+    const DEBUG_SESSION_ID = '14abae';
+
+    const debugLog = (payload) => {
+        // #region agent log
+        appendDebugNdjson(payload);
+        try { fetch(DEBUG_INGEST_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Debug-Session-Id': DEBUG_SESSION_ID,
+            },
+            body: JSON.stringify({
+                sessionId: DEBUG_SESSION_ID,
+                timestamp: Date.now(),
+                ...payload,
+            }),
+        }).catch(() => {}); } catch {}
+        // #endregion
+    };
 
     // Local override for auditLog to include service [Phase R]
     const log = async (params) => auditLog(db, params, auditService);
@@ -101,191 +131,134 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
 
     // Rate Limiting (Phase 11.4)
     router.use((req, res, next) => {
-        if (req.method === 'GET') return adminReadLimiter(req, res, next);
-        return adminWriteLimiter(req, res, next);
+        // #region agent log
+        try { fetch('http://127.0.0.1:7363/ingest/de7d16ec-a709-4735-b844-3889c63cdf77',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14abae'},body:JSON.stringify({sessionId:'14abae',runId:String(req.headers['x-debug-run-id'] || 'initial'),hypothesisId:'H7',location:'admin_control_room_api.js:rateLimit:entry',message:'rate limiter middleware entry',data:{method:req.method,path:req.path},timestamp:Date.now()})}).catch(()=>{}); } catch {}
+        // #endregion
+        try {
+            if (req.method === 'GET') return adminReadLimiter(req, res, next);
+            return adminWriteLimiter(req, res, next);
+        } catch (e) {
+            // #region agent log
+            try { fetch('http://127.0.0.1:7363/ingest/de7d16ec-a709-4735-b844-3889c63cdf77',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14abae'},body:JSON.stringify({sessionId:'14abae',runId:String(req.headers['x-debug-run-id'] || 'initial'),hypothesisId:'H7',location:'admin_control_room_api.js:rateLimit:catch',message:'rate limiter threw',data:{errorName:e?.name||null,errorMessage:e?.message||null},timestamp:Date.now()})}).catch(()=>{}); } catch {}
+            // #endregion
+            return next(e);
+        }
     });
 
     // ═══════════════════════════════════════════════════════
     // COMMAND CENTER
     // ═══════════════════════════════════════════════════════
 
+    // ─── SUMMARY ───
     router.get('/command/summary', async (req, res) => {
         try {
-            const flags = await db.query("SELECT key, value FROM system_flags");
-            const flagsMap = flags.reduce((acc, r) => ({ ...acc, [r.key]: r.value }), {});
-
-            const fiveMinAgo = Math.floor(Date.now() / 1000) - 300;
-            const dayAgo = Math.floor(Date.now() / 1000) - 86400;
-            const hourAgoMs = Date.now() - 3600000;
-
-            const [opsCount, activeNodes, successRate, revenue24h, alertsOpen, errors1h, slowQueries1h] =
-                await Promise.all([
-                    db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
-                    db.get("SELECT COUNT(*) as c FROM nodes WHERE last_seen > ?", [fiveMinAgo]),
-                    db.get("SELECT ROUND(AVG(CASE WHEN status_code < 500 THEN 100.0 ELSE 0.0 END), 1) as rate FROM request_traces WHERE created_at > ?", [Date.now() - 300000]),
-                    db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
-                    db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
-                    db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [hourAgoMs]),
-                    db.get("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?", [hourAgoMs]),
-                ]);
-
-            const p95Row = await db.get("SELECT duration_ms FROM request_traces WHERE created_at > ? ORDER BY duration_ms DESC LIMIT 1 OFFSET (SELECT COUNT(*) * 5 / 100 FROM request_traces WHERE created_at > ?)", [Date.now() - 300000, Date.now() - 300000]);
-
-            res.json({
-                ok: true,
-                system: {
-                    withdrawals_paused: flagsMap.withdrawals_paused === '1',
-                    security_freeze: flagsMap.security_freeze === '1',
-                    revenue_mode: flagsMap.revenue_mode || 'ACTIVE',
-                    beta_gate_enabled: flagsMap.beta_gate_enabled === '1',
-                    system_state: flagsMap.system_state || 'NORMAL'
-                },
-                kpis: {
-                    active_nodes_5m: activeNodes?.c || 0,
-                    ops_5m: opsCount?.c || 0,
-                    success_rate_5m: successRate?.rate ?? 99.9,
-                    p95_latency_ms_5m: p95Row?.duration_ms || 0,
-                    revenue_24h_usdt: parseFloat(revenue24h?.t || 0).toFixed(2)
-                },
-                alerts_open_count: alertsOpen?.c || 0,
-                errors_1h_count: errors1h?.c || 0,
-                slow_queries_1h_count: slowQueries1h?.c || 0
-            });
-        } catch (e) {
-            console.error('[Admin] command/summary error:', e.message);
-            res.status(500).json({ ok: false, error: e.message });
+          const stats = await getNetworkStats(db);
+      
+          return res.json({
+            ok: true,
+            stats
+          });
+      
+        } catch (err) {
+          console.error("ADMIN SUMMARY ERROR:", err);
+      
+          return res.status(500).json({
+            ok: false,
+            error: "internal_error"
+          });
         }
-    });
+      });
 
+    // ─── LIVE FEED ───
     router.get('/command/live-feed', async (req, res) => {
-        const { sseHelper } = await import("../../utils/sse.js");
         try {
-            const isSSE = req.query.sse === 'true' || (req.headers.accept && req.headers.accept.includes('text/event-stream'));
+          const limit = 50;
+          const revenue = await db.prepare("SELECT 'revenue' as type, id, amount_usdt as val, created_at, op_type as label FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?").all(limit);
+          const errors = await db.prepare("SELECT 'error' as type, id, status_code as val, last_seen_at as created_at, message as label FROM error_events ORDER BY last_seen_at DESC LIMIT ?").all(limit);
 
-            if (isSSE) {
-                const conn = sseHelper.init(req, res);
-                if (!conn) return;
+          const feed = [
+              ...revenue.map(r => ({ ...r, created_at: r.created_at * 1000 })),
+              ...errors
+          ].sort((a, b) => b.created_at - a.created_at).slice(0, limit);
 
-                let lastTs = Date.now() - 60000;
-
-                const poll = setInterval(async () => {
-                    try {
-                        const [revenue, errors, audit, alerts, slowQs, incidents, heartbeats] = await Promise.all([
-                            db.query("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 WHERE created_at * 1000 > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at DESC", [lastTs]),
-                            db.query("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at DESC", [lastTs]),
-                            db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles WHERE created_at > ? ORDER BY created_at DESC", [lastTs]),
-                            db.query("SELECT 'heartbeat' as type, wallet as id, active as value, updatedAt * 1000 as ts, wallet as label FROM registered_nodes WHERE updatedAt * 1000 > ? ORDER BY updatedAt DESC", [lastTs]),
-                        ]);
-
-                        const updates = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents, ...heartbeats]
-                            .map(item => ({
-                                event_id: `${item.type}_${item.id}`,
-                                type: item.type,
-                                level: ['error', 'alert', 'incident'].includes(item.type) ? 'ERROR' : (item.type === 'heartbeat' ? 'INFO' : 'OK'),
-                                ts: item.ts,
-                                message: item.type === 'heartbeat' ? `Heartbeat from node ${item.label.substring(0, 8)}...` : item.label,
-                                meta: { raw_value: item.value }
-                            }))
-                            .sort((a, b) => (a.ts || 0) - (b.ts || 0));
-
-                        for (const item of updates) {
-                            conn.send('message', item);
-                            if (item.ts > lastTs) lastTs = item.ts;
-                        }
-                    } catch (e) {
-                        console.error("[SSE-Feed] Error:", e.message);
-                    }
-                }, 5000);
-
-                req.on('close', () => clearInterval(poll));
-                return;
-            }
-
-            const limit = parseIntParam(req.query.limit, 100);
-            const feedLimit = Math.min(limit, 200);
-
-            const [revenue, errors, audit, alerts, slowQs, incidents] = await Promise.all([
-                db.query("SELECT 'revenue' as type, id, amount_usdt as value, created_at * 1000 as ts, op_type as label FROM revenue_events_v2 ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'error' as type, id, status_code as value, last_seen_at as ts, message as label FROM error_events ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'audit' as type, id, action_type as value, created_at as ts, actor_wallet as label FROM admin_audit_log ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'alert' as type, id, severity as value, created_at as ts, title as label FROM security_alerts ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'perf_alert' as type, id, avg_ms as value, last_seen_at as ts, sample_sql as label FROM slow_queries ORDER BY last_seen_at DESC LIMIT ?", [feedLimit]),
-                db.query("SELECT 'incident' as type, id, severity as value, created_at as ts, title as label FROM incident_bundles ORDER BY created_at DESC LIMIT ?", [feedLimit]),
-            ]);
-
-            const feed = [...revenue, ...errors, ...audit, ...alerts, ...slowQs, ...incidents]
-                .map(item => ({
-                    event_id: `${item.type}_${item.id}`,
-                    type: item.type,
-                    severity: ['error', 'alert', 'incident'].includes(item.type) ? (item.value || 'med') : 'info',
-                    ts: item.ts,
-                    summary: String(item.label || '').substring(0, 200),
-                    meta: { raw_value: item.value }
-                }))
-                .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-                .slice(0, feedLimit);
-
-            res.json({ ok: true, feed });
-        } catch (e) {
-            res.status(500).json({ ok: false, error: e.message });
+          return res.json({ ok: true, feed });
+        } catch (err) {
+          console.error("LIVE FEED ERROR:", err);
+          return res.status(500).json({ ok: false, error: "internal_error" });
         }
-    });
+      });
 
     // ═══════════════════════════════════════════════════════
     // NETWORK
     // ═══════════════════════════════════════════════════════
 
+    // Uses registered_nodes (single source of truth for node data)
     router.get('/network/nodes', async (req, res) => {
         try {
             const limit = parseIntParam(req.query.limit, 200);
             const offset = parseIntParam(req.query.offset, 0);
-            const { status, device_type } = req.query;
+            const { status, node_type } = req.query;
 
-            let sql = "SELECT * FROM nodes WHERE 1=1";
+            let sql = "SELECT wallet, node_type, active, last_heartbeat, is_flagged, latency, bandwidth FROM registered_nodes WHERE 1=1";
             const params = [];
 
-            if (status) {
-                sql += " AND status = ?";
-                params.push(status);
+            if (status === 'online') {
+                sql += " AND active = 1";
+            } else if (status === 'offline') {
+                sql += " AND active = 0";
             }
-            if (device_type) {
-                sql += " AND device_type = ?";
-                params.push(device_type);
+            if (node_type) {
+                sql += " AND node_type = ?";
+                params.push(node_type);
             }
 
-            sql += " ORDER BY last_seen DESC LIMIT ? OFFSET ?";
+            sql += " ORDER BY last_heartbeat DESC NULLS LAST LIMIT ? OFFSET ?";
             params.push(Math.min(limit, 500));
             params.push(offset);
 
-            const nodes = await db.query(sql, params);
+            const rawNodes = await db.query(sql, params);
+            // Map to consistent format
+            const nodes = rawNodes.map(n => ({
+                node_id: n.wallet,
+                wallet: n.wallet,
+                device_type: n.node_type,
+                management_type: n.node_type,
+                status: n.active ? 'online' : 'offline',
+                last_seen: n.last_heartbeat,
+                is_flagged: n.is_flagged,
+                latency: n.latency,
+                bandwidth: n.bandwidth
+            }));
             res.json({ ok: true, nodes: redactSensitive(nodes), count: nodes.length });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
 
+    // Uses registered_nodes as primary (single source of truth)
     router.get('/network/services/nodes/:node_id', async (req, res) => {
         try {
             const { node_id } = req.params;
-            const node = await db.get("SELECT * FROM nodes WHERE node_id = ?", [node_id]);
-            if (!node) return res.status(404).json({ ok: false, error: 'Node not found' });
+            const rawNode = await db.get("SELECT wallet, node_type, active, last_heartbeat, is_flagged, latency, bandwidth FROM registered_nodes WHERE wallet = ?", [node_id]);
+            if (!rawNode) return res.status(404).json({ ok: false, error: 'Node not found' });
+
+            const node = {
+                node_id: rawNode.wallet,
+                wallet: rawNode.wallet,
+                device_type: rawNode.node_type,
+                status: rawNode.active ? 'online' : 'offline',
+                last_seen: rawNode.last_heartbeat,
+                is_flagged: rawNode.is_flagged,
+                latency: rawNode.latency,
+                bandwidth: rawNode.bandwidth
+            };
 
             const recentRevenue = await db.query("SELECT * FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20", [node_id]);
-
-            // Try heartbeats
-            let heartbeats = [];
-            try {
-                heartbeats = await db.query("SELECT * FROM registered_nodes WHERE wallet = ? LIMIT 1", [node_id]);
-            } catch (_) { }
 
             res.json({
                 ok: true,
                 node: redactSensitive(node),
-                recent_revenue: recentRevenue,
-                heartbeats
+                recent_revenue: recentRevenue
             });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
@@ -685,8 +658,8 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
             const { node_id, reason } = req.body;
             if (!node_id) return res.status(400).json({ ok: false, error: 'node_id required' });
 
-            const before = await db.get("SELECT status FROM nodes WHERE node_id = ?", [node_id]);
-            await db.query("UPDATE nodes SET status = 'banned' WHERE node_id = ?", [node_id]);
+            const before = await db.get("SELECT active, is_flagged FROM registered_nodes WHERE wallet = ?", [node_id]);
+            await db.query("UPDATE registered_nodes SET active = 0, is_flagged = 1 WHERE wallet = ?", [node_id]);
 
             await auditLog(db, {
                 actor: req.user.wallet, action: 'BAN_NODE',

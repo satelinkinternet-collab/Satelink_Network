@@ -5,15 +5,18 @@ import api from '@/lib/api';
 export default function ReferralsPage() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         (async () => {
             try {
-                const token = localStorage.getItem('satelink_token');
                 const res = await api.get('/admin-api/growth/referrals');
                 const d = res.data;
                 if (d.ok) setData(d);
-            } catch (e) { console.error(e); }
+            } catch (e: any) {
+                console.error('[Referrals]', e);
+                setError(e.response?.data?.error || 'Failed to load referral data');
+            }
             setLoading(false);
         })();
     }, []);
@@ -22,6 +25,8 @@ export default function ReferralsPage() {
         <div style={{ padding: '2rem', maxWidth: 1200, margin: '0 auto' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>🌳 Referral & Growth Incentive Engine</h1>
             <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Tiered commissions, fraud detection, and referral tree analytics.</p>
+
+            {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
             {loading ? <p>Loading...</p> : data && (
                 <div>

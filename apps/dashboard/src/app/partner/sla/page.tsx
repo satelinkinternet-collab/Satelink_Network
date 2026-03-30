@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Activity, Zap, Download, AlertTriangle } from 'lucide-react';
+import api from '@/lib/api';
 
 interface SLAData {
     plan: string;
@@ -27,12 +28,12 @@ export default function PartnerSLAPage() {
 
     useEffect(() => {
         Promise.all([
-            fetch('/api/partner/sla').then(r => r.json()),
-            fetch('/api/partner/slo?days=30').then(r => r.json()),
+            api.get('/api/partner/sla').then(r => r.data),
+            api.get('/api/partner/slo', { params: { days: 30 } }).then(r => r.data),
         ]).then(([slaRes, sloRes]) => {
             if (slaRes.ok) setSla(slaRes);
             if (sloRes.ok) setSlo(sloRes.slo || []);
-        }).finally(() => setLoading(false));
+        }).catch(e => console.error('[PartnerSLA]', e)).finally(() => setLoading(false));
     }, []);
 
     const budgetColor = (pct: number) => {

@@ -25,7 +25,7 @@ interface Node {
 export default function NetworkNodesPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [nodes, setNodes] = useState<Node[]>([]);
+    const [data, setNodes] = useState<Node[]>([]);
     const [selected, setSelected] = useState<Node | null>(null);
     const [nodeDetail, setNodeDetail] = useState<any>(null);
     const [statusFilter, setStatusFilter] = useState('');
@@ -38,8 +38,8 @@ export default function NetworkNodesPage() {
             setError('');
             const params = new URLSearchParams();
             if (statusFilter) params.set('status', statusFilter);
-            const res = await api.get(`/admin/network/nodes?${params}`);
-            if (res.data.ok) setNodes(res.data.nodes);
+            const res = await api.get(`/admin/network/data?${params}`);
+            if (res.data.ok) setNodes(res.data.data);
         } catch (e: any) {
             setError(e.response?.data?.error || 'Failed to fetch');
         } finally {
@@ -56,9 +56,11 @@ export default function NetworkNodesPage() {
     const openDetail = async (node: Node) => {
         setSelected(node);
         try {
-            const res = await api.get(`/admin/network/nodes/${node.node_id}`);
+            const res = await api.get(`/admin/network/data/${node.node_id}`);
             if (res.data.ok) setNodeDetail(res.data);
-        } catch { }
+        } catch (e: any) {
+            console.error('[NodeDetail]', e);
+        }
     };
 
     const banNode = async (nodeId: string) => {
@@ -87,7 +89,7 @@ export default function NetworkNodesPage() {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
-            <PageHeader title="Network Fleet" subtitle={`${nodes.length} nodes`}
+            <PageHeader title="Network Fleet" subtitle={`${data.length} data`}
                 actions={
                     <Button variant="ghost" size="sm" onClick={fetchNodes} className="text-zinc-400 hover:text-zinc-200">
                         <RefreshCw className="h-4 w-4 mr-1" /> Refresh
@@ -118,7 +120,7 @@ export default function NetworkNodesPage() {
 
             <Card className="bg-zinc-900/60 border-zinc-800/60">
                 <CardContent className="p-0">
-                    <DataTable columns={columns} data={nodes} onRowClick={openDetail} loading={loading} searchable searchPlaceholder="Search nodes..." emptyMessage="No nodes found" />
+                    <DataTable columns={columns} data={data} onRowClick={openDetail} loading={loading} searchable searchPlaceholder="Search data..." emptyMessage="No data found" />
                 </CardContent>
             </Card>
 

@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import api from '@/lib/api';
 
 export default function ForensicsDashboard() {
     const [snapshots, setSnapshots] = useState<any[]>([]);
@@ -37,15 +38,14 @@ export default function ForensicsDashboard() {
     const fetchData = async () => {
         try {
             const [snapRes, intRes] = await Promise.all([
-                fetch('/api/admin/forensics/snapshots?days=5'),
-                fetch('/api/admin/forensics/integrity?days=5')
+                api.get('/admin/forensics/snapshots', { params: { days: 5 } }),
+                api.get('/admin/forensics/integrity', { params: { days: 5 } })
             ]);
 
-            const [snapData, intData] = await Promise.all([snapRes.json(), intRes.json()]);
-
-            if (snapData.ok) setSnapshots(snapData.snapshots);
-            if (intData.ok) setIntegrity(intData.runs);
+            if (snapRes.data.ok) setSnapshots(snapRes.data.snapshots);
+            if (intRes.data.ok) setIntegrity(intRes.data.runs);
         } catch (e) {
+            console.error('[Forensics]', e);
             toast.error("Failed to fetch forensics data");
         } finally {
             setLoading(false);

@@ -10,8 +10,21 @@ const apiClient: AxiosInstance = axios.create({
     baseURL: '/api', // Proxied via next.config.ts
     headers: {
         'Content-Type': 'application/json',
+        'X-API-Call': '1',
     },
     withCredentials: true, // Required for httpOnly cookies
+});
+
+// Attach Bearer token from localStorage (same pattern as lib/api.ts)
+apiClient.interceptors.request.use((config) => {
+    if (typeof window !== 'undefined') {
+        const token = window.localStorage.getItem('satelink_token');
+        if (token) {
+            config.headers = config.headers || {};
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
+    return config;
 });
 
 // Flag to prevent re-auth loops

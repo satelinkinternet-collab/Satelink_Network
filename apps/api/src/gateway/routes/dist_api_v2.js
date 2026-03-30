@@ -6,7 +6,7 @@ export function createDistApiRouter(opsEngine) {
 
     // S0-008: Enforce JWT + distributor role on all routes
     router.use(requireJWT);
-    router.use(requireRole(['distributor', 'admin_super', 'admin_ops']));
+    router.use(requireRole(['distributor_lco', 'distributor_influencer', 'distributor']));
 
     // GET /dist-api/stats
     router.get('/stats', async (req, res) => {
@@ -129,32 +129,30 @@ export function createDistApiRouter(opsEngine) {
             const wallet = req.user.wallet;
             const refCode = wallet.slice(0, 8);
 
-            // Join conversions with nodes table to get status
-            // Note: 'conversions' links ref_code to 'wallet' (referee). 
-            // 'nodes' table links 'wallet' to 'node_id' and 'status'.
+            // Join conversions with registered_nodes (single source of truth)
             const fleet = await opsEngine.db.query(`
-                SELECT 
+                SELECT
                     c.wallet as node_wallet,
-                    n.node_id,
-                    n.status,
-                    n.last_seen,
-                    n.device_type
+                    n.wallet as node_id,
+                    n.active,
+                    n.last_heartbeat,
+                    n.node_type
                 FROM conversions c
-                LEFT JOIN nodes n ON c.wallet = n.wallet
+                LEFT JOIN registered_nodes n ON c.wallet = n.wallet
                 WHERE c.ref_code = ?
-                ORDER BY n.last_seen DESC
+                ORDER BY n.last_heartbeat DESC NULLS LAST
             `, [refCode]);
 
             // Enrich with "health" status
             const now = Date.now() / 1000;
             const enriched = fleet.map(f => {
-                const isOnline = f.last_seen && (now - f.last_seen < 300); // 5 mins
+                const isOnline = f.active === 1 || (f.last_heartbeat && (now - f.last_heartbeat < 300));
                 return {
                     id: f.node_id || 'pending_setup',
                     wallet: f.node_wallet,
                     status: isOnline ? 'online' : 'offline',
-                    last_seen: f.last_seen,
-                    type: f.device_type || 'unknown'
+                    last_seen: f.last_heartbeat,
+                    type: f.node_type || 'unknown'
                 };
             });
 

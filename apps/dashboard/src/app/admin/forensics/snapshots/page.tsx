@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import api from '@/lib/api';
 
 export default function SnapshotsList() {
     const [snapshots, setSnapshots] = useState<any[]>([]);
@@ -27,10 +28,10 @@ export default function SnapshotsList() {
     const fetchSnapshots = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/forensics/snapshots?days=60');
-            const data = await res.json();
-            if (data.ok) setSnapshots(data.snapshots);
+            const res = await api.get('/admin/forensics/snapshots', { params: { days: 60 } });
+            if (res.data.ok) setSnapshots(res.data.snapshots);
         } catch (e) {
+            console.error('[Snapshots]', e);
             toast.error("Failed to load snapshots");
         } finally {
             setLoading(false);

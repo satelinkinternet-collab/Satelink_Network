@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 
 interface Region {
     region_code: string;
@@ -17,24 +18,24 @@ export default function RegionsPage() {
     const [editingCode, setEditingCode] = useState<string | null>(null);
     const [form, setForm] = useState({ status: '', node_cap: 0, revenue_cap_usdt_daily: 0, rewards_cap_usdt_daily: 0 });
 
+    const [error, setError] = useState('');
+
     const fetchRegions = async () => {
         try {
-            const token = localStorage.getItem('satelink_token');
-            const res = await fetch('/api/admin/growth/regions', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (data.ok) setRegions(data.regions || []);
-        } catch (e) { console.error(e); }
+            setError('');
+            const res = await api.get('/admin/growth/regions');
+            if (res.data.ok) setRegions(res.data.regions || []);
+        } catch (e: any) {
+            console.error('[Regions]', e);
+            setError(e.response?.data?.error || 'Failed to load regions');
+        }
         setLoading(false);
     };
 
     useEffect(() => { fetchRegions(); }, []);
 
     const updateRegion = async (code: string) => {
-        const token = localStorage.getItem('satelink_token');
-        await fetch(`/api/admin/growth/regions/${code}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify(form)
-        });
+        await api.put(`/admin/growth/regions/${code}`, form);
         setEditingCode(null);
         fetchRegions();
     };
@@ -52,6 +53,8 @@ export default function RegionsPage() {
         <div style={{ padding: '2rem', maxWidth: 1200, margin: '0 auto' }}>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>🌍 Region Activation Control</h1>
             <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>Manage region-by-region node expansion with caps and status controls.</p>
+
+            {error && <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#fca5a5' }}>{error}</div>}
 
             {loading ? <p>Loading...</p> : (
                 <div style={{ display: 'grid', gap: '1rem' }}>

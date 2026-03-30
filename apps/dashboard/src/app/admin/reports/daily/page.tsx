@@ -1,10 +1,10 @@
-
 "use client";
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
+import api from '@/lib/api';
 
 export default function DailyReportsPage() {
     const [reports, setReports] = useState<any[]>([]);
@@ -12,20 +12,18 @@ export default function DailyReportsPage() {
 
     const fetchReports = async () => {
         try {
-            const res = await fetch('/api/proxy?path=/admin-api/ops/reports/daily');
-            const data = await res.json();
-            if (data.ok) setReports(data.reports);
+            const res = await api.get('/admin/ops/reports/daily');
+            if (res.data.ok) setReports(res.data.reports);
         } catch (e) {
-            console.error(e);
+            console.error('[DailyReports]', e);
         }
     };
 
     const generateReport = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/proxy?path=/admin-api/ops/reports/generate', { method: 'POST' });
-            const data = await res.json();
-            if (data.ok) {
+            const res = await api.post('/admin/ops/reports/generate');
+            if (res.data.ok) {
                 toast.success("Report generated!");
                 fetchReports();
             } else {
