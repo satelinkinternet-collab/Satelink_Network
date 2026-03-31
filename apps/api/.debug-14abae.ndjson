@@ -147,3 +147,41 @@
 {"sessionId":"14abae","timestamp":1774902778592,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
 {"sessionId":"14abae","timestamp":1774902783210,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
 {"sessionId":"14abae","timestamp":1774902783211,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774914521487,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774914521847,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774915048952,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774915049204,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774915351726,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774915352026,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774915594771,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774915595090,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774915903887,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774915904131,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916040506,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916040815,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916062511,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916062862,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916227776,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916228051,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916245788,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916246068,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916259831,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916260063,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916326679,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916326939,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916335919,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916336145,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916455533,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916455789,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916467115,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916467361,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916678013,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916678267,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774916918931,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774916919189,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774917068961,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774917069233,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774917240716,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774917241047,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}
+{"sessionId":"14abae","timestamp":1774917252897,"runId":"startup","hypothesisId":"H12","location":"rate_limits.js:module","message":"rate_limits module loaded","data":{}}
+{"sessionId":"14abae","timestamp":1774917253170,"runId":"startup","hypothesisId":"H11","location":"admin_control_room_api.js:createAdminControlRoomRouter","message":"admin control room router constructed","data":{"hasOpsEngine":true}}

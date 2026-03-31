@@ -131,6 +131,12 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         const server = app.listen(PORT, async () => {
             logger.info(`Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: "postgres" });
             console.log("Database Adapter: PostgreSQL (production mode)");
+console.log("FLAG CHECK:", {
+  FEATURE_REAL_SETTLEMENT: process.env.FEATURE_REAL_SETTLEMENT,
+  SETTLEMENT_ENABLED: process.env.SETTLEMENT_ENABLED,
+  SETTLEMENT_ADAPTER: process.env.SETTLEMENT_ADAPTER,
+  SETTLEMENT_EVM_ENABLED: process.env.SETTLEMENT_EVM_ENABLED
+});
 
             // Wire graceful shutdown to this server + DB instance
             process.on('app:shutdown', async () => {
@@ -146,7 +152,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             });
 
             // Hardened: Mandatory REAL mode for payouts
-            if (process.env.FEATURE_REAL_SETTLEMENT !== "true") {
+            if (String(process.env.FEATURE_REAL_SETTLEMENT).trim().toLowerCase() !== "true") {
                 console.log('REAL SETTLEMENT: INACTIVE');
             } else {
                 console.log('REAL SETTLEMENT: ACTIVE');
@@ -156,7 +162,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
                 const depositDetector = new DepositDetector(db);
                 await depositDetector.start();
             } catch (e) {
-                logger.error("Settlement Services failed to start", { error: e.stack });
+                if (process.env.SETTLEMENT_ADAPTER !== "SIMULATED") logger.error("Settlement Services failed to start", { error: e.stack });
             }
 
             // Phase 7: Run internal test on startup

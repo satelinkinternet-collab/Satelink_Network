@@ -51,3 +51,8 @@ cache/
 cookies.txt
 share_bundle/
 share_bundle.zip
+*.db
+*.db-shm
+*.db-wal
+node_modules
+.env*
