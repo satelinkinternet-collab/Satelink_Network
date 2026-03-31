@@ -1,3 +1,4 @@
+let opsEngine;
 import { createControlRouter } from "./routes/control_routes.js";
 import jwt from 'jsonwebtoken';
 import { createUserSettingsRouter } from './routes/user_settings.js';
@@ -206,6 +207,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Debug / Pipeline Routes ──
     global.opsEngine = new OperationsEngine(db, null, null);
+opsEngine = global.opsEngine;
 
     // ── Admin Control Room (legacy /admin/* mount, requires admin role) ──
     app.use('/admin', requireJWT, requireRole(ADMIN_ROLES), createAdminControlRoomRouter(opsEngine));

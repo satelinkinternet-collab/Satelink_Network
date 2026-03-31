@@ -32,9 +32,9 @@ export class NodeRegistry {
     async register({ node_id, node_type = 'community', region = 'global', capacity = 10 }) {
         if (!node_id) throw new Error('[NodeRegistry] node_id is required');
 
-        const now = Date.now();
+        const now = new Date();
         await this.db.prepare(`
-            INSERT INTO node_registry (node_id, node_type, region, capacity, reputation, status, created_at)
+            INSERT INTO node_registry (node_id, node_type, region, capacity, reputation, status)
             VALUES (?, ?, ?, ?, 100, 'ACTIVE', ?)
             ON CONFLICT(node_id) DO UPDATE SET
                 node_type  = excluded.node_type,

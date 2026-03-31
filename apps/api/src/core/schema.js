@@ -40,6 +40,16 @@ export async function attachSchema(db) {
     created_at INTEGER
   )`);
 
+  await ensure(`CREATE TABLE IF NOT EXISTS node_registry (
+    node_id     TEXT PRIMARY KEY,
+    node_type   TEXT NOT NULL DEFAULT 'community',
+    region      TEXT NOT NULL DEFAULT 'global',
+    capacity    REAL NOT NULL DEFAULT 10,
+    reputation  REAL NOT NULL DEFAULT 100,
+    status      TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at  BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::bigint)
+  )`);
+
   await ensure(`CREATE TABLE IF NOT EXISTS registered_nodes (
     wallet TEXT PRIMARY KEY,
     is_flagged INTEGER DEFAULT 0,
