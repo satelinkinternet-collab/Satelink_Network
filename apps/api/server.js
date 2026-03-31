@@ -1,4 +1,4 @@
-global.opsEngine = null;
+console.log('🔥 API SERVER LOADED');global.opsEngine = null;
 // server.js
 // Global Resilience: Prevent process exit on database connection loss (placed at the absolute top)
 function globalErrorHandler(err) {
@@ -125,7 +125,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         logger.info("[BOOT] Modules initialized (some may be in degraded state)");
 
         const app = await createApp(db);
-        logger.info("[BOOT] App initialized");
+app.use((req, res, next) => {  console.log('👉 API HIT:', req.method, req.url);  next();});        logger.info("[BOOT] App initialized");
         const PORT = process.env.PORT || 8080;
 
         const server = app.listen(PORT, async () => {
