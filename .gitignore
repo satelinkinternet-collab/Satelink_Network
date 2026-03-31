@@ -56,3 +56,4 @@ share_bundle.zip
 *.db-wal
 node_modules
 .env*
+*.ndjson
