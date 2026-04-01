@@ -11,7 +11,13 @@ const OP_CONFIG = {
   'claim_validation_op': { price: 0.02, limit: 20, node_limit: 40 },
   'withdraw_execution_op': { price: 0.05, limit: 10, node_limit: 20 },
   'epoch_score_compute': { price: 0.05, limit: 5, node_limit: 10 },
-  'compute_task_standard': { price: 0.01, limit: 100, node_limit: 200 }
+  'compute_task_standard': { price: 0.01, limit: 100, node_limit: 200 },
+  // Public API op types (used by /v1/ops endpoint — ops_api.js)
+  'rpc_call': { price: 0.0005, limit: 200, node_limit: 400 },
+  'ai_inference': { price: 0.01, limit: 50, node_limit: 100 },
+  'automation_job': { price: 0.002, limit: 100, node_limit: 200 },
+  'webhook_delivery': { price: 0.0003, limit: 200, node_limit: 400 },
+  'data_processing': { price: 0.005, limit: 100, node_limit: 200 }
 };
 
 export class OperationsEngine {
@@ -188,7 +194,7 @@ export class OperationsEngine {
 
     // 1. Validate pricing and existence
     const pricing = await this.db.prepare("SELECT * FROM ops_pricing WHERE op_type = ? AND enabled = 1").get(op_type);
-    if (!pricing) throw new Error(`Operation type  is disabled or invalid`);
+    if (!pricing) throw new Error(`Operation type '${op_type}' is disabled or not found in ops_pricing`);
 
     // 2. Idempotency Check
     const existing = await this.db.prepare("SELECT id FROM revenue_events_v2 WHERE client_id = ? AND op_type = ? AND request_id = ?").get(client_id, op_type, request_id);
