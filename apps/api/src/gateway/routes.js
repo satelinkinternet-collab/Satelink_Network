@@ -147,6 +147,8 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     if (futuresEscrow) app.use('/v1/futures', createFuturesRouter(db, futuresEscrow));
 
+    // NOTE: /v1/ops is mounted after opsEngine init below (line ~215)
+    // to guarantee a valid adapter is available.
     if (opsAdapter) app.use('/v1/ops', createOpsRouter(db, opsAdapter));
 
 
@@ -208,6 +210,26 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── Debug / Pipeline Routes ──
     global.opsEngine = new OperationsEngine(db, null, null);
 opsEngine = global.opsEngine;
+
+    // ── /v1/ops fallback: mount with default adapter if not already mounted ──
+    if (!opsAdapter) {
+        const defaultOpsAdapter = {
+            async dispatchOperation(op) {
+                // Lazy-init opsEngine on first real request
+                if (!global.opsEngine.initialized) await global.opsEngine.init();
+                // Route through the existing opsEngine pipeline
+                await global.opsEngine.executeOp({
+                    op_type: op.type,
+                    node_id: op.target,
+                    client_id: op.client_id,
+                    request_id: op.id,
+                    timestamp: Math.floor(Date.now() / 1000),
+                    payload_hash: `hash_${op.id}`,
+                });
+            }
+        };
+        app.use('/v1/ops', createOpsRouter(db, defaultOpsAdapter));
+    }
 
     // ── Admin Control Room (legacy /admin/* mount, requires admin role) ──
     app.use('/admin', requireJWT, requireRole(ADMIN_ROLES), createAdminControlRoomRouter(opsEngine));
