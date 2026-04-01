@@ -57,3 +57,7 @@ share_bundle.zip
 node_modules
 .env*
 *.ndjson
+
+# ENV FILES
+.env
+.env.*
