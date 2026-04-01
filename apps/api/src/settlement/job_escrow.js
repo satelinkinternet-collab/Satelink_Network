@@ -22,7 +22,7 @@ export class JobEscrow {
         // Fetch the trapped reward from the marketplace jobs table
         let jobRecord;
         try {
-            jobRecord = this.db.prepare(`SELECT reward, creator_wallet FROM marketplace_jobs WHERE job_id = ?`).get(jobId);
+            jobRecord = await this.db.prepare(`SELECT reward, creator_wallet FROM marketplace_jobs WHERE job_id = ?`).get(jobId);
         } catch (e) {
             console.error("[JobEscrow] Failed to locate job record during release:", e.message);
             return false;

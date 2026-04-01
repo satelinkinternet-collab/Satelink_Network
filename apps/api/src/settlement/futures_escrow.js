@@ -58,7 +58,7 @@ export class FuturesEscrow {
      * @param {number} originalPayoutAmount
      * @returns {number} The remaining amount the Node Operator keeps
      */
-    settleEpochObligations(epochId, nodeId, originalPayoutAmount) {
+    settle(epochId, nodeId, originalPayoutAmount) {
         // Find any active contracts covering this epoch for this node
         const activeContracts = this.db.prepare(`
             SELECT contract_id, revenue_share, buyer_wallet 
