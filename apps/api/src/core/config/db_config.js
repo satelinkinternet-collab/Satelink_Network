@@ -1,25 +1,21 @@
 /**
  * db_config.js — Single source of truth for database connection resolution.
  *
- * Supports two modes:
- *   MODE A — Docker Full Stack (API inside container)
- *     DB host = "database" (docker service name)
- *   MODE B — Local Dev (npm run dev)
- *     DB host = "127.0.0.1" (IPv4 explicit, avoids ::1 issues)
- *
  * Resolution priority:
- *   1. DATABASE_URL env var (if valid postgres:// URL)
- *   2. Constructed from individual PG_* env vars
- *   3. Auto-detect mode from RUN_CONTEXT or DOCKER_ENV
+ *   1. DATABASE_URL env var (used as-is if it's a valid postgres:// URL)
+ *   2. Constructed from individual PG_ and DB_ env vars
+ *   3. Auto-detect Docker vs local from RUN_CONTEXT / DOCKER_ENV
+ *
+ * IMPORTANT: This module must NEVER rewrite the hostname in DATABASE_URL.
+ * In Docker, the host is a container service name (e.g. "postgres", "database").
+ * Replacing it with 127.0.0.1 breaks inter-container networking.
  */
 
 function resolveDbUrl() {
-    // Priority 1: Explicit DATABASE_URL
+    // Priority 1: Explicit DATABASE_URL — trust it completely
     const envUrl = process.env.DATABASE_URL;
     if (envUrl && (envUrl.startsWith('postgres://') || envUrl.startsWith('postgresql://'))) {
-        // Force IPv4 for localhost connections (avoid ::1 ECONNREFUSED)
-        const resolved = envUrl.replace('://localhost:', '://127.0.0.1:');
-        return resolved;
+        return envUrl;
     }
 
     // Priority 2: Construct from individual vars
@@ -34,6 +30,7 @@ function resolveDbUrl() {
 }
 
 function maskUrl(url) {
+    if (!url) return '<not set>';
     return url.replace(/\/\/[^@]+@/, '//<credentials>@');
 }
 

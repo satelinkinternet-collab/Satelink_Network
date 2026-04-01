@@ -42,8 +42,10 @@ export class PgDatabase {
         if (!connectionString) {
             throw new Error("[PgDatabase] DATABASE_URL is not set and no connection string provided. Cannot connect.");
         }
-        // Force IPv4 — avoid ::1 ECONNREFUSED on macOS/Linux
-        connectionString = connectionString.replace('://localhost:', '://127.0.0.1:');
+        // Force IPv4 ONLY for literal localhost — never rewrite Docker service names
+        if (connectionString.includes('://localhost:')) {
+            connectionString = connectionString.replace('://localhost:', '://127.0.0.1:');
+        }
 
         console.log("[PgDatabase] FINAL_DB_URL:", maskUrl(connectionString));
         const pool = new Pool({

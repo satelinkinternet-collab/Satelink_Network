@@ -42,10 +42,8 @@ export function createNodeNetworkRouter(db) {
 
   // ── POST /register ─────────────────────────────────────────────────
   router.post('/register', async (req, res) => {
-    try {
       const { node_id, node_type, region, capacity } = req.body;
 
-      console.log("REGISTER HIT:", node_id);
 
       if (!node_id) {
         return res.status(400).json({ ok: false, error: "node_id required" });
@@ -82,7 +80,6 @@ export function createNodeNetworkRouter(db) {
         'SELECT * FROM node_registry WHERE node_id = ?'
       ).get(node_id);
 
-      console.log("INSERT RESULT:", node);
 
       return res.json({ ok: true, node: node || { node_id } });
 
