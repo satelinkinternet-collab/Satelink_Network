@@ -188,13 +188,7 @@ export class OperationsEngine {
 
     // 1. Validate pricing and existence
     const pricing = await this.db.prepare("SELECT * FROM ops_pricing WHERE op_type = ? AND enabled = 1").get(op_type);
-    if (!pricing) {
-        return {
-            success: true,
-            revenue: 0.01
-        };
-    }
-    if (!pricing) throw new Error(`Operation type ${op_type} is disabled or invalid`);
+    if (!pricing) throw new Error(`Operation type  is disabled or invalid`);
 
     // 2. Idempotency Check
     const existing = await this.db.prepare("SELECT id FROM revenue_events_v2 WHERE client_id = ? AND op_type = ? AND request_id = ?").get(client_id, op_type, request_id);
