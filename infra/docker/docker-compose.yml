@@ -5,12 +5,16 @@ services:
       dockerfile: apps/api/Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - ../../.env
     environment:
       - NODE_ENV=production
       - PORT=8080
-      - SQLITE_PATH=/data/satelink.db
-    volumes:
-      - ../../data:/data
+      - RUN_CONTEXT=docker
+      - DOCKER_ENV=true
+      # Connection strings use Docker service names — NOT 127.0.0.1
+      - DATABASE_URL=postgresql://satelink:satelinkpass@postgres:5432/satelink
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
       - redis
@@ -30,7 +34,7 @@ services:
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=satelink
-      - POSTGRES_PASSWORD=satelink
+      - POSTGRES_PASSWORD=satelinkpass
       - POSTGRES_DB=satelink
     ports:
       - "5432:5432"
