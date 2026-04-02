@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "../../.env", override: true });
 console.log('🔥 API SERVER LOADED');global.opsEngine = null;
 // server.js
 // Global Resilience: Prevent process exit on database connection loss (placed at the absolute top)
@@ -128,7 +130,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
 app.use((req, res, next) => {  console.log('👉 API HIT:', req.method, req.url);  next();});        logger.info("[BOOT] App initialized");
         const PORT = process.env.PORT || 8080;
 
-        const server = app.listen(PORT, async () => {
+        const server = app.listen(process.env.PORT || 8080, "0.0.0.0", async () => {
             logger.info(`Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: "postgres" });
             console.log("Database Adapter: PostgreSQL (production mode)");
 console.log("FLAG CHECK:", {
