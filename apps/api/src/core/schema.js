@@ -335,21 +335,30 @@ export async function attachSchema(db) {
   await ensure(`INSERT INTO system_config (key, value) VALUES ('default_profit_margin', '25') ON CONFLICT DO NOTHING`);
   await ensure(`INSERT INTO system_config (key, value) VALUES ('launch_mode_profit_margin', '40') ON CONFLICT DO NOTHING`);
 
+  // ── System Flags Table ──
+  await ensure(`CREATE TABLE IF NOT EXISTS system_flags (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at BIGINT
+  )`);
+
   // ── Settlement Tables ──
-  ensure(`CREATE TABLE IF NOT EXISTS payout_batches_v2 (
+  await ensure(`CREATE TABLE IF NOT EXISTS payout_batches_v2 (
     id SERIAL PRIMARY KEY,
     status TEXT DEFAULT 'queued',
     adapter_type TEXT,
+    currency TEXT DEFAULT 'MATIC',
     external_ref TEXT,
     tx_hash TEXT,
     total_usdt REAL DEFAULT 0,
+    total_amount REAL DEFAULT 0,
     meta_json TEXT,
     created_at BIGINT,
     updated_at BIGINT,
     completed_at BIGINT
   )`);
 
-  ensure(`CREATE TABLE IF NOT EXISTS payout_items_v2 (
+  await ensure(`CREATE TABLE IF NOT EXISTS payout_items_v2 (
     id SERIAL PRIMARY KEY,
     batch_id INTEGER REFERENCES payout_batches_v2(id),
     wallet TEXT NOT NULL,
@@ -358,7 +367,7 @@ export async function attachSchema(db) {
     created_at BIGINT
   )`);
 
-  ensure(`CREATE TABLE IF NOT EXISTS settlement_shadow_log (
+  await ensure(`CREATE TABLE IF NOT EXISTS settlement_shadow_log (
     id SERIAL PRIMARY KEY,
     batch_id INTEGER,
     primary_json TEXT,
@@ -366,19 +375,38 @@ export async function attachSchema(db) {
     created_at BIGINT
   )`);
 
-  ensure(`CREATE TABLE IF NOT EXISTS settlement_evm_txs (
+  await ensure(`CREATE TABLE IF NOT EXISTS settlement_evm_txs (
     id SERIAL PRIMARY KEY,
     batch_id INTEGER,
     item_id INTEGER,
+    chain_name TEXT,
+    asset_symbol TEXT,
+    to_address TEXT,
+    amount_atomic TEXT,
+    nonce INTEGER,
     tx_hash TEXT,
     status TEXT DEFAULT 'prepared',
+    error_message TEXT,
     gas_used BIGINT,
     created_at BIGINT,
+    updated_at BIGINT,
     UNIQUE(batch_id, item_id)
   )`);
 
+  // Ensure settlement_evm_txs has all columns needed by EvmAdapter
+  if (!(await hasCol("settlement_evm_txs", "chain_name"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN chain_name TEXT`);
+  if (!(await hasCol("settlement_evm_txs", "asset_symbol"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN asset_symbol TEXT`);
+  if (!(await hasCol("settlement_evm_txs", "to_address"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN to_address TEXT`);
+  if (!(await hasCol("settlement_evm_txs", "amount_atomic"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN amount_atomic TEXT`);
+  if (!(await hasCol("settlement_evm_txs", "nonce"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN nonce INTEGER`);
+  if (!(await hasCol("settlement_evm_txs", "error_message"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN error_message TEXT`);
+  if (!(await hasCol("settlement_evm_txs", "updated_at"))) await ensure(`ALTER TABLE settlement_evm_txs ADD COLUMN updated_at BIGINT`);
+  // Ensure payout_batches_v2 has currency and total_amount columns
+  if (!(await hasCol("payout_batches_v2", "currency"))) await ensure(`ALTER TABLE payout_batches_v2 ADD COLUMN currency TEXT DEFAULT 'MATIC'`);
+  if (!(await hasCol("payout_batches_v2", "total_amount"))) await ensure(`ALTER TABLE payout_batches_v2 ADD COLUMN total_amount REAL DEFAULT 0`);
+
   // Settlement system_flags bootstrap
-  ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_adapter', 'SIMULATED', ${Date.now()}) ON CONFLICT DO NOTHING`);
-  ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_dry_run', '0', ${Date.now()}) ON CONFLICT DO NOTHING`);
-  ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_shadow_mode', '0', ${Date.now()}) ON CONFLICT DO NOTHING`);
+  await ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_adapter', 'SIMULATED', ${Date.now()}) ON CONFLICT DO NOTHING`);
+  await ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_dry_run', '0', ${Date.now()}) ON CONFLICT DO NOTHING`);
+  await ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_shadow_mode', '0', ${Date.now()}) ON CONFLICT DO NOTHING`);
 }
