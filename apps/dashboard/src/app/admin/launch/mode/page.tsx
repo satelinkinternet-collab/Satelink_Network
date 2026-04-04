@@ -11,7 +11,6 @@ export default function LaunchModePage() {
 
     const fetchStatus = async () => {
         try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/launch/mode/page.tsx
             setError('');
             const res = await api.get('/admin/launch/mode');
             if (res.data.ok) setStatus(res.data);
@@ -19,13 +18,6 @@ export default function LaunchModePage() {
             console.error('[LaunchMode]', e);
             setError(e.response?.data?.error || 'Failed to load launch mode');
         }
-=======
-            const token = localStorage.getItem('satelink_token');
-            const res = await fetch('/api/admin/launch/mode', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (data.ok) setStatus(data);
-        } catch (e) { console.error(e); }
->>>>>>> integration/full-product:web/src/app/admin/launch/mode/page.tsx
         setLoading(false);
     };
 
@@ -33,12 +25,7 @@ export default function LaunchModePage() {
 
     const toggle = async () => {
         setToggling(true);
-<<<<<<< HEAD:apps/dashboard/src/app/admin/launch/mode/page.tsx
         await api.post('/admin/launch/mode/toggle');
-=======
-        const token = localStorage.getItem('satelink_token');
-        await fetch('/api/admin/launch/mode/toggle', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
->>>>>>> integration/full-product:web/src/app/admin/launch/mode/page.tsx
         await fetchStatus();
         setToggling(false);
     };

@@ -23,7 +23,6 @@ export default function ReputationDashboard() {
 
     const fetchData = async () => {
         try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/network/reputation/page.tsx
             setError('');
             const res = await api.get('/admin/network/reputation');
             if (res.data.ok) { setNodes(res.data.nodes || []); setTiers(res.data.tiers || {}); }
@@ -31,13 +30,6 @@ export default function ReputationDashboard() {
             console.error('[Reputation]', e);
             setError(e.response?.data?.error || 'Failed to load reputation data');
         }
-=======
-            const token = localStorage.getItem('satelink_token');
-            const res = await fetch('/api/admin/network/reputation', { headers: { Authorization: `Bearer ${token}` } });
-            const data = await res.json();
-            if (data.ok) { setNodes(data.nodes || []); setTiers(data.tiers || {}); }
-        } catch (e) { console.error(e); }
->>>>>>> integration/full-product:web/src/app/admin/network/reputation/page.tsx
         setLoading(false);
     };
 
@@ -45,12 +37,7 @@ export default function ReputationDashboard() {
 
     const triggerCompute = async () => {
         setComputing(true);
-<<<<<<< HEAD:apps/dashboard/src/app/admin/network/reputation/page.tsx
         await api.post('/admin/network/reputation/compute');
-=======
-        const token = localStorage.getItem('satelink_token');
-        await fetch('/api/admin/network/reputation/compute', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
->>>>>>> integration/full-product:web/src/app/admin/network/reputation/page.tsx
         await fetchData();
         setComputing(false);
     };

@@ -1,10 +1,10 @@
 
 import { Router } from "express";
-import { requireJWT } from "../../security/auth_middleware.js";
+import { requireJWT, requireRole } from "../../security/auth_middleware.js";
 
 export function createUIRouter(opsEngine) {
     const router = Router();
-    const adminMiddleware = [requireJWT(['admin_super', 'admin_ops'])];
+    const adminMiddleware = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     // --- UTILS ---
     const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
@@ -66,11 +66,7 @@ export function createUIRouter(opsEngine) {
         try {
             const cookie = req.cookies['builder_session'];
             const wallet = JSON.parse(cookie.split('.')[0]).wallet;
-<<<<<<< HEAD:apps/api/src/gateway/routes/ui.js
             const projects = await global.opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active' ORDER BY created_at DESC", [wallet]);
-=======
-            const projects = await opsEngine.db.query("SELECT * FROM builder_projects WHERE builder_wallet = ? AND status='active' ORDER BY created_at DESC", [wallet]);
->>>>>>> integration/full-product:src/routes/ui.js
             res.render('builder', { wallet, projects, activeTab: 'projects' }); // Reuse builder.ejs or create builder_projects.ejs? Prompt implies separate or modal. Let's assume builder.ejs serves as hub.
             // Actually, prompt says "Projects: list + create project modal". 
             // We'll stick to 'builder' view as the main dashboard and maybe pass a flag or just let the view handle it.
@@ -236,16 +232,7 @@ export function createUIRouter(opsEngine) {
     router.get('/operator/:wallet', requireJWT, requireRole(['node_operator', 'admin_super', 'admin_ops']), async (req, res) => {
         try {
             const { wallet } = req.params;
-<<<<<<< HEAD:apps/api/src/gateway/routes/ui.js
             let node = await global.opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
-=======
-            // Non-admins may only view their own wallet
-            const isAdmin = ['admin_super', 'admin_ops'].includes(req.user?.role);
-            if (!isAdmin && req.user?.wallet !== wallet) {
-                return res.status(403).send("Forbidden");
-            }
-            let node = await opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
->>>>>>> integration/full-product:src/routes/ui.js
 
             // Allow viewing even if not registered (Guest View)
             if (!node) {

@@ -51,13 +51,13 @@ async function runTests() {
     // Let's test an admin API endpoint like /nodes/bootstrap-payment
     const res1 = await request(app)
         .post('/nodes/bootstrap-payment')
-        .set('Authorization', \`Bearer \${nodeJwt}\`);
+        .set('Authorization', `Bearer ${nodeJwt}`);
     assertStatus(res1, 403, "Node user accessing admin endpoint -> 403");
 
     // Test: Expired JWT manually -> expect forced logout (Backend: expect 401)
     const resExpires = await request(app)
         .post('/nodes/bootstrap-payment')
-        .set('Authorization', \`Bearer \${expiredJwt}\`);
+        .set('Authorization', `Bearer ${expiredJwt}`);
     assertStatus(resExpires, 401, "Expired JWT -> 401 Unauthorized");
 
     // Test: Curl admin endpoint without token -> expect 401
@@ -68,7 +68,7 @@ async function runTests() {
     // Test: Curl admin endpoint with node JWT -> expect 403
     const resNodeAgn = await request(app)
         .post('/epoch/finalize')
-        .set('Authorization', \`Bearer \${nodeJwt}\`);
+        .set('Authorization', `Bearer ${nodeJwt}`);
     assertStatus(resNodeAgn, 403, "Admin endpoint with node JWT -> 403");
 
     if (allPassed) {

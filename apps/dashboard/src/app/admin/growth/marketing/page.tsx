@@ -10,20 +10,12 @@ export default function MarketingDashboard() {
     useEffect(() => {
         (async () => {
             try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/growth/marketing/page.tsx
                 const res = await api.get('/admin/growth/marketing');
                 if (res.data.ok) setData(res.data);
             } catch (e: any) {
                 console.error('[Marketing]', e);
                 setError(e.response?.data?.error || 'Failed to load marketing data');
             }
-=======
-                const token = localStorage.getItem('satelink_token');
-                const res = await fetch('/api/admin/growth/marketing', { headers: { Authorization: `Bearer ${token}` } });
-                const d = await res.json();
-                if (d.ok) setData(d);
-            } catch (e) { console.error(e); }
->>>>>>> integration/full-product:web/src/app/admin/growth/marketing/page.tsx
             setLoading(false);
         })();
     }, []);

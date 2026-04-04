@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from './use-auth';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { buildApiUrl } from '@/lib/api';
 
 // Helper to parse SSE data safely
 const safeParse = (data: string) => {
@@ -26,7 +27,7 @@ export function useSSE<T>(endpoint: string, eventTypes: string[]) {
 
         const connect = async () => {
             const token = localStorage.getItem('satelink_token');
-            const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}${endpoint}`;
+            const url = buildApiUrl(endpoint);
 
             try {
                 await fetchEventSource(url, {

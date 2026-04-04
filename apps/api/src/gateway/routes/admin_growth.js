@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { requireJWT } from '../../security/auth_middleware.js';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 import { getPermissionsForRole } from './auth_v2.js';
 
 export function createAdminGrowthRouter(db, retentionService) {
@@ -8,7 +8,7 @@ export function createAdminGrowthRouter(db, retentionService) {
 
     // GET /admin/growth/ux/summary
     // Metrics on UX mode adoption and onboarding
-    router.get('/ux/summary', requireJWT(['admin_super', 'admin_ops']), async (req, res) => {
+    router.get('/ux/summary', requireJWT, requireRole(['admin_super', 'admin_ops']), async (req, res) => {
         try {
             // 1. UI Mode Distribution
             const modeStats = await db.query(`

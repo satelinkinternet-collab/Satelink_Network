@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import crypto from 'crypto';
-import { requireJWT, requireRole } from '../middleware/auth.js';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createUsageIngestRouter(opsEngine) {
     const router = Router();

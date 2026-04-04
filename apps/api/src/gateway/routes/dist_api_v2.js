@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
+const COMMISSION_RATE = 0.05; // 5% per conversion
+const EARNINGS_PER_SIGNUP = 5.0; // Flat earnings projection per signup
+
 export function createDistApiRouter(opsEngine) {
     const router = Router();
 
@@ -47,19 +50,9 @@ export function createDistApiRouter(opsEngine) {
         try {
             const wallet = req.user.wallet;
             const refCode = wallet.slice(0, 8);
-<<<<<<< HEAD:apps/api/src/gateway/routes/dist_api_v2.js
             // reusing conversions table as referrals source
             // Map table columns to frontend expectation
             const rows = await global.opsEngine.db.query("SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50", [refCode]);
-=======
-            const COMMISSION_RATE = 0.05; // 5% per conversion
-            const EARNINGS_PER_SIGNUP = 5.00; // $5 per activated referral
-
-            const rows = await opsEngine.db.query(
-                "SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50",
-                [refCode]
-            );
->>>>>>> integration/full-product:src/routes/dist_api_v2.js
 
             // Total signups for this ref_code
             const totalSignups = rows.length;

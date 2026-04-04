@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 
-export default function EvmSettlementPage() {
+function EvmSettlementContent() {
     const searchParams = useSearchParams();
     const batchId = searchParams.get('batch_id');
     const [txs, setTxs] = useState<any[]>([]);
@@ -17,11 +17,7 @@ export default function EvmSettlementPage() {
         if (!batchId) return;
         setLoading(true);
         try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/settlement/evm/page.tsx
             const res = await api.get(`/admin/services/settlement/evm/batch/${batchId}`);
-=======
-            const res = await api.get(`/admin-api/settlement/evm/batch/${batchId}`);
->>>>>>> integration/full-product:web/src/app/admin/settlement/evm/page.tsx
             const json = res.data;
             if (json.ok) setTxs(json.data);
             else setError(json.error);
@@ -40,11 +36,7 @@ export default function EvmSettlementPage() {
         if (!batchId) return;
         setReconciling(true);
         try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/settlement/evm/page.tsx
             const res = await api.post(`/admin/services/settlement/evm/reconcile/${batchId}`);
-=======
-            const res = await api.post(`/admin-api/settlement/evm/reconcile/${batchId}`);
->>>>>>> integration/full-product:web/src/app/admin/settlement/evm/page.tsx
             const json = res.data;
             if (json.ok) {
                 alert(`Reconciled: ${json.data.previous} -> ${json.data.current}`);
@@ -62,11 +54,7 @@ export default function EvmSettlementPage() {
     const handleRetry = async (itemId: string) => {
         if (!confirm("Are you sure you want to retry this item?")) return;
         try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/settlement/evm/page.tsx
             const res = await api.post(`/admin/services/settlement/evm/retry-item`, { batch_id: batchId, item_id: itemId });
-=======
-            const res = await api.post(`/admin-api/settlement/evm/retry-item`, { batch_id: batchId, item_id: itemId });
->>>>>>> integration/full-product:web/src/app/admin/settlement/evm/page.tsx
             const json = res.data;
             if (json.ok) {
                 alert("Retry requested");
@@ -172,5 +160,13 @@ export default function EvmSettlementPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function EvmSettlementPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-white">Loading settlement view...</div>}>
+            <EvmSettlementContent />
+        </Suspense>
     );
 }

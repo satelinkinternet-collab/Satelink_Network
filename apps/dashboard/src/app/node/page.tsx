@@ -8,12 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { useSSE } from '@/hooks/use-sse';
 import {
     Activity, Signal, Zap, Users, Wifi, Terminal,
-<<<<<<< HEAD:apps/dashboard/src/app/node/page.tsx
     AlertCircle, Upload, Cpu, Clock, DollarSign, ShieldAlert,
     Loader2
-=======
-    AlertCircle, Upload, Cpu, Clock, DollarSign, ShieldAlert
->>>>>>> integration/full-product:web/src/app/node/page.tsx
 } from 'lucide-react';
 import {
     AreaChart, Area, ResponsiveContainer, Tooltip,
@@ -27,16 +23,10 @@ export default function NodeDashboard() {
     const { lastEvent } = useSSE('/stream/node', ['heartbeat', 'log']);
     const [loading, setLoading] = useState(true);
     const [nodeStatus, setNodeStatus] = useState<any>({
-<<<<<<< HEAD:apps/dashboard/src/app/node/page.tsx
         online: false, uptime: '--', peers: 0, bandwidth: '0',
         earnings: 0, latency: 0, cpu: 0, lastPing: Date.now(),
         reserveLocked: '0.00', totalEarned: '0.00', claimable: '0.00',
         totalWithdrawn: '0.00'
-=======
-        online: true, uptime: '—', peers: 12, bandwidth: '1.2 TB',
-        earnings: 42.5, latency: 23, cpu: 34, lastPing: Date.now(),
-        reserveLocked: '5,000.00'
->>>>>>> integration/full-product:web/src/app/node/page.tsx
     });
     const [logs, setLogs] = useState<string[]>([]);
     const [telemetry, setTelemetry] = useState<any[]>([]);
@@ -112,17 +102,7 @@ export default function NodeDashboard() {
     useEffect(() => {
         if (!lastEvent) return;
         if (lastEvent.type === 'heartbeat') {
-<<<<<<< HEAD:apps/dashboard/src/app/node/page.tsx
             setNodeStatus((p: any) => ({ ...p, ...lastEvent.data, lastPing: Date.now(), online: true }));
-=======
-            // Extract telemetry_point before spreading into nodeStatus
-            const { telemetry_point, ...statusFields } = lastEvent.data;
-            setNodeStatus((p: any) => ({ ...p, ...statusFields, lastPing: Date.now() }));
-            // Slide the new real data point onto the chart (keep last 20)
-            if (telemetry_point) {
-                setTelemetry(prev => [...prev.slice(-19), telemetry_point]);
-            }
->>>>>>> integration/full-product:web/src/app/node/page.tsx
         }
         if (lastEvent.type === 'log') {
             setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${lastEvent.data.message}`].slice(-50));
@@ -137,20 +117,12 @@ export default function NodeDashboard() {
         { label: 'Withdrawn', value: `$${nodeStatus.totalWithdrawn}`, icon: Upload, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     ];
 
-<<<<<<< HEAD:apps/dashboard/src/app/node/page.tsx
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
                 <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
             </div>
         );
-=======
-    if ((user as any)?.node_type === 'NODEOPS_MANAGED' || (user as any)?.nodeType === 'NODEOPS_MANAGED' || user?.wallet) {
-        // Show Reserve locked funds
-        metrics.push({
-            label: 'Reserve Locked', value: `$${nodeStatus.reserveLocked}`, icon: ShieldAlert, color: 'text-teal-400', bg: 'bg-teal-500/10'
-        });
->>>>>>> integration/full-product:web/src/app/node/page.tsx
     }
 
     return (
@@ -212,16 +184,7 @@ export default function NodeDashboard() {
                 ))}
             </div>
 
-<<<<<<< HEAD:apps/dashboard/src/app/node/page.tsx
             {/* Earnings Chart */}
-=======
-            {/* ── Epoch Countdown ── */}
-            <div className="flex items-center justify-end px-1">
-                <EpochCountdown />
-            </div>
-
-            {/* ── Telemetry Chart ── */}
->>>>>>> integration/full-product:web/src/app/node/page.tsx
             <Card className="bg-zinc-900/80 border-zinc-800/60 glow-shadow">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold text-zinc-300">Earnings by Epoch</CardTitle>

@@ -1,13 +1,10 @@
 {
-<<<<<<< HEAD
   "lib/forge-std": {
     "tag": {
       "name": "v1.15.0",
       "rev": "0844d7e1fc5e60d77b68e469bff60265f236c398"
     }
   },
-=======
->>>>>>> integration/full-product
   "lib/openzeppelin-contracts": {
     "tag": {
       "name": "v4.9.6",

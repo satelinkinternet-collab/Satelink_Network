@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { Activity, Server, LayoutDashboard, DollarSign, CheckCircle2, Zap, Clock } from "lucide-react";
+import api from "@/lib/api";
 
 interface NetworkStats {
     active_nodes?: number;
@@ -14,10 +15,7 @@ interface NetworkStats {
     settlement_mode?: string;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-    if (!res.ok) throw new Error("Failed to fetch");
-    return res.json();
-});
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 export function NetworkOverview() {
     const { data: stats, error, isLoading } = useSWR<NetworkStats>('/api/network/stats', fetcher, {

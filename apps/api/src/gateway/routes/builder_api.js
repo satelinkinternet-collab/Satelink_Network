@@ -21,11 +21,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const { name } = req.body;
         if (!name) return res.status(400).json({ error: 'Name required' });
 
-<<<<<<< HEAD:apps/api/src/gateway/routes/builder_api.js
         await global.opsEngine.db.run(
-=======
-        await opsEngine.db.query(
->>>>>>> integration/full-product:src/routes/builder_api.js
             "INSERT INTO builder_projects (builder_wallet, name, created_at) VALUES (?, ?, ?)",
             [req.builderWallet, name, Date.now()]
         );
@@ -70,11 +66,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
         const keyPrefix = rawKey.substring(0, 12) + '...';
 
-<<<<<<< HEAD:apps/api/src/gateway/routes/builder_api.js
         await global.opsEngine.db.run(
-=======
-        await opsEngine.db.query(
->>>>>>> integration/full-product:src/routes/builder_api.js
             "INSERT INTO api_keys (project_id, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?)",
             [id, keyHash, keyPrefix, Date.now()]
         );
@@ -90,11 +82,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const project = await global.opsEngine.db.get("SELECT * FROM builder_projects WHERE id = ? AND builder_wallet = ?", [id, req.builderWallet]);
         if (!project) return res.status(403).json({ error: 'Unauthorized' });
 
-<<<<<<< HEAD:apps/api/src/gateway/routes/builder_api.js
         await global.opsEngine.db.run(
-=======
-        await opsEngine.db.query(
->>>>>>> integration/full-product:src/routes/builder_api.js
             "UPDATE api_keys SET status = 'revoked', revoked_at = ? WHERE id = ? AND project_id = ?",
             [Date.now(), keyId, id]
         );
@@ -111,11 +99,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
 
         // Revoke old if requested
         if (revoke_id) {
-<<<<<<< HEAD:apps/api/src/gateway/routes/builder_api.js
             await global.opsEngine.db.run(
-=======
-            await opsEngine.db.query(
->>>>>>> integration/full-product:src/routes/builder_api.js
                 "UPDATE api_keys SET status = 'revoked', revoked_at = ? WHERE id = ? AND project_id = ?",
                 [Date.now(), revoke_id, id]
             );
@@ -126,11 +110,7 @@ export function createBuilderApiRouter(opsEngine, authMiddleware) {
         const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
         const keyPrefix = rawKey.substring(0, 12) + '...';
 
-<<<<<<< HEAD:apps/api/src/gateway/routes/builder_api.js
         await global.opsEngine.db.run(
-=======
-        await opsEngine.db.query(
->>>>>>> integration/full-product:src/routes/builder_api.js
             "INSERT INTO api_keys (project_id, key_hash, key_prefix, created_at) VALUES (?, ?, ?, ?)",
             [id, keyHash, keyPrefix, Date.now()]
         );

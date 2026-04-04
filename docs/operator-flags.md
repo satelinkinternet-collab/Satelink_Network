@@ -44,9 +44,7 @@ API_BASE_URL=http://localhost:8080 node scripts/readiness_gate.js
 
 **Expected Output (Simulation Example):**
 ```
-=========================================
  Satelink Readiness Gate: http://localhost:8080
-=========================================
 
 [INFO] MODE: Detected SIMULATION Mode
 
@@ -57,6 +55,5 @@ API_BASE_URL=http://localhost:8080 node scripts/readiness_gate.js
 [CHECK] Security Headers -> GET /api/mode
   └─ [PASS] Security Headers
 ...
-=========================================
  [PASS] Readiness Gate Cleared
 ```

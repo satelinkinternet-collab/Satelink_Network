@@ -5,11 +5,9 @@ import useSWR from "swr";
 import { useAuth } from "@/hooks/use-auth";
 import { LayoutDashboard, LogOut, Wallet, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import api from "@/lib/api";
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-    if (!res.ok) throw new Error("Failed to fetch");
-    return res.json();
-});
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 export function Navbar() {
     const { user, logout } = useAuth();

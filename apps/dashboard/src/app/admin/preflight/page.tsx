@@ -12,18 +12,9 @@ export default function PreflightPage() {
     const fetchStatus = async () => {
         setLoading(true);
         try {
-<<<<<<< HEAD:apps/dashboard/src/app/admin/preflight/page.tsx
             const res = await api.get('/admin/preflight/status');
             if (res.data.ok) {
                 setStatus(res.data.data);
-=======
-            const res = await fetch('/admin/preflight/status', {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('satelink_token')}` }
-            });
-            const data = await res.json();
-            if (data.ok) {
-                setStatus(data.data);
->>>>>>> integration/full-product:web/src/app/admin/preflight/page.tsx
             } else {
                 setError(res.data.error);
             }
