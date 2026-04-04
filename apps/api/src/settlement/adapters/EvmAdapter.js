@@ -37,12 +37,24 @@ export class EvmAdapter extends BaseSettlementAdapter {
 
         this.nativeSymbol = process.env.SETTLEMENT_EVM_NATIVE_SYMBOL || 'ETH';
 
-        // Token Map
+        // Token Map — populated from JSON env var + dedicated per-token env vars
         try {
             this.tokenMap = JSON.parse(process.env.SETTLEMENT_EVM_TOKEN_MAP_JSON || '{}');
         } catch (e) {
             console.error("[EvmAdapter] Failed to parse token map:", e);
             this.tokenMap = {};
+        }
+
+        // Auto-register USDT from dedicated env var (overrides tokenMap entry if set)
+        const usdtContract = process.env.SETTLEMENT_EVM_USDT_CONTRACT;
+        if (usdtContract) {
+            const usdtDecimals = parseInt(process.env.SETTLEMENT_EVM_USDT_DECIMALS || '6', 10);
+            this.tokenMap['USDT'] = {
+                address: usdtContract,
+                decimals: usdtDecimals,
+                symbol: 'USDT',
+            };
+            console.log(`[EvmAdapter] USDT token registered: ${usdtContract} (${usdtDecimals} decimals)`);
         }
 
         // Initialize Provider & Signer if enabled
