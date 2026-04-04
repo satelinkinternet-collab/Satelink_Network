@@ -83,7 +83,7 @@ export class JobConsumer {
 
             // 2. Integration with OpsEngine (Revenue/Accounting)
             if (this.opsEngine) {
-                await this.global.opsEngine.executeOp({
+                await this.opsEngine.executeOp({
                     op_type: job.job_type,
                     node_id: this.consumerName,
                     client_id: job.client_id,

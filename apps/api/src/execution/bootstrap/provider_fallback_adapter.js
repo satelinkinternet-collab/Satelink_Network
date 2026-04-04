@@ -1,46 +1,44 @@
-import { externalEndpoints } from '../../core/config/rpc_providers.js';
-
 export class ProviderFallbackAdapter {
     constructor() {
-        // Simple memory cache for retry logic
         this.maxRetries = 2;
     }
 
-    /**
-     * Executes raw rpc_call directly against external infrastructure
-     * Mock implementation simulating HTTP overhead for the network tests.
-     */
-    async executeMockHttp(providerName, chain, payload) {
-        return new Promise((resolve, reject) => {
-            const url = externalEndpoints[providerName];
-            if (!url) return reject(new Error(`Unknown external provider endpoint for ${providerName}`));
+    async forwardRpcPayload(payload) {
+        if (!process.env.RPC_PROVIDER_URL) {
+            throw new Error('RPC_PROVIDER_URL is not configured');
+        }
 
-            // Simulating ~150ms HTTP transit to infura/alchemy 
-            setTimeout(() => {
-                resolve({
-                    status: 'success',
-                    provider: providerName,
-                    chain: chain,
-                    jsonrpc: '2.0',
-                    id: payload.id || 1,
-                    result: '0xMockProviderPayloadExecution'
-                });
-            }, 100);
+        const response = await fetch(process.env.RPC_PROVIDER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            throw new Error(`RPC provider responded with HTTP ${response.status}`);
+        }
+        if (data === null) {
+            throw new Error('RPC provider returned a non-JSON response');
+        }
+
+        return data;
     }
 
     async dispatch(providerName, chain, payload) {
         let attempts = 0;
+        let lastError;
 
         while (attempts < this.maxRetries) {
             try {
-                console.log(`[ProviderFallbackAdapter] Transmitting abstract RPC to external provider ${providerName}... (Attempt ${attempts + 1})`);
-                return await this.executeMockHttp(providerName, chain, payload);
-            } catch (e) {
-                attempts++;
-                console.error(`[ProviderFallbackAdapter] ${providerName} connection failed:`, e.message);
-                if (attempts >= this.maxRetries) throw e;
+                return await this.forwardRpcPayload(payload);
+            } catch (error) {
+                attempts += 1;
+                lastError = error;
+                console.error(`[ProviderFallbackAdapter] ${providerName} dispatch failure for ${chain} (attempt ${attempts}):`, error.message);
             }
         }
+
+        throw lastError || new Error(`[ProviderFallbackAdapter] Failed to dispatch payload for ${providerName}`);
     }
 }

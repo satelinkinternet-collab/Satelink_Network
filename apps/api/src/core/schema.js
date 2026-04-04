@@ -334,4 +334,51 @@ export async function attachSchema(db) {
   await ensure(`INSERT INTO system_config (key, value) VALUES ('dynamic_profit_guard_enabled', '1') ON CONFLICT DO NOTHING`);
   await ensure(`INSERT INTO system_config (key, value) VALUES ('default_profit_margin', '25') ON CONFLICT DO NOTHING`);
   await ensure(`INSERT INTO system_config (key, value) VALUES ('launch_mode_profit_margin', '40') ON CONFLICT DO NOTHING`);
+
+  // ── Settlement Tables ──
+  ensure(`CREATE TABLE IF NOT EXISTS payout_batches_v2 (
+    id SERIAL PRIMARY KEY,
+    status TEXT DEFAULT 'queued',
+    adapter_type TEXT,
+    external_ref TEXT,
+    tx_hash TEXT,
+    total_usdt REAL DEFAULT 0,
+    meta_json TEXT,
+    created_at BIGINT,
+    updated_at BIGINT,
+    completed_at BIGINT
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS payout_items_v2 (
+    id SERIAL PRIMARY KEY,
+    batch_id INTEGER REFERENCES payout_batches_v2(id),
+    wallet TEXT NOT NULL,
+    amount_usdt REAL NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at BIGINT
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS settlement_shadow_log (
+    id SERIAL PRIMARY KEY,
+    batch_id INTEGER,
+    primary_json TEXT,
+    shadow_json TEXT,
+    created_at BIGINT
+  )`);
+
+  ensure(`CREATE TABLE IF NOT EXISTS settlement_evm_txs (
+    id SERIAL PRIMARY KEY,
+    batch_id INTEGER,
+    item_id INTEGER,
+    tx_hash TEXT,
+    status TEXT DEFAULT 'prepared',
+    gas_used BIGINT,
+    created_at BIGINT,
+    UNIQUE(batch_id, item_id)
+  )`);
+
+  // Settlement system_flags bootstrap
+  ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_adapter', 'SIMULATED', ${Date.now()}) ON CONFLICT DO NOTHING`);
+  ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_dry_run', '0', ${Date.now()}) ON CONFLICT DO NOTHING`);
+  ensure(`INSERT INTO system_flags (key, value, updated_at) VALUES ('settlement_shadow_mode', '0', ${Date.now()}) ON CONFLICT DO NOTHING`);
 }
