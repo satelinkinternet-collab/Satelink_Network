@@ -41,6 +41,9 @@ import { NodeCapacityManager } from '../queue/node_capacity_manager.js';
 import { QueueBackpressure } from '../queue/queue_backpressure.js';
 import { OperationsEngine } from '../core/operations_engine.js';
 import { schedulerStatus } from '../economics/epoch_scheduler.js';
+import { SettlementEngine } from '../settlement/settlement_engine.js';
+import { AdapterRegistry } from '../settlement/adapter_registry.js';
+import { SimulatedAdapter } from '../settlement/adapters/SimulatedAdapter.js';
 import { connection as redis } from '../queue/redisClient.js';
 import { createAdminControlRoomRouter } from './routes/admin_control_room_api.js';
 import { createAdminApiRouter } from './routes/admin_api_v2.js';
@@ -209,7 +212,14 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
     // ── Debug / Pipeline Routes ──
     global.opsEngine = new OperationsEngine(db, null, null);
-opsEngine = global.opsEngine;
+    opsEngine = global.opsEngine;
+
+    // ── Settlement Engine Setup ──
+    const adapterRegistry = new AdapterRegistry();
+    adapterRegistry.register(new SimulatedAdapter());
+    const settlementEngine = new SettlementEngine(db, null, adapterRegistry, {});
+    app.set('db', db);
+    app.set('settlementEngine', settlementEngine);
 
     // ── /v1/ops fallback: mount with default adapter if not already mounted ──
     if (!opsAdapter) {
@@ -246,6 +256,50 @@ opsEngine = global.opsEngine;
 
     app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role guards
 
+
+    // ── Full Flow Test: API → executeOp → revenue → settlement ──
+    app.post('/admin/debug/full-flow-test', ...requireAdmin, async (req, res) => {
+        const results = { rpc: null, revenue: null, settlement: null };
+        try {
+            // 1. Execute a test op via opsEngine
+            if (!global.opsEngine.initialized) await global.opsEngine.init();
+
+            const requestId = `test_${Date.now()}`;
+            await global.opsEngine.executeOp({
+                op_type: 'rpc_call',
+                node_id: 'debug_test_node',
+                client_id: 'debug_flow_test',
+                request_id: requestId,
+                timestamp: Math.floor(Date.now() / 1000),
+                payload_hash: `hash_${requestId}`,
+            });
+            results.rpc = 'success';
+
+            // 2. Verify revenue event was created
+            const row = await db.prepare(
+                "SELECT id, op_type, amount_usdt, status FROM revenue_events_v2 WHERE request_id = ?"
+            ).get(requestId);
+            results.revenue = row ? { created: true, id: row.id, amount: row.amount_usdt } : { created: false };
+
+            // 3. Trigger settlement queue processing
+            try {
+                const engine = app.get('settlementEngine');
+                if (engine) {
+                    await engine.processQueue();
+                    results.settlement = 'processed';
+                } else {
+                    results.settlement = 'engine_not_available';
+                }
+            } catch (settleErr) {
+                results.settlement = { error: settleErr.message };
+            }
+
+            res.json({ ok: true, ...results });
+        } catch (e) {
+            console.error('[FullFlowTest] Error:', e.message);
+            res.status(500).json({ ok: false, error: e.message, partial_results: results });
+        }
+    });
 
     app.get('/debug/pipeline-status', ...requireAdmin, async (req, res) => {
         try {

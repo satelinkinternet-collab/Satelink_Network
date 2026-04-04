@@ -160,11 +160,21 @@ console.log("FLAG CHECK:", {
                 console.log('REAL SETTLEMENT: ACTIVE');
             }
 
+            // ── EVM Wallet Validation ──
+            const evmKey = process.env.EVM_PRIVATE_KEY;
+            if (!evmKey || evmKey === 'YOUR_PRIVATE_KEY_HERE') {
+                console.warn('[BOOT] EVM_PRIVATE_KEY is not set or is a placeholder. Real EVM settlement will fail.');
+            } else if (!/^(0x)?[0-9a-fA-F]{64}$/.test(evmKey)) {
+                console.warn('[BOOT] EVM_PRIVATE_KEY is invalid (expected 64 hex chars). Settlement will fail.');
+            } else {
+                console.log('[BOOT] EVM_PRIVATE_KEY validated (length OK, hex format OK)');
+            }
+
             try {
                 const depositDetector = new DepositDetector(db);
                 await depositDetector.start();
             } catch (e) {
-                if (process.env.SETTLEMENT_ADAPTER !== "SIMULATED") logger.error("Settlement Services failed to start", { error: e.stack });
+                console.warn("[BOOT] DepositDetector failed to start:", e.message, "(non-fatal, settlement queue still operational)");
             }
 
             // Phase 7: Run internal test on startup

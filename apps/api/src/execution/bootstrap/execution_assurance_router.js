@@ -37,23 +37,24 @@ export class ExecutionAssuranceRouter {
                 const availableLocalNodes = this.registry.getNodesByType(targetSource);
 
                 if (availableLocalNodes.length > 0) {
+                    const payloadResult = await this.fallbackAdapter.dispatch(targetSource, chain, payload);
                     await this.recordMetric(targetSource, false);
                     return {
                         status: 'executed',
                         source: targetSource,
                         nodeId: availableLocalNodes[0].node_id,
-                        payloadResult: '0xLocalExecutionMock'
+                        payloadResult
                     };
                 }
                 console.warn(`[ExecutionAssurance] ${targetSource} pool empty. Escalating chain priority.`);
             } else {
                 try {
-                    const result = await this.fallbackAdapter.dispatch(targetSource, chain, payload);
+                    const payloadResult = await this.fallbackAdapter.dispatch(targetSource, chain, payload);
                     await this.recordMetric(targetSource, true);
                     return {
                         status: 'fallback_executed',
                         source: targetSource,
-                        payloadResult: result
+                        payloadResult
                     };
                 } catch (e) {
                     console.error(`[ExecutionAssurance] Adapter failure on ${targetSource}. Escalating.`);
