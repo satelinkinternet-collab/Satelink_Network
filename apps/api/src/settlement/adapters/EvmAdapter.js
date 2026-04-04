@@ -84,7 +84,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
                 if (token) {
                     try {
                         const contract = new ethers.Contract(token.address, ["function transfer(address,uint256)"], this.provider);
-                        const amountUnits = ethers.parseUnits(item.amount.toString(), token.decimals);
+                        const amountUnits = ethers.parseUnits((item.amount_usdt || item.amount).toString(), token.decimals);
                         gas = await contract.transfer.estimateGas(item.wallet, amountUnits);
                     } catch (e) {
                         console.warn(`[EvmAdapter] Gas estimate failed for ${item.id}:`, e.message);
@@ -127,7 +127,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
         // Address checks
         for (const item of batch.items) {
             if (!ethers.isAddress(item.wallet)) return { valid: false, error: `Invalid address: ${item.wallet}` };
-            if (item.amount <= 0) return { valid: false, error: `Invalid amount: ${item.amount}` };
+            if ((item.amount_usdt || item.amount) <= 0) return { valid: false, error: `Invalid amount: ${(item.amount_usdt || item.amount)}` };
         }
 
         return { valid: true };
@@ -174,7 +174,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
                 const nonce = startNonce++; // Simplistic nonce increment
 
                 if (batch.currency === this.nativeSymbol) {
-                    const amountWei = ethers.parseEther(item.amount.toString());
+                    const amountWei = ethers.parseEther((item.amount_usdt || item.amount).toString());
                     txResponse = await this.wallet.sendTransaction({
                         to: item.wallet,
                         value: amountWei,
@@ -185,7 +185,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
                     const contract = new ethers.Contract(token.address, [
                         "function transfer(address to, uint256 value) returns (bool)"
                     ], this.wallet);
-                    const amountUnits = ethers.parseUnits(item.amount.toString(), token.decimals);
+                    const amountUnits = ethers.parseUnits((item.amount_usdt || item.amount).toString(), token.decimals);
                     txResponse = await contract.transfer(item.wallet, amountUnits, { nonce: nonce });
                 }
 
@@ -200,7 +200,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
                     await this.db.query(`
                         INSERT INTO settlement_evm_txs (batch_id, item_id, chain_name, asset_symbol, to_address, amount_atomic, nonce, tx_hash, status, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [batch.id, item.id, this.chainName, batch.currency, item.wallet, item.amount.toString(), nonce, txHash, 'sent', Date.now(), Date.now()]);
+                    `, [batch.id, item.id, this.chainName, batch.currency, item.wallet, (item.amount_usdt || item.amount).toString(), nonce, txHash, 'sent', Date.now(), Date.now()]);
                 }
 
                 // Wait for 1 confirmation (MVP blocking, or we return 'sent' and let status check handle it)
@@ -222,7 +222,7 @@ export class EvmAdapter extends BaseSettlementAdapter {
                     await this.db.query(`
                         INSERT INTO settlement_evm_txs (batch_id, item_id, chain_name, asset_symbol, to_address, amount_atomic, status, error_message, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?)
-                    `, [batch.id, item.id, this.chainName, batch.currency, item.wallet, item.amount.toString(), e.message, Date.now(), Date.now()]);
+                    `, [batch.id, item.id, this.chainName, batch.currency, item.wallet, (item.amount_usdt || item.amount).toString(), e.message, Date.now(), Date.now()]);
                 }
             }
         }

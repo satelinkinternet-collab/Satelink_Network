@@ -44,6 +44,7 @@ import { schedulerStatus } from '../economics/epoch_scheduler.js';
 import { SettlementEngine } from '../settlement/settlement_engine.js';
 import { AdapterRegistry } from '../settlement/adapter_registry.js';
 import { SimulatedAdapter } from '../settlement/adapters/SimulatedAdapter.js';
+import { EvmAdapter } from '../settlement/adapters/EvmAdapter.js';
 import { connection as redis } from '../queue/redisClient.js';
 import { createAdminControlRoomRouter } from './routes/admin_control_room_api.js';
 import { createAdminApiRouter } from './routes/admin_api_v2.js';
@@ -217,6 +218,9 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     // ── Settlement Engine Setup ──
     const adapterRegistry = new AdapterRegistry();
     adapterRegistry.register(new SimulatedAdapter());
+    const evmAdapter = new EvmAdapter(db);
+    adapterRegistry.register(evmAdapter);
+    console.log(`[BOOT] EvmAdapter registered: name=${evmAdapter.getName()}, enabled=${evmAdapter.enabled}`);
     const settlementEngine = new SettlementEngine(db, null, adapterRegistry, {});
     app.set('db', db);
     app.set('settlementEngine', settlementEngine);
@@ -241,23 +245,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
         app.use('/v1/ops', createOpsRouter(db, defaultOpsAdapter));
     }
 
-    // ── Admin Control Room (legacy /admin/* mount, requires admin role) ──
-    app.use('/admin', requireJWT, requireRole(ADMIN_ROLES), createAdminControlRoomRouter(opsEngine));
-
-
-    // ── Role-Based Dashboard Routers (V2) — each has own JWT + role guards ──
-    app.use('/admin-api', createAdminApiRouter(opsEngine));       // has own JWT + role guards
-
-    app.use('/node-api', createNodeApiRouter(opsEngine));         // has own JWT + role guards
-
-    app.use('/dist-api', createDistApiRouter(opsEngine));         // has own JWT + role guards
-
-    app.use('/builder-api', requireJWT, createBuilderApiV2Router(opsEngine)); // builder routes (JWT enforced at mount)
-
-    app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role guards
-
-
-    // ── Full Flow Test: API → executeOp → revenue → settlement ──
+    // ── Full Flow Test: API → executeOp → revenue → settlement (must be before /admin catch-all) ──
     app.post('/admin/debug/full-flow-test', ...requireAdmin, async (req, res) => {
         const results = { rpc: null, revenue: null, settlement: null };
         try {
@@ -277,18 +265,59 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
 
             // 2. Verify revenue event was created
             const row = await db.prepare(
-                "SELECT id, op_type, amount_usdt, status FROM revenue_events_v2 WHERE request_id = ?"
+                "SELECT id, op_type, amount_usdt, node_id, status FROM revenue_events_v2 WHERE request_id = ?"
             ).get(requestId);
             results.revenue = row ? { created: true, id: row.id, amount: row.amount_usdt } : { created: false };
 
-            // 3. Trigger settlement queue processing
+            // 3. Create a payout batch from the revenue event (bridges the gap)
             try {
                 const engine = app.get('settlementEngine');
-                if (engine) {
-                    await engine.processQueue();
-                    results.settlement = 'processed';
-                } else {
+                if (!engine) {
                     results.settlement = 'engine_not_available';
+                } else {
+                    const revenueRow = row || await db.prepare(
+                        "SELECT id, amount_usdt, node_id FROM revenue_events_v2 WHERE request_id = ?"
+                    ).get(requestId);
+
+                    if (!revenueRow) {
+                        results.settlement = 'no_revenue_event_to_settle';
+                    } else {
+                        const now = Date.now();
+                        const nativeCurrency = process.env.SETTLEMENT_EVM_NATIVE_SYMBOL || 'MATIC';
+                        await db.prepare(`
+                            INSERT INTO payout_batches_v2 (status, adapter_type, currency, total_usdt, total_amount, meta_json, created_at, updated_at)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        `).run('queued', null, nativeCurrency, revenueRow.amount_usdt, revenueRow.amount_usdt, JSON.stringify({ source: 'full_flow_test', request_id: requestId }), now, now);
+
+                        const batch = await db.prepare(
+                            "SELECT id FROM payout_batches_v2 WHERE created_at = $1 AND meta_json LIKE $2 ORDER BY id DESC LIMIT 1"
+                        ).get(now, `%${requestId}%`);
+
+                        if (batch) {
+                            const testWallet = '0x000000000000000000000000000000000000dEaD';
+                            await db.prepare(`
+                                INSERT INTO payout_items_v2 (batch_id, wallet, amount_usdt, status, created_at)
+                                VALUES ($1, $2, $3, $4, $5)
+                            `).run(batch.id, testWallet, revenueRow.amount_usdt, 'pending', now);
+
+                            results.batch_created = { batch_id: batch.id, amount: revenueRow.amount_usdt };
+
+                            const evmAdapterName = `EVM:${process.env.SETTLEMENT_EVM_CHAIN_NAME || 'polygon-amoy'}`;
+                            await db.prepare(
+                                "UPDATE system_flags SET value = $1, updated_at = $2 WHERE key = 'settlement_adapter'"
+                            ).run(evmAdapterName, now);
+
+                            await engine.processQueue();
+                            results.settlement = 'processed';
+
+                            const evmTx = await db.prepare(
+                                "SELECT id, tx_hash, status, error_message FROM settlement_evm_txs WHERE batch_id = $1"
+                            ).get(batch.id);
+                            results.evm_tx = evmTx || 'no_evm_tx_created';
+                        } else {
+                            results.settlement = 'batch_insert_failed';
+                        }
+                    }
                 }
             } catch (settleErr) {
                 results.settlement = { error: settleErr.message };
@@ -300,6 +329,22 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             res.status(500).json({ ok: false, error: e.message, partial_results: results });
         }
     });
+
+    // ── Admin Control Room (legacy /admin/* mount, requires admin role) ──
+    app.use('/admin', requireJWT, requireRole(ADMIN_ROLES), createAdminControlRoomRouter(opsEngine));
+
+
+    // ── Role-Based Dashboard Routers (V2) — each has own JWT + role guards ──
+    app.use('/admin-api', createAdminApiRouter(opsEngine));       // has own JWT + role guards
+
+    app.use('/node-api', createNodeApiRouter(opsEngine));         // has own JWT + role guards
+
+    app.use('/dist-api', createDistApiRouter(opsEngine));         // has own JWT + role guards
+
+    app.use('/builder-api', requireJWT, createBuilderApiV2Router(opsEngine)); // builder routes (JWT enforced at mount)
+
+    app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role guards
+
 
     app.get('/debug/pipeline-status', ...requireAdmin, async (req, res) => {
         try {
