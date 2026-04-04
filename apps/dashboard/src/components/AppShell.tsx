@@ -16,7 +16,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
+<<<<<<< HEAD:apps/dashboard/src/components/AppShell.tsx
         const publicPaths = ['/login', '/', '/health-ui', '/about', '/how-it-works', '/run-node', '/developers', '/economics', '/settlement', '/governance', '/investors', '/enterprise', '/network', '/docs', '/legal', '/beta/join', '/download', '/terms', '/privacy', '/403', '/status'];
+=======
+        const publicPaths = ['/login', '/', '/health-ui', '/about', '/how-it-works', '/run-node', '/developers', '/economics', '/settlement', '/governance', '/investors', '/enterprise', '/network', '/docs', '/legal', '/beta/join', '/download', '/terms', '/privacy', '/403'];
+>>>>>>> integration/full-product:web/src/components/layout-shell.tsx
         if (!loading && !user && !publicPaths.includes(pathname) && !pathname.startsWith('/preview')) {
             router.push('/login');
         }
@@ -34,7 +38,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         );
     }
 
+<<<<<<< HEAD:apps/dashboard/src/components/AppShell.tsx
     if (['/login', '/403', '/', '/health-ui', '/about', '/how-it-works', '/run-node', '/developers', '/economics', '/settlement', '/governance', '/investors', '/enterprise', '/network', '/docs', '/legal', '/beta/join', '/download', '/terms', '/privacy', '/status'].includes(pathname) || pathname.startsWith('/preview')) {
+=======
+    if (['/login', '/403', '/', '/health-ui', '/about', '/how-it-works', '/run-node', '/developers', '/economics', '/settlement', '/governance', '/investors', '/enterprise', '/network', '/docs', '/legal', '/beta/join', '/download', '/terms', '/privacy'].includes(pathname) || pathname.startsWith('/preview')) {
+>>>>>>> integration/full-product:web/src/components/layout-shell.tsx
         return <>{children}</>;
     }
 

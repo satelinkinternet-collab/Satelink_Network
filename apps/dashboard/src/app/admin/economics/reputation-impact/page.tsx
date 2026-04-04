@@ -10,12 +10,20 @@ export default function ReputationImpactPage() {
     useEffect(() => {
         (async () => {
             try {
+<<<<<<< HEAD:apps/dashboard/src/app/admin/economics/reputation-impact/page.tsx
                 const res = await api.get('/admin/economics/reputation-impact');
                 if (res.data.ok) setData(res.data);
             } catch (e: any) {
                 console.error('[ReputationImpact]', e);
                 setError(e.response?.data?.error || 'Failed to load reputation impact data');
             }
+=======
+                const token = localStorage.getItem('satelink_token');
+                const res = await fetch('/api/admin/economics/reputation-impact', { headers: { Authorization: `Bearer ${token}` } });
+                const d = await res.json();
+                if (d.ok) setData(d);
+            } catch (e) { console.error(e); }
+>>>>>>> integration/full-product:web/src/app/admin/economics/reputation-impact/page.tsx
             setLoading(false);
         })();
     }, []);

@@ -8,7 +8,6 @@ export function Sidebar() {
     const pathname = usePathname();
 
     const links = [
-        { href: "/dashboard", label: "Overview", icon: Activity },
         { href: "/run-node/dashboard", label: "Node Earnings", icon: Server },
         { href: "/economics", label: "Economics", icon: PieChart },
         { href: "/network", label: "Network Stats", icon: Activity },

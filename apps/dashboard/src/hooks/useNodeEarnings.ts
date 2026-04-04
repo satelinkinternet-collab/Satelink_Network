@@ -17,7 +17,7 @@ interface EarningsResponse {
 
 export function useNodeEarnings() {
     // Pass an array to SWR to ensure unique caching based on auth conceptually 
-    const { data, error, isLoading, mutate } = useSWR<{ ok: boolean, data: EarningsResponse }>('/node-api/stats', fetcher, {
+    const { data, error, isLoading, mutate } = useSWR<{ ok: boolean, data: EarningsResponse }>('/node/me/earnings', fetcher, {
         shouldRetryOnError: false, // Usually 401s if unauth, don't spam
     });
 
@@ -32,7 +32,7 @@ export function useNodeEarnings() {
         setIsClaiming(true);
         setClaimError(null);
         try {
-            const res = await api.post('/node-api/claim');
+            const res = await api.post('/node/me/claim');
             if (res.data.ok) {
                 mutate(); // Refresh the earnings balance
                 return true;
@@ -51,7 +51,7 @@ export function useNodeEarnings() {
         setWithdrawError(null);
         setWithdrawResult(null);
         try {
-            const res = await api.post('/node-api/claim');
+            const res = await api.post('/node/me/withdraw');
             if (res.data.ok) {
                 setWithdrawResult(res.data.result);
                 mutate();

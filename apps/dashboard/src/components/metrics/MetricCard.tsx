@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { InfraCard } from '../ui/InfraCard';
 
 interface MetricCardProps {
@@ -8,13 +8,20 @@ interface MetricCardProps {
     value: string | number;
     trend?: string;
     icon?: React.ReactNode;
-    loading?: boolean;
 }
 
-export function MetricCard({ title, value, trend, icon, loading }: MetricCardProps) {
-    if (loading) return <InfraCard className="flex flex-col gap-2"><div className="text-zinc-500 text-sm animate-pulse">Loading...</div></InfraCard>;
+export function MetricCard({ title, value, trend, icon }: MetricCardProps) {
+    const [displayValue, setDisplayValue] = useState(value);
 
-    const finalValue = (value === 0 || value === '0') ? "—" : value;
+    // Optional mock dynamic increment effect
+    useEffect(() => {
+        if (typeof value === 'number') {
+            const interval = setInterval(() => {
+                setDisplayValue(prev => (prev as number) + Math.floor(Math.random() * 3));
+            }, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [value]);
 
     return (
         <InfraCard className="flex flex-col gap-2 transition-colors hover:border-zinc-700">
@@ -23,7 +30,7 @@ export function MetricCard({ title, value, trend, icon, loading }: MetricCardPro
                 {icon && <div className="text-zinc-500">{icon}</div>}
             </div>
             <div className="flex items-baseline gap-2">
-                <h3 className="text-3xl font-bold text-white tracking-tight">{finalValue}</h3>
+                <h3 className="text-3xl font-bold text-white tracking-tight">{displayValue}</h3>
                 {trend && <span className="text-success text-sm font-medium">{trend}</span>}
             </div>
         </InfraCard>

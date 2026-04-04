@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+<<<<<<< HEAD
     services:
       postgres:
         image: postgres:15-alpine
@@ -35,6 +36,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+=======
+>>>>>>> integration/full-product
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,6 +51,7 @@ jobs:
       - name: Install
         run: npm ci
 
+<<<<<<< HEAD
       - name: Create test .env
         run: |
           cat > .env << 'EOF'
@@ -64,3 +68,17 @@ jobs:
 
       - name: Run E2E
         run: npm test
+=======
+      - name: Run E2E
+        run: |
+          chmod +x scripts/test.sh || true
+          if [ -f scripts/test.sh ]; then
+            ./scripts/test.sh
+          elif [ -f scripts/e2e_test_runner.sh ]; then
+            chmod +x scripts/e2e_test_runner.sh
+            ./scripts/e2e_test_runner.sh
+          else
+            npx mocha --timeout 15000 test/Security.test.js
+            npx mocha --timeout 15000 test/Heartbeat.test.js
+          fi
+>>>>>>> integration/full-product

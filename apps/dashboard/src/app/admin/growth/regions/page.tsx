@@ -22,6 +22,7 @@ export default function RegionsPage() {
 
     const fetchRegions = async () => {
         try {
+<<<<<<< HEAD:apps/dashboard/src/app/admin/growth/regions/page.tsx
             setError('');
             const res = await api.get('/admin/growth/regions');
             if (res.data.ok) setRegions(res.data.regions || []);
@@ -29,13 +30,28 @@ export default function RegionsPage() {
             console.error('[Regions]', e);
             setError(e.response?.data?.error || 'Failed to load regions');
         }
+=======
+            const token = localStorage.getItem('satelink_token');
+            const res = await fetch('/api/admin/growth/regions', { headers: { Authorization: `Bearer ${token}` } });
+            const data = await res.json();
+            if (data.ok) setRegions(data.regions || []);
+        } catch (e) { console.error(e); }
+>>>>>>> integration/full-product:web/src/app/admin/growth/regions/page.tsx
         setLoading(false);
     };
 
     useEffect(() => { fetchRegions(); }, []);
 
     const updateRegion = async (code: string) => {
+<<<<<<< HEAD:apps/dashboard/src/app/admin/growth/regions/page.tsx
         await api.put(`/admin/growth/regions/${code}`, form);
+=======
+        const token = localStorage.getItem('satelink_token');
+        await fetch(`/api/admin/growth/regions/${code}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(form)
+        });
+>>>>>>> integration/full-product:web/src/app/admin/growth/regions/page.tsx
         setEditingCode(null);
         fetchRegions();
     };

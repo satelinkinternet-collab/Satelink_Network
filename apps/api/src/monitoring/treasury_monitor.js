@@ -4,12 +4,10 @@ export class TreasuryMonitor {
     constructor(fuseService, dbInstance) {
         this.fuse = fuseService;
         this.db = dbInstance;
-    }
 
-    async init() {
-        await this.db.prepare(`
+        this.db.prepare(`
             CREATE TABLE IF NOT EXISTS treasury_snapshots (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 total_balance TEXT NOT NULL,
                 pending_claims_total TEXT NOT NULL,
                 liquidity_ratio REAL NOT NULL,
@@ -17,18 +15,6 @@ export class TreasuryMonitor {
                 snapshot_at INTEGER NOT NULL
             )
         `).run();
-
-        await this.db.prepare(`
-            CREATE TABLE IF NOT EXISTS claim_withdrawals (
-                id SERIAL PRIMARY KEY,
-                operator_wallet TEXT NOT NULL,
-                amount_usdt TEXT NOT NULL,
-                tx_hash TEXT NOT NULL,
-                withdrawn_at INTEGER NOT NULL
-            )
-        `).run();
-
-        return true;
     }
 
     async captureSnapshot() {
@@ -38,15 +24,30 @@ export class TreasuryMonitor {
             const vaultBalance = ethers.getBigInt(vaultBalanceStr);
 
             // 2. Calculate pending claims
+            // This would normally be calculated by finding unwithdrawn claims.
+            // Simplified for Phase 3: Total Anchored Revenue - Total Withdrawn
             let pendingClaimsTotal = 0n;
-            const rows = await this.db.prepare(`
-                SELECT amount_usdt FROM epoch_claims
+            const rows = this.db.prepare(`
+                SELECT amount_usdt FROM epoch_claims 
                 WHERE epoch_id IN (SELECT epoch_id FROM epoch_anchors WHERE status = 'ANCHORED')
             `).all();
 
             rows.forEach(r => pendingClaimsTotal += ethers.getBigInt(r.amount_usdt));
 
-            const withdrawRows = await this.db.prepare(`SELECT amount_usdt FROM claim_withdrawals`).all();
+            // Subtract total already withdrawn (need to track withdrawals via events or local db). 
+            // For now assume pendingClaimsTotal is roughly total claims created ever.
+            // Need a real tracking of withdrawn amounts. Let's assume we have a table `claim_withdrawals`
+            this.db.prepare(`
+                CREATE TABLE IF NOT EXISTS claim_withdrawals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    operator_wallet TEXT NOT NULL,
+                    amount_usdt TEXT NOT NULL,
+                    tx_hash TEXT NOT NULL,
+                    withdrawn_at INTEGER NOT NULL
+                )
+            `).run();
+
+            const withdrawRows = this.db.prepare(`SELECT amount_usdt FROM claim_withdrawals`).all();
             withdrawRows.forEach(r => pendingClaimsTotal -= ethers.getBigInt(r.amount_usdt));
 
             if (pendingClaimsTotal < 0n) pendingClaimsTotal = 0n;
@@ -56,6 +57,7 @@ export class TreasuryMonitor {
             let status = 'AVAILABLE';
 
             if (pendingClaimsTotal > 0n) {
+                // Number() conversions might lose precision for massive numbers, but for ratio it's fine
                 liquidityRatio = Number(ethers.formatUnits(vaultBalance, 6)) / Number(ethers.formatUnits(pendingClaimsTotal, 6));
 
                 if (vaultBalance === 0n) {
@@ -66,7 +68,7 @@ export class TreasuryMonitor {
             }
 
             // 4. Save
-            await this.db.prepare(`
+            this.db.prepare(`
                 INSERT INTO treasury_snapshots (total_balance, pending_claims_total, liquidity_ratio, withdraw_status, snapshot_at)
                 VALUES (?, ?, ?, ?, ?)
             `).run(vaultBalance.toString(), pendingClaimsTotal.toString(), liquidityRatio, status, Date.now());
@@ -83,8 +85,8 @@ export class TreasuryMonitor {
         }
     }
 
-    async getLatestSnapshot() {
-        return await this.db.prepare(`
+    getLatestSnapshot() {
+        return this.db.prepare(`
             SELECT * FROM treasury_snapshots ORDER BY snapshot_at DESC LIMIT 1
         `).get();
     }

@@ -3,7 +3,6 @@
 import useSWR from "swr";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { Loader2, AlertCircle, Calendar } from "lucide-react";
-import api from "@/lib/api";
 
 interface splitRatio {
     nodeOperators: number;
@@ -22,8 +21,10 @@ interface EconomicsSummary {
     lastEpochClosedAt: string | null;
 }
 
-// Use centralized api client — ensures Authorization header is attached
-const fetcher = (url: string) => api.get(url).then(res => res.data);
+const fetcher = (url: string) => fetch(url).then(res => {
+    if (!res.ok) throw new Error("Failed to fetch");
+    return res.json();
+});
 
 export function RevenueSplitChart() {
     const { data, error, isLoading } = useSWR<EconomicsSummary>('/api/economics/summary', fetcher, {
@@ -106,7 +107,7 @@ export function RevenueSplitChart() {
                                 <RechartsTooltip
                                     contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #262626', borderRadius: '12px', color: '#fff' }}
                                     itemStyle={{ color: '#fff' }}
-                                    formatter={(value: any, name: any, props: any) => [
+                                    formatter={(value: any, name: string | undefined, props: any) => [
                                         `${formatCurrency(Number(value))} (${props.payload.percentage}%)`,
                                         "Share"
                                     ]}

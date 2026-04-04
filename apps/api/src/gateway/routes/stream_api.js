@@ -1,7 +1,13 @@
 import { Router } from 'express';
+<<<<<<< HEAD:apps/api/src/gateway/routes/stream_api.js
 import { sseHelper } from '../../utils/sse.js';
 import { SSEManager } from '../../utils/sse_manager.js';
 import { requireJWT } from '../../security/auth_middleware.js';
+=======
+import { sseHelper } from '../utils/sse.js';
+import { SSEManager } from '../services/sse_manager.js';
+import { verifyJWT } from './auth_v2.js';
+>>>>>>> integration/full-product:src/routes/stream_api.js
 
 const sseManager = new SSEManager();
 
@@ -32,7 +38,11 @@ export function createStreamApiRouter(opsEngine) {
      * Access: Admin only (admin_super, admin_ops, admin_readonly)
      * Emits: hello, snapshot, revenue_batch, error_batch, security_alerts, audit, ping
      */
+<<<<<<< HEAD:apps/api/src/gateway/routes/stream_api.js
     router.get('/admin', requireJWT, async (req, res) => {
+=======
+    router.get('/admin', verifyJWT, async (req, res) => {
+>>>>>>> integration/full-product:src/routes/stream_api.js
         if (!['admin_super', 'admin_ops', 'admin_readonly'].includes(req.user?.role)) {
             return res.status(403).json({ error: "Access denied" });
         }
@@ -211,8 +221,13 @@ export function createStreamApiRouter(opsEngine) {
     /**
      * GET /stream/node
      * Access: Node Operator (own node only)
+     * Emits: heartbeat (node status + earnings), log (new relay events)
      */
+<<<<<<< HEAD:apps/api/src/gateway/routes/stream_api.js
     router.get('/node', requireJWT, async (req, res) => {
+=======
+    router.get('/node', verifyJWT, async (req, res) => {
+>>>>>>> integration/full-product:src/routes/stream_api.js
         if (req.user?.role !== 'node_operator') {
             return res.status(403).json({ error: "Access denied" });
         }
@@ -225,8 +240,33 @@ export function createStreamApiRouter(opsEngine) {
 
         const conn = sseHelper.init(req, res);
 
-        const pollStatus = setInterval(async () => {
+        const formatUptime = (lastSeen) => {
+            if (!lastSeen) return '—';
+            const s = Math.floor(Date.now() / 1000) - lastSeen;
+            if (s <= 0) return '0d 0h 0m';
+            const d = Math.floor(s / 86400);
+            const h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return `${d}d ${h}h ${m}m`;
+        };
+
+        // Seed lastLogId so we only stream NEW events
+        let lastLogId = 0;
+        try {
+            const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
+            if (node?.node_id) {
+                const latest = await opsEngine.db.get(
+                    "SELECT MAX(id) as max_id FROM revenue_events_v2 WHERE node_id = ?",
+                    [node.node_id]
+                );
+                lastLogId = latest?.max_id || 0;
+            }
+        } catch (e) { }
+
+        // heartbeat: online status + uptime + claimable earnings + telemetry point every 10s
+        const pollHeartbeat = setInterval(async () => {
             try {
+<<<<<<< HEAD:apps/api/src/gateway/routes/stream_api.js
                 const node = await global.opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
                 if (node) {
                     const now = Math.floor(Date.now() / 1000);
@@ -236,27 +276,65 @@ export function createStreamApiRouter(opsEngine) {
                         last_seen: node.last_heartbeat,
                         ip: '127.0.0.1'
                     });
-                }
-            } catch (e) { }
-        }, 10000);
-
-        const pollEarnings = setInterval(async () => {
-            try {
-                const total = await global.opsEngine.getBalance(wallet);
-                const recent_earnings = await pollDB(
-                    `SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 5`,
+=======
+                const node = await opsEngine.db.get("SELECT * FROM nodes WHERE wallet = ?", [wallet]);
+                const unpaid = await opsEngine.db.query(
+                    "SELECT amount_usdt FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'",
                     [wallet]
                 );
-                conn.send('earnings', {
-                    unpaid_balance: total,
-                    recent_epochs: recent_earnings || []
+                const claimable = unpaid.reduce((s, e) => s + (e.amount_usdt || 0), 0);
+
+                // Count ops in last 10s for this node → real bw data point
+                let recentOps = 0;
+                if (node?.node_id) {
+                    const tenSecAgo = Math.floor(Date.now() / 1000) - 10;
+                    const opsRow = await opsEngine.db.get(
+                        "SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?",
+                        [node.node_id, tenSecAgo]
+                    );
+                    recentOps = opsRow?.c || 0;
+>>>>>>> integration/full-product:src/routes/stream_api.js
+                }
+
+                const now = new Date();
+                const timeLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                conn.send('heartbeat', {
+                    online: node?.status === 'online',
+                    uptime: formatUptime(node?.last_seen),
+                    earnings: parseFloat(claimable.toFixed(2)),
+                    lastPing: node?.last_seen ? node.last_seen * 1000 : Date.now(),
+                    telemetry_point: { t: timeLabel, cpu: 0, bw: recentOps * 10 },
                 });
             } catch (e) { }
         }, 10000);
 
+        // log: emit one 'log' event per new revenue event for this node
+        const pollLogs = setInterval(async () => {
+            try {
+<<<<<<< HEAD:apps/api/src/gateway/routes/stream_api.js
+                const total = await global.opsEngine.getBalance(wallet);
+                const recent_earnings = await pollDB(
+                    `SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 5`,
+                    [wallet]
+=======
+                const node = await opsEngine.db.get("SELECT node_id FROM nodes WHERE wallet = ?", [wallet]);
+                if (!node?.node_id) return;
+                const events = await pollDB(
+                    "SELECT * FROM revenue_events_v2 WHERE node_id = ? AND id > ? ORDER BY id ASC LIMIT 5",
+                    [node.node_id, lastLogId]
+>>>>>>> integration/full-product:src/routes/stream_api.js
+                );
+                for (const e of events) {
+                    conn.send('log', { message: `[RELAY] ${e.op_type} → $${e.amount_usdt}` });
+                    lastLogId = e.id;
+                }
+            } catch (e) { }
+        }, 10000);
+
         req.on('close', () => {
-            clearInterval(pollStatus);
-            clearInterval(pollEarnings);
+            clearInterval(pollHeartbeat);
+            clearInterval(pollLogs);
         });
     });
 
@@ -264,7 +342,11 @@ export function createStreamApiRouter(opsEngine) {
      * GET /stream/builder
      * Access: Builder
      */
+<<<<<<< HEAD:apps/api/src/gateway/routes/stream_api.js
     router.get('/builder', requireJWT, async (req, res) => {
+=======
+    router.get('/builder', verifyJWT, async (req, res) => {
+>>>>>>> integration/full-product:src/routes/stream_api.js
         if (req.user?.role !== 'builder') {
             return res.status(403).json({ error: "Access denied" });
         }

@@ -4,12 +4,24 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+<<<<<<< HEAD:apps/api/src/core/contracts/ClaimsContract.sol
 import "./IRevenueVault.sol";
 
 contract ClaimsContract is AccessControl, Pausable, ReentrancyGuard {
     bytes32 public constant CLAIM_CREATOR_ROLE = keccak256("CLAIM_CREATOR_ROLE");
     IRevenueVault public immutable vault;
 
+=======
+
+interface IRevenueVault {
+    function withdraw(address to, uint256 amount) external;
+}
+
+contract ClaimsContract is AccessControl, Pausable, ReentrancyGuard {
+    bytes32 public constant CLAIM_CREATOR_ROLE = keccak256("CLAIM_CREATOR_ROLE");
+    IRevenueVault public vault;
+    
+>>>>>>> integration/full-product:contracts/ClaimsContract.sol
     struct Claim {
         uint256 amount;
         uint256 expiryTimestamp;
@@ -39,7 +51,11 @@ contract ClaimsContract is AccessControl, Pausable, ReentrancyGuard {
     }
 
     function createClaim(address user, uint256 amount) external onlyRole(CLAIM_CREATOR_ROLE) returns (bytes32) {
+<<<<<<< HEAD:apps/api/src/core/contracts/ClaimsContract.sol
         bytes32 claimId = keccak256(abi.encodePacked(user, amount, block.timestamp, block.number));
+=======
+        bytes32 claimId = keccak256(abi.encodePacked(user, amount, block.timestamp, block.prevrandao));
+>>>>>>> integration/full-product:contracts/ClaimsContract.sol
         uint256 expiry = block.timestamp + 48 days;
 
         claims[claimId] = Claim({amount: amount, expiryTimestamp: expiry, claimed: false});

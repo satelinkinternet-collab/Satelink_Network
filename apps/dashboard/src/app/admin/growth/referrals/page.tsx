@@ -10,6 +10,10 @@ export default function ReferralsPage() {
     useEffect(() => {
         (async () => {
             try {
+<<<<<<< HEAD:apps/dashboard/src/app/admin/growth/referrals/page.tsx
+=======
+                const token = localStorage.getItem('satelink_token');
+>>>>>>> integration/full-product:web/src/app/admin/growth/referrals/page.tsx
                 const res = await api.get('/admin-api/growth/referrals');
                 const d = res.data;
                 if (d.ok) setData(d);

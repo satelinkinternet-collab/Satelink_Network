@@ -32,6 +32,13 @@ export class OperationsEngine {
 
   async init() {
     if (this.initialized) return;
+<<<<<<< HEAD:apps/api/src/core/operations_engine.js
+=======
+    if (this.db && typeof this.db.init === 'function') {
+      // For SQLite, initialization is typically synchronous or already handled.
+      // We don't await here because we're moving to a synchronous model for SQLite.
+    }
+>>>>>>> integration/full-product:src/services/operations-engine.js
     await this.seed();
     this.initialized = true;
     console.log("OperationsEngine initialized. DB ready:", typeof this.db.prepare);
@@ -59,12 +66,21 @@ export class OperationsEngine {
       );
     `);
 
+<<<<<<< HEAD:apps/api/src/core/operations_engine.js
     await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('withdrawals_paused', '0');
     await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('security_freeze', '0');
     await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('safety_threshold', '0');
     await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('system_state', 'LIVE');
     await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('revenue_mode', 'ACTIVE');
     await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run('monitoring_status', 'ENFORCED');
+=======
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['withdrawals_paused', '0']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['security_freeze', '0']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['safety_threshold', '0']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['system_state', 'LIVE']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['revenue_mode', 'ACTIVE']);
+    await this.db.prepare("INSERT INTO system_config (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING").run(['monitoring_status', 'ENFORCED']);
+>>>>>>> integration/full-product:src/services/operations-engine.js
 
     // Seed pricing from OP_CONFIG if table exists
     try {
@@ -72,6 +88,7 @@ export class OperationsEngine {
       for (const op of ops) {
         const conf = OP_CONFIG[op];
         await this.db.prepare(`
+<<<<<<< HEAD:apps/api/src/core/operations_engine.js
           INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node)
           VALUES (?, ?, 1, ?, ?)
           ON CONFLICT(op_type) DO UPDATE SET
@@ -86,6 +103,22 @@ export class OperationsEngine {
       const ops = Object.keys(OP_CONFIG);
       for (const op of ops) {
         await this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run(op, 1.0);
+=======
+          INSERT INTO ops_pricing (op_type, price_usdt, enabled, max_per_minute_per_client, max_per_minute_per_node) 
+          VALUES (?, ?, 1, ?, ?) 
+          ON CONFLICT(op_type) DO UPDATE SET 
+            max_per_minute_per_client = EXCLUDED.max_per_minute_per_client,
+            max_per_minute_per_node = EXCLUDED.max_per_minute_per_node
+        `).run([op, conf.price, conf.limit || 60, conf.node_limit || 120]);
+      }
+    } catch (e) { console.error("Error seeding pricing:", e); }
+
+    const row = await this.db.prepare("SELECT COUNT(*) as c FROM op_weights").get([]);
+    if (row && row.c == 0) {
+      const ops = Object.keys(OP_CONFIG);
+      for (const op of ops) {
+        await this.db.prepare("INSERT INTO op_weights (op_type, weight) VALUES (?, ?)").run([op, 1.0]);
+>>>>>>> integration/full-product:src/services/operations-engine.js
       }
     }
 
@@ -119,7 +152,11 @@ export class OperationsEngine {
       code TEXT PRIMARY KEY,
       wallet TEXT,
       device_id TEXT,
+<<<<<<< HEAD:apps/api/src/core/operations_engine.js
       status TEXT,
+=======
+      status TEXT, -- pending, used, expired
+>>>>>>> integration/full-product:src/services/operations-engine.js
       created_at BIGINT,
       expires_at BIGINT,
       used_at BIGINT
@@ -349,6 +386,11 @@ if (result.changes === 0) throw new Error("Epoch not found or already finalized"
           await this.db.prepare("INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, created_at) VALUES (?, 'distribution_pool', 'DAO_POOL', ?, ?)").run(id, distroPool, now);
         }
 
+<<<<<<< HEAD:apps/api/src/core/operations_engine.js
+=======
+        // Ensure 'management_type' column exists (Moved to Phase 3 SQL Migrations)
+
+>>>>>>> integration/full-product:src/services/operations-engine.js
         // Node rewards distribution
         const nodes = await this.db.prepare(`
                 SELECT u.node_wallet, u.uptime_seconds, n.node_type, n.management_type
@@ -514,7 +556,11 @@ if (result.changes === 0) throw new Error("Epoch not found or already finalized"
     const fortyEightDays = 48 * 24 * 60 * 60;
     const threshold = now - fortyEightDays;
 
+<<<<<<< HEAD:apps/api/src/core/operations_engine.js
     const res = await this.db.prepare("UPDATE epoch_earnings SET status = 'FORFEITED' WHERE status = 'CLAIMED' AND created_at < ?").run(threshold);
+=======
+    const res = this.db.prepare("UPDATE epoch_earnings SET status = 'FORFEITED' WHERE status = 'CLAIMED' AND created_at < ?").run([threshold]);
+>>>>>>> integration/full-product:src/services/operations-engine.js
     const count = res.changes;
 
     if (count > 0) {

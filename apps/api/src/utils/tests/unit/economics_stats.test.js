@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import Database from 'better-sqlite3';
-import { DemandBuffer } from '../../../economics/economics_stats.js';
+import { getEconomicsSummary } from '../core/economics_stats.js';
 
 describe('Economics Stats Service', () => {
     let db;

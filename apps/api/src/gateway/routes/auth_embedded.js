@@ -4,8 +4,12 @@ import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
 import rateLimit from 'express-rate-limit';
 
+const IP_SALT = process.env.IP_SALT || 'satelink_salty';
+if (process.env.NODE_ENV === 'production' && IP_SALT === 'satelink_salty') {
+    throw new Error('FATAL: IP_SALT must be explicitly set in production mode.');
+}
 function hashIp(ip) {
-    return crypto.createHash('sha256').update(ip + (process.env.IP_SALT || 'satelink_salty')).digest('hex').substring(0, 16);
+    return crypto.createHash('sha256').update(ip + IP_SALT).digest('hex').substring(0, 16);
 }
 
 /**
@@ -144,8 +148,15 @@ export function createEmbeddedAuthRouter(db) {
                 ]).catch(err => console.error('[AUTH] Device register failed:', err));
             }
 
+<<<<<<< HEAD:apps/api/src/gateway/routes/auth_embedded.js
             // Issue JWT with Session Binding (Phase I2)
             const issuer = process.env.JWT_ISSUER || 'satelink-network';
+=======
+            const jwtSecret = process.env.JWT_SECRET || 'dev_only_secret';
+            if (process.env.NODE_ENV === 'production' && jwtSecret === 'dev_only_secret') {
+                throw new Error('FATAL: JWT_SECRET must be explicitly set in production mode.');
+            }
+>>>>>>> integration/full-product:src/routes/auth_embedded.js
             const token = jwt.sign(
                 {
                     wallet: addr,

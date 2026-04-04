@@ -33,6 +33,10 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
     "sonner": "^2.0.7",
+<<<<<<< HEAD:apps/dashboard/package.json
+=======
+    "swagger-ui-react": "^5.32.0",
+>>>>>>> integration/full-product:web/package.json
     "swr": "^2.4.1",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6"

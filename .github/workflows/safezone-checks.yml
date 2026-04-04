@@ -9,6 +9,7 @@ on:
 jobs:
   run-checks:
     runs-on: ubuntu-latest
+<<<<<<< HEAD
 
     services:
       postgres:
@@ -63,11 +64,37 @@ jobs:
         FEATURE_REAL_SETTLEMENT: "false"
         FEATURE_MOONPAY: "false"
 
+=======
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        
+    - name: Install dependencies
+      run: npm ci || npm install
+      
+    - name: Start server (Background)
+      run: |
+        export SATELINK_MODE=simulation
+        export JWT_SECRET=testsecret123456789012345678901234567890123456789012345678901234567890
+        npm run start &
+        echo $! > server.pid
+        sleep 5
+      
+>>>>>>> integration/full-product
     - name: Run Smoke Safe-Zone
       run: node scripts/smoke_safezone.js
       env:
         API_BASE_URL: http://localhost:8080
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> integration/full-product
     - name: Run Readiness Gate
       run: node scripts/readiness_gate.js
       env:
