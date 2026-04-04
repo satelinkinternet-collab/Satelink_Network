@@ -67,3 +67,5 @@ test/*.backup_*
 
 # Foundry
 lib/
+node_modules/
+.next/
