@@ -3,10 +3,10 @@ node_modules/
 .pnp
 .pnp.js
 
-# Testing
+# Testing / coverage
 coverage/
 
-# Output
+# Build output
 build/
 dist/
 .next/
@@ -20,14 +20,16 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 
-# Environment and Secrets
+# Environment and secrets
 .env
 .env.*
 !.env.example
 !.env.staging.example
 
-# Database
+# Database files
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 satelink.db
@@ -36,14 +38,13 @@ test.db
 # OS
 .DS_Store
 
-# Editor
+# Editor / IDE
 .vscode/
 .continue/
 .claude/
 *.swp
-*.bak
 
-# Temporary and Artifacts
+# Temp / artifacts
 artifacts/
 tempdir/
 .cache/
@@ -51,14 +52,20 @@ cache/
 cookies.txt
 share_bundle/
 share_bundle.zip
-*.db
-*.db-shm
-*.db-wal
-node_modules
-.env*
+backups/
+extracted_scope.txt
+scope.txt
 *.ndjson
+*.tgz
+*_pid.txt
+server_pid.txt
+s_pid.txt
+server.js.bak2
+server.js.new
+server.js.backup_*
+test/*.backup_*
 
-# ENV FILES
-.env
-.env.*
-.env
+# Foundry
+lib/
+node_modules/
+.next/

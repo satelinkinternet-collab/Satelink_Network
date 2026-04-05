@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import request from 'supertest';
 import Database from 'better-sqlite3';
-import { DemandBuffer } from '../../../../app_factory.mjs';
+import { createApp } from '../app_factory.mjs';
 
-describe.skip('Phase 4: Enterprise Billing & Demand Loop', () => {
+describe('Phase 4: Enterprise Billing & Demand Loop', () => {
     let app, db;
     let apiKey = '';
     let clientId = '';
@@ -85,7 +85,7 @@ describe.skip('Phase 4: Enterprise Billing & Demand Loop', () => {
 
     it('7. Returns Demand Analytics Metrics', async () => {
         // Must bypass Admin Auth for the test if it requires a secret, OR use the secret
-        const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+        const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
 
         const res = await request(app)
             .get('/api/demand/metrics')

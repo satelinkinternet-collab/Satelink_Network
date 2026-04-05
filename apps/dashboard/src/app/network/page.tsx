@@ -29,7 +29,7 @@ export default function NetworkPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                     <MetricCard title="Active Nodes" value={statsLoading ? "—" : (stats?.activeNodes || 0)} trend="Live" icon={<Server className="w-5 h-5" />} />
                     <MetricCard title="Total Revenue (USDT)" value={statsLoading ? "—" : (stats?.totalRevenueUsdt !== undefined ? `$${stats.totalRevenueUsdt.toLocaleString()}` : "$0")} trend="Yield Aggregating" icon={<Coins className="w-5 h-5" />} />
-                    <MetricCard title="Ops/min" value={statsLoading ? "—" : (stats?.opsPerMin || 0)} trend="Live" icon={<Activity className="w-5 h-5" />} />
+                    <MetricCard title="Current Epoch" value={statsLoading ? "—" : (stats?.currentEpoch || 0)} icon={<Activity className="w-5 h-5" />} />
                     <MetricCard title="Tasks Processed" value={statsLoading ? "—" : (stats?.totalOpsProcessed?.toLocaleString() || 0)} icon={<ArrowRightLeft className="w-5 h-5" />} />
                 </div>
 
@@ -41,11 +41,12 @@ export default function NetworkPage() {
                         </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        {Array.from({ length: Math.min(stats?.activeNodes || 0, 24) }).map((_, i) => (
+                        {/* Displaying some mock registered nodes */}
+                        {Array.from({ length: 18 }).map((_, i) => (
                             <AnimatedNodeCard
                                 key={i}
-                                id={`STL-${String(i + 1).padStart(3, '0')}`}
-                                status="active"
+                                id={`STL-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`}
+                                status={Math.random() > 0.1 ? 'active' : 'syncing'}
                                 delay={i * 0.05}
                             />
                         ))}

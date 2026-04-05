@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 
-export default function EvmSettlementPage() {
+function EvmSettlementContent() {
     const searchParams = useSearchParams();
     const batchId = searchParams.get('batch_id');
     const [txs, setTxs] = useState<any[]>([]);
@@ -160,5 +160,13 @@ export default function EvmSettlementPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function EvmSettlementPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-white">Loading settlement view...</div>}>
+            <EvmSettlementContent />
+        </Suspense>
     );
 }

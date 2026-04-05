@@ -19,7 +19,7 @@ export function Sidebar({ items }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { health } = useNetworkHealth();
-    const { statsData } = useNetworkStats();
+    const { stats } = useNetworkStats();
 
     if (!user) return null;
 
@@ -99,7 +99,7 @@ export function Sidebar({ items }: SidebarProps) {
                             <div className={`h-full shadow-[0_0_10px_rgba(16,185,129,0.5)] ${health?.status === 'healthy' ? 'bg-emerald-500 w-full' : health?.status === 'degraded' ? 'bg-amber-500 w-[60%]' : 'bg-red-500 w-[20%]'}`} />
                         </div>
                         <div className="flex justify-between text-[10px] text-zinc-500">
-                            <span>Nodes: {statsData.activeNodes}/{statsData.totalNodes}</span>
+                            <span>Nodes: {stats?.activeNodes ?? 0}/{stats?.totalNodes ?? 0}</span>
                             <span className={health?.status === 'healthy' ? 'text-emerald-400' : 'text-amber-400'}>{health?.status || 'loading'}</span>
                         </div>
                     </div>

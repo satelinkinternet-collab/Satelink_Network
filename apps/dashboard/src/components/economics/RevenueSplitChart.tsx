@@ -22,8 +22,7 @@ interface EconomicsSummary {
     lastEpochClosedAt: string | null;
 }
 
-// Use centralized api client — ensures Authorization header is attached
-const fetcher = (url: string) => api.get(url).then(res => res.data);
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 export function RevenueSplitChart() {
     const { data, error, isLoading } = useSWR<EconomicsSummary>('/api/economics/summary', fetcher, {
@@ -106,8 +105,8 @@ export function RevenueSplitChart() {
                                 <RechartsTooltip
                                     contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #262626', borderRadius: '12px', color: '#fff' }}
                                     itemStyle={{ color: '#fff' }}
-                                    formatter={(value: any, name: any, props: any) => [
-                                        `${formatCurrency(Number(value))} (${props.payload.percentage}%)`,
+                                    formatter={(value, _name, item: any) => [
+                                        `${formatCurrency(Number(value))} (${item?.payload?.percentage ?? 0}%)`,
                                         "Share"
                                     ]}
                                 />

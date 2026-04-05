@@ -85,6 +85,69 @@ export function createNodeApiRouter(opsEngine) {
         }
     });
 
+    // GET /node/status - lightweight status + telemetry snapshot
+    router.get('/status', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const node = await global.opsEngine.db.prepare(
+                "SELECT wallet, active, last_heartbeat FROM registered_nodes WHERE wallet = ?"
+            ).get(wallet);
+
+            const earningsRows = await global.opsEngine.db.prepare(
+                "SELECT epoch_id, amount_usdt FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 20"
+            ).all(wallet);
+
+            const totalEarned = (earningsRows || []).reduce((sum, row) => sum + Number(row.amount_usdt || 0), 0);
+            const telemetry = (earningsRows || [])
+                .slice()
+                .reverse()
+                .map((row) => ({ t: `E${row.epoch_id}`, earned: Number(row.amount_usdt || 0) }));
+
+            const recentEvents = await global.opsEngine.db.prepare(
+                "SELECT id, op_type, client_id, amount_usdt, created_at FROM revenue_events_v2 WHERE node_id = ? ORDER BY created_at DESC LIMIT 20"
+            ).all(wallet);
+            const logs = (recentEvents || []).map((e) => `[${new Date(Number(e.created_at || 0) * 1000).toLocaleTimeString()}] Processed ${e.op_type} op for ${e.client_id} ($${e.amount_usdt})`);
+
+            res.json({
+                ok: true,
+                status: {
+                    online: node?.active === 1 || node?.active === true,
+                    uptime: '--',
+                    earnings: totalEarned,
+                    lastPing: node?.last_heartbeat ? Number(node.last_heartbeat) * 1000 : Date.now(),
+                },
+                telemetry,
+                logs
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /node/earnings - earnings table for node operator views
+    router.get('/earnings', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const earnings = await global.opsEngine.db.prepare(
+                "SELECT epoch_id, amount_usdt, status, role FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 100"
+            ).all(wallet);
+            const totalEarned = (earnings || []).reduce((sum, e) => sum + Number(e.amount_usdt || 0), 0);
+            const claimable = (earnings || [])
+                .filter((e) => e.status === 'UNPAID')
+                .reduce((sum, e) => sum + Number(e.amount_usdt || 0), 0);
+
+            res.json({
+                ok: true,
+                totalEarned: totalEarned.toFixed(2),
+                claimable: claimable.toFixed(2),
+                total: (earnings || []).length,
+                earnings: earnings || []
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // POST /node/claim
     router.post('/claim', async (req, res) => {
         try {

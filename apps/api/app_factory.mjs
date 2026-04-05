@@ -9,6 +9,12 @@ import { attachUI } from "./src/gateway/ui.js";
 export async function createApp(db) {
   const app = express();
 
+  // Debug request logging for route verification in staging/production prep.
+  app.use((req, res, next) => {
+    console.log(`[REQ] ${req.method} ${req.originalUrl}`);
+    next();
+  });
+
   // ── Kill all caching: real-time financial data must NEVER be cached ──
   app.disable('etag');
   app.use((req, res, next) => {

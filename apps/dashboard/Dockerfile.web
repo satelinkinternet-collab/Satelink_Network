@@ -1,41 +1,42 @@
-FROM node:20-alpine AS builder
+# ── Stage 1: install & build ───────────────────────────────────────────────────
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
+# Copy manifests first for cache efficiency
 COPY package*.json ./
-COPY apps/dashboard/package*.json ./apps/dashboard/
 
+# Use npm install instead of npm ci — avoids a known npm bug where
+# "Exit handler never called" causes ci to fail silently on node:20-slim.
+# --prefer-offline speeds up rebuilds when node_modules cache layer is warm.
 RUN npm install
 
-COPY apps/dashboard ./apps/dashboard
+# Copy source
+COPY . .
 
-WORKDIR /app/apps/dashboard
-
-# INTERNAL_API_URL is used by next.config.ts rewrites (baked at build time)
-ARG INTERNAL_API_URL=http://satelink-core:8080
-ENV INTERNAL_API_URL=${INTERNAL_API_URL}
-
+# Build Next.js production bundle
+# INTERNAL_API_URL is NOT needed at build time (only used at runtime by next.config.ts)
+# NEXT_PUBLIC_* vars must be present at build time if they are inlined by the compiler
+ENV NEXT_PUBLIC_API_BASE=http://localhost:8080
 RUN npm run build
 
 # ── Stage 2: runtime ───────────────────────────────────────────────────────────
-FROM node:20-alpine
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy hoisted root node_modules (contains next, react, etc.)
-COPY --from=builder /app/node_modules ./node_modules
-# Copy dashboard-specific node_modules (local overrides)
-COPY --from=builder /app/apps/dashboard/node_modules ./apps/dashboard/node_modules
-# Copy dashboard build output
-COPY --from=builder /app/apps/dashboard/public ./apps/dashboard/public
-COPY --from=builder /app/apps/dashboard/.next ./apps/dashboard/.next
-COPY --from=builder /app/apps/dashboard/package.json ./apps/dashboard/package.json
-COPY --from=builder /app/apps/dashboard/next.config.ts ./apps/dashboard/next.config.ts
-# Copy root package.json for workspace resolution
-COPY --from=builder /app/package.json ./package.json
+# Copy full build output (incl. node_modules) from builder
+COPY --from=builder /app /app
 
-WORKDIR /app/apps/dashboard
+# Non-root user
+RUN groupadd -r satelink && useradd -r -g satelink satelink \
+    && chown -R satelink:satelink /app
+USER satelink
 
 EXPOSE 3000
 
-CMD ["npx", "next", "start"]
+# INTERNAL_API_URL is injected by docker-compose at runtime so Next.js rewrites
+# point to the Docker service alias 'api' rather than 'localhost'
+CMD ["npm", "run", "start"]

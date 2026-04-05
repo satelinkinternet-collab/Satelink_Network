@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import Database from 'better-sqlite3';
-import { DemandBuffer } from '../../../monitoring/network_stats.js';
+import { getNetworkStats } from '../core/network_stats.js';
 
 describe('Network Stats Service', () => {
     let db;

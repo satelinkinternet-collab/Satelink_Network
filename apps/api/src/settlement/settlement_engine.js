@@ -57,7 +57,7 @@ export class SettlementEngine {
 
             // 7. Estimate (Optional logging)
             const est = await adapter.estimateBatch(batch);
-            console.log(`[SettlementEngine] Est Fee: ${est.fee_amount} ${est.currency}`);
+            console.log(`[SettlementEngine] Est Fee: ${est.estimated_fee_native || est.fee_amount || 'N/A'} ${est.currency || 'unknown'}`);
 
             // 8. Execute
             // Check for dry run

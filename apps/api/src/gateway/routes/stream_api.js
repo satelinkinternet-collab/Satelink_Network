@@ -7,58 +7,56 @@ const sseManager = new SSEManager();
 
 export function createStreamApiRouter(opsEngine) {
     const router = Router();
+    const db = opsEngine?.db || global.opsEngine?.db;
 
-    /**
-     * SHARED: Stream polling logic
-     */
-    const pollDB = async (query, params) => {
+    const pollDB = async (query, params = []) => {
         try {
-            return await global.opsEngine.db.query(query, params);
+            return await db.query(query, params);
         } catch (e) {
-            console.error("[SSE] Poll Error:", e.message);
+            console.error('[SSE] Poll Error:', e.message);
             return [];
+        }
+    };
+
+    const pollGet = async (query, params = []) => {
+        try {
+            return await db.get(query, params);
+        } catch (e) {
+            console.error('[SSE] Poll Get Error:', e.message);
+            return null;
         }
     };
 
     const getSystemFlags = async () => {
         try {
-            const rows = await global.opsEngine.db.query("SELECT * FROM system_flags");
-            return rows.reduce((acc, r) => ({ ...acc, [r.key]: r.value }), {});
-        } catch (e) { return {}; }
+            const rows = await db.query('SELECT * FROM system_flags');
+            return rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
+        } catch (_) {
+            return {};
+        }
     };
 
-    /**
-     * GET /stream/admin
-     * Access: Admin only (admin_super, admin_ops, admin_readonly)
-     * Emits: hello, snapshot, revenue_batch, error_batch, security_alerts, audit, ping
-     */
     router.get('/admin', requireJWT, async (req, res) => {
         if (!['admin_super', 'admin_ops', 'admin_readonly'].includes(req.user?.role)) {
-            return res.status(403).json({ error: "Access denied" });
+            return res.status(403).json({ error: 'Access denied' });
         }
 
-        // Anti-buffering headers (nginx/proxies)
-        res.setHeader('X-Accel-Buffering', 'no');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Connection', 'keep-alive');
-
         if (!sseManager.add(req, res)) {
-            return res.status(429).json({ error: "Too many active SSE connections" });
+            return res.status(429).json({ error: 'Too many active SSE connections' });
         }
 
         const conn = sseHelper.init(req, res);
+        if (!conn) return;
 
-        // ── Hello event (once) ──
         conn.send('hello', { server: 'satelink-admin', version: '1.0', ts: Date.now() });
 
         let lastRevenueId = 0;
-        let lastErrorTs = Date.now() - 60000; // last minute
+        let lastErrorTs = Date.now() - 60000;
         let lastAlertTs = Date.now() - 60000;
         let lastAuditTs = Date.now() - 60000;
         let lastSlowQueryTs = Date.now() - 60000;
         let lastIncidentTs = Date.now() - 60000;
 
-        // ── Send initial snapshot immediately ──
         const sendSnapshot = async () => {
             try {
                 const flags = await getSystemFlags();
@@ -67,134 +65,110 @@ export function createStreamApiRouter(opsEngine) {
                 const hourAgoMs = Date.now() - 3600000;
 
                 const [activeNodes, opsCount, revenue24h, alertsOpen, errors1h, slowQueries1h, incidentsOpen] = await Promise.all([
-                    global.opsEngine.db.get("SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1 AND last_heartbeat > ?", [fiveMinAgo]),
-                    global.opsEngine.db.get("SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?", [fiveMinAgo]),
-                    global.opsEngine.db.get("SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?", [dayAgo]),
-                    global.opsEngine.db.get("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
-                    global.opsEngine.db.get("SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?", [hourAgoMs]),
-                    global.opsEngine.db.get("SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?", [hourAgoMs]),
-                    global.opsEngine.db.get("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'"),
+                    pollGet('SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1 AND last_heartbeat > ?', [fiveMinAgo]),
+                    pollGet('SELECT COUNT(*) as c FROM revenue_events_v2 WHERE created_at > ?', [fiveMinAgo]),
+                    pollGet('SELECT COALESCE(SUM(amount_usdt), 0) as t FROM revenue_events_v2 WHERE created_at > ?', [dayAgo]),
+                    pollGet("SELECT COUNT(*) as c FROM security_alerts WHERE status = 'open'"),
+                    pollGet('SELECT COUNT(*) as c FROM error_events WHERE last_seen_at > ?', [hourAgoMs]),
+                    pollGet('SELECT COUNT(*) as c FROM slow_queries WHERE last_seen_at > ?', [hourAgoMs]),
+                    pollGet("SELECT COUNT(*) as c FROM incident_bundles WHERE status = 'open'"),
                 ]);
 
-                const treasury = await global.opsEngine.getTreasuryAvailable();
+                const treasury = await opsEngine.getTreasuryAvailable();
 
                 conn.send('snapshot', {
                     system: {
                         withdrawals_paused: flags.withdrawals_paused === '1',
                         security_freeze: flags.security_freeze === '1',
-                        revenue_mode: flags.revenue_mode || 'ACTIVE'
+                        revenue_mode: flags.revenue_mode || 'ACTIVE',
                     },
                     kpis: {
                         active_nodes_5m: activeNodes?.c || 0,
                         ops_5m: opsCount?.c || 0,
-                        revenue_24h_usdt: parseFloat(revenue24h?.t || 0).toFixed(2),
-                        treasury_balance: parseFloat(treasury || 0).toFixed(2)
+                        revenue_24h_usdt: Number(revenue24h?.t || 0).toFixed(2),
+                        treasury_balance: Number(treasury || 0).toFixed(2),
                     },
                     alerts_open_count: alertsOpen?.c || 0,
                     errors_1h_count: errors1h?.c || 0,
                     slow_queries_1h_count: slowQueries1h?.c || 0,
                     incidents_open_count: incidentsOpen?.c || 0,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
                 });
-            } catch (e) { }
+            } catch (e) {
+                console.error('[SSE] Snapshot Error:', e.message);
+            }
         };
 
-        // Send immediately
         await sendSnapshot();
 
-        // ── Snapshot every 10s ──
         const pollSnapshot = setInterval(sendSnapshot, 10000);
 
-        // ── Revenue batch ──
         const pollRevenue = setInterval(async () => {
-            try {
-                const events = await pollDB(
-                    `SELECT * FROM revenue_events_v2 WHERE id > ? ORDER BY id ASC LIMIT 10`,
-                    [lastRevenueId]
-                );
-                if (events.length > 0) {
-                    lastRevenueId = events[events.length - 1].id;
-                    conn.send('revenue_batch', events);
-                }
-            } catch (e) { }
+            const events = await pollDB(
+                'SELECT * FROM revenue_events_v2 WHERE id > ? ORDER BY id ASC LIMIT 10',
+                [lastRevenueId]
+            );
+            if (events.length > 0) {
+                lastRevenueId = events[events.length - 1].id;
+                conn.send('revenue_batch', events);
+            }
         }, 10000);
 
-        // ── Error batch ──
         const pollErrors = setInterval(async () => {
-            try {
-                const errors = await pollDB(
-                    `SELECT * FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at ASC LIMIT 10`,
-                    [lastErrorTs]
-                );
-                if (errors.length > 0) {
-                    lastErrorTs = errors[errors.length - 1].last_seen_at;
-                    conn.send('error_batch', errors);
-                }
-            } catch (e) { }
+            const errors = await pollDB(
+                'SELECT * FROM error_events WHERE last_seen_at > ? ORDER BY last_seen_at ASC LIMIT 10',
+                [lastErrorTs]
+            );
+            if (errors.length > 0) {
+                lastErrorTs = errors[errors.length - 1].last_seen_at;
+                conn.send('error_batch', errors);
+            }
         }, 10000);
 
-        // ── Security alerts ──
         const pollAlerts = setInterval(async () => {
-            try {
-                const alerts = await pollDB(
-                    `SELECT * FROM security_alerts WHERE created_at > ? ORDER BY created_at ASC LIMIT 10`,
-                    [lastAlertTs]
-                );
-                if (alerts.length > 0) {
-                    lastAlertTs = alerts[alerts.length - 1].created_at;
-                    conn.send('security_alerts', alerts);
-                }
-            } catch (e) { }
+            const alerts = await pollDB(
+                'SELECT * FROM security_alerts WHERE created_at > ? ORDER BY created_at ASC LIMIT 10',
+                [lastAlertTs]
+            );
+            if (alerts.length > 0) {
+                lastAlertTs = alerts[alerts.length - 1].created_at;
+                conn.send('security_alerts', alerts);
+            }
         }, 10000);
 
-        // ── Audit log ──
         const pollAudit = setInterval(async () => {
-            try {
-                const logs = await pollDB(
-                    `SELECT * FROM admin_audit_log WHERE created_at > ? ORDER BY created_at ASC LIMIT 10`,
-                    [lastAuditTs]
-                );
-                if (logs.length > 0) {
-                    lastAuditTs = logs[logs.length - 1].created_at;
-                    conn.send('audit', logs);
-                }
-            } catch (e) { }
+            const logs = await pollDB(
+                'SELECT * FROM admin_audit_log WHERE created_at > ? ORDER BY created_at ASC LIMIT 10',
+                [lastAuditTs]
+            );
+            if (logs.length > 0) {
+                lastAuditTs = logs[logs.length - 1].created_at;
+                conn.send('audit', logs);
+            }
         }, 10000);
 
-        // ── Slow query batch ──
         const pollSlowQueries = setInterval(async () => {
-            try {
-                const queries = await pollDB(
-                    `SELECT * FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at ASC LIMIT 10`,
-                    [lastSlowQueryTs]
-                );
-                if (queries.length > 0) {
-                    lastSlowQueryTs = queries[queries.length - 1].last_seen_at;
-                    conn.send('slow_query_batch', queries);
-                }
-            } catch (e) { }
+            const queries = await pollDB(
+                'SELECT * FROM slow_queries WHERE last_seen_at > ? ORDER BY last_seen_at ASC LIMIT 10',
+                [lastSlowQueryTs]
+            );
+            if (queries.length > 0) {
+                lastSlowQueryTs = queries[queries.length - 1].last_seen_at;
+                conn.send('slow_query_batch', queries);
+            }
         }, 10000);
 
-        // ── Incident bundles ──
         const pollIncidents = setInterval(async () => {
-            try {
-                const incidents = await pollDB(
-                    `SELECT * FROM incident_bundles WHERE created_at > ? ORDER BY created_at ASC LIMIT 10`,
-                    [lastIncidentTs]
-                );
-                if (incidents.length > 0) {
-                    lastIncidentTs = incidents[incidents.length - 1].created_at;
-                    conn.send('incident', incidents);
-                }
-            } catch (e) { }
+            const incidents = await pollDB(
+                'SELECT * FROM incident_bundles WHERE created_at > ? ORDER BY created_at ASC LIMIT 10',
+                [lastIncidentTs]
+            );
+            if (incidents.length > 0) {
+                lastIncidentTs = incidents[incidents.length - 1].created_at;
+                conn.send('incident', incidents);
+            }
         }, 10000);
 
-        // ── Ping keepalive every 15s ──
-        const pollPing = setInterval(() => {
-            conn.send('ping', { ts: Date.now() });
-        }, 15000);
-
-        // Cleanup
         req.on('close', () => {
             clearInterval(pollSnapshot);
             clearInterval(pollRevenue);
@@ -203,92 +177,126 @@ export function createStreamApiRouter(opsEngine) {
             clearInterval(pollAudit);
             clearInterval(pollSlowQueries);
             clearInterval(pollIncidents);
-            clearInterval(pollPing);
         });
     });
 
-
-    /**
-     * GET /stream/node
-     * Access: Node Operator (own node only)
-     */
     router.get('/node', requireJWT, async (req, res) => {
         if (req.user?.role !== 'node_operator') {
-            return res.status(403).json({ error: "Access denied" });
+            return res.status(403).json({ error: 'Access denied' });
         }
 
         const wallet = req.user.wallet;
 
         if (!sseManager.add(req, res)) {
-            return res.status(429).json({ error: "Too many active SSE connections" });
+            return res.status(429).json({ error: 'Too many active SSE connections' });
         }
 
         const conn = sseHelper.init(req, res);
+        if (!conn) return;
 
-        const pollStatus = setInterval(async () => {
-            try {
-                const node = await global.opsEngine.db.get("SELECT * FROM registered_nodes WHERE wallet = ?", [wallet]);
-                if (node) {
-                    const now = Math.floor(Date.now() / 1000);
-                    const isOnline = (now - node.last_heartbeat) < 300;
-                    conn.send('node_status', {
-                        online: isOnline,
-                        last_seen: node.last_heartbeat,
-                        ip: '127.0.0.1'
-                    });
-                }
-            } catch (e) { }
-        }, 10000);
+        const formatUptime = (lastSeen) => {
+            if (!lastSeen) return '0d 0h 0m';
+            const s = Math.max(0, Math.floor(Date.now() / 1000) - Number(lastSeen));
+            const d = Math.floor(s / 86400);
+            const h = Math.floor((s % 86400) / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return `${d}d ${h}h ${m}m`;
+        };
 
-        const pollEarnings = setInterval(async () => {
+        let lastLogId = 0;
+        try {
+            const latest = await pollGet(
+                'SELECT COALESCE(MAX(id), 0) as max_id FROM revenue_events_v2 WHERE node_id = ?',
+                [wallet]
+            );
+            lastLogId = Number(latest?.max_id || 0);
+        } catch (_) {
+            lastLogId = 0;
+        }
+
+        const pollHeartbeat = setInterval(async () => {
             try {
-                const total = await global.opsEngine.getBalance(wallet);
-                const recent_earnings = await pollDB(
-                    `SELECT * FROM epoch_earnings WHERE wallet_or_node_id = ? ORDER BY epoch_id DESC LIMIT 5`,
+                const node = await pollGet(
+                    'SELECT wallet, active, last_heartbeat FROM registered_nodes WHERE wallet = ?',
                     [wallet]
                 );
-                conn.send('earnings', {
-                    unpaid_balance: total,
-                    recent_epochs: recent_earnings || []
+                const unpaid = await pollDB(
+                    "SELECT amount_usdt FROM epoch_earnings WHERE wallet_or_node_id = ? AND status = 'UNPAID'",
+                    [wallet]
+                );
+
+                const claimable = unpaid.reduce((sum, row) => sum + Number(row.amount_usdt || 0), 0);
+                const nowSec = Math.floor(Date.now() / 1000);
+                const lastHeartbeat = Number(node?.last_heartbeat || 0);
+                const isOnline = Boolean(node?.active) || (lastHeartbeat > 0 && nowSec - lastHeartbeat < 300);
+
+                const recentOpsRow = await pollGet(
+                    'SELECT COUNT(*) as c FROM revenue_events_v2 WHERE node_id = ? AND created_at > ?',
+                    [wallet, nowSec - 10]
+                );
+                const recentOps = Number(recentOpsRow?.c || 0);
+                const pointLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                conn.send('heartbeat', {
+                    online: isOnline,
+                    uptime: formatUptime(lastHeartbeat),
+                    earnings: Number(claimable.toFixed(2)),
+                    lastPing: lastHeartbeat ? lastHeartbeat * 1000 : Date.now(),
+                    telemetry_point: {
+                        t: pointLabel,
+                        earned: Number(claimable.toFixed(2)),
+                        bw: recentOps,
+                    },
                 });
-            } catch (e) { }
+            } catch (e) {
+                console.error('[SSE] Node heartbeat error:', e.message);
+            }
+        }, 10000);
+
+        const pollLogs = setInterval(async () => {
+            const events = await pollDB(
+                'SELECT id, op_type, amount_usdt FROM revenue_events_v2 WHERE node_id = ? AND id > ? ORDER BY id ASC LIMIT 5',
+                [wallet, lastLogId]
+            );
+
+            for (const event of events) {
+                conn.send('log', { message: `[RELAY] ${event.op_type} -> $${event.amount_usdt}` });
+                lastLogId = event.id;
+            }
         }, 10000);
 
         req.on('close', () => {
-            clearInterval(pollStatus);
-            clearInterval(pollEarnings);
+            clearInterval(pollHeartbeat);
+            clearInterval(pollLogs);
         });
     });
 
-    /**
-     * GET /stream/builder
-     * Access: Builder
-     */
     router.get('/builder', requireJWT, async (req, res) => {
         if (req.user?.role !== 'builder') {
-            return res.status(403).json({ error: "Access denied" });
+            return res.status(403).json({ error: 'Access denied' });
         }
 
         const wallet = req.user.wallet;
 
         if (!sseManager.add(req, res)) {
-            return res.status(429).json({ error: "Too many active SSE connections" });
+            return res.status(429).json({ error: 'Too many active SSE connections' });
         }
 
         const conn = sseHelper.init(req, res);
+        if (!conn) return;
+
         let lastUsageId = 0;
 
         const pollUsage = setInterval(async () => {
-            try {
-                const events = await pollDB(
-                    `SELECT * FROM revenue_events_v2 WHERE client_id = ? AND id > ? ORDER BY id ASC LIMIT 5`,
-                    [wallet, lastUsageId]
-                );
-                if (events.length > 0) {
-                    lastUsageId = events[events.length - 1].id;
-                    conn.send('usage_log', events);
-                }
-            } catch (e) { }
+            const events = await pollDB(
+                'SELECT * FROM revenue_events_v2 WHERE client_id = ? AND id > ? ORDER BY id ASC LIMIT 5',
+                [wallet, lastUsageId]
+            );
+
+            if (events.length > 0) {
+                lastUsageId = events[events.length - 1].id;
+                conn.send('usage_log', events);
+            }
         }, 10000);
 
         req.on('close', () => {

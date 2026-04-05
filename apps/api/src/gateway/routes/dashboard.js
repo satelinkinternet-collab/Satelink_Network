@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { requireJWT } from "../../security/auth_middleware.js";
+import { requireJWT, requireRole } from "../../security/auth_middleware.js";
 
 export function createDashboardRouter(opsEngine) {
     const router = Router();
 
     // Middleware injected via stack in server.js, but we can also apply it here if we want route-level control.
     // Requirement from A1: Apply to /admin, /logs, /diag
-    const adminMiddleware = [requireJWT(['admin_super', 'admin_ops'])];
+    const adminMiddleware = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
 
     // --- ROUTES ---
 
@@ -102,7 +102,7 @@ export function createDashboardRouter(opsEngine) {
                 success: true,
                 token: result.token,
                 expiresAt: result.expiresAt,
-                url: `/ diag / snapshot ? token = ${result.token} `
+                url: `/diag/snapshot?token=${result.token}`
             });
         } catch (e) { next(e); }
     });

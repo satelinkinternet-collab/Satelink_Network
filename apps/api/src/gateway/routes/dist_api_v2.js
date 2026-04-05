@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
+const COMMISSION_RATE = 0.05; // 5% per conversion
+const EARNINGS_PER_SIGNUP = 5.0; // Flat earnings projection per signup
+
 export function createDistApiRouter(opsEngine) {
     const router = Router();
 
@@ -51,14 +54,30 @@ export function createDistApiRouter(opsEngine) {
             // Map table columns to frontend expectation
             const rows = await global.opsEngine.db.query("SELECT * FROM conversions WHERE ref_code = ? ORDER BY created_at DESC LIMIT 50", [refCode]);
 
-            const referrals = rows.map(r => ({
+            // Total signups for this ref_code
+            const totalSignups = rows.length;
+
+            const referrals = rows.map((r, idx) => ({
                 id: r.id,
+                code: r.ref_code || refCode,
                 referee_wallet: r.wallet,
+                signups_count: totalSignups - idx, // cumulative at time of each signup
+                earnings: EARNINGS_PER_SIGNUP.toFixed(2),
+                commission_rate: (COMMISSION_RATE * 100).toFixed(0) + '%',
                 status: 'activated',
-                created_at: r.created_at
+                created_at: r.created_at,
             }));
 
-            res.json({ ok: true, referrals });
+            res.json({
+                ok: true,
+                referrals,
+                summary: {
+                    total_signups: totalSignups,
+                    total_earnings: (totalSignups * EARNINGS_PER_SIGNUP).toFixed(2),
+                    commission_rate: (COMMISSION_RATE * 100).toFixed(0) + '%',
+                    ref_code: refCode,
+                },
+            });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }

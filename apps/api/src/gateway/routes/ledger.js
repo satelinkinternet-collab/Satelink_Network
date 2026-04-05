@@ -1,4 +1,5 @@
 import express from "express";
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export const createLedgerRouter = (opsEngine, adminAuth) => {
     const router = express.Router();
@@ -75,11 +76,20 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
         }
     });
 
-    // Withdraw Funds (Moves USDT)
-    router.post("/withdraw", async (req, res) => {
+    // Withdraw Funds (Moves USDT) — JWT-gated with balance + treasury checks
+    router.post("/withdraw", requireJWT, requireRole(['node_operator', 'admin_super', 'admin_ops']), async (req, res) => {
         try {
-            const { nodeWallet, amount } = req.body;
-            if (!nodeWallet || !amount) return res.status(400).json({ error: "Missing fields" });
+            const { amount, nodeWallet: requestedWallet } = req.body;
+            if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+                return res.status(400).json({ ok: false, error: "Invalid or missing amount" });
+            }
+
+            const isAdmin = ['admin_super', 'admin_ops'].includes(req.user?.role);
+            const nodeWallet = (isAdmin && requestedWallet) ? requestedWallet : req.user?.wallet;
+            if (!nodeWallet) {
+                return res.status(400).json({ ok: false, error: "Missing node wallet" });
+            }
+
             const result = await global.opsEngine.withdrawFunds(nodeWallet, Number(amount));
             // Ensure result has withdrawn property if test expects it
             return res.json({ ok: true, withdrawn: result.amount, ...result });
@@ -157,4 +167,3 @@ export const createLedgerRouter = (opsEngine, adminAuth) => {
 
     return router;
 };
-

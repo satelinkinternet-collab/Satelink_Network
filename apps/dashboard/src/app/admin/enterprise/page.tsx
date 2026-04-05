@@ -44,7 +44,7 @@ export default function EnterpriseDashboardPage() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 5000); // refresh every 5 seconds
+        const interval = setInterval(fetchData, 60000); // refresh every minute
         return () => clearInterval(interval);
     }, [fetchData]);
 

@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Global api already handles Authorization header
-            const { data } = await api.get('/auth/me');
+            const { data } = await api.get('/api/auth/me');
             if (data.ok) {
                 setUser(data.user);
                 return data.user;

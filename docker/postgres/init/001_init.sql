@@ -1,7 +1,5 @@
--- =============================================================
 -- Satelink Postgres Bootstrap — run once on first db-init
 -- Translated from sql/*.sql (SQLite → Postgres compatible)
--- =============================================================
 
 -- ── 001_core ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS system_config (

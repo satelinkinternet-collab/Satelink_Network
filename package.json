@@ -1,34 +1,40 @@
 {
-  "name": "satelink-mvp",
+  "name": "satelink",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "npm@11.6.2",
-  "type": "module",
   "workspaces": [
-    "apps/*",
-    "services/*",
-    "packages/*",
-    "agents/*"
+    "apps/api",
+    "apps/dashboard"
   ],
-  "devDependencies": {
-    "concurrently": "^9.2.1",
-    "turbo": "^2.1.2",
-    "typescript": "~5.8.0"
-  },
   "scripts": {
-    "install:all": "npm install",
-    "dev": "concurrently \"npm run dev --workspace=@satelink/api\" \"npm run dev --workspace=web\"",
-    "dev:api": "npm run dev --workspace=@satelink/api",
-    "dev:dashboard": "npm run dev --workspace=web",
-    "start": "npm run start --workspace=@satelink/api",
-    "gateway": "npm run gateway --workspace=@satelink/api",
-    "worker": "npm run worker --workspace=@satelink/api",
-    "build": "turbo build",
-    "test": "turbo test",
-    "lint": "turbo lint",
-    "contracts:build": "forge build",
-    "contracts:test": "forge test -vv",
-    "contracts:deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
-    "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast"
+    "dev": "concurrently \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/dashboard\"",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/dashboard",
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "axios": "^1.14.0",
+    "base32.js": "^0.1.0",
+    "cookie-parser": "^1.4.7",
+    "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "pino": "^10.3.1",
+    "qrcode": "^1.5.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "redis": "^5.11.0",
+    "speakeasy": "^2.0.0",
+    "uuid": "^13.0.0"
+  },
+  "overrides": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   }
 }

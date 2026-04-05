@@ -1,7 +1,26 @@
 import axios from "axios";
 
+const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+
+export const API_BASE_URL = (() => {
+    const configured = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL;
+    if (configured && configured.trim()) return trimTrailingSlash(configured.trim());
+
+    if (typeof window !== "undefined") {
+        return `${window.location.protocol}//${window.location.hostname}:8080`;
+    }
+
+    return "http://localhost:8080";
+})();
+
+export function buildApiUrl(path: string): string {
+    if (/^https?:\/\//i.test(path)) return path;
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${API_BASE_URL}${normalizedPath}`;
+}
+
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "",
+    baseURL: API_BASE_URL,
     headers: {
         "Cache-Control": "no-cache, no-store",
         Pragma: "no-cache",

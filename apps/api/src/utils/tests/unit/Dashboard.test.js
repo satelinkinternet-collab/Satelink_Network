@@ -5,7 +5,7 @@ import { DemandBuffer } from "../../../../server.js";
 
 describe.skip("Dashboard API Verification", function () {
     let app, agent, db;
-    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "satelink-admin-secret";
+    const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "test-admin-secret";
 
     before(async function () {
         db = new Database(":memory:");

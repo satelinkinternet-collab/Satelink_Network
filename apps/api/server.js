@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ path: "../../.env", override: true });
+dotenv.config({ path: new URL("../../.env", import.meta.url).pathname, override: true });
 console.log('🔥 API SERVER LOADED');global.opsEngine = null;
 // server.js
 // Global Resilience: Prevent process exit on database connection loss (placed at the absolute top)
@@ -127,72 +127,106 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         logger.info("[BOOT] Modules initialized (some may be in degraded state)");
 
         const app = await createApp(db);
-app.use((req, res, next) => {  console.log('👉 API HIT:', req.method, req.url);  next();});        logger.info("[BOOT] App initialized");
-        const PORT = process.env.PORT || 8080;
-
-        const server = app.listen(process.env.PORT || 8080, "0.0.0.0", async () => {
-            logger.info(`Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: "postgres" });
-            console.log("Database Adapter: PostgreSQL (production mode)");
-console.log("FLAG CHECK:", {
-  FEATURE_REAL_SETTLEMENT: process.env.FEATURE_REAL_SETTLEMENT,
-  SETTLEMENT_ENABLED: process.env.SETTLEMENT_ENABLED,
-  SETTLEMENT_ADAPTER: process.env.SETTLEMENT_ADAPTER,
-  SETTLEMENT_EVM_ENABLED: process.env.SETTLEMENT_EVM_ENABLED
-});
-
-            // Wire graceful shutdown to this server + DB instance
-            process.on('app:shutdown', async () => {
-                try {
-                    server.close(() => logger.info("[SHUTDOWN] HTTP server closed"));
-                    await db.close();
-                    logger.info("[SHUTDOWN] DB pool closed");
-                    process.exit(0);
-                } catch (e) {
-                    logger.error("[SHUTDOWN] Error during cleanup", { error: e.message });
-                    process.exit(1);
-                }
-            });
-
-            // Hardened: Mandatory REAL mode for payouts
-            if (String(process.env.FEATURE_REAL_SETTLEMENT).trim().toLowerCase() !== "true") {
-                console.log('REAL SETTLEMENT: INACTIVE');
-            } else {
-                console.log('REAL SETTLEMENT: ACTIVE');
-            }
-
-            // ── EVM Wallet Validation ──
-            const evmKey = process.env.EVM_PRIVATE_KEY;
-            if (!evmKey || evmKey === 'YOUR_PRIVATE_KEY_HERE') {
-                console.warn('[BOOT] EVM_PRIVATE_KEY is not set or is a placeholder. Real EVM settlement will fail.');
-            } else if (!/^(0x)?[0-9a-fA-F]{64}$/.test(evmKey)) {
-                console.warn('[BOOT] EVM_PRIVATE_KEY is invalid (expected 64 hex chars). Settlement will fail.');
-            } else {
-                console.log('[BOOT] EVM_PRIVATE_KEY validated (length OK, hex format OK)');
-            }
-
-            try {
-                const depositDetector = new DepositDetector(db);
-                await depositDetector.start();
-            } catch (e) {
-                console.warn("[BOOT] DepositDetector failed to start:", e.message, "(non-fatal, settlement queue still operational)");
-            }
-
-            // Phase 7: Run internal test on startup
-            try {
-                await runSatelinkSelfTest(db);
-            } catch (testErr) {
-                console.error("❌ SATELINK SELF TEST FAILED DURING BOOT:", testErr.message);
-            }
-
-            console.log('REAL DEMAND STATUS: ACTIVE');
-
-            // Start automatic epoch aggregation scheduler
-            try {
-                startEpochScheduler(db);
-            } catch (e) {
-                console.error("[BOOT] Failed to start Epoch Scheduler:", e.message);
-            }
+        app.use((req, res, next) => {
+            console.log('👉 API HIT:', req.method, req.url);
+            next();
         });
+        logger.info("[BOOT] App initialized");
+
+        const PORT = Number(process.env.PORT) || 8080;
+
+        const bindServerWithFallback = async (startPort, maxRetries = 20) => {
+            let retries = 0;
+            let currentPort = startPort;
+
+            while (retries <= maxRetries) {
+                const server = await new Promise((resolve, reject) => {
+                    const candidate = app.listen(currentPort, "0.0.0.0");
+                    candidate.once("listening", () => resolve(candidate));
+                    candidate.once("error", (err) => reject(err));
+                }).catch((err) => {
+                    if (err && err.code === "EADDRINUSE" && retries < maxRetries) {
+                        console.warn(`[SERVER] Port ${currentPort} in use, trying ${currentPort + 1}...`);
+                        retries += 1;
+                        currentPort += 1;
+                        return null;
+                    }
+                    throw err;
+                });
+
+                if (!server) continue;
+
+                process.env.PORT = String(currentPort);
+                console.log(`[SERVER] Running on port ${currentPort}`);
+                logger.info(`Satelink Backend Running`, { port: currentPort, mode: process.env.NODE_ENV, db: "postgres" });
+                console.log("Database Adapter: PostgreSQL (production mode)");
+                console.log("FLAG CHECK:", {
+                    FEATURE_REAL_SETTLEMENT: process.env.FEATURE_REAL_SETTLEMENT,
+                    SETTLEMENT_ENABLED: process.env.SETTLEMENT_ENABLED,
+                    SETTLEMENT_ADAPTER: process.env.SETTLEMENT_ADAPTER,
+                    SETTLEMENT_EVM_ENABLED: process.env.SETTLEMENT_EVM_ENABLED
+                });
+
+                // Wire graceful shutdown to this server + DB instance
+                process.on('app:shutdown', async () => {
+                    try {
+                        server.close(() => logger.info("[SHUTDOWN] HTTP server closed"));
+                        await db.close();
+                        logger.info("[SHUTDOWN] DB pool closed");
+                        process.exit(0);
+                    } catch (e) {
+                        logger.error("[SHUTDOWN] Error during cleanup", { error: e.message });
+                        process.exit(1);
+                    }
+                });
+
+                // Hardened: Mandatory REAL mode for payouts
+                if (String(process.env.FEATURE_REAL_SETTLEMENT).trim().toLowerCase() !== "true") {
+                    console.log('REAL SETTLEMENT: INACTIVE');
+                } else {
+                    console.log('REAL SETTLEMENT: ACTIVE');
+                }
+
+                // ── EVM Wallet Validation ──
+                const evmKey = process.env.EVM_PRIVATE_KEY;
+                if (!evmKey || evmKey === 'YOUR_PRIVATE_KEY_HERE') {
+                    console.warn('[BOOT] EVM_PRIVATE_KEY is not set or is a placeholder. Real EVM settlement will fail.');
+                } else if (!/^(0x)?[0-9a-fA-F]{64}$/.test(evmKey)) {
+                    console.warn('[BOOT] EVM_PRIVATE_KEY is invalid (expected 64 hex chars). Settlement will fail.');
+                } else {
+                    console.log('[BOOT] EVM_PRIVATE_KEY validated (length OK, hex format OK)');
+                }
+
+                try {
+                    const depositDetector = new DepositDetector(db);
+                    await depositDetector.start();
+                } catch (e) {
+                    console.warn("[BOOT] DepositDetector failed to start:", e.message, "(non-fatal, settlement queue still operational)");
+                }
+
+                // Phase 7: Run internal test on startup
+                try {
+                    await runSatelinkSelfTest(db);
+                } catch (testErr) {
+                    console.error("❌ SATELINK SELF TEST FAILED DURING BOOT:", testErr.message);
+                }
+
+                console.log('REAL DEMAND STATUS: ACTIVE');
+
+                // Start automatic epoch aggregation scheduler
+                try {
+                    startEpochScheduler(db);
+                } catch (e) {
+                    console.error("[BOOT] Failed to start Epoch Scheduler:", e.message);
+                }
+
+                return server;
+            }
+
+            throw new Error(`[SERVER] Could not bind to any port from ${startPort} to ${startPort + maxRetries}`);
+        };
+
+        await bindServerWithFallback(PORT);
     } catch (e) {
         console.error("═══════════════════════════════════════════════════════");
         console.error("  ❌ BOOT FAILURE — DATABASE CONNECTION FAILED");

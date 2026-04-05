@@ -16,6 +16,7 @@ import {
     CartesianGrid, XAxis, YAxis
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { EpochCountdown } from '@/components/EpochCountdown';
 
 export default function NodeDashboard() {
     const { user } = useAuth();
@@ -79,6 +80,25 @@ export default function NodeDashboard() {
     }, []);
 
     // Handle real-time SSE updates
+    useEffect(() => {
+        api.get('/node-api/status').then(res => {
+            if (res.data?.ok) {
+                const { status, telemetry: tele, logs: apiLogs } = res.data;
+                if (status) {
+                    setNodeStatus((p: any) => ({
+                        ...p,
+                        online: status.online ?? p.online,
+                        uptime: status.uptime ?? p.uptime,
+                        earnings: status.earnings ?? p.earnings,
+                        lastPing: status.lastPing ?? p.lastPing,
+                    }));
+                }
+                if (tele?.length) setTelemetry(tele);
+                if (apiLogs?.length) setLogs(apiLogs);
+            }
+        }).catch(() => { /* keep mock defaults on error */ });
+    }, []);
+
     useEffect(() => {
         if (!lastEvent) return;
         if (lastEvent.type === 'heartbeat') {

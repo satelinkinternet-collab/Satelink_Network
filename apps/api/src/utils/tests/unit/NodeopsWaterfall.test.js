@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import crypto from 'crypto';
-import { DemandBuffer } from '../../../ops-agent/nodeops_waterfall.js';
+import { NodeopsWaterfallService } from '../src/services/nodeops_waterfall.js';
 import Database from 'better-sqlite3';
 
 describe('Economics: NodeOps Settlement Waterfall', () => {

@@ -308,22 +308,10 @@ export class OperationsEngine {
     const id = epochId || this.currentEpochId;
     const now = Math.floor(Date.now() / 1000);
 
-    const txFn = db.transaction(async () => {
+    const txFn = this.db.transaction(async () => {
       const result = await this.db.prepare("UPDATE epochs SET status = 'FINALIZED', ends_at = ? WHERE id = ? AND status = 'OPEN'").run(now, id);
-      
 
-        // 🔥 FORCE REVENUE EVENT
-        await this.db.prepare(`
-          INSERT INTO revenue_events (amount, token, source, created_at, enterprise_id)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(
-          price || 0.0005,
-          "USDT",
-          op_type,
-          Math.floor(Date.now() / 1000),
-          client_id || "default_enterprise"
-        );
-if (result.changes === 0) throw new Error("Epoch not found or already finalized");
+      if (result.changes === 0) throw new Error("Epoch not found or already finalized");
 
       // Compute Splits
       const revRow = await this.db.prepare("SELECT SUM(amount_usdt) as total FROM revenue_events_v2 WHERE epoch_id = ?").get(id);

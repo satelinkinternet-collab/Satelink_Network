@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { DemandBuffer } from '../../../settlement/rewards.js';
+import { getGrossRewardUSDT } from '../src/services/rewards.js';
 import Database from 'better-sqlite3';
 
 describe('Reward Aggregation', () => {

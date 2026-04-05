@@ -35,26 +35,38 @@ export function signJWT(payload) {
 export function createUnifiedAuthRouter(opsEngine) {
     const router = Router();
 
-    // GET /me - Returns current user info from JWT
-    router.get('/me', verifyJWT, (req, res) => {
-        res.json({
-            ok: true,
-            user: {
-                wallet: req.user.wallet,
-                role: req.user.role,
-                iat: req.user.iat,
-                exp: req.user.exp,
-                iss: req.user.iss,
-                permissions: getPermissionsForRole(req.user.role)
-            }
-        });
-    });
+    const getAuthDb = () => {
+        if (global.opsEngine?.db) return global.opsEngine.db;
+        if (opsEngine?.db) return opsEngine.db;
+        return null;
+    };
 
-    // GET /auth/me - Alias for frontend
-    router.get('/auth/me', verifyJWT, (req, res) => {
+    const makeAccessToken = ({ wallet, role, extra = {} }) => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error("JWT_SECRET missing");
+
+        return jwt.sign(
+            {
+                userId: wallet,
+                wallet,
+                role,
+                type: 'access',
+                ...extra
+            },
+            secret,
+            {
+                expiresIn: process.env.JWT_TTL || '15m',
+                issuer: process.env.JWT_ISSUER || 'satelink-network',
+                algorithm: 'HS256'
+            }
+        );
+    };
+
+    const sendAuthMe = (req, res) => {
         if (!req.user) {
             return res.status(401).json({ ok: false, error: "Unauthorized" });
         }
+
         return res.json({
             ok: true,
             user: {
@@ -62,39 +74,12 @@ export function createUnifiedAuthRouter(opsEngine) {
                 permissions: req.user.permissions || getPermissionsForRole(req.user.role)
             }
         });
-    });
+    };
 
-    // ── Diagnostic role-based login (wallet + role) ──
-    // Non-destructive: does NOT override /login (email+password) above.
-    // Disabled when DISABLE_DEV_LOGIN=true (set in real production deploys).
-    if (process.env.DISABLE_DEV_LOGIN !== 'true') {
-        router.post('/auth/login', (req, res) => {
-            const { wallet, role } = req.body;
-            if (!wallet) {
-                return res.status(400).json({ ok: false, error: 'wallet is required' });
-            }
-            const assignedRole = role || 'node_operator';
-            const secret = process.env.JWT_SECRET;
-            if (!secret) {
-                return res.status(500).json({ ok: false, error: 'JWT_SECRET not configured' });
-            }
-            const token = jwt.sign(
-                {
-                    wallet,
-                    role: assignedRole,
-                    type: 'access',
-                    dev: true
-                },
-                secret,
-                { expiresIn: process.env.JWT_TTL || '24h', issuer: process.env.JWT_ISSUER || 'satelink-network', algorithm: 'HS256' }
-            );
-            res.json({
-                ok: true,
-                token,
-                user: { wallet, role: assignedRole, permissions: getPermissionsForRole(assignedRole) }
-            });
-        });
-    }
+    // GET /me, /auth/me, /api/auth/me
+    router.get('/me', verifyJWT, sendAuthMe);
+    router.get('/auth/me', verifyJWT, sendAuthMe);
+    router.get('/api/auth/me', verifyJWT, sendAuthMe);
 
     // IP Hashing helper for rate limits
     const hashIp = (ip) => {
@@ -127,8 +112,7 @@ export function createUnifiedAuthRouter(opsEngine) {
         return crypto.createHash('sha256').update(password + salt).digest('hex');
     };
 
-    // POST /auth/register - Permissionless onboarding
-    router.post('/auth/register', authLimiter, async (req, res) => {
+    const handleAuthRegister = async (req, res) => {
         const { email, password, username } = req.body;
 
         if (!email || typeof email !== 'string' || !email.includes('@')) {
@@ -144,46 +128,34 @@ export function createUnifiedAuthRouter(opsEngine) {
         const now = Date.now();
 
         try {
-            if (!opsEngine || !global.opsEngine.db) {
+            const authDb = getAuthDb();
+            if (!authDb) {
                 return res.status(500).json({ ok: false, error: 'Database connection not available' });
             }
 
             // Ensure schema exists robustly at runtime
-            global.opsEngine.db.exec(
+            authDb.exec(
                 "CREATE TABLE IF NOT EXISTS auth_users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
             );
 
             // Check if user exists (generic error response for UX vs Security balance as per requirements)
-            const existingUser = global.opsEngine.db.prepare("SELECT email FROM auth_users WHERE email = ?").get(normalizedEmail);
+            const existingUser = authDb.prepare("SELECT email FROM auth_users WHERE email = ?").get(normalizedEmail);
             if (existingUser) {
                 return res.status(400).json({ ok: false, error: 'Email already used' });
             }
 
             // Insert into new users schema
-            global.opsEngine.db.prepare(
+            authDb.prepare(
                 "INSERT INTO auth_users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)"
             ).run(normalizedEmail, pwdHash, role, now);
 
             // Insert into legacy user_roles for compatibility with existing RBAC
-            global.opsEngine.db.exec("CREATE TABLE IF NOT EXISTS user_roles (wallet TEXT PRIMARY KEY, role TEXT, updated_at INTEGER)");
-            global.opsEngine.db.prepare(
+            authDb.exec("CREATE TABLE IF NOT EXISTS user_roles (wallet TEXT PRIMARY KEY, role TEXT, updated_at INTEGER)");
+            authDb.prepare(
                 "INSERT OR REPLACE INTO user_roles (wallet, role, updated_at) VALUES (?, ?, ?)"
             ).run(normalizedEmail, role, now);
 
-            // Generate JWT (matching structure from src/middleware/auth.js and /me endpoint)
-            const secret = process.env.JWT_SECRET;
-            if (!secret) throw new Error("JWT_SECRET missing");
-
-            const token = jwt.sign(
-                {
-                    userId: normalizedEmail,
-                    wallet: normalizedEmail, // mapped for legacy compatibility
-                    role: role,
-                    type: 'access'
-                },
-                secret,
-                { expiresIn: process.env.JWT_TTL || '15m', issuer: process.env.JWT_ISSUER || 'satelink-network', algorithm: 'HS256' }
-            );
+            const token = makeAccessToken({ wallet: normalizedEmail, role });
 
             res.json({
                 ok: true,
@@ -195,10 +167,14 @@ export function createUnifiedAuthRouter(opsEngine) {
             console.error("[AUTH] Registration error:", e);
             res.status(500).json({ ok: false, error: 'Internal server error during registration' });
         }
-    });
+    };
 
-    // POST /auth/login - Permissionless login
-    router.post('/login', authLimiter, async (req, res) => {
+    // POST /auth/register (+ /api alias) - Permissionless onboarding
+    router.post('/register', authLimiter, handleAuthRegister);
+    router.post('/auth/register', authLimiter, handleAuthRegister);
+    router.post('/api/auth/register', authLimiter, handleAuthRegister);
+
+    const handlePasswordLogin = async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
@@ -209,17 +185,18 @@ export function createUnifiedAuthRouter(opsEngine) {
         const pwdHash = hashPassword(password);
 
         try {
-            if (!opsEngine || !global.opsEngine.db) {
+            const authDb = getAuthDb();
+            if (!authDb) {
                 return res.status(500).json({ ok: false, error: 'Database connection not available' });
             }
 
             // Ensure schema exists robustly at runtime
-            global.opsEngine.db.exec(
+            authDb.exec(
                 "CREATE TABLE IF NOT EXISTS auth_users (email TEXT PRIMARY KEY, password_hash TEXT, role TEXT, created_at INTEGER)"
             );
 
             // Check user (timing attack prevention is minimal here, standard quick hash comparison)
-            const user = global.opsEngine.db.prepare(
+            const user = authDb.prepare(
                 "SELECT email, role FROM auth_users WHERE email = ? AND password_hash = ?"
             ).get(normalizedEmail, pwdHash);
 
@@ -228,20 +205,7 @@ export function createUnifiedAuthRouter(opsEngine) {
                 return res.status(401).json({ ok: false, error: 'Invalid email or password' });
             }
 
-            // Generate JWT
-            const secret = process.env.JWT_SECRET;
-            if (!secret) throw new Error("JWT_SECRET missing");
-
-            const token = jwt.sign(
-                {
-                    userId: user.email,
-                    wallet: user.email, // mapped for legacy compatibility
-                    role: user.role,
-                    type: 'access'
-                },
-                secret,
-                { expiresIn: process.env.JWT_TTL || '15m', issuer: process.env.JWT_ISSUER || 'satelink-network', algorithm: 'HS256' }
-            );
+            const token = makeAccessToken({ wallet: user.email, role: user.role });
 
             res.json({
                 ok: true,
@@ -253,7 +217,50 @@ export function createUnifiedAuthRouter(opsEngine) {
             console.error("[AUTH] Login error:", e);
             res.status(500).json({ ok: false, error: 'Internal server error during login' });
         }
-    });
+    };
+
+    const handleWalletDiagnosticLogin = (req, res) => {
+        const { wallet, role } = req.body || {};
+        if (!wallet) {
+            return res.status(400).json({ ok: false, error: 'wallet is required' });
+        }
+
+        const assignedRole = role || 'node_operator';
+        const token = makeAccessToken({
+            wallet,
+            role: assignedRole,
+            extra: { dev: true }
+        });
+
+        return res.json({
+            ok: true,
+            token,
+            user: {
+                wallet,
+                role: assignedRole,
+                permissions: getPermissionsForRole(assignedRole)
+            }
+        });
+    };
+
+    // Canonical login endpoints: supports wallet-role diagnostic flow and email/password flow.
+    const handleAuthLogin = async (req, res) => {
+        const hasWallet = !!(req.body && typeof req.body.wallet === 'string' && req.body.wallet.trim().length > 0);
+        if (hasWallet) {
+            if (process.env.DISABLE_DEV_LOGIN === 'true') {
+                return res.status(403).json({
+                    ok: false,
+                    error: 'Diagnostic wallet login is disabled in this environment'
+                });
+            }
+            return handleWalletDiagnosticLogin(req, res);
+        }
+        return handlePasswordLogin(req, res);
+    };
+
+    router.post('/auth/login', authLimiter, handleAuthLogin);
+    router.post('/api/auth/login', authLimiter, handleAuthLogin);
+    router.post('/login', authLimiter, handlePasswordLogin);
 
     return router;
 }

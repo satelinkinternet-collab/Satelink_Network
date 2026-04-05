@@ -4,8 +4,15 @@ import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
 import rateLimit from 'express-rate-limit';
 
+const IP_SALT = process.env.IP_SALT || 'dev-insecure-salt';
+if (process.env.NODE_ENV === 'production') {
+    const configuredSalt = (process.env.IP_SALT || '').trim();
+    if (!configuredSalt || configuredSalt === 'dev-insecure-salt') {
+        throw new Error('FATAL: IP_SALT must be explicitly set in production mode.');
+    }
+}
 function hashIp(ip) {
-    return crypto.createHash('sha256').update(ip + (process.env.IP_SALT || 'satelink_salty')).digest('hex').substring(0, 16);
+    return crypto.createHash('sha256').update(ip + IP_SALT).digest('hex').substring(0, 16);
 }
 
 /**
