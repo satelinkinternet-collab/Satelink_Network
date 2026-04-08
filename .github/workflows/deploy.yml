@@ -2,21 +2,32 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          
-      - name: Docker Build and Up
-        run: |
-          cd infra/docker
-          docker compose build
-          docker compose up -d
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - run: npm test
+
+      - run: npm run build --workspace=dashboard
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - run: |
+          set -euo pipefail
+          echo "::notice::Deploy step is a placeholder."
+          echo "Built artifacts:"
+          ls -lh apps/dashboard/.next 2>/dev/null | head -5 || echo "  (no .next build found)"
+          echo "Commit: ${{ github.sha }}"
+          echo "This is a safe placeholder deployment. No actual deployment occurred."
