@@ -51,6 +51,5 @@ export function attachBaseMiddleware(app) {
     app.options(/.*$/, cors(corsOptions));
 
     if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test' && !process.env.MOCHA) {
-        app.use("/__test", (req, res) => res.status(404).send("Not Found"));
     }
 }
