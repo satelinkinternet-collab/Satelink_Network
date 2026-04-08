@@ -279,8 +279,10 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
             if (bal < amount) return res.status(400).json({ error: "Insufficient balance" });
             const now = Math.floor(Date.now() / 1000);
 
-            const r = await global.opsEngine.db.query("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?,?,'PENDING',?) RETURNING id",
-                [wallet, amount, now]);
+            // created_at omitted — DB default `now()` fills timestamp column.
+            // Passing a Unix-seconds int here overflows `timestamp without time zone`.
+            const r = await global.opsEngine.db.query("INSERT INTO withdrawals (wallet, amount_usdt, status) VALUES (?,?,'PENDING') RETURNING id",
+                [wallet, amount]);
 
 
             // For now, I will assume the SQL `RETURNING id` works or I don't strictly need the ID for the response in Micro-Prod?

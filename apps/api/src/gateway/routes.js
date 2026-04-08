@@ -52,6 +52,8 @@ import { createNodeApiRouter } from './routes/node_api_v2.js';
 import { createBuilderApiV2Router } from './routes/builder_api_v2.js';
 import { createDistApiRouter } from './routes/dist_api_v2.js';
 import { createEntApiRouter } from './routes/ent_api_v2.js';
+import { createDevAuthRouter } from './routes/dev_auth_tokens.js';
+import { createIntegrationRouter } from '../integrations/router.js';
 
 client.collectDefaultMetrics();
 
@@ -74,6 +76,11 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
             }, process.env.JWT_SECRET, { expiresIn: "7d" });
             res.json({ token });
         });
+
+        // Dev auth router — exposes /__test/auth/{admin,node,builder}/login
+        // for smoke scripts and local E2E. Router has its own NODE_ENV guard
+        // (dev_auth_tokens.js:10-14) as defence-in-depth.
+        app.use('/__test/auth', createDevAuthRouter(opsEngine));
     }
 
     app.use('/v1/gateway', gwRouter);
@@ -344,6 +351,12 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     app.use('/builder-api', requireJWT, createBuilderApiV2Router(opsEngine)); // builder routes (JWT enforced at mount)
 
     app.use('/ent-api', createEntApiRouter(opsEngine));           // has own JWT + role guards
+
+    // ── Integrations / Ledger: /claim, /withdraw, /balances/:wallet, webhooks ──
+    // Routes in integrations/router.js use absolute paths — mount at root.
+    // Claim/withdraw handlers rely on signature verification inside opsEngine
+    // (no JWT). Admin-protected subroutes use the passed middleware.
+    app.use('/', createIntegrationRouter(opsEngine, requireAdmin));
 
 
     app.get('/debug/pipeline-status', ...requireAdmin, async (req, res) => {

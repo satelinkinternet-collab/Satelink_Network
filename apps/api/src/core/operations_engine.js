@@ -555,7 +555,7 @@ if (result.changes === 0) throw new Error("Epoch not found or already finalized"
         if (simFlag?.value === '1') status = 'SIMULATED';
       } catch (_) { /* system_flags may not exist */ }
 
-      await this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?, ?, ?, ?)").run(wallet, total, status, now);
+      await this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status) VALUES (?, ?, ?)").run(wallet, total, status);
     });
 
     await txFn();
@@ -617,7 +617,7 @@ if (result.changes === 0) throw new Error("Epoch not found or already finalized"
       if (simFlag?.value === '1') status = 'SIMULATED';
     } catch (_) { /* system_flags may not exist */ }
 
-    await this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status, created_at) VALUES (?, ?, ?, ?)").run(nodeWallet, amount, status, now);
+    await this.db.prepare("INSERT INTO withdrawals (wallet, amount_usdt, status) VALUES (?, ?, ?)").run(nodeWallet, amount, status);
 
     // [Phase 26] Ledger: Move from Rewards Payable to Payouts Payable (Manual Withdraw)
     if (this.ledger) {
