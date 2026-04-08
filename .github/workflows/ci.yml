@@ -1,14 +1,20 @@
-name: Satelink CI
+name: CI
 
 on:
-  push:
-    branches: [ "production-base", "main", "develop" ]
   pull_request:
-    branches: [ "production-base", "main", "develop" ]
+    branches: [main, develop, production-base]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  test:
+    name: Lint, Test, Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repo
@@ -18,48 +24,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Install dependencies (root)
-        run: npm install
-
-      - name: Install API deps
-        run: npm install --workspace=@satelink/api
-
-      - name: Install Web deps
-        run: npm install --workspace=web
-
-      - name: Run API tests
-        run: npm run test --workspace=@satelink/api || true
-
-      - name: Build web
-        run: npm run build --workspace=web || true
-
-      - name: Success
-        run: echo "CI Passed"name: CI
-
-on:
-  push:
-    branches: [ main, staging, develop ]
-  pull_request:
-    branches: [ main, staging, develop ]
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
+      # `npm install` at the workspace root installs ALL workspaces (apps/api, apps/dashboard).
+      # No `|| true` — if this fails, CI fails.
       - name: Install dependencies
         run: npm install
-        
-      - name: Build
-        run: npm run build
-        
-      - name: Test
-        run: npm run test
+
+      - name: Run tests (root)
+        run: npm test
+
+      - name: Build dashboard (Next.js)
+        run: npm run build --workspace=dashboard
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

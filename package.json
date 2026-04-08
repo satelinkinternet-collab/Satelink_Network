@@ -10,8 +10,9 @@
     "dev": "concurrently \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/dashboard\"",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/dashboard",
-    "build": "npm run build --workspaces",
-    "start": "npm run start --workspaces"
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start --workspaces --if-present",
+    "test": "npm test --workspace=api"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

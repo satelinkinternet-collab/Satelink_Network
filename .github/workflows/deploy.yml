@@ -2,21 +2,65 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
+# Only one deploy at a time per branch.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
-  deploy:
+  build-and-deploy:
+    name: Build and Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          
-      - name: Docker Build and Up
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests (gate)
+        run: npm test
+
+      - name: Build dashboard
+        run: npm run build --workspace=dashboard
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      # =====================================================================
+      # PLACEHOLDER DEPLOY STEP
+      # Replace this with your real deploy command. Examples:
+      #
+      #   AWS S3 + CloudFront:
+      #     aws s3 sync apps/dashboard/.next s3://$BUCKET --delete
+      #     aws cloudfront create-invalidation --distribution-id $CFID --paths '/*'
+      #
+      #   Vercel:
+      #     npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+      #
+      #   Self-hosted via SSH:
+      #     ssh -i $KEY user@host 'cd /srv/satelink && git pull && pm2 restart all'
+      #
+      # The step below MUST exit non-zero on failure (no `|| true`).
+      # =====================================================================
+      - name: Deploy (placeholder)
         run: |
-          cd infra/docker
-          docker compose build
-          docker compose up -d
+          set -euo pipefail
+          echo "::notice::Deploy step is a placeholder."
+          echo "Built artifacts:"
+          ls -lh apps/dashboard/.next 2>/dev/null | head -5 || echo "  (no .next build found)"
+          echo "Commit: ${{ github.sha }}"
+          echo "Replace this step with real deploy logic. Pipeline currently asserts: install + test + build succeed."
