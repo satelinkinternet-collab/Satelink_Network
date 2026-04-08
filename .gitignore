@@ -69,3 +69,4 @@ test/*.backup_*
 lib/
 node_modules/
 .next/
+.aider*
