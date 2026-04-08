@@ -5,6 +5,7 @@ on:
     branches: [main, develop, production-base]
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
