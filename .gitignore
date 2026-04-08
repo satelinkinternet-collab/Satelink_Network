@@ -63,3 +63,7 @@ node_modules
 .env.*
 .env
 .aider*
+.venv
+node_modules
+.env*
+*.log
