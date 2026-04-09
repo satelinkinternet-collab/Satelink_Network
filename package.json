@@ -30,5 +30,9 @@
     "contracts:test": "forge test -vv",
     "contracts:deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
     "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.1",
+    "ethers": "^6.16.0"
   }
 }
