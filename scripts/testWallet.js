@@ -5,12 +5,12 @@ dotenv.config();
 
 async function main() {
   // --- Validate env ---
-  if (!process.env.POLYGON_RPC || !process.env.PRIVATE_KEY) {
-    throw new Error("Missing POLYGON_RPC or PRIVATE_KEY in .env");
+  if (!process.env.RPC_URL || !process.env.PRIVATE_KEY) {
+    throw new Error("Missing RPC_URL or PRIVATE_KEY in .env");
   }
 
   // --- Connect ---
-  const provider = new ethers.JsonRpcProvider(process.env.POLYGON_RPC);
+  const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
   // --- Network check ---

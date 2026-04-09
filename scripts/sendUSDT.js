@@ -19,12 +19,12 @@ const ERC20_ABI = [
 
 async function main() {
   // --- Validate env ---
-  const { POLYGON_RPC, PRIVATE_KEY } = process.env;
-  if (!POLYGON_RPC || !PRIVATE_KEY) {
-    throw new Error("Missing POLYGON_RPC or PRIVATE_KEY in .env");
+  const { RPC_URL, PRIVATE_KEY } = process.env;
+  if (!RPC_URL || !PRIVATE_KEY) {
+    throw new Error("Missing RPC_URL or PRIVATE_KEY in .env");
   }
 
-  const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
+  const provider = new ethers.JsonRpcProvider(RPC_URL);
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
   // --- Network guard ---
