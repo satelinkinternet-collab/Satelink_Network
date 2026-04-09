@@ -9,7 +9,9 @@ const ERC20_ABI = [
 ];
 
 export async function sendUSDT(to, amountHuman, tokenAddress) {
-  const provider = new ethers.JsonRpcProvider(process.env.FUSE_RPC);
+  const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+  const network = await provider.getNetwork();
+  console.log("Chain ID:", network.chainId);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
   const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
