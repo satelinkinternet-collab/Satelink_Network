@@ -44,7 +44,7 @@ export function attachBaseMiddleware(app) {
         },
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Admin-Key"]
+        allowedHeaders: ["Content-Type", "Authorization", "X-Admin-Key", "x-api-key"]
     };
 
     app.use(cors(corsOptions));
