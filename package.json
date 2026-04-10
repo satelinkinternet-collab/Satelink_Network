@@ -29,7 +29,8 @@
     "contracts:build": "forge build",
     "contracts:test": "forge test -vv",
     "contracts:deploy:local": "forge script script/Deploy.s.sol --rpc-url localhost --broadcast",
-    "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast"
+    "contracts:deploy:spark": "forge script script/Deploy.s.sol --rpc-url fuse_spark --broadcast",
+    "certify:e2e": "node scripts/certify_e2e.js"
   },
   "dependencies": {
     "dotenv": "^17.4.1",
