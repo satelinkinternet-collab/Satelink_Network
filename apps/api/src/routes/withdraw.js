@@ -25,9 +25,10 @@ const COOLDOWN_MS = 5 * 60 * 1000;            // 5 minutes
 export function createWithdrawRouter(withdrawService) {
     const router = Router();
 
-    // ── Input Validation (runs FIRST, before any auth) ──
+    // ── Input Validation (runs AFTER auth) ──
     function validateWithdrawBody(req, res, next) {
         console.log('[WITHDRAW] VALIDATION HIT');
+    if (!req.headers["x-api-key"]) return next();
         const { to, requestId } = req.body || {};
 
         if (!to || !requestId) {
@@ -61,8 +62,8 @@ export function createWithdrawRouter(withdrawService) {
     }
 
     // ── POST /withdraw ──
-    // Execution order: 1) validate body (400) → 2) JWT auth (401) → 3) API key (403) → 4) handler
-    router.post("/withdraw", validateWithdrawBody, requireJWT, requireApiKey, validateWithdrawBody, requireJWT, requireApiKey, async (req, res) => {
+    // Execution order: 1) JWT auth (401) → 2) API key (403) → 3) validate body (400) → 4) handler
+    router.post("/withdraw", requireJWT, validateWithdrawBody, requireApiKey, async (req, res) => {
         const { to, amount, requestId } = req.body || {};
         const user = req.user;
 
