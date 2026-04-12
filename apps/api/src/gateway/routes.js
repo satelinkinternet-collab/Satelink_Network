@@ -1,4 +1,5 @@
 import { createWithdrawRouter } from "../routes/withdraw.js";
+import { WithdrawService } from '../services/withdrawService.js';
 let opsEngine;
 import { createControlRouter } from "./routes/control_routes.js";
 import jwt from 'jsonwebtoken';
@@ -264,6 +265,11 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter } =
     const settlementEngine = new SettlementEngine(db, null, adapterRegistry, {});
     app.set('db', db);
     app.set('settlementEngine', settlementEngine);
+
+    // ── Withdraw API (API-key + JWT secured) ──
+    const withdrawService = new WithdrawService(db, evmAdapter);
+    app.use('/api', createWithdrawRouter(withdrawService));
+    console.log('[BOOT] WITHDRAW ROUTE REGISTERED at /api/withdraw');
 
     // ── /v1/ops fallback: mount with default adapter if not already mounted ──
     if (!opsAdapter) {
