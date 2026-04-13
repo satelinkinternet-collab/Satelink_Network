@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
 
 // When running inside Docker, Next.js (server-side) must reach the API via
 // the Docker service alias "api", not "localhost".
@@ -7,7 +7,7 @@ import type { NextConfig } from "next";
 const API_BASE =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   // Prevent Next.js from adding its own caching headers to proxied API responses
   async headers() {
     return [
