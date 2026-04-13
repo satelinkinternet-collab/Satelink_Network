@@ -28,7 +28,6 @@ export function createWithdrawRouter(withdrawService) {
     // ── Input Validation (runs AFTER auth) ──
     function validateWithdrawBody(req, res, next) {
         console.log('[WITHDRAW] VALIDATION HIT');
-    if (!req.headers["x-api-key"]) return next();
         const { to, requestId } = req.body || {};
 
         if (!to || !requestId) {
@@ -63,7 +62,7 @@ export function createWithdrawRouter(withdrawService) {
 
     // ── POST /withdraw ──
     // Execution order: 1) JWT auth (401) → 2) API key (403) → 3) validate body (400) → 4) handler
-    router.post("/withdraw", requireJWT, validateWithdrawBody, requireApiKey, async (req, res) => {
+    router.post("/withdraw", requireJWT, requireApiKey, validateWithdrawBody, async (req, res) => {
         const { to, amount, requestId } = req.body || {};
         const user = req.user;
 
