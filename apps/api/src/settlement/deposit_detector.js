@@ -21,12 +21,12 @@ export class DepositDetector {
         console.log(`[DepositDetector] Started monitoring RevenueVault deposits.`);
     }
 
-    async handleDeposit(walletAddress, amountUsdt, timestamp) {
+    handleDeposit(walletAddress, amountUsdt, timestamp) {
         try {
             // Find if there is an enterprise client for this wallet
-            const client = await this.db.prepare(`
-                SELECT client_id, deposit_balance, status
-                FROM enterprise_clients
+            const client = this.db.prepare(`
+                SELECT client_id, deposit_balance, status 
+                FROM enterprise_clients 
                 WHERE wallet_address = ?
             `).get(walletAddress);
 
@@ -42,14 +42,13 @@ export class DepositDetector {
 
             // Update balance
             const newBalance = client.deposit_balance + amountUsdt;
-            await this.db.prepare(`
-                UPDATE enterprise_clients
-                SET deposit_balance = ?
+            this.db.prepare(`
+                UPDATE enterprise_clients 
+                SET deposit_balance = ? 
                 WHERE client_id = ?
             `).run(newBalance, client.client_id);
 
             console.log(`[DepositDetector] Credited ${amountUsdt} USDT to client ${client.client_id}. New balance: ${newBalance}`);
-            console.log(`[E2E] ✅ deposit detected: ${amountUsdt} USDT from ${walletAddress} for client ${client.client_id}`);
         } catch (error) {
             console.error(`[DepositDetector] Failed to process deposit for ${walletAddress}:`, error);
         }
