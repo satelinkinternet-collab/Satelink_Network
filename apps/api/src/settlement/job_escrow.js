@@ -1,26 +1,25 @@
 export class JobEscrow {
-    constructor(db, opsEngine) {
-        if (!db) throw new Error('JobEscrow requires a database instance');
+    constructor(db) {
         this.db = db;
-        this.opsEngine = opsEngine || null;
     }
 
     /**
      * Attempts to lock a submitted reward dynamically.
      * In a full system, this interfaces with actual Ledger balances or a smart contract hook.
+     * For this expansion, we'll mimic the internal DB balance assertions.
      */
     async lockFunds(developerId, jobId, rewardAmount) {
-        // Assume all devs have infinite testnet money for the sake of bypassing complex on-chain verification
+        // Assume all devs have infinite testnet money for the sake of bypassing complex on-chain verification 
         // during this module test, but structurally we'd subtract balance here.
         console.log(`[JobEscrow] Locked ${rewardAmount} USDT for job ${jobId} from ${developerId}`);
         return true;
     }
 
     /**
-     * Releases funds to the executing node post-job completion.
-     * Wraps INSERT + UPDATE in a single transaction for atomicity.
+     * Releases funds natively to the executing node post-job completion.
      */
     async releaseFunds(jobId, executingNodeWallet) {
+        // Fetch the trapped reward from the marketplace jobs table
         let jobRecord;
         try {
             jobRecord = await this.db.prepare(`SELECT reward, creator_wallet FROM marketplace_jobs WHERE job_id = ?`).get(jobId);
@@ -39,21 +38,14 @@ export class JobEscrow {
         // In the operations engine paradigm, nodes get paid during epoch rollups based on op_counts weight.
         // For direct escrow payouts, we can simulate depositing directly into the revenue_events ledger mapping the node.
         try {
-            // C-01: Write to revenue_events_v2 with valid epoch_id (not legacy table without epoch)
-            let epochId = null;
-            try {
-                const epochRow = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
-                epochId = epochRow?.id || null;
-            } catch (e) { /* fallback: null epoch_id will be caught by audit */ }
-
-            await this.db.prepare(`
-                INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
-                VALUES (?, 'marketplace_escrow', ?, ?, ?, 'success', ?, ?)
-            `).run([epochId, executingNodeWallet, `marketplace_${jobId}`, payout, `escrow_${jobId}`, Date.now()]);
+            this.db.prepare(`
+                INSERT INTO revenue_events (amount, token, source, created_at)
+                VALUES (?, 'USDT', ?, ?)
+            `).run(payout, `marketplace_${jobId}_${executingNodeWallet}`, Date.now());
 
             // Increment the Marketplace global metrics to show the loop finished successfully
-            await this.db.prepare(`
-                UPDATE marketplace_metrics
+            this.db.prepare(`
+                UPDATE marketplace_metrics 
                 SET jobs_executed = jobs_executed + 1, revenue_generated = revenue_generated + ?
                 WHERE id = 1
             `).run(payout);
