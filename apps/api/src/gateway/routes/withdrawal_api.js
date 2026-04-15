@@ -1,6 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { withdrawLimiter } from '../../security/middleware/rate_limits.js';
 
 export function createWithdrawalRouter(db) {
     const router = express.Router();
@@ -8,9 +9,11 @@ export function createWithdrawalRouter(db) {
     /**
      * POST /api/withdraw
      * C-03: Protected by JWT + node_operator role + wallet ownership check
+     * P0-08: withdrawLimiter applied after auth so the limiter keys on
+     * req.user.wallet — unauthed callers hit 401 before consuming budget.
      * Accepts: { wallet, amount_usdt }
      */
-    router.post('/withdraw', requireJWT, requireRole(['node_operator', 'admin_super']), async (req, res) => {
+    router.post('/withdraw', requireJWT, requireRole(['node_operator', 'admin_super']), withdrawLimiter, async (req, res) => {
         console.log('[WITHDRAW] request_received');
 
         const { wallet, amount_usdt } = req.body;

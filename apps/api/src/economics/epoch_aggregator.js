@@ -89,7 +89,7 @@ export async function closeEpoch(db, epochId) {
 
                 // INFRASTRUCTURE FUTURES EXPANSION
                 // Deduct any forward contract obligations, emitting investor USDT directly.
-                share = escrow.settleEpochObligations(epochId, row.node_id, share);
+                share = await escrow.settle(epochId, row.node_id, share);
 
                 await db.prepare(`
             INSERT INTO node_epoch_earnings (node_id, epoch_id, earnings_usdt, ops_processed, weight)
