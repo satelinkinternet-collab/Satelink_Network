@@ -1,3 +1,6 @@
+// CONVENTION: every `this.db.prepare(...).run/get/all(...)` chain in this file
+// MUST be awaited. `prepare()` is synchronous but its terminal methods return
+// Promises via PgDatabase — a missing await silently discards writes.
 import { ethers } from "ethers";
 import crypto from "crypto";
 

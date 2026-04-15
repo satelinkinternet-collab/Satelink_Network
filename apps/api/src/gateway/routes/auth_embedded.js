@@ -148,10 +148,6 @@ export function createEmbeddedAuthRouter(db) {
                 ]).catch(err => console.error('[AUTH] Device register failed:', err));
             }
 
-            const jwtSecret = process.env.JWT_SECRET || 'dev_only_secret';
-            if (process.env.NODE_ENV === 'production' && jwtSecret === 'dev_only_secret') {
-                throw new Error('FATAL: JWT_SECRET must be explicitly set in production mode.');
-            }
             const token = jwt.sign(
                 {
                     wallet: addr,

@@ -13,6 +13,11 @@ export function validateEnv() {
         process.exit(1);
     }
 
+    if (!process.env.PASSWORD_SALT) {
+        console.error("[FATAL] Missing PASSWORD_SALT. Required for password hashing. Set it in .env or environment.");
+        process.exit(1);
+    }
+
     return {
         isProd: process.env.NODE_ENV === "production",
         port: parseInt(process.env.PORT || "8080", 10),
