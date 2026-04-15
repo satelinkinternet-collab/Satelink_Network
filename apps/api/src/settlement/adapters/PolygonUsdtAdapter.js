@@ -1,19 +1,15 @@
 /**
- * @deprecated Fuse Network was dropped as the primary settlement chain due to low USDT
- * liquidity. Use PolygonUsdtAdapter for new deploys (SETTLEMENT_ADAPTER=polygon).
- * This adapter is kept for legacy migrations only.
+ * PolygonUsdtAdapter — Single-transfer settlement adapter for USDT on Polygon PoS.
  *
- * FuseUsdtAdapter — Single-transfer settlement adapter for USDT on Fuse Network.
- *
- * Provides `withdraw({ to, amount })` for the WithdrawService, plus
- * the standard batch interface for SettlementEngine compatibility.
+ * Primary chain for Satelink settlement after Fuse deprecation.
  *
  * Config (env):
- *   FUSE_RPC_URL           - Fuse JSON-RPC endpoint
- *   FUSE_SIGNER_KEY        - Hot wallet private key
- *   FUSE_USDT_ADDRESS      - USDT contract address on Fuse
- *   FUSE_USDT_DECIMALS     - Token decimals (default 6)
- *   FUSE_CHAIN_ID          - Expected chain ID (default 122 = Fuse mainnet)
+ *   POLYGON_RPC_URL        - Polygon JSON-RPC endpoint (mainnet https://polygon-rpc.com,
+ *                            Amoy testnet https://rpc-amoy.polygon.technology)
+ *   POLYGON_SIGNER_KEY     - Hot wallet private key
+ *   POLYGON_USDT_ADDRESS   - USDT contract (mainnet 0xc2132D05D31c914a87C6611C10748AEb04B58e8F)
+ *   POLYGON_USDT_DECIMALS  - Token decimals (default 6)
+ *   POLYGON_CHAIN_ID       - Expected chain ID (default 137 = Polygon mainnet; 80002 = Amoy)
  */
 import { ethers } from 'ethers';
 import { BaseSettlementAdapter } from './BaseSettlementAdapter.js';
@@ -25,14 +21,14 @@ const ERC20_TRANSFER_ABI = [
     'function decimals() view returns (uint8)',
 ];
 
-export class FuseUsdtAdapter extends BaseSettlementAdapter {
+export class PolygonUsdtAdapter extends BaseSettlementAdapter {
     constructor(config = {}) {
         super();
-        this.rpcUrl = config.rpcUrl || process.env.FUSE_RPC_URL;
-        this.signerKey = config.signerKey || process.env.FUSE_SIGNER_KEY;
-        this.usdtAddress = config.usdtAddress || process.env.FUSE_USDT_ADDRESS;
-        this.decimals = parseInt(config.decimals || process.env.FUSE_USDT_DECIMALS || '6', 10);
-        this.expectedChainId = parseInt(config.chainId || process.env.FUSE_CHAIN_ID || '122', 10);
+        this.rpcUrl = config.rpcUrl || process.env.POLYGON_RPC_URL;
+        this.signerKey = config.signerKey || process.env.POLYGON_SIGNER_KEY;
+        this.usdtAddress = config.usdtAddress || process.env.POLYGON_USDT_ADDRESS;
+        this.decimals = parseInt(config.decimals || process.env.POLYGON_USDT_DECIMALS || '6', 10);
+        this.expectedChainId = parseInt(config.chainId || process.env.POLYGON_CHAIN_ID || '137', 10);
 
         this.provider = null;
         this.wallet = null;
@@ -47,11 +43,11 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
         this.provider = new ethers.JsonRpcProvider(this.rpcUrl);
         this.wallet = new ethers.Wallet(this.signerKey, this.provider);
         this.contract = new ethers.Contract(this.usdtAddress, ERC20_TRANSFER_ABI, this.wallet);
-        console.log(`[FuseUsdtAdapter] Initialized — signer: ${this.wallet.address.substring(0, 10)}...`);
+        console.log(`[PolygonUsdtAdapter] Initialized — signer: ${this.wallet.address.substring(0, 10)}...`);
     }
 
     getName() {
-        return 'FUSE_USDT';
+        return 'POLYGON_USDT';
     }
 
     // ────────────────────────────────────────────
@@ -69,7 +65,6 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
     async withdraw({ to, amount }) {
         this._ensureReady();
 
-        // Validate destination
         if (!ethers.isAddress(to)) {
             throw new Error(`Invalid recipient address: ${to}`);
         }
@@ -77,16 +72,13 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
             throw new Error(`Invalid amount: ${amount}`);
         }
 
-        // Chain guard
         const network = await this.provider.getNetwork();
         if (Number(network.chainId) !== this.expectedChainId) {
             throw new Error(`Wrong chain: expected ${this.expectedChainId}, got ${network.chainId}`);
         }
 
-        // Convert to token units
         const amountUnits = ethers.parseUnits(amount.toString(), this.decimals);
 
-        // Balance check
         const balance = await this.contract.balanceOf(this.wallet.address);
         if (balance < amountUnits) {
             const err = new Error(
@@ -96,7 +88,6 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
             throw err;
         }
 
-        // Native balance check (gas)
         const nativeBalance = await this.provider.getBalance(this.wallet.address);
         if (nativeBalance === 0n) {
             const err = new Error('Zero native balance — cannot pay gas');
@@ -104,18 +95,16 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
             throw err;
         }
 
-        // Send transfer
         const tx = await this.contract.transfer(to, amountUnits);
-        console.log(`[FuseUsdtAdapter] TX sent: ${tx.hash}`);
+        console.log(`[PolygonUsdtAdapter] TX sent: ${tx.hash}`);
 
-        // Wait for 1 confirmation
         const receipt = await tx.wait(1);
 
         if (!receipt || receipt.status !== 1) {
             throw new Error(`Transaction reverted: ${tx.hash}`);
         }
 
-        console.log(`[FuseUsdtAdapter] Confirmed block: ${receipt.blockNumber}, gas: ${receipt.gasUsed}`);
+        console.log(`[PolygonUsdtAdapter] Confirmed block: ${receipt.blockNumber}, gas: ${receipt.gasUsed}`);
 
         return { txHash: tx.hash };
     }
@@ -134,7 +123,7 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
             total_items: batch.items.length,
             estimated_gas_total: totalGas.toString(),
             fee_amount: parseFloat(ethers.formatEther(totalGas * gasPrice)),
-            currency: 'FUSE',
+            currency: 'MATIC',
         };
     }
 
@@ -149,11 +138,10 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
 
     async createBatch(batch) {
         this._ensureReady();
-        // Sequential single transfers for batch compatibility
         for (const item of batch.items) {
             await this.withdraw({ to: item.wallet, amount: item.amount_usdt || item.amount });
         }
-        return { status: 'completed', external_ref: `FUSE:${batch.id}` };
+        return { status: 'completed', external_ref: `POLYGON:${batch.id}` };
     }
 
     async getBatchStatus(_externalRef) {
@@ -177,7 +165,7 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
 
     _ensureReady() {
         if (!this.wallet || !this.contract) {
-            throw new Error('FuseUsdtAdapter not configured — check FUSE_RPC_URL, FUSE_SIGNER_KEY, FUSE_USDT_ADDRESS');
+            throw new Error('PolygonUsdtAdapter not configured — check POLYGON_RPC_URL, POLYGON_SIGNER_KEY, POLYGON_USDT_ADDRESS');
         }
     }
 }

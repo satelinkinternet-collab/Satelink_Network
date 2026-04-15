@@ -2,14 +2,21 @@
 import { ShadowAdapter } from './adapters/ShadowAdapter.js';
 import { NodeOpsAdapter } from './adapters/NodeOpsAdapter.js';
 
+// Map SETTLEMENT_ADAPTER env values to registered adapter names.
+// Polygon is the primary chain; Fuse is retained for legacy migrations only.
+const ADAPTER_ALIAS = {
+    polygon: 'POLYGON_USDT',
+    fuse: 'FUSE_USDT',
+    evm: 'EVM',
+    shadow: 'SHADOW',
+    simulated: 'SIMULATED',
+};
+
 export class AdapterRegistry {
     constructor() {
         this.adapters = new Map();
-        this.activeAdapterName = 'SIMULATED'; // Default
-
-        // Register adapters internally if we want them available immediately
-        // Alternatively, the main app can register them. 
-        // For standard ones, let's allow manual or auto-registration.
+        const envAdapter = (process.env.SETTLEMENT_ADAPTER || '').toLowerCase();
+        this.activeAdapterName = ADAPTER_ALIAS[envAdapter] || 'SIMULATED';
     }
 
     register(instance) {

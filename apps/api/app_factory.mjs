@@ -58,6 +58,26 @@ export async function createApp(db) {
     });
   }
 
+  // PolygonUsdtAdapter — primary chain. Registered when Polygon env is present.
+  if (process.env.POLYGON_RPC_URL && process.env.POLYGON_USDT_ADDRESS) {
+    import("./src/settlement/adapters/PolygonUsdtAdapter.js").then(({ PolygonUsdtAdapter }) => {
+      adapterRegistry.register(new PolygonUsdtAdapter());
+      console.log("[SettlementEngine] PolygonUsdtAdapter registered (primary settlement chain)");
+    }).catch(err => {
+      console.warn("[SettlementEngine] PolygonUsdtAdapter failed to load:", err.message);
+    });
+  }
+
+  // FuseUsdtAdapter — deprecated, only register if explicitly configured.
+  if (process.env.FUSE_RPC_URL && process.env.FUSE_USDT_ADDRESS) {
+    import("./src/settlement/adapters/FuseUsdtAdapter.js").then(({ FuseUsdtAdapter }) => {
+      adapterRegistry.register(new FuseUsdtAdapter());
+      console.warn("[SettlementEngine] FuseUsdtAdapter registered (DEPRECATED — prefer Polygon)");
+    }).catch(err => {
+      console.warn("[SettlementEngine] FuseUsdtAdapter failed to load:", err.message);
+    });
+  }
+
   const settlementEngine = new SettlementEngine(db, null, adapterRegistry, {});
   app.set('settlementEngine', settlementEngine);
 
