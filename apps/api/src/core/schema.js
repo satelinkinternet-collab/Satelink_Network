@@ -90,7 +90,8 @@ export async function attachSchema(db) {
       "ALTER TABLE daily_ops_reports ALTER COLUMN start_ts TYPE BIGINT;",
       "ALTER TABLE daily_ops_reports ALTER COLUMN end_ts TYPE BIGINT;",
       "ALTER TABLE daily_ops_reports ALTER COLUMN created_at TYPE BIGINT;",
-      "ALTER TABLE node_registry ALTER COLUMN created_at TYPE BIGINT;"
+      "ALTER TABLE node_registry ALTER COLUMN created_at TYPE BIGINT;",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS retry_count INTEGER DEFAULT 0;"
     ];
 
     for (const sql of migrations) {
