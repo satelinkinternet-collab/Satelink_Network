@@ -59,3 +59,11 @@ share_bundle/
 share_bundle.zip
 *.db-shm
 *.db-wal
+satelink-keys/
+satelink-env/
+.env.local
+.env.production
+*.key
+*.pem
+forge-cache/
+.foundry/
