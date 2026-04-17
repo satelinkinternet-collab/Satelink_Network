@@ -1,24 +1,52 @@
 # CURRENT TASK
 
 ## Task
-(none — ready for next task)
+P2-002 — Run seed_first_workload.js to verify billing works end-to-end
 
 ## Status
-COMPLETE
+BLOCKED — API server not running
 
-## Last Completed
-S0-007 — Fix billing middleware async bugs (April 17, 2026)
+## Checkpoint (April 17, 2026)
 
-Fixed 15+ missing await calls in 5 files:
-- apps/api/src/gateway/routes/rpc.js (await + .then() anti-pattern)
-- apps/api/src/settlement/job_escrow.js (2 missing awaits on revenue_events INSERT)
-- apps/api/src/settlement/deposit_detector.js (2 missing awaits, made handleDeposit async)
-- apps/api/src/gateway/routes/public_marketplace.js (5 missing awaits)
-- apps/api/src/dashboard_api/nodes_overview.js (6 missing awaits)
+### What's Done
+- S0-007: Billing middleware async fix — COMPLETE (15+ awaits added)
+- P1-001 to P1-006: Revenue infrastructure — COMPLETE
+- Node #1 registered: NODE-SATELINK-001 active in database
+- RPC provider registered for Polygon Amoy (chain_id: 80002)
 
-Test added: test/billing_async.test.js
+### Current State
+- **Billing IS working** — revenue_events_v2 has 770 rows, $4.98 total
+- API server not running at localhost:8080
+- seed_first_workload.js ready but needs running server
 
-## Next Task Options
-1. P2-002: Run seed_first_workload.js (Phase 2 is now unblocked)
-2. S0-008: Fix remaining async/sync DB bugs
-3. S0-005: Branch consolidation
+### Resume Steps
+1. Start API server:
+   ```bash
+   cd /Users/pradeepjakuraa/satelink-mvp
+   npm run dev
+   # or: node apps/api/server.js
+   ```
+
+2. Run seed workload (in separate terminal):
+   ```bash
+   DATABASE_URL="postgresql://satelink:satelinkpass@127.0.0.1:5432/satelink" \
+   API_URL="http://localhost:8080" \
+   node scripts/bootstrap/seed_first_workload.js
+   ```
+
+3. Verify 100 new rows appear:
+   ```sql
+   SELECT count(*), sum(amount_usdt) FROM revenue_events_v2 WHERE op_type = 'rpc_call';
+   ```
+   Expected: count increases by ~100, total increases by ~$0.03
+
+### Definition of Done for P2-002
+- [ ] API server running
+- [ ] seed_first_workload.js completes with >50% success
+- [ ] revenue_events_v2 count increases
+- [ ] Commit with: `feat(P2-002): verify billing end-to-end with 100 RPC calls`
+
+## Database Connection
+```
+DATABASE_URL=postgresql://satelink:satelinkpass@127.0.0.1:5432/satelink
+```
