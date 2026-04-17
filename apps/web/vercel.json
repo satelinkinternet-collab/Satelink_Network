@@ -3,7 +3,6 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "regions": ["iad1", "sfo1", "fra1", "sin1"],
   "env": {
     "NEXT_PUBLIC_API_BASE": "@satelink_api_base"
   },
