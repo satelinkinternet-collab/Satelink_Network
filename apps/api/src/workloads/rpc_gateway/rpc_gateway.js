@@ -9,6 +9,7 @@ import { JobProducer } from '../../queue/job_producer.js';
 const CHAIN_RPC_URLS = {
     ethereum: process.env.CHAIN_RPC_ETHEREUM || 'https://eth.llamarpc.com',
     polygon:  process.env.CHAIN_RPC_POLYGON  || 'https://polygon-rpc.com',
+    amoy:     process.env.CHAIN_RPC_AMOY     || 'https://rpc-amoy.polygon.technology',
     fuse:     process.env.CHAIN_RPC_FUSE     || 'https://rpc.fuse.io',
     arbitrum: process.env.CHAIN_RPC_ARBITRUM  || 'https://arb1.arbitrum.io/rpc',
     bsc:      process.env.CHAIN_RPC_BSC      || 'https://bsc-dataseed.binance.org',

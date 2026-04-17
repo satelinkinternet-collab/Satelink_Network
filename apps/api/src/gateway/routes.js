@@ -224,6 +224,40 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.use('/api/status', createPublicStatusRouter(db));
     app.use('/api/partners', createPublicPartnersRouter(db));
 
+    // ── Public RPC Pricing (machine-readable, no auth) ──
+    app.get('/api/pricing', async (req, res) => {
+        try {
+            const methods = await db.query(`
+                SELECT method, category, base_cost_usdt, cacheable, cache_ttl_sec
+                FROM rpc_method_pricing WHERE enabled = 1 ORDER BY category, method
+            `);
+            const rpcPricing = {};
+            for (const m of methods) {
+                rpcPricing[m.method] = parseFloat(m.base_cost_usdt);
+            }
+            res.json({
+                ok: true,
+                provider: 'Satelink',
+                version: '1.0',
+                chains: {
+                    '137': { name: 'Polygon', status: 'active' },
+                    '80002': { name: 'Polygon Amoy', status: 'active' },
+                    '1': { name: 'Ethereum', status: 'coming_soon' }
+                },
+                pricing: {
+                    rpc: rpcPricing,
+                    model: 'pay_per_use',
+                    minimum_deposit_usdt: 1.0,
+                    settlement: 'USDT on Polygon'
+                },
+                sla: { uptime_target: '99.5%', p99_latency_target_ms: 200 },
+                updated_at: Date.now()
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     // ── Economics summary (used by RevenueSplitChart) ──
     app.get('/api/economics/summary', async (req, res) => {
         try {
