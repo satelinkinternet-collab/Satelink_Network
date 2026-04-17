@@ -1,5 +1,6 @@
 import { JobQueue } from '../queue/job_queue.js';
 import { JobProducer } from '../queue/job_producer.js';
+import { SettlementAnchorJob } from '../scheduler/jobs/settlement_anchor_job.js';
 
 const INTERVAL_MS = parseInt(process.env.EPOCH_INTERVAL_MS || '60000', 10);
 const LOCK_ID = 738291; // Arbitrary unique lock ID for epoch aggregation
@@ -145,7 +146,15 @@ async function runEpochCycle(db) {
 
         console.log('[REVENUE_TRACE] epoch_updated');
         console.log("[AUTO-EPOCH] SUCCESS | Epoch", epochId, "closed | earnings:", earningsRows.length, "nodes | revenue:", totalRevenue, "USDT");
-        
+
+        // 9. Trigger settlement anchoring (non-blocking)
+        try {
+            const anchorJob = new SettlementAnchorJob(db);
+            anchorJob.run().catch(e => console.error('[AUTO-EPOCH] Settlement anchor failed:', e.message));
+        } catch (e) {
+            console.warn('[AUTO-EPOCH] Settlement anchor init failed:', e.message);
+        }
+
         schedulerStatus.last_run_time = Date.now();
         schedulerStatus.last_status = "success";
         schedulerStatus.last_error = null;
