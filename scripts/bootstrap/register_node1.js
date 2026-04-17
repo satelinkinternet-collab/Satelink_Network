@@ -27,64 +27,38 @@ async function registerNode1() {
         node_id: 'NODE-SATELINK-001',
         wallet: process.env.TREASURY_ADDRESS || '0x0000000000000000000000000000000000000001',
         node_type: 'NODEOPS_MANAGED',
-        infra_model: 'RESERVE_FUNDED',
-        endpoint_url: process.env.NODE1_ENDPOINT_URL || 'http://localhost:8080',
         region: 'ap-south-1',
-        chain_ids: JSON.stringify([80002, 137, 1]),
-        status: 'active',
-        tier: 'platinum',
-        registered_at: now
+        active: 1
     };
 
     console.log('Registering Node #1...');
     console.log('  node_id:', node.node_id);
     console.log('  wallet:', node.wallet);
-    console.log('  endpoint:', node.endpoint_url);
-    console.log('  chains:', node.chain_ids);
+    console.log('  region:', node.region);
 
     try {
-        // Check if registered_nodes table exists, create if not
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS registered_nodes (
-                id SERIAL PRIMARY KEY,
-                node_id TEXT UNIQUE NOT NULL,
-                wallet TEXT NOT NULL,
-                node_type TEXT DEFAULT 'STANDARD',
-                infra_model TEXT DEFAULT 'SELF_FUNDED',
-                endpoint_url TEXT,
-                region TEXT,
-                chain_ids TEXT,
-                status TEXT DEFAULT 'pending',
-                tier TEXT DEFAULT 'bronze',
-                registered_at BIGINT NOT NULL,
-                updated_at BIGINT
-            )
-        `);
+        // Check if node exists
+        const existing = await pool.query(
+            "SELECT node_id FROM registered_nodes WHERE node_id = $1",
+            [node.node_id]
+        );
 
-        // Insert or update Node #1
-        const result = await pool.query(`
-            INSERT INTO registered_nodes
-            (node_id, wallet, node_type, infra_model, endpoint_url, region, chain_ids, status, tier, registered_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            ON CONFLICT (node_id) DO UPDATE SET
-                status = 'active',
-                updated_at = $10,
-                endpoint_url = EXCLUDED.endpoint_url
-            RETURNING id
-        `, [
-            node.node_id,
-            node.wallet,
-            node.node_type,
-            node.infra_model,
-            node.endpoint_url,
-            node.region,
-            node.chain_ids,
-            node.status,
-            node.tier,
-            node.registered_at
-        ]);
-
-        console.log('Node #1 registered with id:', result.rows[0].id);
+        let result;
+        if (existing.rows.length > 0) {
+            // Update existing node
+            result = await pool.query(`
+                UPDATE registered_nodes SET active = 1, last_heartbeat = $1 WHERE node_id = $2 RETURNING node_id
+            `, [now, node.node_id]);
+            console.log('Node #1 updated:', result.rows[0].node_id);
+        } else {
+            // Insert new node
+            result = await pool.query(`
+                INSERT INTO registered_nodes (node_id, wallet, node_type, region, active, last_heartbeat)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING node_id
+            `, [node.node_id, node.wallet, node.node_type, node.region, node.active, now]);
+            console.log('Node #1 registered:', result.rows[0].node_id);
+        }
 
         // Also register as RPC provider
         const rpcUrl = process.env.RPC_URL || 'https://rpc-amoy.polygon.technology';
@@ -133,7 +107,7 @@ async function registerNode1() {
 
         // Verify registration
         const count = await pool.query(
-            "SELECT COUNT(*) as c FROM registered_nodes WHERE status = 'active'"
+            "SELECT COUNT(*) as c FROM registered_nodes WHERE active = 1"
         );
         console.log('Total active nodes:', count.rows[0].c);
 

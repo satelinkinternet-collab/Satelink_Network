@@ -34,15 +34,20 @@ Revenue Readiness: 45% | Production: 35% | Launch: 28%
 | P1-003 | Verify /rpc endpoint real proxy | DONE | Added Polygon Amoy support |
 | P1-004 | Create /api/pricing public endpoint | DONE | Reads from rpc_method_pricing |
 | P1-005 | Create /api/status public endpoint | DONE | Already existed |
-| P1-006 | Create Node #1 bootstrap script | DONE | scripts/bootstrap/register_node1.js |
+| P1-006 | Register Node #1 in database | DONE | NODE-SATELINK-001 active, 5 total nodes |
 
-## PHASE P2 — First Workload (UNBLOCKED — ready to execute)
+## PHASE P2 — First Workload
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | P2-001 | Fix S0-007 billing middleware async | DONE | 5 files fixed |
-| P2-002 | Run seed_first_workload.js | PENDING | Ready to run now |
+| P2-002 | Run seed_first_workload.js | BLOCKED | API server not running |
 | P2-003 | First epoch close with real data | PENDING | |
 | P2-004 | Verify on-chain anchor on Polygon Amoy | PENDING | |
+
+**Existing Revenue Data (as of April 17):**
+- revenue_events_v2: 770 rows, $4.98 total
+- rpc_request: 19 rows, $0.019
+- rpc_call: 22 rows, $0.616
 
 ## STAGE S1-RPC — Multi-RPC Gateway (0/12)
 [All PENDING — blocked on Phase 2 completion]
