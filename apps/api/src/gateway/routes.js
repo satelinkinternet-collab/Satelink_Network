@@ -70,6 +70,9 @@ import { createDistApiRouter } from './routes/dist_api_v2.js';
 import { createEntApiRouter } from './routes/ent_api_v2.js';
 import { createPublicPartnersRouter } from './routes/public_partners.js';
 import { createAdminAutonomousRouter } from './routes/admin_autonomous.js';
+import { createAdminControlRouter } from './routes/admin_control_api.js';
+import { createAdminSystemRouter } from './routes/admin_system.js';
+import { createAdminDistributorsRouter } from './routes/admin_distributors.js';
 import { createDashboardApiRouter } from '../dashboard_api/index.js';
 import { createWithdrawalRouter } from './routes/withdrawal_api.js';
 
@@ -149,6 +152,23 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.use('/api/admin/workloads', requireAdmin, createWorkloadAdminRouter(acquisitionEngine));
     app.use('/api/admin/genesis', requireAdmin, createGenesisAdminRouter(genesisEngine));
     app.use('/api/admin/flywheel', requireAdmin, createFlywheelAdminRouter(flywheelEngine));
+
+    // ── Admin Routes (protected by requireAdmin middleware) ──
+    app.use('/api/admin/revenue', requireAdmin, createAdminRevenueRouter(db));
+    app.use('/api/admin/reputation', requireAdmin, createAdminReputationRouter(db));
+    app.use('/api/admin/lifecycle', requireAdmin, createAdminLifecycleRouter(db));
+    app.use('/api/admin/network', requireAdmin, createAdminNetworkRouter(db));
+    app.use('/api/admin/partners', requireAdmin, createAdminPartnersRouter(db));
+    app.use('/api/admin/launch', requireAdmin, createAdminLaunchRouter(db));
+    app.use('/api/admin/economics', requireAdmin, createAdminEconomicsRouter(db));
+    app.use('/api/admin/forensics', requireAdmin, createAdminForensicsRouter(db));
+    app.use('/api/admin/growth', requireAdmin, createAdminGrowthRouter(db));
+    app.use('/api/admin/sla', requireAdmin, createAdminSLARouter(db));
+    app.use('/api/admin/control', requireAdmin, createAdminControlRoomRouter(db));
+    app.use('/api/admin/autonomous', requireAdmin, createAdminAutonomousRouter(db));
+    app.use('/api/admin/control-ops', requireAdmin, createAdminControlRouter(opsEngine));
+    app.use('/api/admin/system', requireAdmin, createAdminSystemRouter(opsEngine, null, null, null));
+    app.use('/api/admin/distributors', requireAdmin, createAdminDistributorsRouter(db));
 
     app.get('/health/queue', async (req, res) => {
         try { const length = await JobQueue.getLength(); res.status(200).json({ ok: true, queue_depth: length }); }
