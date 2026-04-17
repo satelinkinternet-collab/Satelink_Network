@@ -64,6 +64,10 @@ import { createDevAuthRouter } from './routes/dev_auth_tokens.js';
 import { createBetaRouter } from './routes/beta_api.js';
 import { createAdminEconomicsRouter } from './routes/admin_economics.js';
 import { createAdminForensicsRouter } from './routes/admin_forensics.js';
+import { ForensicsSnapshotService } from '../monitoring/snapshot_service.js';
+import { ReplayEngine } from '../monitoring/replay_engine.js';
+import { AuditService } from '../monitoring/audit_service.js';
+import { LedgerIntegrityJob } from '../scheduler/jobs/ledger_integrity_job.js';
 import { createAdminGrowthRouter } from './routes/admin_growth.js';
 import { createAdminSLARouter } from './routes/admin_sla.js';
 import { createDistApiRouter } from './routes/dist_api_v2.js';
@@ -161,7 +165,15 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.use('/api/admin/partners', requireAdmin, createAdminPartnersRouter(db));
     app.use('/api/admin/launch', requireAdmin, createAdminLaunchRouter(db));
     app.use('/api/admin/economics', requireAdmin, createAdminEconomicsRouter(db));
-    app.use('/api/admin/forensics', requireAdmin, createAdminForensicsRouter(db));
+
+    const forensicsServices = {
+        snapshotService: new ForensicsSnapshotService(db),
+        replayEngine: new ReplayEngine(db),
+        auditService: new AuditService(db),
+        integrityJob: new LedgerIntegrityJob(db)
+    };
+    app.use('/api/admin/forensics', requireAdmin, createAdminForensicsRouter(db, forensicsServices));
+
     app.use('/api/admin/growth', requireAdmin, createAdminGrowthRouter(db));
     app.use('/api/admin/sla', requireAdmin, createAdminSLARouter(db));
     app.use('/api/admin/control', requireAdmin, createAdminControlRoomRouter(db));

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { JobProducer } from '../../queue/job_producer.js';
+import crypto from 'crypto';
 
 /**
  * Whitelisted RPC endpoints per chain.
@@ -23,7 +23,6 @@ const RPC_REWARD_USDT = 0.0003;
 
 export function createRpcGateway(db) {
     const router = Router();
-    const producer = new JobProducer(db);
 
     router.post('/:chain', async (req, res) => {
         const { chain } = req.params;
@@ -47,31 +46,55 @@ export function createRpcGateway(db) {
         }
 
         const chain_rpc_url = CHAIN_RPC_URLS[chain];
+        const client_id = req.headers['x-api-key'] || 'rpc_gateway';
+        const request_id = `rpc_${crypto.randomUUID()}`;
 
-        const result = await producer.produce({
-            type: 'rpc_call',
-            client_id: req.headers['x-api-key'] || 'rpc_gateway',
-            payload: {
-                chain,
-                chain_rpc_url,
-                method: body.method,
-                params: body.params || [],
-                id: body.id || 1
-            },
-            reward: RPC_REWARD_USDT,
-            priority: req.headers['x-priority'] || 'NORMAL'
-        });
+        try {
+            // Execute RPC call synchronously
+            const rpcResponse = await fetch(chain_rpc_url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: body.method,
+                    params: body.params || [],
+                    id: body.id || 1
+                })
+            });
 
-        if (!result.ok) {
-            return res.status(result.code || 400).json({ ok: false, error: result.error });
+            if (!rpcResponse.ok) {
+                return res.status(502).json({ ok: false, error: `Upstream RPC error: ${rpcResponse.status}` });
+            }
+
+            const rpcResult = await rpcResponse.json();
+
+            // Record revenue for successful execution (skip if gateway middleware already handled)
+            if (!req._billingHandledByGateway) {
+                try {
+                    let epochId = null;
+                    try {
+                        const epochRow = await db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                        epochId = epochRow?.id || null;
+                    } catch (epochErr) {
+                        console.error('[RPC Gateway] Epoch query failed:', epochErr.message);
+                    }
+
+                    const now = Math.floor(Date.now() / 1000);
+                    await db.prepare(`
+                        INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                        VALUES (?, 'rpc_call', 'external_provider', ?, ?, 'success', ?, ?)
+                    `).run([epochId, client_id, RPC_REWARD_USDT, request_id, now]);
+                } catch (e) {
+                    console.error('[RPC Gateway] Failed to record revenue:', e.message);
+                }
+            }
+
+            // Return actual RPC result
+            res.status(200).json(rpcResult);
+        } catch (error) {
+            console.error('[RPC Gateway] Execution error:', error.message);
+            res.status(502).json({ ok: false, error: 'RPC execution failed', message: error.message });
         }
-
-        res.status(202).json({
-            ok: true,
-            job_id: result.job_id,
-            status: 'queued',
-            chain
-        });
     });
 
     return router;

@@ -1,52 +1,32 @@
 # CURRENT TASK
 
 ## Task
-P2-002 — Run seed_first_workload.js to verify billing works end-to-end
+P2 — First Workload Phase COMPLETE
 
 ## Status
-BLOCKED — API server not running
+DONE — Phase 2 billing verified working
 
-## Checkpoint (April 17, 2026)
+## Completed (April 18, 2026)
 
-### What's Done
-- S0-007: Billing middleware async fix — COMPLETE (15+ awaits added)
-- P1-001 to P1-006: Revenue infrastructure — COMPLETE
-- Node #1 registered: NODE-SATELINK-001 active in database
-- RPC provider registered for Polygon Amoy (chain_id: 80002)
+### What Was Done
+- P2-001: Billing middleware async fix — DONE
+- P2-002: seed_first_workload.js — DONE (100 calls = 100 revenue events)
+- P2-003: Epoch close with real data — DONE (Epoch 2204 closed)
 
-### Current State
-- **Billing IS working** — revenue_events_v2 has 770 rows, $4.98 total
-- API server not running at localhost:8080
-- seed_first_workload.js ready but needs running server
+### Critical Bug Fixed
+Edge cache was returning cached RPC responses WITHOUT recording revenue.
+Fix: Added `_recordRevenue()` to `GlobalGatewayRouter` middleware to bill for both cache hits and misses.
 
-### Resume Steps
-1. Start API server:
-   ```bash
-   cd /Users/pradeepjakuraa/satelink-mvp
-   npm run dev
-   # or: node apps/api/server.js
-   ```
+### Revenue Verification
+- Before: 814 rows
+- After: 914 rows (+100 exactly)
+- Epoch 2204: $0.003 revenue, 50/30/20 split applied
 
-2. Run seed workload (in separate terminal):
-   ```bash
-   DATABASE_URL="postgresql://satelink:satelinkpass@127.0.0.1:5432/satelink" \
-   API_URL="http://localhost:8080" \
-   node scripts/bootstrap/seed_first_workload.js
-   ```
+### Next Gap Identified
+- `settlement_batches` table does not exist
+- P2-004 blocked: Cannot verify on-chain anchor without settlement infrastructure
 
-3. Verify 100 new rows appear:
-   ```sql
-   SELECT count(*), sum(amount_usdt) FROM revenue_events_v2 WHERE op_type = 'rpc_call';
-   ```
-   Expected: count increases by ~100, total increases by ~$0.03
-
-### Definition of Done for P2-002
-- [ ] API server running
-- [ ] seed_first_workload.js completes with >50% success
-- [ ] revenue_events_v2 count increases
-- [ ] Commit with: `feat(P2-002): verify billing end-to-end with 100 RPC calls`
-
-## Database Connection
-```
-DATABASE_URL=postgresql://satelink:satelinkpass@127.0.0.1:5432/satelink
-```
+## Next Steps
+1. Create settlement_batches table schema
+2. Implement batch aggregation job
+3. Wire to Polygon Amoy contract

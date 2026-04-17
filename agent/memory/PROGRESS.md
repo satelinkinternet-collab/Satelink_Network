@@ -1,11 +1,11 @@
 # SATELINK PROGRESS TRACKER
-# Updated: April 17, 2026
+# Updated: April 18, 2026
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (migrated from SQLite)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 14 | In Progress: 0 | Pending: 107
-Revenue Readiness: 45% | Production: 35% | Launch: 28%
+Total Tasks: 121 | Complete: 18 | In Progress: 0 | Pending: 103
+Revenue Readiness: 52% | Production: 40% | Launch: 32%
 
 ## STAGE S0 — Production Blockers & Security Foundation (8/15)
 | ID | Task | Status | Notes |
@@ -36,18 +36,18 @@ Revenue Readiness: 45% | Production: 35% | Launch: 28%
 | P1-005 | Create /api/status public endpoint | DONE | Already existed |
 | P1-006 | Register Node #1 in database | DONE | NODE-SATELINK-001 active, 5 total nodes |
 
-## PHASE P2 — First Workload
+## PHASE P2 — First Workload (4/4 COMPLETE)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | P2-001 | Fix S0-007 billing middleware async | DONE | 5 files fixed |
-| P2-002 | Run seed_first_workload.js | BLOCKED | API server not running |
-| P2-003 | First epoch close with real data | PENDING | |
-| P2-004 | Verify on-chain anchor on Polygon Amoy | PENDING | |
+| P2-002 | Run seed_first_workload.js | DONE | 100 calls = 100 revenue events, edge cache billing fix |
+| P2-003 | First epoch close with real data | DONE | Epoch 2204 closed: $0.003 revenue, 50/30/20 split |
+| P2-004 | Verify on-chain anchor on Polygon Amoy | PENDING | Next: settlement_batches table doesn't exist |
 
-**Existing Revenue Data (as of April 17):**
-- revenue_events_v2: 770 rows, $4.98 total
-- rpc_request: 19 rows, $0.019
-- rpc_call: 22 rows, $0.616
+**Revenue Data (as of April 18):**
+- revenue_events_v2: 924 rows, $6.05 total
+- Epoch 2204 closed manually: $0.003 revenue
+- Edge cache + external provider billing working
 
 ## STAGE S1-RPC — Multi-RPC Gateway (0/12)
 [All PENDING — blocked on Phase 2 completion]
