@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "regions": ["iad1", "sfo1", "fra1", "sin1"],
+  "env": {
+    "NEXT_PUBLIC_API_BASE": "@satelink_api_base"
+  },
+  "headers": [
+    {
+      "source": "/gateway/rpc/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, x-api-key" }
+      ]
+    }
+  ]
+}
