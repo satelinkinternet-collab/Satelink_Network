@@ -64,7 +64,7 @@ export function createPublicMarketplaceRouter(db) {
         try {
             let activeNodes = 0, totalCapacity = 0, avgReputation = 0;
             try {
-                const stats = db.prepare(`
+                const stats = await db.prepare(`
                     SELECT COUNT(*) as active_nodes,
                            COALESCE(SUM(max_jobs), 0) as total_capacity,
                            COALESCE(AVG(reputation), 0) as avg_reputation
@@ -88,17 +88,17 @@ export function createPublicMarketplaceRouter(db) {
     });
 
     // GET /network/marketplace/demand — demand-side stats
-    router.get('/demand', (req, res) => {
+    router.get('/demand', async (req, res) => {
         try {
             let workloadMetrics = {};
             try {
-                const rows = db.prepare('SELECT key, value FROM workload_metrics').all();
+                const rows = await db.prepare('SELECT key, value FROM workload_metrics').all();
                 for (const { key, value } of rows) workloadMetrics[key] = value;
             } catch (e) {}
 
             let demandStats = {};
             try {
-                const rows = db.prepare('SELECT key, value FROM demand_metrics').all();
+                const rows = await db.prepare('SELECT key, value FROM demand_metrics').all();
                 for (const { key, value } of rows) demandStats[key] = value;
             } catch (e) {}
 
@@ -109,11 +109,11 @@ export function createPublicMarketplaceRouter(db) {
     });
 
     // GET /network/marketplace/sla/plans — public SLA tier definitions
-    router.get('/sla/plans', (req, res) => {
+    router.get('/sla/plans', async (req, res) => {
         try {
             let plans = [];
             try {
-                plans = db.prepare('SELECT id, name, target_success_rate, target_p95_latency_ms FROM sla_plans ORDER BY target_success_rate ASC').all();
+                plans = await db.prepare('SELECT id, name, target_success_rate, target_p95_latency_ms FROM sla_plans ORDER BY target_success_rate ASC').all();
             } catch (e) { /* table may not exist */ }
 
             res.json({
@@ -130,11 +130,11 @@ export function createPublicMarketplaceRouter(db) {
     });
 
     // GET /network/marketplace/profitability — revenue attribution by workload type
-    router.get('/profitability', (req, res) => {
+    router.get('/profitability', async (req, res) => {
         try {
             let attribution = [];
             try {
-                attribution = db.prepare(`
+                attribution = await db.prepare(`
                     SELECT workload_type,
                            SUM(revenue_usdt) as total_revenue,
                            SUM(job_count) as total_jobs,

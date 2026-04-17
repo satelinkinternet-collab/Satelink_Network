@@ -21,12 +21,12 @@ export class DepositDetector {
         console.log(`[DepositDetector] Started monitoring RevenueVault deposits.`);
     }
 
-    handleDeposit(walletAddress, amountUsdt, timestamp) {
+    async handleDeposit(walletAddress, amountUsdt, timestamp) {
         try {
             // Find if there is an enterprise client for this wallet
-            const client = this.db.prepare(`
-                SELECT client_id, deposit_balance, status 
-                FROM enterprise_clients 
+            const client = await this.db.prepare(`
+                SELECT client_id, deposit_balance, status
+                FROM enterprise_clients
                 WHERE wallet_address = ?
             `).get(walletAddress);
 
@@ -42,9 +42,9 @@ export class DepositDetector {
 
             // Update balance
             const newBalance = client.deposit_balance + amountUsdt;
-            this.db.prepare(`
-                UPDATE enterprise_clients 
-                SET deposit_balance = ? 
+            await this.db.prepare(`
+                UPDATE enterprise_clients
+                SET deposit_balance = ?
                 WHERE client_id = ?
             `).run(newBalance, client.client_id);
 

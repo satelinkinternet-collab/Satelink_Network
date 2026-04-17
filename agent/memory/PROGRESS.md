@@ -4,10 +4,10 @@
 # DB: PostgreSQL (migrated from SQLite)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 13 | In Progress: 0 | Pending: 108
-Revenue Readiness: 38% | Production: 30% | Launch: 25%
+Total Tasks: 121 | Complete: 14 | In Progress: 0 | Pending: 107
+Revenue Readiness: 45% | Production: 35% | Launch: 28%
 
-## STAGE S0 — Production Blockers & Security Foundation (7/15)
+## STAGE S0 — Production Blockers & Security Foundation (8/15)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | S0-001 | NodeRegistryV2 contract | DONE | AccessControl + Pausable |
@@ -16,7 +16,7 @@ Revenue Readiness: 38% | Production: 30% | Launch: 25%
 | S0-004 | SplitEngine | DONE | Governance basis points, 5% cap |
 | S0-005 | Branch consolidation (35 branches) | PENDING | |
 | S0-006 | env.js hard-fail on missing JWT_SECRET | DONE | No fallback |
-| S0-007 | Fix billing middleware async bugs | PENDING | P0 — NEXT TASK |
+| S0-007 | Fix billing middleware async bugs | DONE | Fixed 5 files, 15+ missing awaits |
 | S0-008 | Fix all 9 async/sync DB bugs | PENDING | P0 — silent data corruption |
 | S0-009 | Remove 733 duplicate OZ files in utils/lib/ | PENDING | |
 | S0-010 | Remove 4 fake stub services | PENDING | |
@@ -36,11 +36,11 @@ Revenue Readiness: 38% | Production: 30% | Launch: 25%
 | P1-005 | Create /api/status public endpoint | DONE | Already existed |
 | P1-006 | Create Node #1 bootstrap script | DONE | scripts/bootstrap/register_node1.js |
 
-## PHASE P2 — First Workload (BLOCKED on S0-007)
+## PHASE P2 — First Workload (UNBLOCKED — ready to execute)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| P2-001 | Fix S0-007 billing middleware async | PENDING | BLOCKING — must fix first |
-| P2-002 | Run seed_first_workload.js | PENDING | Script created, don't run yet |
+| P2-001 | Fix S0-007 billing middleware async | DONE | 5 files fixed |
+| P2-002 | Run seed_first_workload.js | PENDING | Ready to run now |
 | P2-003 | First epoch close with real data | PENDING | |
 | P2-004 | Verify on-chain anchor on Polygon Amoy | PENDING | |
 

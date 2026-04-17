@@ -87,19 +87,20 @@ export function createRpcRouter(db, ledger) {
             const payloadHash = crypto.createHash('sha256').update(payloadString).digest('hex');
             const reqId = `rpc_${crypto.randomUUID()}`;
 
-            await opsEngine.executeOp({
-                op_type: 'api_relay_execution',
-                node_id: targetNodeId,
-                client_id: req.clientId || 'anonymous_client',
-                request_id: reqId,
-                timestamp: Date.now(),
-                payload_hash: payloadHash,
-                amount_usdt: pricingAmount
-            }).then(() => {
+            try {
+                await opsEngine.executeOp({
+                    op_type: 'api_relay_execution',
+                    node_id: targetNodeId,
+                    client_id: req.clientId || 'anonymous_client',
+                    request_id: reqId,
+                    timestamp: Date.now(),
+                    payload_hash: payloadHash,
+                    amount_usdt: pricingAmount
+                });
                 console.log('[REAL_DEMAND] revenue_recorded');
-            }).catch(e => {
+            } catch (e) {
                 console.error('[RPC] Failed to record op revenue:', e.message);
-            });
+            }
 
             res.status(200).json(finalResultData.result || finalResultData);
         } catch (error) {
