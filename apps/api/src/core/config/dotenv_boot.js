@@ -2,23 +2,33 @@
  * Centralized dotenv bootstrap — loads .env then .env.local (if present) with override.
  * Import this ONCE at the top of every entry point instead of "dotenv/config".
  *
- * Load order:
- *   1. .env          — base config (Docker defaults, shared secrets)
- *   2. .env.local    — local overrides (never committed), wins over .env
+ * Railway/production: skip loading .env files when platform vars are detected.
+ * This prevents the bundled .env file from overwriting Railway-injected vars.
  */
 import dotenv from "dotenv";
 import { existsSync } from "fs";
 import { resolve } from "path";
 
-// 1. Load base .env if it exists (local dev only)
-// On Railway/production, env vars are injected directly into process.env
-const envPath = resolve(process.cwd(), ".env");
-if (existsSync(envPath)) {
-    dotenv.config({ path: envPath });
-}
+// Railway injects vars like RAILWAY_PROJECT_ID, RAILWAY_SERVICE_ID
+// Also check if DATABASE_URL is a real (non-localhost) PostgreSQL URL
+const isRailway = !!(process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_SERVICE_ID);
+const hasRealDbUrl = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1');
 
-// 2. Load .env.local with override so local values win (if it exists)
-const localPath = resolve(process.cwd(), ".env.local");
-if (existsSync(localPath)) {
-    dotenv.config({ path: localPath, override: true });
+console.log(`[dotenv] isRailway=${isRailway}, hasRealDbUrl=${hasRealDbUrl}, DATABASE_URL=${process.env.DATABASE_URL ? 'SET' : 'UNSET'}`);
+
+if (isRailway || hasRealDbUrl) {
+    console.log('[dotenv] Skipping .env load — platform vars detected');
+} else {
+    // Local dev: load .env files
+    const envPath = resolve(process.cwd(), ".env");
+    if (existsSync(envPath)) {
+        console.log(`[dotenv] Loading ${envPath}`);
+        dotenv.config({ path: envPath });
+    }
+
+    const localPath = resolve(process.cwd(), ".env.local");
+    if (existsSync(localPath)) {
+        console.log(`[dotenv] Loading ${localPath} with override`);
+        dotenv.config({ path: localPath, override: true });
+    }
 }

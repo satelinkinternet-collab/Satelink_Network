@@ -26,12 +26,13 @@ export async function attachSchema(db) {
   if (needsInit) {
       console.log("[Schema] system_config missing, executing init.sql...");
       try {
-          const initSqlPath = path.resolve(__dirname, '../../../../docker/init/init.sql');
+          const initSqlPath = path.resolve(__dirname, '../../sql/init.sql');
+          console.log("[Schema] init.sql path:", initSqlPath);
           const sql = fs.readFileSync(initSqlPath, 'utf8');
           await db.exec(sql);
           console.log("[Schema] init.sql executed successfully.");
       } catch (err) {
-          console.error("[Schema] Failed to execute init.sql:", err.message);
+          console.error("[Schema] Failed to execute init.sql:", err.message, "path tried:", path.resolve(__dirname, '../../sql/init.sql'));
       }
   }
 
