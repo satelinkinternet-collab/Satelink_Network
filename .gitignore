@@ -41,7 +41,9 @@ test.db
 # Editor
 .vscode/
 .continue/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/CLAUDE.md
 *.swp
 *.bak
 
