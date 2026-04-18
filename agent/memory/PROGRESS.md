@@ -4,7 +4,7 @@
 # DB: PostgreSQL (migrated from SQLite)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 21 | In Progress: 0 | Pending: 100
+Total Tasks: 121 | Complete: 22 | In Progress: 0 | Pending: 99
 Revenue Readiness: 52% | Production: 40% | Launch: 32%
 
 ## STAGE S0 — Production Blockers & Security Foundation (8/15)
@@ -45,9 +45,9 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 | P2-004 | Verify on-chain anchor on Polygon Amoy | PENDING | Next: settlement_batches table doesn't exist |
 
 **Revenue Data (as of April 18):**
-- revenue_events_v2: 924 rows, $6.05 total
-- Epoch 2204 closed manually: $0.003 revenue
-- Edge cache + external provider billing working
+- revenue_events_v2: 1025 rows (+101 from P4-002 verification)
+- Epoch 2205 closed via self-test
+- Billing pipeline verified: Vercel → Backend → revenue_events_v2
 
 ## PHASE P3 — Settlement Infrastructure (2/2 COMPLETE)
 | ID | Task | Status | Notes |
@@ -55,10 +55,11 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 | P3-001 | SettlementAnchorJob on-chain | DONE | Anchors to Polygon Amoy, MATIC fallback for testnet |
 | P3-002 | settlement_batches table | DONE | PostgreSQL table created |
 
-## PHASE P4 — Public RPC Gateway (1/1 COMPLETE)
+## PHASE P4 — Public RPC Gateway (2/2 COMPLETE)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | P4-001 | Vercel public RPC endpoint | DONE | https://satelink-dashboard.vercel.app/gateway/rpc/amoy — returns real block numbers |
+| P4-002 | End-to-end billing verification | DONE | 924 → 1025 revenue events (+101), pipeline confirmed working |
 
 ## STAGE S1-RPC — Multi-RPC Gateway (0/12)
 [All PENDING — blocked on Phase 2 completion]
