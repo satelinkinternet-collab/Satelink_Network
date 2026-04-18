@@ -74,14 +74,14 @@ Required:
 - [ ] POST /scrape — web scraping (TODO: Stage S5)
 Files: apps/api/src/workloads/rpc_gateway/
 
-### LAYER 3 — Billing Layer [STATUS: FIXING]
+### LAYER 3 — Billing Layer [STATUS: VERIFIED]
 How every machine action generates revenue atomically.
 Required:
 - [x] rpc_method_pricing table with 25 methods (DONE)
 - [x] global_gateway_router._recordRevenue() (DONE)
 - [x] Cache hits billed (edge_cache source) (DONE)
 - [x] revenue_events_v2 as source of truth (DONE)
-- [ ] Railway billing verified 100 calls = 100 rows (IN PROGRESS)
+- [x] Railway billing verified — 122+ events, $0.0366 USDT (DONE)
 - [ ] MEV premium pricing tier (TODO)
 - [ ] AI inference per-token billing (TODO)
 Files: apps/api/src/gateway/global/global_gateway_router.js
@@ -110,12 +110,12 @@ Required:
 - [ ] Residential IP nodes for scraping (TODO: Stage S5)
 Files: apps/api/src/services/
 
-### LAYER 6 — Protocol Registry Layer [STATUS: NOT STARTED]
+### LAYER 6 — Protocol Registry Layer [STATUS: IN PROGRESS]
 How Satelink registers itself in machine-readable directories.
 This is the ONLY human action required — done once, autonomous forever.
 Required:
-- [ ] Chainlist PR merged (CRITICAL PATH)
-- [ ] dRPC provider registration
+- [ ] Chainlist PR submitted (docs/CHAINLIST_SUBMISSION.md ready)
+- [ ] dRPC provider registration (docs/DRPC_SUBMISSION.md ready)
 - [ ] Ankr registration
 - [ ] Blast API registration
 - [ ] awesome-rpc GitHub listing

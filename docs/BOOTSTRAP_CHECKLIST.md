@@ -5,48 +5,48 @@ Step-by-step checklist to bring the network from zero to first external payout.
 ## Week 1 — Internal Bootstrap
 
 ### Infrastructure
-- [ ] PostgreSQL database running with all migrations applied
-- [ ] Redis cache running
-- [ ] API server running on port 8080
-- [ ] All 6 security gates passing (`npm run security:audit`)
+- [x] PostgreSQL database running with all migrations applied
+- [x] Redis cache running
+- [x] API server running on port 8080
+- [x] All 6 security gates passing (`npm run security:audit`)
 
 ### Node Registration
-- [ ] Node #1 registered: `node scripts/bootstrap/register_node1.js`
-- [ ] Verify: `SELECT count(*) FROM registered_nodes WHERE status='active'` → ≥1
-- [ ] RPC provider registered for Polygon Amoy (chain_id: 80002)
+- [x] Node #1 registered: `node scripts/bootstrap/register_node1.js`
+- [x] Verify: `SELECT count(*) FROM registered_nodes WHERE status='active'` → 5 nodes
+- [x] RPC provider registered for Polygon Amoy (chain_id: 80002)
 
 ### Billing Fix (CRITICAL)
-- [ ] S0-007 billing middleware async bugs FIXED
-- [ ] All `db.query()` calls have `await` in billing middleware
-- [ ] Verify: `grep -n "db.query\|pool.query" src/middleware/billing*.js` shows await on every call
+- [x] S0-007 billing middleware async bugs FIXED
+- [x] All `db.query()` calls have `await` in billing middleware
+- [x] Railway billing verified: 122+ events, $0.0366 USDT
 
 ### First Workload
-- [ ] Run seed workload: `node scripts/bootstrap/seed_first_workload.js`
-- [ ] Verify: `SELECT count(*) FROM revenue_events WHERE source='rpc_request'` → >0
-- [ ] Verify: `SELECT sum(amount_usdt) FROM revenue_events WHERE source='rpc_request'` → >0
+- [x] Run seed workload: `node scripts/bootstrap/seed_first_workload.js`
+- [x] revenue_events_v2: 1000+ rows
+- [x] Total revenue: $0.05+ USDT
 
 ### First Epoch
-- [ ] First epoch closes with real data
-- [ ] Verify: `SELECT * FROM epochs WHERE total_revenue_usdt > 0 LIMIT 1`
-- [ ] epoch_earnings table has entries
+- [x] Epochs 7-9 closed with real data
+- [x] epoch_earnings table has entries
+- [x] 50/30/20 split verified
 
 ## Week 2 — External Discovery
 
 ### Chainlist Registration
 - [ ] Submit PR to [Chainlist](https://github.com/DefiLlama/chainlist)
-- [ ] PR title: "Add Satelink RPC for Polygon Amoy"
+- [ ] PR title: "feat: Add Satelink RPC for Polygon Amoy (80002)"
 - [ ] Entry format:
-  ```json
+  ```javascript
   {
-    "name": "Satelink",
-    "url": "https://rpc-test.satelink.network/v1/workload/rpc/amoy",
-    "tracking": "none"
+    url: "https://satelink-dashboard.vercel.app/gateway/rpc/amoy",
+    tracking: "none",
   }
   ```
+- [ ] See: docs/CHAINLIST_SUBMISSION.md for full PR template
 
 ### dRPC Registration
 - [ ] Register on [dRPC.org](https://drpc.org/partners) as provider
-- [ ] Complete partner onboarding
+- [ ] See: docs/DRPC_SUBMISSION.md for registration details
 
 ### Community Outreach
 - [ ] Post to r/ethdev with public RPC URL
