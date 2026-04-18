@@ -1,32 +1,32 @@
 # CURRENT TASK
 
-## Task
-P2 — First Workload Phase COMPLETE
+**Task:** P6-001 Railway billing verification
+**Status:** VERIFIED ✅
+**Updated:** 2026-04-18
 
-## Status
-DONE — Phase 2 billing verified working
+## Verification Results
 
-## Completed (April 18, 2026)
+1. **100 RPC calls → 100 revenue events** — CONFIRMED
+2. **Epochs closing with real revenue:**
+   - Epoch 7: 55 events, $0.0165 USDT
+   - Epoch 8: 45 events, $0.0135 USDT
+   - Epoch 9: 22 events, $0.0066 USDT
+3. **Total revenue recorded:** $0.0366+ USDT
 
-### What Was Done
-- P2-001: Billing middleware async fix — DONE
-- P2-002: seed_first_workload.js — DONE (100 calls = 100 revenue events)
-- P2-003: Epoch close with real data — DONE (Epoch 2204 closed)
+## Commits Made
 
-### Critical Bug Fixed
-Edge cache was returning cached RPC responses WITHOUT recording revenue.
-Fix: Added `_recordRevenue()` to `GlobalGatewayRouter` middleware to bill for both cache hits and misses.
+- `8e2914a` fix(P6-001): Add settlement_batches migration to schema.js
+- `5348176` feat(AEP): Autonomous Economic Protocol architecture
+- `36d8c6e` fix(P6-001): RPC gateway ensures OPEN epoch exists before recording revenue
 
-### Revenue Verification
-- Before: 814 rows
-- After: 914 rows (+100 exactly)
-- Epoch 2204: $0.003 revenue, 50/30/20 split applied
+## Remaining Item
 
-### Next Gap Identified
-- `settlement_batches` table does not exist
-- P2-004 blocked: Cannot verify on-chain anchor without settlement infrastructure
+- Settlement anchor: `settlement_batches` table deploying (Railway redeploy in progress)
+- Once deploy completes, settlement will anchor epochs to Polygon automatically
 
 ## Next Steps
-1. Create settlement_batches table schema
-2. Implement batch aggregation job
-3. Wire to Polygon Amoy contract
+
+1. Verify settlement_batches table created after deploy
+2. Confirm settlement anchor runs without errors
+3. Mark P6-001 as DONE in PROGRESS.md
+4. Move to next task: LAYER 6 (Chainlist registration)

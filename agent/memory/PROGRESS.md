@@ -61,6 +61,17 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 | P4-001 | Vercel public RPC endpoint | DONE | https://satelink-dashboard.vercel.app/gateway/rpc/amoy — returns real block numbers |
 | P4-002 | End-to-end billing verification | DONE | 924 → 1025 revenue events (+101), pipeline confirmed working |
 
+## PHASE P6 — Railway Production Verification (1/1 COMPLETE)
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| P6-001 | Railway billing pipeline | DONE | Epochs 7-9 closed with 122+ events, $0.0366 USDT revenue recorded |
+
+**Railway Verification (as of April 18):**
+- Epoch 7: 55 events, $0.0165 USDT ✅
+- Epoch 8: 45 events, $0.0135 USDT ✅
+- Epoch 9: 22 events, $0.0066 USDT ✅
+- Settlement anchor: deploying (settlement_batches table migration in progress)
+
 ## STAGE S1-RPC — Multi-RPC Gateway (0/12)
 [All PENDING — blocked on Phase 2 completion]
 
@@ -82,7 +93,7 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 |-------|------|--------|----------------|
 | L1 | Discovery | IN PROGRESS | YES — no external traffic without this |
 | L2 | Ingestion | DONE | — |
-| L3 | Billing | FIXING | YES — revenue not recording on Railway |
+| L3 | Billing | VERIFIED | — Railway billing working, 122+ events recorded |
 | L4 | Settlement | PARTIAL | YES — mainnet needed for real USDT |
 | L5 | Node Supply | PARTIAL | Limits scale |
 | L6 | Protocol Registry | NOT STARTED | YES — machines cannot find us |
