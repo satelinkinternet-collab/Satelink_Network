@@ -25,3 +25,13 @@
 ### D-005: ESM project — scripts use `node --input-type=module` where needed
 **Decision**: Agent scripts stay as bash; any Node snippets inside them use explicit flags.
 **Reason**: Project is `"type": "module"` which affects `.js` file execution context.
+
+## ADR-005: Satelink is an Autonomous Economic Protocol, not just DePIN
+* Date: April 2026
+* Status: Accepted — foundational architectural decision
+* Decision: Primary revenue source is machine-to-machine autonomous calls.
+  Human usage is welcome but never required or targeted.
+* Layers: 9 protocol layers must all reach STATUS:DONE for full product
+* Implication: Every feature built must serve at least one of L1-L9
+* Anti-pattern: Any feature that requires human sales to generate revenue
+  is deprioritized until all 9 layers are operational

@@ -8,6 +8,19 @@ Purpose: Decentralized infrastructure platform — monetize idle hardware (route
   by routing real workloads (RPC, AI inference, webhooks, automation, scraping, bandwidth proxy)
   with USDT settlement on Polygon Network.
 
+## CORE ARCHITECTURAL IDENTITY
+Satelink = Autonomous Economic Protocol (AEP)
+NOT just a DePIN node network.
+Primary revenue: machine-to-machine, zero human sales
+9 protocol layers must ALL reach DONE for full product completion
+Reference: docs/AUTONOMOUS_ECONOMIC_PROTOCOL.md
+
+Anti-patterns (reject immediately if suggested):
+- Human sales funnels
+- Marketing campaigns
+- Manual client onboarding
+- Features that require human action to generate revenue
+
 ## RESUME PROTOCOL (CRITICAL — RUN EVERY SESSION)
 1. Check if `agent/memory/CURRENT_TASK.md` exists → if yes, resume that task exactly
 2. If not, read `agent/memory/PROGRESS.md` → find next PENDING task

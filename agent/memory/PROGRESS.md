@@ -76,3 +76,16 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 - docs/BOOTSTRAP_CHECKLIST.md
 - apps/api/src/gateway/routes.js (added /api/pricing endpoint)
 - apps/api/src/workloads/rpc_gateway/rpc_gateway.js (added Amoy chain)
+
+## AUTONOMOUS ECONOMIC PROTOCOL LAYERS
+| Layer | Name | Status | Blocks Revenue |
+|-------|------|--------|----------------|
+| L1 | Discovery | IN PROGRESS | YES — no external traffic without this |
+| L2 | Ingestion | DONE | — |
+| L3 | Billing | FIXING | YES — revenue not recording on Railway |
+| L4 | Settlement | PARTIAL | YES — mainnet needed for real USDT |
+| L5 | Node Supply | PARTIAL | Limits scale |
+| L6 | Protocol Registry | NOT STARTED | YES — machines cannot find us |
+| L7 | Autonomous Ops | PARTIAL | — |
+| L8 | DeFi/DApp | NOT STARTED | Revenue ceiling without this |
+| L9 | AI Agent | NOT STARTED | Revenue ceiling without this |
