@@ -43,7 +43,9 @@ test.db
 .continue/
 .claude/*
 !.claude/skills/
+!.claude/commands/
 !.claude/CLAUDE.md
+!.claude/settings.json
 *.swp
 *.bak
 

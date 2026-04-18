@@ -1,0 +1,55 @@
+{
+  "model": "claude-opus-4-5",
+  "extendedThinking": true,
+  "maxConcurrentSessions": 3,
+  "allowedTools": [
+    "bash",
+    "read",
+    "write",
+    "edit",
+    "grep",
+    "glob",
+    "mcp"
+  ],
+  "hooks": {
+    "session_start": [
+      "echo '=== SATELINK SESSION START ==='",
+      "cat .claude/skills/satelink/SKILL.md 2>/dev/null | head -80 || echo 'Skill file not found'",
+      "if [ -f agent/memory/CURRENT_TASK.md ]; then echo '📋 RESUMING TASK:'; cat agent/memory/CURRENT_TASK.md; else echo '📊 NO ACTIVE TASK — reading PROGRESS.md'; cat agent/memory/PROGRESS.md 2>/dev/null | tail -30; fi",
+      "bash scripts/agent-env-check.sh 2>/dev/null || echo 'env-check script not found'",
+      "docker ps --filter name=postgres --filter name=redis --format 'table {{.Names}}\t{{.Status}}' 2>/dev/null || echo '⚠️  Docker not running'"
+    ],
+    "before_command": [
+      "git status --short 2>/dev/null | head -5"
+    ],
+    "after_task_complete": [
+      "npm test --if-present 2>&1 | tail -10",
+      "git add -A && git diff --cached --stat"
+    ],
+    "session_end": [
+      "echo '=== SESSION END — updating PROGRESS.md if needed ==='"
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "file_operations:read_write_within_repo",
+      "bash:npm",
+      "bash:forge",
+      "bash:git",
+      "bash:docker",
+      "bash:node",
+      "bash:curl",
+      "bash:scripts/*"
+    ],
+    "deny": [
+      "file_operations:delete:.env*",
+      "file_operations:delete:contracts/",
+      "bash:git push origin main",
+      "bash:git push origin develop",
+      "bash:rm -rf node_modules"
+    ]
+  },
+  "autoApprove": false,
+  "confirmBeforeWrite": false,
+  "confirmBeforeDelete": true
+}
