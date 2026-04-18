@@ -71,26 +71,26 @@ export function createRpcGateway(db) {
             // Record revenue for successful execution (skip if gateway middleware already handled)
             if (!req._billingHandledByGateway) {
                 try {
-                    let epochId = null;
-                    try {
-                        const epochRow = await db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
-                        epochId = epochRow?.id || null;
-                        console.log('[RPC Gateway] Epoch lookup:', epochId ? `epoch ${epochId}` : 'no OPEN epoch');
-                    } catch (epochErr) {
-                        console.error('[RPC Gateway] Epoch query failed:', epochErr.message);
-                    }
-
                     const now = Math.floor(Date.now() / 1000);
+
+                    // Ensure an OPEN epoch exists - create one if needed
+                    let epochRow = await db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                    if (!epochRow) {
+                        console.log('[RPC Gateway] No OPEN epoch, creating one...');
+                        const insertResult = await db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
+                        epochRow = { id: insertResult.lastInsertRowid };
+                        console.log('[RPC Gateway] Created epoch:', epochRow.id);
+                    }
+                    const epochId = epochRow.id;
+
                     const result = await db.prepare(`
                         INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
                         VALUES (?, 'rpc_call', 'external_provider', ?, ?, 'success', ?, ?)
                     `).run([epochId, client_id, RPC_REWARD_USDT, request_id, now]);
-                    console.log('[RPC Gateway] Revenue recorded:', { epochId, client_id, amount: RPC_REWARD_USDT, insertId: result?.lastInsertRowid });
+                    console.log('[RPC Gateway] Revenue recorded:', { epochId, client_id, amount: RPC_REWARD_USDT, changes: result?.changes });
                 } catch (e) {
-                    console.error('[RPC Gateway] Failed to record revenue:', e.message, e.stack);
+                    console.error('[RPC Gateway] Failed to record revenue:', e.message);
                 }
-            } else {
-                console.log('[RPC Gateway] Billing already handled by gateway middleware');
             }
 
             // Return actual RPC result
