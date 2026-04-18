@@ -1,4 +1,8 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+
+// Load .env file if it exists (local dev). On Railway/production, env vars
+// are injected directly into process.env — no file needed.
+dotenv.config({ path: ".env" });
 
 export function validateEnv() {
     console.log("[CONFIG] Validating environment...");
