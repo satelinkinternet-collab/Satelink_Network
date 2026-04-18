@@ -135,6 +135,26 @@ export async function attachSchema(db) {
     // Auth nonces — unique address for ON CONFLICT upsert
     "DROP INDEX IF EXISTS idx_auth_nonces_address;",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_nonces_address ON auth_nonces (address);",
+
+    // Settlement batches — for on-chain settlement anchoring
+    `CREATE TABLE IF NOT EXISTS settlement_batches (
+        id SERIAL PRIMARY KEY,
+        batch_id TEXT UNIQUE NOT NULL,
+        epoch_id INTEGER,
+        chain_id INTEGER,
+        adapter_type TEXT,
+        total_amount_usdt NUMERIC,
+        item_count INTEGER,
+        status TEXT DEFAULT 'pending',
+        tx_hash TEXT,
+        submitted_at BIGINT,
+        confirmed_at BIGINT,
+        error_message TEXT,
+        created_at BIGINT NOT NULL
+    );`,
+    "CREATE INDEX IF NOT EXISTS idx_settlement_batches_epoch ON settlement_batches(epoch_id);",
+    "CREATE INDEX IF NOT EXISTS idx_settlement_batches_status ON settlement_batches(status);",
+    "CREATE INDEX IF NOT EXISTS idx_settlement_batches_chain ON settlement_batches(chain_id);",
   ];
 
   for (const sql of hardeningMigrations) {
