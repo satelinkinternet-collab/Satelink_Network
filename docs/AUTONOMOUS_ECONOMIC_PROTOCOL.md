@@ -114,8 +114,8 @@ Files: apps/api/src/services/
 How Satelink registers itself in machine-readable directories.
 This is the ONLY human action required — done once, autonomous forever.
 Required:
-- [ ] Chainlist PR submitted (docs/CHAINLIST_SUBMISSION.md ready)
-- [ ] dRPC provider registration (docs/DRPC_SUBMISSION.md ready)
+- [x] Chainlist PR submitted (April 19, 2026) — awaiting merge
+- [x] dRPC provider registration submitted (April 19, 2026)
 - [ ] Ankr registration
 - [ ] Blast API registration
 - [ ] awesome-rpc GitHub listing

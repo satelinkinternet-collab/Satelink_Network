@@ -66,6 +66,11 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 |----|------|--------|-------|
 | P6-001 | Railway billing pipeline | DONE | Epochs 7-9 closed with 122+ events, $0.0366 USDT revenue recorded |
 
+## PHASE P7 — Protocol Registry (1/1 COMPLETE)
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| P7-001 | Chainlist + dRPC submission | DONE | Chainlist PR submitted, dRPC registration submitted April 19 |
+
 **Railway Verification (as of April 18):**
 - Epoch 7: 55 events, $0.0165 USDT ✅
 - Epoch 8: 45 events, $0.0135 USDT ✅

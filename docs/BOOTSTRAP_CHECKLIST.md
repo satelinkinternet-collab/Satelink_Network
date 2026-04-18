@@ -33,20 +33,14 @@ Step-by-step checklist to bring the network from zero to first external payout.
 ## Week 2 — External Discovery
 
 ### Chainlist Registration
-- [ ] Submit PR to [Chainlist](https://github.com/DefiLlama/chainlist)
-- [ ] PR title: "feat: Add Satelink RPC for Polygon Amoy (80002)"
-- [ ] Entry format:
-  ```javascript
-  {
-    url: "https://satelink-dashboard.vercel.app/gateway/rpc/amoy",
-    tracking: "none",
-  }
-  ```
-- [ ] See: docs/CHAINLIST_SUBMISSION.md for full PR template
+- [x] Submit PR to [Chainlist](https://github.com/DefiLlama/chainlist) — SUBMITTED April 19
+- [x] PR title: "feat: Add Satelink RPC for Polygon Amoy (80002)"
+- [x] Entry added to constants/extraRpcs.js
+- [ ] PR merged (awaiting review)
 
 ### dRPC Registration
-- [ ] Register on [dRPC.org](https://drpc.org/partners) as provider
-- [ ] See: docs/DRPC_SUBMISSION.md for registration details
+- [x] Register on [dRPC.org](https://drpc.org/partners) as provider — SUBMITTED April 19
+- [ ] Partner onboarding complete (awaiting confirmation)
 
 ### Community Outreach
 - [ ] Post to r/ethdev with public RPC URL
