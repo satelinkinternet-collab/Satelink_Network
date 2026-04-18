@@ -1,13 +1,7 @@
-"use client";
+export const dynamic = 'force-dynamic';
 
-import { RoleGuard } from '@/components/auth/RoleGuard';
-
-const ADMIN_ROLES = ['admin_super', 'admin_ops', 'admin_readonly'];
+import AdminLayoutClient from './AdminLayoutClient';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <RoleGuard allowedRoles={ADMIN_ROLES}>
-            {children}
-        </RoleGuard>
-    );
+    return <AdminLayoutClient>{children}</AdminLayoutClient>;
 }
