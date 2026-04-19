@@ -10,6 +10,34 @@ jobs:
   run-checks:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: satelink
+          POSTGRES_PASSWORD: satelinkpassword
+          POSTGRES_DB: satelink
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://satelink:satelinkpassword@localhost:5432/satelink
+      PORT: 8080
+      NODE_ENV: development
+      SATELINK_MODE: simulation
+      JWT_SECRET: ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      JWT_REFRESH_SECRET: ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
+      FEATURE_REAL_SETTLEMENT: "false"
+      FEATURE_MOONPAY: "false"
+      RPC_URL: https://rpc-amoy.polygon.technology
+      CHAIN_ID: "80002"
+      TREASURY_ADDRESS: "0x0000000000000000000000000000000000000000"
+
     steps:
     - uses: actions/checkout@v4
 
@@ -23,31 +51,25 @@ jobs:
 
     - name: Create test .env
       run: |
-        cat > .env << 'EOF'
+        cat > apps/api/.env << 'EOF'
+        DATABASE_URL=postgresql://satelink:satelinkpassword@localhost:5432/satelink
         PORT=8080
         NODE_ENV=development
         SATELINK_MODE=simulation
         JWT_SECRET=ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         JWT_REFRESH_SECRET=ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
-        SQLITE_PATH=./test_safezone.db
         FEATURE_REAL_SETTLEMENT=false
         FEATURE_MOONPAY=false
+        RPC_URL=https://rpc-amoy.polygon.technology
+        CHAIN_ID=80002
+        TREASURY_ADDRESS=0x0000000000000000000000000000000000000000
         EOF
 
-    - name: Start server (Background)
+    - name: Start API server (Background)
       run: |
-        node server.js &
-        echo $! > server.pid
-        sleep 8
-      env:
-        PORT: 8080
-        NODE_ENV: development
-        SATELINK_MODE: simulation
-        JWT_SECRET: ci_safezone_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        JWT_REFRESH_SECRET: ci_safezone_refresh_key_64chars_long_bbbbbbbbbbbbbbbbbbbbbbbbb
-        SQLITE_PATH: ./test_safezone.db
-        FEATURE_REAL_SETTLEMENT: "false"
-        FEATURE_MOONPAY: "false"
+        cd apps/api && node server.js &
+        echo $! > /tmp/server.pid
+        sleep 10
 
     - name: Run Smoke Safe-Zone
       run: node scripts/smoke_safezone.js
@@ -61,4 +83,4 @@ jobs:
 
     - name: Shutdown server
       if: always()
-      run: kill $(cat server.pid) || true
+      run: kill $(cat /tmp/server.pid) || true

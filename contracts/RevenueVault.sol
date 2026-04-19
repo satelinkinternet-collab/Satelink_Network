@@ -110,4 +110,9 @@ contract RevenueVault is AccessControl, Pausable, ReentrancyGuard {
     function availableBalance() external view returns (uint256) {
         return totalDeposited - totalWithdrawn;
     }
+
+    /// @notice Returns the USDT token address
+    function token() external view returns (address) {
+        return address(usdt);
+    }
 }

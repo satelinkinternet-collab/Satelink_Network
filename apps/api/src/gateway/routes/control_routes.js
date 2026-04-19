@@ -1,8 +1,12 @@
-
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createControlRouter(opsEngine) {
   const router = Router();
+
+  // All control routes require admin authentication
+  router.use(requireJWT);
+  router.use(requireRole('admin'));
 
   // Trigger single test job
   router.post('/jobs/test', async (req, res) => {
