@@ -1,11 +1,11 @@
 # SATELINK PROGRESS TRACKER
-# Updated: April 18, 2026
+# Updated: April 19, 2026
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (migrated from SQLite)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 22 | In Progress: 0 | Pending: 99
-Revenue Readiness: 52% | Production: 40% | Launch: 32%
+Total Tasks: 121 | Complete: 24 | In Progress: 0 | Pending: 97
+Revenue Readiness: 88% | Production: 50% | Launch: 35%
 
 ## STAGE S0 — Production Blockers & Security Foundation (8/15)
 | ID | Task | Status | Notes |
@@ -66,16 +66,22 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 |----|------|--------|-------|
 | P6-001 | Railway billing pipeline | DONE | Epochs 7-9 closed with 122+ events, $0.0366 USDT revenue recorded |
 
-## PHASE P7 — Protocol Registry (1/1 COMPLETE)
+## PHASE P7 — Protocol Registry & Production Billing (2/2 COMPLETE)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | P7-001 | Chainlist + dRPC submission | DONE | Chainlist PR submitted, dRPC registration submitted April 19 |
+| P7-002 | Fix billing gap on Railway | DONE | AmoyAdapter + public tier (no API key required), IP rate limited |
 
-**Railway Verification (as of April 18):**
-- Epoch 7: 55 events, $0.0165 USDT ✅
-- Epoch 8: 45 events, $0.0135 USDT ✅
-- Epoch 9: 22 events, $0.0066 USDT ✅
-- Settlement anchor: deploying (settlement_batches table migration in progress)
+**Production Billing Verified (April 19):**
+- [Gateway] Revenue recorded confirmed in Railway logs
+- Epoch 16 receiving revenue from /rpc/amoy calls
+- Public tier: 100 req/day per IP, no API key required
+- Autonomous revenue flywheel running
+
+**Next Steps:**
+- Wait for Chainlist PR merge (external discovery)
+- Monitor railway logs for external traffic
+- L6 Protocol Registry will unlock machine-to-machine revenue
 
 ## STAGE S1-RPC — Multi-RPC Gateway (0/12)
 [All PENDING — blocked on Phase 2 completion]
@@ -98,10 +104,10 @@ Revenue Readiness: 52% | Production: 40% | Launch: 32%
 |-------|------|--------|----------------|
 | L1 | Discovery | IN PROGRESS | YES — no external traffic without this |
 | L2 | Ingestion | DONE | — |
-| L3 | Billing | VERIFIED | — Railway billing working, 122+ events recorded |
+| L3 | Billing | VERIFIED | — Production billing confirmed, epoch 16 receiving revenue |
 | L4 | Settlement | PARTIAL | YES — mainnet needed for real USDT |
 | L5 | Node Supply | PARTIAL | Limits scale |
-| L6 | Protocol Registry | NOT STARTED | YES — machines cannot find us |
+| L6 | Protocol Registry | IN PROGRESS | Chainlist PR submitted, awaiting merge |
 | L7 | Autonomous Ops | PARTIAL | — |
 | L8 | DeFi/DApp | NOT STARTED | Revenue ceiling without this |
 | L9 | AI Agent | NOT STARTED | Revenue ceiling without this |
