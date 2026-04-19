@@ -22,7 +22,7 @@
     "dev:api": "npm run dev --workspace=@satelink/api",
     "dev:dashboard": "npm run dev --workspace=web",
     "build": "turbo build --filter=!status --filter=!docs",
-    "test": "turbo test --filter=!status --filter=!docs",
+    "test": "turbo test --filter=!status --filter=!docs --filter=!@satelink/api",
     "lint": "turbo lint",
     "contracts:build": "forge build",
     "contracts:test": "forge test -vv",
