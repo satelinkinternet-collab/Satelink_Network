@@ -213,5 +213,64 @@ export function validateApiKey(db) {
   };
 }
 
+// In-memory rate limit store for public tier (IP-based)
+const publicRateLimits = new Map();
+const PUBLIC_TIER_LIMIT = 100; // requests per day per IP
+const PUBLIC_TIER_WINDOW = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+/**
+ * optionalApiKey — validates API key if provided, falls back to public tier with IP rate limiting
+ * @param {object} db - Database adapter
+ */
+export function optionalApiKey(db) {
+  return async (req, res, next) => {
+    const apiKey = req.headers['x-api-key'];
+
+    // If API key provided, validate it
+    if (apiKey) {
+      try {
+        const keyRecord = await db.prepare("SELECT client_id, tier FROM enterprise_api_keys WHERE api_key = ?").get([apiKey]);
+        if (!keyRecord) {
+          return res.status(401).json({ error: 'Unauthorized', message: 'Invalid API key' });
+        }
+        req.clientId = keyRecord.client_id;
+        req.tier = keyRecord.tier || 'standard';
+        return next();
+      } catch (err) {
+        console.error('[AUTH] API Key validation error:', err.message);
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+    }
+
+    // No API key — use public tier with IP-based rate limiting
+    const clientIp = req.ip || req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
+    const now = Date.now();
+
+    // Get or create rate limit entry for this IP
+    let entry = publicRateLimits.get(clientIp);
+    if (!entry || now - entry.windowStart > PUBLIC_TIER_WINDOW) {
+      entry = { count: 0, windowStart: now };
+      publicRateLimits.set(clientIp, entry);
+    }
+
+    // Check rate limit
+    if (entry.count >= PUBLIC_TIER_LIMIT) {
+      const resetTime = Math.ceil((entry.windowStart + PUBLIC_TIER_WINDOW - now) / 1000);
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: `Public tier limit: ${PUBLIC_TIER_LIMIT} requests/day. Resets in ${resetTime}s. Get an API key for higher limits.`,
+        retry_after: resetTime
+      });
+    }
+
+    // Increment count and continue
+    entry.count++;
+    req.clientId = `public_ip:${clientIp}`;
+    req.tier = 'public';
+    console.log(`[RPC] Public tier request from ${clientIp} (${entry.count}/${PUBLIC_TIER_LIMIT} today)`);
+    next();
+  };
+}
+
 // Expose for testing
 export const _JWT_SECRET_LENGTH = JWT_SECRET.length;

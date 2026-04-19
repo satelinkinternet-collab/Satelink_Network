@@ -11,7 +11,7 @@ import { SLAEngine } from '../../monitoring/sla_engine.js';
 import { NodeCapacityRegistry } from '../../execution/bootstrap/node_capacity_registry.js';
 import { ProviderFallbackAdapter } from '../../execution/bootstrap/provider_fallback_adapter.js';
 import { ExecutionAssuranceRouter } from '../../execution/bootstrap/execution_assurance_router.js';
-import { validateApiKey } from '../../security/auth_middleware.js';
+import { optionalApiKey } from '../../security/auth_middleware.js';
 
 export function createRpcRouter(db, ledger) {
     const router = express.Router();
@@ -33,7 +33,7 @@ export function createRpcRouter(db, ledger) {
         arbitrum: new ArbitrumAdapter()
     };
 
-    router.post('/:chain', validateApiKey(db), async (req, res) => {
+    router.post('/:chain', optionalApiKey(db), async (req, res) => {
         await initPromise; // Ensure pricing and system config are loaded
         console.log('[REAL_DEMAND] request_received');
         console.log('[REAL_DEMAND] api_key_valid');
