@@ -54,20 +54,33 @@ export class GlobalGatewayRouter {
     }
 
     async _recordRevenue(clientId, isCacheHit = false) {
-        if (!this.db) return;
+        if (!this.db) {
+            console.warn('[Gateway] _recordRevenue called but db is null');
+            return;
+        }
         const request_id = `rpc_${crypto.randomUUID()}`;
         try {
             let epochId = null;
             try {
                 const epochRow = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
                 epochId = epochRow?.id || null;
-            } catch { /* fallback */ }
+                if (!epochId) {
+                    console.log('[Gateway] No OPEN epoch found, creating one...');
+                    const now = Math.floor(Date.now() / 1000);
+                    const insertResult = await this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN') RETURNING id").get([now]);
+                    epochId = insertResult?.id || null;
+                    console.log('[Gateway] Created epoch:', epochId);
+                }
+            } catch (epochErr) {
+                console.error('[Gateway] Epoch query failed:', epochErr.message);
+            }
 
             const now = Math.floor(Date.now() / 1000);
-            await this.db.prepare(`
+            const result = await this.db.prepare(`
                 INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
                 VALUES (?, 'rpc_call', ?, ?, ?, 'success', ?, ?)
             `).run([epochId, isCacheHit ? 'edge_cache' : 'external_provider', clientId, RPC_REWARD_USDT, request_id, now]);
+            console.log('[Gateway] Revenue recorded:', { epochId, clientId, amount: RPC_REWARD_USDT, isCacheHit, changes: result?.changes });
         } catch (e) {
             console.error('[Gateway] Revenue recording failed:', e.message);
         }

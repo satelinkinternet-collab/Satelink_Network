@@ -5,6 +5,7 @@ import { PolygonAdapter } from '../../providers/adapters/polygon.js';
 import { SolanaAdapter } from '../../providers/adapters/solana.js';
 import { FuseAdapter } from '../../providers/adapters/fuse.js';
 import { ArbitrumAdapter } from '../../providers/adapters/arbitrum.js';
+import { AmoyAdapter } from '../../providers/adapters/amoy.js';
 import { OperationsEngine } from '../../core/operations_engine.js';
 import { SLAEngine } from '../../monitoring/sla_engine.js';
 import { NodeCapacityRegistry } from '../../execution/bootstrap/node_capacity_registry.js';
@@ -26,6 +27,7 @@ export function createRpcRouter(db, ledger) {
     const adapters = {
         ethereum: new EthereumAdapter(),
         polygon: new PolygonAdapter(),
+        amoy: new AmoyAdapter(),
         solana: new SolanaAdapter(),
         fuse: new FuseAdapter(),
         arbitrum: new ArbitrumAdapter()

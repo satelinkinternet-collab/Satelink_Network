@@ -12,6 +12,9 @@ export const rpcProvidersMap = {
         "infura",
         "alchemy"
     ],
+    amoy: [
+        "polygon_amoy_public"
+    ],
     solana: [
         "community_nodes",
         "quicknode",
@@ -22,5 +25,6 @@ export const rpcProvidersMap = {
 export const externalEndpoints = {
     infura: "https://mainnet.infura.io/v3/SATELINK_INTERNAL",
     alchemy: "https://eth-mainnet.g.alchemy.com/v2/SATELINK_INTERNAL",
-    quicknode: "https://mainnet.quiknode.pro/SATELINK_INTERNAL/"
+    quicknode: "https://mainnet.quiknode.pro/SATELINK_INTERNAL/",
+    polygon_amoy_public: process.env.CHAIN_RPC_AMOY || "https://rpc-amoy.polygon.technology"
 };
