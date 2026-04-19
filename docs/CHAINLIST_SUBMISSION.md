@@ -17,7 +17,7 @@ feat: Add Satelink RPC for Polygon Amoy (80002)
 Adds Satelink DePIN Network as an RPC provider for Polygon Amoy testnet.
 
 ## RPC Details
-- **URL:** `https://satelink-dashboard.vercel.app/gateway/rpc/amoy`
+- **URL:** `https://rpc.satelink.network/gateway/rpc/amoy`
 - **Chain ID:** 80002 (Polygon Amoy Testnet)
 - **Tracking:** None — no user data collected, no analytics, no logging of wallet addresses
 - **Rate Limit:** 100 requests/day (public tier, no API key required)
@@ -26,7 +26,7 @@ Adds Satelink DePIN Network as an RPC provider for Polygon Amoy testnet.
 ## Verification
 The endpoint returns valid JSON-RPC responses:
 ```bash
-curl -X POST https://satelink-dashboard.vercel.app/gateway/rpc/amoy \
+curl -X POST https://rpc.satelink.network/gateway/rpc/amoy \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 ```
@@ -49,7 +49,7 @@ Find the `80002` (Polygon Amoy) section in `constants/extraRpcs.js` and add:
 
 ```javascript
 {
-  url: "https://satelink-dashboard.vercel.app/gateway/rpc/amoy",
+  url: "https://rpc.satelink.network/gateway/rpc/amoy",
   tracking: "none",
 }
 ```
@@ -65,7 +65,7 @@ export const extraRpcs = {
     rpcs: [
       // existing RPCs...
       {
-        url: "https://satelink-dashboard.vercel.app/gateway/rpc/amoy",
+        url: "https://rpc.satelink.network/gateway/rpc/amoy",
         tracking: "none",
       },
     ],

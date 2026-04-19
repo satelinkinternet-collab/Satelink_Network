@@ -8,13 +8,13 @@ Replace your current RPC URL with:
 
 | Network | URL | Status |
 |---------|-----|--------|
-| Polygon Amoy (testnet) | `https://rpc-test.satelink.network` | Live |
-| Polygon Mainnet | `https://rpc.satelink.network` | Coming Soon |
+| Polygon Amoy (testnet) | `https://rpc.satelink.network/gateway/rpc/amoy` | Live |
+| Polygon Mainnet | `https://rpc.satelink.network/gateway/rpc/polygon` | Coming Soon |
 
 ### Quick Test
 
 ```bash
-curl -X POST https://rpc-test.satelink.network/v1/workload/rpc/amoy \
+curl -X POST https://rpc.satelink.network/gateway/rpc/amoy \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 ```
@@ -28,11 +28,11 @@ Expected response:
 
 | Chain | Endpoint Path | Chain ID |
 |-------|---------------|----------|
-| Polygon Amoy | `/v1/workload/rpc/amoy` | 80002 |
-| Polygon | `/v1/workload/rpc/polygon` | 137 |
-| Ethereum | `/v1/workload/rpc/ethereum` | 1 |
-| Arbitrum | `/v1/workload/rpc/arbitrum` | 42161 |
-| Base | `/v1/workload/rpc/base` | 8453 |
+| Polygon Amoy | `/gateway/rpc/amoy` | 80002 |
+| Polygon | `/gateway/rpc/polygon` | 137 |
+| Ethereum | `/gateway/rpc/ethereum` | 1 |
+| Arbitrum | `/gateway/rpc/arbitrum` | 42161 |
+| Base | `/gateway/rpc/base` | 8453 |
 
 ## Authentication
 
@@ -48,7 +48,7 @@ curl -X POST https://api.satelink.network/api/builder/keys \
   -H "Authorization: Bearer <your-jwt>"
 
 # Use the API key
-curl -X POST https://rpc-test.satelink.network/v1/workload/rpc/amoy \
+curl -X POST https://rpc.satelink.network/gateway/rpc/amoy \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk_..." \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
