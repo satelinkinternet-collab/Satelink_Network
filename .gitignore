@@ -41,6 +41,7 @@ test.db
 # Editor
 .vscode/
 .continue/
+.cursor/
 .claude/*
 !.claude/skills/
 !.claude/commands/
@@ -48,6 +49,9 @@ test.db
 !.claude/settings.json
 *.swp
 *.bak
+
+# AI tools
+.aider*
 
 # Secrets and Tokens
 token.txt
