@@ -4,8 +4,8 @@
 # DB: PostgreSQL (migrated from SQLite)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 24 | In Progress: 0 | Pending: 97
-Revenue Readiness: 88% | Production: 50% | Launch: 35%
+Total Tasks: 121 | Complete: 26 | In Progress: 0 | Pending: 95
+Revenue Readiness: 88% | Production: 55% | Launch: 40%
 
 ## STAGE S0 — Production Blockers & Security Foundation (8/15)
 | ID | Task | Status | Notes |
@@ -20,10 +20,10 @@ Revenue Readiness: 88% | Production: 50% | Launch: 35%
 | S0-008 | Fix all 9 async/sync DB bugs | PENDING | P0 — silent data corruption |
 | S0-009 | Remove 733 duplicate OZ files in utils/lib/ | PENDING | |
 | S0-010 | Remove 4 fake stub services | PENDING | |
-| S0-011 | Remove real JWT from token.txt | PENDING | P0 security |
+| S0-011 | Remove real JWT from token.txt | DONE | Purged from git history via git-filter-repo |
 | S0-012 | .env.example with all vars | DONE | |
 | S0-013 | Security gates + ecosystem setup | DONE | All 6 gates pass |
-| S0-014 | Git branch governance + protection rules | PENDING | |
+| S0-014 | Git branch governance + protection rules | DONE | Pre-commit hooks, Dependabot, CI security |
 | S0-015 | CI security gate scripts | PENDING | |
 
 ## PHASE P1 — Revenue Infrastructure (6/6 COMPLETE)
