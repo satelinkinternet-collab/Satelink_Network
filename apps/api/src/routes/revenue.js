@@ -1,3 +1,4 @@
+console.log("🚀 SERVER STARTED - ROUTES LOADING");
 import express from "express";
 
 export default function revenueRoutes(pool) {
