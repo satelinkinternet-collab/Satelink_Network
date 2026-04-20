@@ -1,3 +1,4 @@
+import { createApp } from "./app_factory.mjs";
 import revenueRoutes from "./src/routes/revenue.js";
 import "./src/core/config/dotenv_boot.js";
 import path from "path";
