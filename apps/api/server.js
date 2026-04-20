@@ -1,3 +1,4 @@
+import revenueRoutes from "./src/routes/revenue.js";
 import "./src/core/config/dotenv_boot.js";
 import path from "path";
 import { fileURLToPath } from "url";
