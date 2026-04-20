@@ -1,3 +1,4 @@
+console.log("REVENUE_ROUTE_LOADED");
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
