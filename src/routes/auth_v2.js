@@ -105,7 +105,10 @@ export function createUnifiedAuthRouter(opsEngine) {
 
     // Hash password helper
     const hashPassword = (password) => {
-        const salt = process.env.PASSWORD_SALT || process.env.JWT_SECRET || 'satelink_fallback_salt';
+        const salt = process.env.PASSWORD_SALT || process.env.JWT_SECRET;
+        if (!salt) {
+            throw new Error('FATAL: PASSWORD_SALT or JWT_SECRET must be set for password hashing');
+        }
         return crypto.createHash('sha256').update(password + salt).digest('hex');
     };
 
