@@ -69,7 +69,6 @@ export async function createApp(db) {
   }
 
   // FuseUsdtAdapter — deprecated, only register if explicitly configured.
-  if (process.env.FUSE_RPC_URL && process.env.FUSE_USDT_ADDRESS) {
     import("./src/settlement/adapters/FuseUsdtAdapter.js").then(({ FuseUsdtAdapter }) => {
       adapterRegistry.register(new FuseUsdtAdapter());
       console.warn("[SettlementEngine] FuseUsdtAdapter registered (DEPRECATED — prefer Polygon)");

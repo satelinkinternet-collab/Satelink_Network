@@ -5,8 +5,6 @@ import { WithdrawalProcessor } from '../src/settlement/withdrawal_processor.js';
 import fuseService from '../src/security/fuse.js';
 
 // Configuration
-const PRIVATE_KEY = process.env.FUSE_PRIVATE_KEY || '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-const USDT_CONTRACT = process.env.FUSE_USDT_CONTRACT || '0x0BE9e53fd7EDaC9F859882AfdDa116645287C629';
 const CLIENT_WALLET = ethers.Wallet.createRandom().address;
 const NODE_WALLET = ethers.Wallet.createRandom().address;
 
@@ -140,9 +138,6 @@ async function runTest() {
     console.log("--- STARTING E2E PIPELINE VERIFICATION ---");
     
     // Inject Env if missing for Fuse
-    process.env.FUSE_RPC_URL = process.env.FUSE_RPC_URL || 'https://rpc.fuse.io';
-    process.env.FUSE_PRIVATE_KEY = PRIVATE_KEY;
-    process.env.FUSE_USDT_CONTRACT = USDT_CONTRACT;
 
     const db = new MockDB();
     const opsEngine = new OperationsEngine(db);

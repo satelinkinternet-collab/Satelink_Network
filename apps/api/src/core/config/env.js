@@ -28,7 +28,6 @@ export function validateEnv() {
         dbUrl: process.env.DATABASE_URL,
         moonpaySecret: process.env.MOONPAY_WEBHOOK_SECRET || "",
         moonpaySigMode: process.env.MOONPAY_SIG_MODE || "raw",
-        fuseAllowlist: process.env.FUSE_WEBHOOK_IP_ALLOWLIST || "",
         nodeopsKey: process.env.NODEOPS_API_KEY || ""
     };
 }

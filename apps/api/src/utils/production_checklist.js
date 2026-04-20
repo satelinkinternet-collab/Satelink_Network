@@ -97,8 +97,6 @@ const CHECKS = [
     {
         name: 'settlement_rpc',
         category: 'blockchain',
-        description: 'FUSE_RPC_URL is configured for on-chain settlement',
-        check: () => !!process.env.FUSE_RPC_URL,
         severity: 'warn'
     },
     {

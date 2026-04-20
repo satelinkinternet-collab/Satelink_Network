@@ -6,7 +6,6 @@ import { validateEnv } from "./src/utils/validateEnv.js";
 import { logger } from "./src/monitoring/logger.js";
 import { createApp } from "./app_factory.mjs";
 import { PgDatabase } from "./src/database/pg_adapter.js";
-import { DepositDetector } from "./src/settlement/deposit_detector.js";
 import { startEpochScheduler } from "./src/economics/epoch_scheduler.js";
 import { attachSchema } from "./src/core/schema.js";
 import { RevenueOracle } from "./src/economics/revenue_oracle.js";
@@ -130,7 +129,6 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             // Withdrawal API Route is now mounted in routes.js (before catch-all 404)
 
             try {
-                const detector = new DepositDetector(db);
                 await detector.start();
                 logger.info("Deposit Detector activated natively on-chain");
 

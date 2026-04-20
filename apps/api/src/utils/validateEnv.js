@@ -44,9 +44,6 @@ export function validateEnv() {
         }
 
         const requiredBlockchainVars = [
-            'FUSE_RPC_URL',
-            'FUSE_PRIVATE_KEY',
-            'FUSE_USDT_CONTRACT'
         ];
 
         for (const v of requiredBlockchainVars) {

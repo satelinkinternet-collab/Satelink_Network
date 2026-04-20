@@ -16,7 +16,6 @@ export function getSanitizedEnvSnapshot() {
         'RPC_DEFAULT_TARGET',
         'CLAIM_EXPIRY_DAYS',
         'MOONPAY_WEBHOOK_SECRET',
-        'FUSE_WEBHOOK_IP_ALLOWLIST',
         'NODEOPS_API_KEY'
     ];
 

@@ -6,7 +6,6 @@ import { NodeOpsAdapter } from './adapters/NodeOpsAdapter.js';
 // Polygon is the primary chain; Fuse is retained for legacy migrations only.
 const ADAPTER_ALIAS = {
     polygon: 'POLYGON_USDT',
-    fuse: 'FUSE_USDT',
     evm: 'EVM',
     shadow: 'SHADOW',
     simulated: 'SIMULATED',

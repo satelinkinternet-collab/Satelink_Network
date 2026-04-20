@@ -9,11 +9,6 @@
  * the standard batch interface for SettlementEngine compatibility.
  *
  * Config (env):
- *   FUSE_RPC_URL           - Fuse JSON-RPC endpoint
- *   FUSE_SIGNER_KEY        - Hot wallet private key
- *   FUSE_USDT_ADDRESS      - USDT contract address on Fuse
- *   FUSE_USDT_DECIMALS     - Token decimals (default 6)
- *   FUSE_CHAIN_ID          - Expected chain ID (default 122 = Fuse mainnet)
  */
 import { ethers } from 'ethers';
 import { BaseSettlementAdapter } from './BaseSettlementAdapter.js';
@@ -28,11 +23,6 @@ const ERC20_TRANSFER_ABI = [
 export class FuseUsdtAdapter extends BaseSettlementAdapter {
     constructor(config = {}) {
         super();
-        this.rpcUrl = config.rpcUrl || process.env.FUSE_RPC_URL;
-        this.signerKey = config.signerKey || process.env.FUSE_SIGNER_KEY;
-        this.usdtAddress = config.usdtAddress || process.env.FUSE_USDT_ADDRESS;
-        this.decimals = parseInt(config.decimals || process.env.FUSE_USDT_DECIMALS || '6', 10);
-        this.expectedChainId = parseInt(config.chainId || process.env.FUSE_CHAIN_ID || '122', 10);
 
         this.provider = null;
         this.wallet = null;
@@ -51,7 +41,6 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
     }
 
     getName() {
-        return 'FUSE_USDT';
     }
 
     // ────────────────────────────────────────────
@@ -177,7 +166,6 @@ export class FuseUsdtAdapter extends BaseSettlementAdapter {
 
     _ensureReady() {
         if (!this.wallet || !this.contract) {
-            throw new Error('FuseUsdtAdapter not configured — check FUSE_RPC_URL, FUSE_SIGNER_KEY, FUSE_USDT_ADDRESS');
         }
     }
 }
