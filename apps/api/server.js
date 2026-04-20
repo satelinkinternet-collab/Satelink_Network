@@ -5,7 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { validateEnv } from "./src/utils/validateEnv.js";
 import { logger } from "./src/monitoring/logger.js";
-import { createApp } from "./app_factory.mjs";
 import { PgDatabase } from "./src/database/pg_adapter.js";
 import { startEpochScheduler } from "./src/economics/epoch_scheduler.js";
 import { attachSchema } from "./src/core/schema.js";
@@ -62,8 +61,6 @@ if (process.cwd() !== __dirname) {
 // Start server.js with validateEnv directly
 validateEnv();
 
-export { createApp };
-export default createApp;
 
 // If we are not running under Mocha (tests), boot the server
 if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
@@ -100,7 +97,6 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
 
         logger.info("[BOOT] Modules initialized");
 
-        const app = await createApp(db);
         logger.info("[BOOT] App initialized");
         const PORT = process.env.PORT || 8080;
 

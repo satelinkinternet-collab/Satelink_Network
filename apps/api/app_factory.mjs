@@ -12,7 +12,7 @@ export function createApp(pool) {
 
   // attach API routes if exists
   try {
-    const revenueRoutes = require("./src/routes/revenue.js").default;
+    const revenueRoutes = await import("./src/routes/revenue.js");
     app.use("/api", revenueRoutes(pool));
   } catch (e) {
     console.log("Revenue routes not loaded");
