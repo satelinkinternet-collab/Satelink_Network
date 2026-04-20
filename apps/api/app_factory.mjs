@@ -1,22 +1,18 @@
 import express from "express";
+import revenueRoutes from "./src/routes/revenue.js";
 
 export function createApp(pool) {
   const app = express();
 
   app.use(express.json());
 
-  // health route
+  // health
   app.get("/health", (req, res) => {
     res.json({ status: "ok" });
   });
 
-  // attach API routes if exists
-  try {
-    const revenueRoutes = await import("./src/routes/revenue.js");
-    app.use("/api", revenueRoutes(pool));
-  } catch (e) {
-    console.log("Revenue routes not loaded");
-  }
+  // API routes
+  app.use("/api", revenueRoutes(pool));
 
   return app;
 }
