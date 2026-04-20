@@ -159,4 +159,5 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         logger.error("Fatal: Could not start server", { error: e.message });
         process.exit(1);
     }
+app.use("/api", revenueRoutes(pool));
 }
