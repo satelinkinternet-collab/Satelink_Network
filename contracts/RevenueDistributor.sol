@@ -23,12 +23,7 @@ contract RevenueDistributor is AccessControl {
     event RevenueDistributed(uint256 total, uint256 toNodeOps, uint256 toTreasury, uint256 toBuilders);
     event SplitUpdated(uint256 nodeOpBps, uint256 treasuryBps, uint256 builderBps);
 
-    constructor(
-        address _usdt,
-        address _nodeOpPool,
-        address _coreTreasury,
-        address _builderPool
-    ) {
+    constructor(address _usdt, address _nodeOpPool, address _coreTreasury, address _builderPool) {
         usdt = IERC20(_usdt);
         nodeOpPool = _nodeOpPool;
         coreTreasury = _coreTreasury;

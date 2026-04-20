@@ -50,12 +50,7 @@ contract ClaimsContract is AccessControl, ReentrancyGuard {
     {
         claimId = keccak256(abi.encodePacked(beneficiary, amount, block.timestamp, nonce++));
 
-        claims[claimId] = Claim({
-            beneficiary: beneficiary,
-            amount: amount,
-            createdAt: block.timestamp,
-            claimed: false
-        });
+        claims[claimId] = Claim({beneficiary: beneficiary, amount: amount, createdAt: block.timestamp, claimed: false});
 
         emit ClaimCreated(claimId, beneficiary, amount);
     }

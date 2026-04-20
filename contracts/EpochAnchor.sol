@@ -28,16 +28,16 @@ contract EpochAnchor is AccessControl, Pausable, ReentrancyGuard {
         _grantRole(ORACLE_ROLE, _oracle);
     }
 
-    function submitEpochRoot(uint256 epochId, bytes32 merkleRoot, uint256 totalRevenue) external onlyRole(ORACLE_ROLE) whenNotPaused {
+    function submitEpochRoot(uint256 epochId, bytes32 merkleRoot, uint256 totalRevenue)
+        external
+        onlyRole(ORACLE_ROLE)
+        whenNotPaused
+    {
         if (epochs[epochId].timestamp != 0) revert EpochAlreadyAnchored(epochId);
         if (merkleRoot == bytes32(0)) revert InvalidEpochData();
 
-        epochs[epochId] = Epoch({
-            epochId: epochId,
-            merkleRoot: merkleRoot,
-            totalRevenue: totalRevenue,
-            timestamp: block.timestamp
-        });
+        epochs[epochId] =
+            Epoch({epochId: epochId, merkleRoot: merkleRoot, totalRevenue: totalRevenue, timestamp: block.timestamp});
 
         if (epochId > latestEpochId) {
             latestEpochId = epochId;

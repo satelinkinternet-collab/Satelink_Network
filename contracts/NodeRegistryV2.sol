@@ -56,10 +56,7 @@ contract NodeRegistryV2 is AccessControl, Pausable {
 
     function setActive(bytes32 nodeId, bool active) external {
         require(nodes[nodeId].id != bytes32(0), "Node does not exist");
-        require(
-            nodes[nodeId].owner == msg.sender || hasRole(REGISTRAR_ROLE, msg.sender),
-            "Not authorized"
-        );
+        require(nodes[nodeId].owner == msg.sender || hasRole(REGISTRAR_ROLE, msg.sender), "Not authorized");
 
         if (active && !nodes[nodeId].active) {
             totalActive++;

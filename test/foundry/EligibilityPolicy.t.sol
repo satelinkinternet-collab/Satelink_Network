@@ -12,8 +12,8 @@ contract EligibilityPolicyTest is Test {
     // Default thresholds
     uint256 constant MIN_OPS = 10;
     uint256 constant MIN_UPTIME = 9500; // 95%
-    uint256 constant MIN_SCORE = 7000;  // 70%
-    uint256 constant MAX_DRIFT = 30;    // 30 seconds
+    uint256 constant MIN_SCORE = 7000; // 70%
+    uint256 constant MAX_DRIFT = 30; // 30 seconds
 
     function setUp() public {
         policy = new EligibilityPolicy(MIN_OPS, MIN_UPTIME, MIN_SCORE, MAX_DRIFT);
@@ -109,9 +109,21 @@ contract EligibilityPolicyTest is Test {
         uint256[] memory scores = new uint256[](3);
         uint256[] memory drifts = new uint256[](3);
 
-        nodeIds[0] = keccak256("a"); ops[0] = 15; uptimes[0] = 9800; scores[0] = 8500; drifts[0] = 5;
-        nodeIds[1] = keccak256("b"); ops[1] = 3;  uptimes[1] = 9800; scores[1] = 8500; drifts[1] = 5; // ineligible
-        nodeIds[2] = keccak256("c"); ops[2] = 20; uptimes[2] = 9900; scores[2] = 9000; drifts[2] = 2;
+        nodeIds[0] = keccak256("a");
+        ops[0] = 15;
+        uptimes[0] = 9800;
+        scores[0] = 8500;
+        drifts[0] = 5;
+        nodeIds[1] = keccak256("b"); // ineligible
+        ops[1] = 3;
+        uptimes[1] = 9800;
+        scores[1] = 8500;
+        drifts[1] = 5;
+        nodeIds[2] = keccak256("c");
+        ops[2] = 20;
+        uptimes[2] = 9900;
+        scores[2] = 9000;
+        drifts[2] = 2;
 
         vm.prank(scorer);
         policy.submitScoresBatch(1, nodeIds, ops, uptimes, scores, drifts);

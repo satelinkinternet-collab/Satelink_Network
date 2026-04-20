@@ -66,7 +66,7 @@ contract DeployAll is Script {
             address(usdt),
             deployer, // nodeOpPool
             deployer, // coreTreasury
-            deployer  // builderPool
+            deployer // builderPool
         );
         console.log("9. RevenueDistributor:", address(distributor));
 

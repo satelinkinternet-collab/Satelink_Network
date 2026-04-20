@@ -10,9 +10,9 @@ contract SplitEngine is AccessControl, Pausable, ReentrancyGuard {
 
     // Percentages (basis points: 10000 = 100%)
     uint256 public nodePoolShare = 5000; // 50%
-    uint256 public opsPoolShare = 3000;  // 30%
+    uint256 public opsPoolShare = 3000; // 30%
     uint256 public treasuryShare = 2000; // 20%
-    uint256 public infraReserveShare = 1000;  // 10% (taken from Node Pool)
+    uint256 public infraReserveShare = 1000; // 10% (taken from Node Pool)
 
     event RevenueSplit(uint256 total, uint256 nodePool, uint256 opsPool, uint256 treasury);
     event SharesUpdated(uint256 nodePoolShare, uint256 opsPoolShare, uint256 treasuryShare, uint256 infraReserveShare);
@@ -54,7 +54,11 @@ contract SplitEngine is AccessControl, Pausable, ReentrancyGuard {
     }
 
     // Function to calculate infra reserve from minimal node pool share
-    function calculateInfraReserve(uint256 nodePoolAmount) public view returns (uint256 infraAmount, uint256 netNodeAmount) {
+    function calculateInfraReserve(uint256 nodePoolAmount)
+        public
+        view
+        returns (uint256 infraAmount, uint256 netNodeAmount)
+    {
         infraAmount = (nodePoolAmount * infraReserveShare) / 10000;
         netNodeAmount = nodePoolAmount - infraAmount;
     }
@@ -68,13 +72,11 @@ contract SplitEngine is AccessControl, Pausable, ReentrancyGuard {
      * @return infraReserve The infrastructure reserve taken from the Node Pool.
      * @return netNodeAmount The final net amount distributed to nodes after infra reserve.
      */
-    function calculateFullSplit(uint256 amount) public view returns (
-        uint256 nodePool,
-        uint256 opsPool,
-        uint256 treasury,
-        uint256 infraReserve,
-        uint256 netNodeAmount
-    ) {
+    function calculateFullSplit(uint256 amount)
+        public
+        view
+        returns (uint256 nodePool, uint256 opsPool, uint256 treasury, uint256 infraReserve, uint256 netNodeAmount)
+    {
         (nodePool, opsPool, treasury) = calculateSplit(amount);
         (infraReserve, netNodeAmount) = calculateInfraReserve(nodePool);
     }

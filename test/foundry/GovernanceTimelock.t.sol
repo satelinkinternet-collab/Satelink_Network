@@ -38,14 +38,7 @@ contract GovernanceTimelockTest is Test {
         bytes memory data = abi.encodeWithSelector(timelock.updateDelay.selector, 48 hours);
 
         vm.prank(proposer);
-        timelock.schedule(
-            address(timelock),
-            0,
-            data,
-            bytes32(0),
-            salt,
-            24 hours
-        );
+        timelock.schedule(address(timelock), 0, data, bytes32(0), salt, 24 hours);
 
         bytes32 opId = timelock.hashOperation(address(timelock), 0, data, bytes32(0), salt);
         assertTrue(timelock.isOperationPending(opId));

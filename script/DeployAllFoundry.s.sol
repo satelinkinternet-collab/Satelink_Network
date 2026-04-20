@@ -63,15 +63,15 @@ contract DeployAllFoundry is Script {
             address(usdt),
             deployer, // nodeOpPool
             deployer, // coreTreasury
-            deployer  // builderPool
+            deployer // builderPool
         );
 
         // ── 9. EligibilityPolicy ────────────────────────────────────
         EligibilityPolicy eligibility = new EligibilityPolicy(
-            10,    // minOpsCount
-            9500,  // minUptimeBP (95%)
-            7000,  // minScoreBP (70%)
-            30     // maxHeartbeatDriftSec
+            10, // minOpsCount
+            9500, // minUptimeBP (95%)
+            7000, // minScoreBP (70%)
+            30 // maxHeartbeatDriftSec
         );
 
         // ── 10. GovernanceTimelock ──────────────────────────────────

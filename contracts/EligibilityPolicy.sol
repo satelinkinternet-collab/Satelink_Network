@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  *         for reward distribution in a given epoch.
  */
 contract EligibilityPolicy is AccessControl, Pausable, ReentrancyGuard {
-
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant SCORER_ROLE = keccak256("SCORER_ROLE");
 
@@ -34,11 +33,11 @@ contract EligibilityPolicy is AccessControl, Pausable, ReentrancyGuard {
 
     struct NodeScore {
         uint256 opsCount;
-        uint256 uptimeBP;        // basis points (10000 = 100%)
-        uint256 scoreBP;         // composite score in basis points
-        uint256 heartbeatDrift;  // max drift observed in seconds
-        bool    eligible;        // computed eligibility
-        uint256 timestamp;       // when score was submitted
+        uint256 uptimeBP; // basis points (10000 = 100%)
+        uint256 scoreBP; // composite score in basis points
+        uint256 heartbeatDrift; // max drift observed in seconds
+        bool eligible; // computed eligibility
+        uint256 timestamp; // when score was submitted
     }
 
     /// @notice epochId => nodeId => NodeScore
@@ -63,12 +62,7 @@ contract EligibilityPolicy is AccessControl, Pausable, ReentrancyGuard {
 
     // ── Constructor ─────────────────────────────────────────────────
 
-    constructor(
-        uint256 _minOpsCount,
-        uint256 _minUptimeBP,
-        uint256 _minScoreBP,
-        uint256 _maxHeartbeatDriftSec
-    ) {
+    constructor(uint256 _minOpsCount, uint256 _minUptimeBP, uint256 _minScoreBP, uint256 _maxHeartbeatDriftSec) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
 
@@ -147,10 +141,8 @@ contract EligibilityPolicy is AccessControl, Pausable, ReentrancyGuard {
     ) external onlyRole(SCORER_ROLE) whenNotPaused nonReentrant {
         if (epochFinalized[epochId]) revert EpochAlreadyFinalized(epochId);
         require(
-            nodeIds.length == opsCounts.length &&
-            nodeIds.length == uptimeBPs.length &&
-            nodeIds.length == scoreBPs.length &&
-            nodeIds.length == heartbeatDrifts.length,
+            nodeIds.length == opsCounts.length && nodeIds.length == uptimeBPs.length
+                && nodeIds.length == scoreBPs.length && nodeIds.length == heartbeatDrifts.length,
             "EligibilityPolicy: array length mismatch"
         );
 
@@ -211,17 +203,12 @@ contract EligibilityPolicy is AccessControl, Pausable, ReentrancyGuard {
 
     // ── Internal ────────────────────────────────────────────────────
 
-    function _checkEligibility(
-        uint256 opsCount,
-        uint256 uptimeBP,
-        uint256 scoreBP,
-        uint256 heartbeatDrift
-    ) internal view returns (bool) {
-        return (
-            opsCount >= minOpsCount &&
-            uptimeBP >= minUptimeBP &&
-            scoreBP >= minScoreBP &&
-            heartbeatDrift <= maxHeartbeatDriftSec
-        );
+    function _checkEligibility(uint256 opsCount, uint256 uptimeBP, uint256 scoreBP, uint256 heartbeatDrift)
+        internal
+        view
+        returns (bool)
+    {
+        return (opsCount >= minOpsCount && uptimeBP >= minUptimeBP && scoreBP >= minScoreBP
+                && heartbeatDrift <= maxHeartbeatDriftSec);
     }
 }
