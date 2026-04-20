@@ -24,9 +24,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     env:
       DATABASE_URL: postgresql://satelink:satelinkpassword@localhost:5432/satelink
+      REDIS_URL: redis://localhost:6379
       PORT: 8080
       NODE_ENV: development
       SATELINK_MODE: simulation
@@ -37,6 +47,7 @@ jobs:
       RPC_URL: https://rpc-amoy.polygon.technology
       CHAIN_ID: "80002"
       TREASURY_ADDRESS: "0x0000000000000000000000000000000000000000"
+      SKIP_SETTLEMENT_INIT: "true"
 
     steps:
     - uses: actions/checkout@v4
@@ -53,6 +64,7 @@ jobs:
       run: |
         cat > apps/api/.env << 'EOF'
         DATABASE_URL=postgresql://satelink:satelinkpassword@localhost:5432/satelink
+        REDIS_URL=redis://localhost:6379
         PORT=8080
         NODE_ENV=development
         SATELINK_MODE=simulation
@@ -63,13 +75,14 @@ jobs:
         RPC_URL=https://rpc-amoy.polygon.technology
         CHAIN_ID=80002
         TREASURY_ADDRESS=0x0000000000000000000000000000000000000000
+        SKIP_SETTLEMENT_INIT=true
         EOF
 
     - name: Start API server (Background)
       run: |
         cd apps/api && node server.js &
         echo $! > /tmp/server.pid
-        sleep 10
+        sleep 15
 
     - name: Run Smoke Safe-Zone
       run: node scripts/smoke_safezone.js

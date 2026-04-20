@@ -57,6 +57,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -75,6 +84,7 @@ jobs:
         run: |
           cat > .env << EOF
           DATABASE_URL=postgresql://satelink:satelinkpassword@localhost:5432/satelink_test
+          REDIS_URL=redis://localhost:6379
           PORT=8080
           NODE_ENV=test
           JWT_SECRET=ci_test_secret_key_64chars_long_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -84,6 +94,7 @@ jobs:
           RPC_URL=https://rpc-amoy.polygon.technology
           CHAIN_ID=80002
           TREASURY_ADDRESS=0x0000000000000000000000000000000000000000
+          SKIP_SETTLEMENT_INIT=true
           EOF
 
       - name: Run migrations
