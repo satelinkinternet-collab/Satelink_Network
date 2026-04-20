@@ -91,7 +91,6 @@ const AGENTS = [
     endpoints: ["/admin/control-room/ops/reports/daily"],
   },
   {
-    id: "self_test_runner",
     name: "Self-Test Runner",
     description: "29 automated tests, self-heal triage on failures",
     priority: "P1",
@@ -218,7 +217,6 @@ function AgentCard({ agent, status, metrics, onAction }) {
               Security Freeze
             </button>
           )}
-          {agent.id === "self_test_runner" && (
             <button
               onClick={() => onAction(agent.id, "run_tests")}
               className="text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg px-2.5 py-1 font-medium transition-colors"

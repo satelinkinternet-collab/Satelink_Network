@@ -821,7 +821,6 @@ CREATE TABLE IF NOT EXISTS incident_bundles (
     task_spec_json TEXT
 );
 
-CREATE TABLE IF NOT EXISTS self_test_runs (
     id SERIAL PRIMARY KEY,
     kind TEXT,
     status TEXT,

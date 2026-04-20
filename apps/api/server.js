@@ -16,7 +16,6 @@ import { NodeopsWaterfallService } from "./src/ops-agent/nodeops_waterfall.js";
 import { WithdrawalProcessor } from "./src/settlement/withdrawal_processor.js";
 import { createWithdrawalRouter } from "./src/gateway/routes/withdrawal_api.js";
 
-import { runSatelinkSelfTest } from "./src/utils/self_test.js";
 
 // Global error handlers
 process.on("unhandledRejection", (reason) => {

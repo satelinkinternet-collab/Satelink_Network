@@ -113,7 +113,6 @@ INSERT OR IGNORE INTO config_limits (key, value, updated_by, updated_at) VALUES 
 -- SELF-TEST RUNS (Phase 6 – Autonomous Self-Tests)
 -- ═══════════════════════════════════════════════════════
 
-CREATE TABLE IF NOT EXISTS self_test_runs (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,            -- backend_smoke, api_contract, sse_health, db_integrity, browser_smoke
     status TEXT NOT NULL,          -- pass, fail, error, skipped
@@ -123,7 +122,6 @@ CREATE TABLE IF NOT EXISTS self_test_runs (
     created_at BIGINT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_self_test_runs_created ON self_test_runs(created_at, status);
 
 -- ═══════════════════════════════════════════════════════
 -- INCIDENT BUNDLES (Phase 6 – Fix-Request Pipeline)
@@ -133,7 +131,6 @@ CREATE TABLE IF NOT EXISTS incident_bundles (
     id SERIAL PRIMARY KEY,
     severity TEXT NOT NULL,        -- low, med, high, critical
     title TEXT NOT NULL,
-    source_kind TEXT,              -- self_test, manual, alert
     source_id INTEGER,
     context_json TEXT,             -- redacted debug bundle
     status TEXT DEFAULT 'open',   -- open, sent_to_agent, resolved

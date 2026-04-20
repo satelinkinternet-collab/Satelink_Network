@@ -854,7 +854,6 @@ export function createAdminControlRoomRouter(opsEngine, opts = {}) {
         try {
             const limit = parseIntParam(req.query.limit, 50);
             const tests = await db.prepare(
-                "SELECT * FROM self_test_runs ORDER BY created_at DESC LIMIT ?"
             ).all([Math.min(limit, 200)]);
             res.json({ ok: true, tests, count: tests.length });
         } catch (e) {
