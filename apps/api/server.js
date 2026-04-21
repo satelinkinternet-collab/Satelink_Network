@@ -1,3 +1,4 @@
+import { createRpcGateway } from "./src/workloads/rpc_gateway/rpc_gateway.js";
 import { createApp } from "./app_factory.mjs";
 import pkg from "pg";
 
