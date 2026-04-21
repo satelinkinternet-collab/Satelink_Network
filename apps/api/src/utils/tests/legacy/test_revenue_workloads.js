@@ -83,14 +83,14 @@ const app1 = express();
 app1.use(express.json());
 
 const rpcMetrics = new WorkloadMetrics(db);
-app1.use('/v1/workload/rpc', createRpcGateway(db, mockPipeline, rpcMetrics), pool);
+app1.use('/v1/workload/rpc', createRpcGateway(db, mockPipeline, rpcMetrics), pool, pool);
 
 // Helper: simulate a request to the express app
 function fakeReq(method, url, body, headers = {}) {
     return new Promise((resolve) => {
         const app = express();
         app.use(express.json());
-        app.use('/v1/workload/rpc', createRpcGateway(db, mockPipeline, rpcMetrics), pool);
+        app.use('/v1/workload/rpc', createRpcGateway(db, mockPipeline, rpcMetrics), pool, pool);
         const req = Object.assign(Object.create(require), {
             method, url, body, headers, params: {}, query: {}
         });

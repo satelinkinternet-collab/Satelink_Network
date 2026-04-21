@@ -128,7 +128,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.get("/metrics", async (req, res) => { res.set('Content-Type', client.register.contentType); res.end(await client.register.metrics()); });
 
     app.use('/v1/jobs', createJobSubmitRouter(db));
-    app.use('/v1/workload/rpc', createRpcGateway(db), pool);
+    app.use('/v1/workload/rpc', createRpcGateway(db), pool, pool);
     app.use('/v1/webhook', createWebhookRouter(db));
     app.use('/v1/ai', createAiRouter(db));
 

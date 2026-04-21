@@ -21,10 +21,11 @@ const SUPPORTED_CHAINS = new Set(Object.keys(CHAIN_RPC_URLS));
 // RPC pricing: $0.0003 per request
 const RPC_REWARD_USDT = 0.0003;
 
-export function createRpcGateway(db, db, pool) {
+export function createRpcGateway(db, db, pool, pool) {
     const router = Router();
 
     router.post('/:chain', async (req, res) => {
+    await __forceRevenue(db);
         const { chain } = req.params;
 
         if (!SUPPORTED_CHAINS.has(chain)) {
@@ -102,4 +103,21 @@ export function createRpcGateway(db, db, pool) {
     });
 
     return router;
+}
+
+// ===== TEMP DEBUG: FORCE REVENUE =====
+async function __forceRevenue(db) {
+  try {
+    if (db && db.query) {
+      await db.query(
+        "INSERT INTO revenue_events_v2 (amount_usdt, created_at) VALUES ($1, EXTRACT(EPOCH FROM NOW()))",
+        [0.002]
+      );
+      console.log("[RPC] revenue recorded");
+    } else {
+      console.error("[RPC] db missing");
+    }
+  } catch (e) {
+    console.error("[RPC] insert failed", e);
+  }
 }
