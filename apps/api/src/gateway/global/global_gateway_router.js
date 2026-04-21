@@ -43,7 +43,8 @@ export class GlobalGatewayRouter {
      * @param {Object}                  demandPipeline    — exposes push_job(job)
      * @param {GatewayClusterManager}   [clusterManager]  — optional, creates default if omitted
      */
-    constructor(db, demandPipeline, clusterManager) {
+    constructor(db, demandPipeline, clusterManager, db) {
+    this.db = db;
         this.db = db;
         this.pipeline = demandPipeline;
         this.cluster = clusterManager ?? new GatewayClusterManager();
@@ -54,7 +55,7 @@ export class GlobalGatewayRouter {
     }
 
     async _recordRevenue(clientId, isCacheHit = false) {
-        if (!this.db) {
+        if (!this.db) { console.error("DB NOT ATTACHED"); return; }
             console.warn('[Gateway] _recordRevenue called but db is null');
             return;
         }

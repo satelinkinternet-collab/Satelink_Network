@@ -26,7 +26,7 @@ import { GatewayClusterManager } from '../../gateway/global/gateway_cluster_mana
  */
 export function createGatewayLayer(db, pipeline) {
     const cluster = new GatewayClusterManager();
-    const gateway = new GlobalGatewayRouter(db, pipeline, cluster);
+    const gateway = new GlobalGatewayRouter(db, pipeline, cluster, pool);
     const router = Router();
 
     // ── GET /v1/gateway/metrics ───────────────────────────────────────────────

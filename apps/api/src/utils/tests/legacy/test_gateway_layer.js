@@ -182,7 +182,7 @@ assert(gwRegion?.region === 'eu-west', 'region-filtered next() respects region')
 //  MODULE 1 — Global Gateway Router  (forward + middleware)
 // ─────────────────────────────────────────────────────────────────────────────
 console.log('\n── Module 1: Global Gateway Router ─────────────');
-const gateway = new GlobalGatewayRouter(db, pipeline, cluster);
+const gateway = new GlobalGatewayRouter(db, pipeline, cluster, pool);
 
 // Direct forward()
 const fwd = await gateway.forward({
