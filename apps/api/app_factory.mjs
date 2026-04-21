@@ -5,6 +5,7 @@ export function createApp(pool) {
   const app = express();
 
   app.use(express.json());
+  app.use("/api", revenueRoutes(pool));
 
   // health
   app.get("/health", (req, res) => {
