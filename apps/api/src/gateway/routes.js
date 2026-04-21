@@ -1,3 +1,5 @@
+import { GlobalGatewayRouter } from "./global/global_gateway_router.js";
+const globalGatewayRouter = new GlobalGatewayRouter({}, pool);
 import { createUserSettingsRouter } from './routes/user_settings.js';
 import { createUnifiedAuthRouter } from './routes/auth_v2.js';
 import { createAuthController } from '../auth/auth_controller.js';
