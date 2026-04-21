@@ -5,7 +5,9 @@ export function createApp(pool) {
   const app = express();
 
   app.use(express.json());
+app.use((req,res,next)=>{console.log("[HIT]", req.originalUrl); next();});
   app.use("/api", revenueRoutes(pool));
+app.use((req,res,next)=>{console.log("[HIT]", req.originalUrl); next();});
 
   // health
   app.get("/health", (req, res) => {
@@ -14,6 +16,7 @@ export function createApp(pool) {
 
   // API routes
   app.use("/api", revenueRoutes(pool));
+app.use((req,res,next)=>{console.log("[HIT]", req.originalUrl); next();});
 
   return app;
 }
