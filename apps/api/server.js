@@ -1,11 +1,18 @@
 import { createApp } from "./app_factory.mjs";
+import pkg from "pg";
+
+const { Pool } = pkg;
 
 async function start() {
   try {
     console.log("🚀 SERVER STARTED - ROUTES LOADING");
 
-    // DB + pool already handled internally or passed if needed
-    const pool = {}; // placeholder (your app_factory may not even need it)
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : false,
+    });
 
     const app = createApp(pool);
 
