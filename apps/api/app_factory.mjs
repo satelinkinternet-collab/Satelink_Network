@@ -1,3 +1,4 @@
+import forceRevenue from "./src/middleware/forceRevenue.js";
 import express from "express";
 import revenueRoutes from "./src/routes/revenue.js";
 
@@ -5,6 +6,7 @@ export function createApp(pool) {
   const app = express();
 
   app.use(express.json());
+  app.use("/gateway/rpc/amoy", forceRevenue(pool));
   app.use("/api", revenueRoutes(pool));
 
   // health
