@@ -21,7 +21,7 @@ const SUPPORTED_CHAINS = new Set(Object.keys(CHAIN_RPC_URLS));
 // RPC pricing: $0.0003 per request
 const RPC_REWARD_USDT = 0.0003;
 
-export function createRpcGateway(db) {
+export function createRpcGateway(db, db, pool) {
     const router = Router();
 
     router.post('/:chain', async (req, res) => {
