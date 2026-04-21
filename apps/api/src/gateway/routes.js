@@ -190,6 +190,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     });
 
     app.use("/rpc", createRpcRouter(db));
+app.use("/gateway/rpc", createRpcGateway(db));
     app.use('/me', createUserSettingsRouter(db));
     app.use(createUnifiedAuthRouter({ db }));
 
