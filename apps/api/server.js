@@ -1,6 +1,5 @@
 import revenueRoutes from "./src/routes/revenue.js";
 import { createApp } from "./app_factory.mjs";
-import revenueRoutes from "./src/routes/revenue.js";
 import "./src/core/config/dotenv_boot.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -119,6 +118,7 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             // Hardened: Mandatory REAL mode for payouts
             if (process.env.FEATURE_REAL_SETTLEMENT !== "true") {
                 console.log('REAL SETTLEMENT: INACTIVE');
+app.use("/api", revenueRoutes(pool));
             } else {
                 console.log('REAL SETTLEMENT: ACTIVE');
             }
