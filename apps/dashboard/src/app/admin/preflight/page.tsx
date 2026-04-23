@@ -19,7 +19,7 @@ export default function PreflightPage() {
             if (data.ok) {
                 setStatus(data.data);
             } else {
-                setError(res.data.error);
+                setError(data.error);
             }
         } catch (e: any) {
             console.error('[Preflight]', e);
