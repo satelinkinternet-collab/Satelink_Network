@@ -24,6 +24,8 @@ export function createApp(pool) {
 
   app.all("/rpc", (req, res) => res.status(200).json({ ok: true, gateway: "stub" }));
 
+  app.get("/simulation/status", (req, res) => res.status(200).json({ ok: true, mode: "simulation", active: true }));
+
   // Revenue API routes
   app.use("/api", revenueRoutes(pool));
 
