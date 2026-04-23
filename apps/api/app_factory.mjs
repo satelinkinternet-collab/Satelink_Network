@@ -5,18 +5,27 @@ export function createApp(pool) {
   const app = express();
 
   app.use(express.json());
-app.use((req,res,next)=>{console.log("[HIT]", req.originalUrl); next();});
-  app.use("/api", revenueRoutes(pool));
-app.use((req,res,next)=>{console.log("[HIT]", req.originalUrl); next();});
 
-  // health
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
+  // Core endpoints
+  app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
+  app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+  app.get("/api/mode", (req, res) => {
+    res.status(200).json({
+      ok: true,
+      mode: process.env.SATELINK_MODE || "simulation",
+      env: process.env.NODE_ENV || "development"
+    });
   });
 
-  // API routes
+  app.get("/api/runtime-info", (req, res) => {
+    res.status(200).json({ ok: true, version: "1.0.0", uptime: process.uptime() });
+  });
+
+  app.all("/rpc", (req, res) => res.status(200).json({ ok: true, gateway: "stub" }));
+
+  // Revenue API routes
   app.use("/api", revenueRoutes(pool));
-app.use((req,res,next)=>{console.log("[HIT]", req.originalUrl); next();});
 
   return app;
 }
