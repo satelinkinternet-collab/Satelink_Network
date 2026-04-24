@@ -3,10 +3,18 @@ import crypto from 'crypto';
 import { routeRpcRequest, getRouterStats } from './router.js';
 import { getSupportedChains, getChainConfig, CHAIN_ALIASES } from './providers.js';
 import { getCached, setCached, isCacheable, getCacheStats } from './cache.js';
+import { checkRateLimit, incrementUsage, createApiKey, getUsageStats, getTiers } from './rate_limiter.js';
 
 const SUPPORTED_CHAINS = new Set([...getSupportedChains(), ...Object.keys(CHAIN_ALIASES)]);
 
 const RPC_REWARD_USDT = 0.0003;
+
+function getClientIp(req) {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+           req.headers['x-real-ip'] ||
+           req.socket?.remoteAddress ||
+           'unknown';
+}
 
 export function createRpcGateway(db) {
     const router = Router();
@@ -31,8 +39,66 @@ export function createRpcGateway(db) {
         }
     });
 
+    router.get('/tiers', (req, res) => {
+        res.json({ ok: true, tiers: getTiers() });
+    });
+
+    router.get('/usage', async (req, res) => {
+        const apiKey = req.headers['x-api-key'];
+        if (!apiKey) {
+            return res.status(400).json({ ok: false, error: 'API key required' });
+        }
+
+        const stats = await getUsageStats(apiKey);
+        if (!stats) {
+            return res.status(404).json({ ok: false, error: 'Invalid API key' });
+        }
+
+        res.json({ ok: true, ...stats });
+    });
+
+    router.post('/keys', async (req, res) => {
+        const adminKey = req.headers['x-admin-key'];
+        if (adminKey !== process.env.ADMIN_API_KEY) {
+            return res.status(403).json({ ok: false, error: 'Admin access required' });
+        }
+
+        const { tier, owner } = req.body || {};
+        if (!tier) {
+            return res.status(400).json({ ok: false, error: 'Tier required' });
+        }
+
+        try {
+            const result = await createApiKey(tier, owner);
+            res.json({ ok: true, ...result });
+        } catch (err) {
+            res.status(400).json({ ok: false, error: err.message });
+        }
+    });
+
     router.post('/:chain', async (req, res) => {
         const { chain } = req.params;
+        const apiKey = req.headers['x-api-key'];
+        const clientIp = getClientIp(req);
+
+        const rateCheck = await checkRateLimit(apiKey, clientIp);
+
+        res.set({
+            'X-RateLimit-Limit': rateCheck.limit,
+            'X-RateLimit-Remaining': rateCheck.remaining,
+            'X-RateLimit-Tier': rateCheck.tier
+        });
+
+        if (!rateCheck.allowed) {
+            res.set('X-RateLimit-Reset', rateCheck.resetAt);
+            return res.status(429).json({
+                ok: false,
+                error: 'Rate limit exceeded',
+                tier: rateCheck.tier,
+                limit: rateCheck.limit,
+                resetAt: rateCheck.resetAt
+            });
+        }
 
         if (!SUPPORTED_CHAINS.has(chain)) {
             return res.status(400).json({
@@ -51,7 +117,9 @@ export function createRpcGateway(db) {
             return res.status(400).json({ ok: false, error: 'Invalid JSON-RPC method' });
         }
 
-        const client_id = req.headers['x-api-key'] || 'rpc_gateway';
+        await incrementUsage(apiKey, clientIp);
+
+        const client_id = apiKey || clientIp;
         const request_id = `rpc_${crypto.randomUUID()}`;
         const method = body.method;
         const params = body.params || [];
