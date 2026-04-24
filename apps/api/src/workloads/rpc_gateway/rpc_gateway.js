@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { routeRpcRequest, getRouterStats } from './router.js';
 import { getSupportedChains, getChainConfig, CHAIN_ALIASES } from './providers.js';
+import { getCached, setCached, isCacheable, getCacheStats } from './cache.js';
 
 const SUPPORTED_CHAINS = new Set([...getSupportedChains(), ...Object.keys(CHAIN_ALIASES)]);
 
@@ -13,15 +14,24 @@ export function createRpcGateway(db) {
     router.get('/stats/:chain', async (req, res) => {
         const { chain } = req.params;
         try {
-            const stats = await getRouterStats(chain);
-            res.json({ ok: true, chain, providers: stats });
+            const providerStats = await getRouterStats(chain);
+            const cacheStats = getCacheStats();
+            res.json({
+                ok: true,
+                chain,
+                providers: providerStats,
+                cache: {
+                    hits: cacheStats.hits,
+                    misses: cacheStats.misses,
+                    hitRate: `${cacheStats.hitRate}%`
+                }
+            });
         } catch (err) {
             res.status(500).json({ ok: false, error: err.message });
         }
     });
 
     router.post('/:chain', async (req, res) => {
-        await __forceRevenue(db);
         const { chain } = req.params;
 
         if (!SUPPORTED_CHAINS.has(chain)) {
@@ -43,29 +53,28 @@ export function createRpcGateway(db) {
 
         const client_id = req.headers['x-api-key'] || 'rpc_gateway';
         const request_id = `rpc_${crypto.randomUUID()}`;
+        const method = body.method;
+        const params = body.params || [];
 
         try {
-            const routeResult = await routeRpcRequest(chain, body.method, body.params, body.id);
+            const cachedResponse = await getCached(chain, method, params);
+
+            if (cachedResponse) {
+                await recordRevenue(db, 'edge_cache', client_id, request_id);
+                return res.status(200).json(cachedResponse);
+            }
+
+            const routeResult = await routeRpcRequest(chain, method, params, body.id);
 
             if (!routeResult.success) {
                 return res.status(502).json({ ok: false, error: routeResult.error });
             }
 
-            if (!req._billingHandledByGateway) {
-                try {
-                    const now = Math.floor(Date.now() / 1000);
-                    if (db && db.query) {
-                        await db.query(
-                            `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
-                             VALUES ('rpc_call', $1, $2, $3, 'success', $4, $5)`,
-                            [routeResult.provider || 'external_provider', client_id, RPC_REWARD_USDT, request_id, now]
-                        );
-                        console.log('[RPC Gateway] Revenue recorded:', { provider: routeResult.provider, client_id, amount: RPC_REWARD_USDT, latency: routeResult.latency });
-                    }
-                } catch (e) {
-                    console.error('[RPC Gateway] Failed to record revenue:', e.message);
-                }
+            if (isCacheable(method)) {
+                await setCached(chain, method, params, routeResult.result);
             }
+
+            await recordRevenue(db, routeResult.provider || 'external_provider', client_id, request_id);
 
             res.status(200).json(routeResult.result);
         } catch (error) {
@@ -77,16 +86,18 @@ export function createRpcGateway(db) {
     return router;
 }
 
-async function __forceRevenue(db) {
+async function recordRevenue(db, source, client_id, request_id) {
+    if (!db || !db.query) return;
+
     try {
-        if (db && db.query) {
-            await db.query(
-                "INSERT INTO revenue_events_v2 (amount_usdt, created_at) VALUES ($1, EXTRACT(EPOCH FROM NOW()))",
-                [0.002]
-            );
-            console.log("[RPC] revenue recorded");
-        }
+        const now = Math.floor(Date.now() / 1000);
+        await db.query(
+            `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+             VALUES ('rpc_call', $1, $2, $3, 'success', $4, $5)`,
+            [source, client_id, RPC_REWARD_USDT, request_id, now]
+        );
+        console.log(`[RPC Gateway] Revenue: ${source} → $${RPC_REWARD_USDT}`);
     } catch (e) {
-        console.error("[RPC] insert failed", e);
+        console.error('[RPC Gateway] Failed to record revenue:', e.message);
     }
 }
