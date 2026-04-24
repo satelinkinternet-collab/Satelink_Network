@@ -1,41 +1,37 @@
 /**
  * Latency-Based RPC Router
  * S1-RPC-002: Latency-based provider routing with Redis EMA tracking
- *
- * - Picks fastest provider based on tracked latency
- * - Uses EMA (Exponential Moving Average) for smooth latency tracking
- * - Falls back to next provider on failure (circuit breaker)
- * - Cold start: uses priority order from providers.js
+ * S1-RPC-003: 3-state circuit breaker with Redis persistence
  */
 
 import { getProviders, getChainConfig, CHAIN_ALIASES } from './providers.js';
+import { isOpen, recordSuccess, recordFailure, getCircuitStats } from './circuit_breaker.js';
 import Redis from 'ioredis';
 
 const EMA_ALPHA = 0.2;
-const CIRCUIT_BREAKER_THRESHOLD = 3;
-const CIRCUIT_BREAKER_RESET_MS = 30000;
 const REQUEST_TIMEOUT_MS = 10000;
 
 let redisClient = null;
-const circuitBreakers = new Map();
 
 async function getRedis() {
   if (redisClient) return redisClient;
 
-  const url = process.env.REDIS_URL || 'redis://localhost:6379';
+  const url = process.env.REDIS_URL;
+  if (!url || url === 'redis://') {
+    return null;
+  }
 
   try {
     redisClient = new Redis(url, {
       maxRetriesPerRequest: 3,
       retryDelayOnFailover: 100,
-      lazyConnect: true
+      tls: url.startsWith('rediss://') ? {} : undefined
     });
 
     redisClient.on('error', (err) => {
       console.error('[RPC Router] Redis error:', err.message);
     });
 
-    await redisClient.connect();
     return redisClient;
   } catch (err) {
     console.error('[RPC Router] Redis connect failed:', err.message);
@@ -46,35 +42,6 @@ async function getRedis() {
 function getLatencyKey(chain, providerId) {
   const normalized = CHAIN_ALIASES[chain] || chain;
   return `rpc:latency:${normalized}:${providerId}`;
-}
-
-function getCircuitKey(providerId) {
-  return `circuit:${providerId}`;
-}
-
-function isCircuitOpen(providerId) {
-  const state = circuitBreakers.get(providerId);
-  if (!state) return false;
-
-  if (state.failures >= CIRCUIT_BREAKER_THRESHOLD) {
-    if (Date.now() - state.lastFailure > CIRCUIT_BREAKER_RESET_MS) {
-      circuitBreakers.delete(providerId);
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-function recordFailure(providerId) {
-  const state = circuitBreakers.get(providerId) || { failures: 0, lastFailure: 0 };
-  state.failures++;
-  state.lastFailure = Date.now();
-  circuitBreakers.set(providerId, state);
-}
-
-function recordSuccess(providerId) {
-  circuitBreakers.delete(providerId);
 }
 
 async function getProviderLatencies(chain, providers) {
@@ -185,7 +152,13 @@ export async function routeRpcRequest(chain, method, params, id) {
   const providersWithLatency = await getProviderLatencies(chain, providers);
   const sortedProviders = sortProvidersByLatency(providersWithLatency);
 
-  const availableProviders = sortedProviders.filter(p => !isCircuitOpen(p.id));
+  const availableProviders = [];
+  for (const p of sortedProviders) {
+    const circuitOpen = await isOpen(chain, p.id);
+    if (!circuitOpen) {
+      availableProviders.push(p);
+    }
+  }
 
   if (availableProviders.length === 0) {
     console.warn('[RPC Router] All providers circuit-broken, trying first anyway');
@@ -201,7 +174,7 @@ export async function routeRpcRequest(chain, method, params, id) {
     );
 
     if (success) {
-      recordSuccess(provider.id);
+      await recordSuccess(chain, provider.id);
       await updateLatency(chain, provider.id, latency);
 
       console.log(`[RPC Router] ${chain} → ${provider.id} (${latency}ms)`);
@@ -215,7 +188,7 @@ export async function routeRpcRequest(chain, method, params, id) {
     }
 
     console.warn(`[RPC Router] ${provider.id} failed: ${error} (${latency}ms)`);
-    recordFailure(provider.id);
+    await recordFailure(chain, provider.id);
   }
 
   return {
@@ -229,12 +202,22 @@ export async function getRouterStats(chain) {
   const providers = getProviders(chain);
   const providersWithLatency = await getProviderLatencies(chain, providers);
 
-  return providersWithLatency.map(p => ({
-    id: p.id,
-    type: p.type,
-    latency: p.latency,
-    circuitOpen: isCircuitOpen(p.id)
-  }));
+  const stats = [];
+  for (const p of providersWithLatency) {
+    const circuit = await getCircuitStats(chain, p.id);
+    stats.push({
+      id: p.id,
+      type: p.type,
+      latency: p.latency,
+      circuit: {
+        state: circuit.state,
+        failures: circuit.failures,
+        timeUntilReset: circuit.timeUntilReset
+      }
+    });
+  }
+
+  return stats;
 }
 
 export { getRedis };
