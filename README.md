@@ -17,8 +17,8 @@ Satelink is an **autonomous economic protocol**. Machines, DeFi protocols, and A
 
 | Endpoint | URL | Status |
 |----------|-----|--------|
-| Public RPC | `https://satelink-api-production.up.railway.app/rpc/amoy` | Live |
-| API Status | `https://satelink-api-production.up.railway.app/api/status` | Live |
+| Public RPC | `https://rpc.satelink.network/rpc/amoy` | Live |
+| API Status | `https://rpc.satelink.network/api/status` | Live |
 | Dashboard | `https://satelink-dashboard.vercel.app` | Live |
 | Website | `https://satelink.network` | Live |
 
@@ -27,7 +27,7 @@ Satelink is an **autonomous economic protocol**. Machines, DeFi protocols, and A
 **For machines (JSON-RPC):**
 
 ```bash
-curl -X POST https://satelink-api-production.up.railway.app/rpc/amoy \
+curl -X POST https://rpc.satelink.network/rpc/amoy \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 ```
@@ -36,11 +36,11 @@ curl -X POST https://satelink-api-production.up.railway.app/rpc/amoy \
 
 ```bash
 # Get an API key
-curl -X POST https://satelink-api-production.up.railway.app/api/builder/keys \
+curl -X POST https://rpc.satelink.network/api/builder/keys \
   -H "Authorization: Bearer <jwt>"
 
 # Use with higher rate limits
-curl -X POST https://satelink-api-production.up.railway.app/rpc/amoy \
+curl -X POST https://rpc.satelink.network/rpc/amoy \
   -H "x-api-key: sk_..."
 ```
 
