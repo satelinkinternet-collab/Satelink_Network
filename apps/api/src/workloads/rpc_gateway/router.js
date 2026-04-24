@@ -2,10 +2,12 @@
  * Latency-Based RPC Router
  * S1-RPC-002: Latency-based provider routing with Redis EMA tracking
  * S1-RPC-003: 3-state circuit breaker with Redis persistence
+ * S1-RPC-005: Weighted load balancing across providers
  */
 
 import { getProviders, getChainConfig, CHAIN_ALIASES } from './providers.js';
 import { isOpen, recordSuccess, recordFailure, getCircuitStats } from './circuit_breaker.js';
+import { selectWeightedProvider, incrementRequestCount, getRequestCounts, getWeightsForProviders } from './load_balancer.js';
 import Redis from 'ioredis';
 
 const EMA_ALPHA = 0.2;
@@ -150,10 +152,9 @@ export async function routeRpcRequest(chain, method, params, id) {
   }
 
   const providersWithLatency = await getProviderLatencies(chain, providers);
-  const sortedProviders = sortProvidersByLatency(providersWithLatency);
 
   const availableProviders = [];
-  for (const p of sortedProviders) {
+  for (const p of providersWithLatency) {
     const circuitOpen = await isOpen(chain, p.id);
     if (!circuitOpen) {
       availableProviders.push(p);
@@ -162,10 +163,16 @@ export async function routeRpcRequest(chain, method, params, id) {
 
   if (availableProviders.length === 0) {
     console.warn('[RPC Router] All providers circuit-broken, trying first anyway');
-    availableProviders.push(sortedProviders[0]);
+    availableProviders.push(providersWithLatency[0]);
   }
 
-  for (const provider of availableProviders) {
+  const attemptedProviders = [];
+  let remainingProviders = [...availableProviders];
+
+  while (remainingProviders.length > 0) {
+    const provider = selectWeightedProvider(remainingProviders);
+    attemptedProviders.push(provider.id);
+
     const { success, result, error, latency } = await executeRpcCall(
       provider.url,
       method,
@@ -176,8 +183,9 @@ export async function routeRpcRequest(chain, method, params, id) {
     if (success) {
       await recordSuccess(chain, provider.id);
       await updateLatency(chain, provider.id, latency);
+      await incrementRequestCount(chain, provider.id);
 
-      console.log(`[RPC Router] ${chain} → ${provider.id} (${latency}ms)`);
+      console.log(`[RPC Router] ${chain} → ${provider.id} (${latency}ms) [weighted]`);
 
       return {
         success: true,
@@ -189,26 +197,35 @@ export async function routeRpcRequest(chain, method, params, id) {
 
     console.warn(`[RPC Router] ${provider.id} failed: ${error} (${latency}ms)`);
     await recordFailure(chain, provider.id);
+
+    remainingProviders = remainingProviders.filter(p => p.id !== provider.id);
   }
 
   return {
     success: false,
     error: 'All providers failed',
-    attemptedProviders: availableProviders.map(p => p.id)
+    attemptedProviders
   };
 }
 
 export async function getRouterStats(chain) {
   const providers = getProviders(chain);
   const providersWithLatency = await getProviderLatencies(chain, providers);
+  const weights = getWeightsForProviders(providersWithLatency);
+  const requestCounts = await getRequestCounts(chain, providers.map(p => p.id));
 
   const stats = [];
-  for (const p of providersWithLatency) {
+  for (let i = 0; i < providersWithLatency.length; i++) {
+    const p = providersWithLatency[i];
     const circuit = await getCircuitStats(chain, p.id);
+    const weightInfo = weights.find(w => w.id === p.id);
+
     stats.push({
       id: p.id,
       type: p.type,
       latency: p.latency,
+      weight: weightInfo?.weight || 0,
+      requests: requestCounts[i],
       circuit: {
         state: circuit.state,
         failures: circuit.failures,
