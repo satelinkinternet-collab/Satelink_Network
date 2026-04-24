@@ -4,6 +4,7 @@ import { routeRpcRequest, getRouterStats } from './router.js';
 import { getSupportedChains, getChainConfig, CHAIN_ALIASES } from './providers.js';
 import { getCached, setCached, isCacheable, getCacheStats } from './cache.js';
 import { checkRateLimit, incrementUsage, createApiKey, getUsageStats, getTiers } from './rate_limiter.js';
+import { createHealthEndpoint, startHealthMonitor } from './health_monitor.js';
 
 const SUPPORTED_CHAINS = new Set([...getSupportedChains(), ...Object.keys(CHAIN_ALIASES)]);
 
@@ -18,6 +19,9 @@ function getClientIp(req) {
 
 export function createRpcGateway(db) {
     const router = Router();
+
+    startHealthMonitor();
+    createHealthEndpoint(router);
 
     router.get('/stats/:chain', async (req, res) => {
         const { chain } = req.params;

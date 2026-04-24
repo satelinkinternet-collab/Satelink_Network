@@ -1,23 +1,21 @@
 # CURRENT TASK
 
-**Task:** S1-RPC-007 — WebSocket RPC support
+**Task:** S1-RPC-008 — Health monitoring + alerting
 **Status:** COMPLETE
 **Updated:** 2026-04-25
 
 ## Completed
 
-- Created ws_gateway.js with WebSocket server
-- Supports eth_subscribe (newHeads, newPendingTransactions)
-- Proxy to provider WebSocket URLs (Alchemy)
-- Bills each subscription event (0.000001 USDT)
-- Rate limits: 10 active subscriptions (free tier)
-- Updated server.js to mount on /rpc/ws/:chain
-- Added `ws` dependency
+- Created health_monitor.js with 60s health check cycle
+- Checks all providers via eth_blockNumber probe
+- Tracks success rate, avg latency, error count per provider
+- Discord webhook alerts for >30% error rate or >5000ms latency
+- Alert cooldown: 5 minutes per provider
+- GET /rpc/health endpoint with full provider status
 
 ## New Endpoints
 
-- WebSocket: /rpc/ws/:chain (polygon-amoy, polygon, ethereum)
-- GET /ws/stats → active connections, total events, revenue
+- GET /rpc/health → provider health summary + per-provider stats
 
 ## S1-RPC Progress
 
@@ -30,7 +28,8 @@
 | S1-RPC-005 | ✓ Weighted load balancing |
 | S1-RPC-006 | ✓ API key tiers + rate limiting |
 | S1-RPC-007 | ✓ WebSocket RPC (eth_subscribe) |
+| S1-RPC-008 | ✓ Health monitoring + alerting |
 
 ## Next
 
-S1-RPC-008 through S1-RPC-012 remain
+S1-RPC-009 through S1-RPC-012 remain
