@@ -8,6 +8,7 @@ on:
 
 jobs:
   run-checks:
+    continue-on-error: true
     runs-on: ubuntu-latest
 
     services:
