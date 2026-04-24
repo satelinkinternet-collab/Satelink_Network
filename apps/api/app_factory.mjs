@@ -1,5 +1,6 @@
 import express from "express";
 import revenueRoutes from "./src/routes/revenue.js";
+import { createRpcGateway } from "./src/workloads/rpc_gateway/rpc_gateway.js";
 
 export function createApp(pool) {
   const app = express();
@@ -22,9 +23,10 @@ export function createApp(pool) {
     res.status(200).json({ ok: true, version: "1.0.0", uptime: process.uptime() });
   });
 
-  app.all("/rpc", (req, res) => res.status(200).json({ ok: true, gateway: "stub" }));
-
   app.get("/simulation/status", (req, res) => res.status(200).json({ ok: true, mode: "simulation", active: true }));
+
+  // RPC Gateway with latency-based routing
+  app.use("/rpc", createRpcGateway(pool));
 
   // Revenue API routes
   app.use("/api", revenueRoutes(pool));
