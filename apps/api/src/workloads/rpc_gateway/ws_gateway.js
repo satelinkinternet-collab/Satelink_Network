@@ -1,0 +1,232 @@
+/**
+ * WebSocket RPC Gateway
+ * S1-RPC-007: WebSocket support for eth_subscribe
+ *
+ * DeFi protocols and MEV bots use WebSocket for:
+ * - eth_subscribe newHeads → new block headers
+ * - eth_subscribe newPendingTransactions → pending tx hashes
+ *
+ * Architecture:
+ * - Client connects to /rpc/ws/:chain
+ * - Subscribe requests proxied to provider WS
+ * - Events streamed back to client + billed
+ */
+
+import { WebSocketServer, WebSocket } from 'ws';
+import { URL } from 'url';
+import { CHAIN_ALIASES } from './providers.js';
+
+const WS_PROVIDERS = {
+  'polygon-amoy': process.env.WS_POLYGON_AMOY || 'wss://polygon-amoy.g.alchemy.com/v2/demo',
+  'polygon': process.env.WS_POLYGON || 'wss://polygon-mainnet.g.alchemy.com/v2/demo',
+  'ethereum': process.env.WS_ETHEREUM || 'wss://eth-mainnet.g.alchemy.com/v2/demo'
+};
+
+const WS_EVENT_PRICE_USDT = 0.000001;
+const FREE_TIER_MAX_SUBSCRIPTIONS = 10;
+
+const clientSubscriptions = new Map();
+const subscriptionStats = { events: 0, revenue: 0 };
+
+function normalizeChain(chain) {
+  return CHAIN_ALIASES[chain] || chain;
+}
+
+function getProviderWsUrl(chain) {
+  const normalized = normalizeChain(chain);
+  return WS_PROVIDERS[normalized] || null;
+}
+
+export function createWsGateway(httpServer, db) {
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: /^\/rpc\/ws\/.+$/
+  });
+
+  console.log('[WS Gateway] WebSocket server initialized');
+
+  wss.on('connection', (clientWs, req) => {
+    const urlPath = req.url;
+    const chain = urlPath.replace('/rpc/ws/', '').split('?')[0];
+    const normalizedChain = normalizeChain(chain);
+
+    const providerUrl = getProviderWsUrl(normalizedChain);
+    if (!providerUrl) {
+      clientWs.send(JSON.stringify({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: `Unsupported chain: ${chain}` },
+        id: null
+      }));
+      clientWs.close();
+      return;
+    }
+
+    const clientId = `ws_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const subscriptions = new Map();
+    let providerWs = null;
+    let subscriptionCount = 0;
+
+    console.log(`[WS Gateway] Client connected: ${clientId} chain=${normalizedChain}`);
+
+    function connectToProvider() {
+      if (providerWs && providerWs.readyState === WebSocket.OPEN) {
+        return providerWs;
+      }
+
+      providerWs = new WebSocket(providerUrl);
+
+      providerWs.on('open', () => {
+        console.log(`[WS Gateway] Provider connected for ${clientId}`);
+      });
+
+      providerWs.on('message', async (data) => {
+        try {
+          const message = JSON.parse(data.toString());
+
+          if (message.method === 'eth_subscription' && message.params) {
+            subscriptionStats.events++;
+            subscriptionStats.revenue += WS_EVENT_PRICE_USDT;
+
+            await recordWsRevenue(db, clientId, normalizedChain);
+
+            if (clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(JSON.stringify(message));
+            }
+          } else {
+            if (clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(JSON.stringify(message));
+            }
+          }
+        } catch (err) {
+          console.error('[WS Gateway] Provider message parse error:', err.message);
+        }
+      });
+
+      providerWs.on('error', (err) => {
+        console.error(`[WS Gateway] Provider error for ${clientId}:`, err.message);
+      });
+
+      providerWs.on('close', () => {
+        console.log(`[WS Gateway] Provider disconnected for ${clientId}`);
+        providerWs = null;
+      });
+
+      return providerWs;
+    }
+
+    clientWs.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+
+        if (!message.jsonrpc || message.jsonrpc !== '2.0') {
+          clientWs.send(JSON.stringify({
+            jsonrpc: '2.0',
+            error: { code: -32600, message: 'Invalid Request' },
+            id: message.id || null
+          }));
+          return;
+        }
+
+        if (message.method === 'eth_subscribe') {
+          if (subscriptionCount >= FREE_TIER_MAX_SUBSCRIPTIONS) {
+            clientWs.send(JSON.stringify({
+              jsonrpc: '2.0',
+              error: { code: -32000, message: `Max subscriptions (${FREE_TIER_MAX_SUBSCRIPTIONS}) reached. Upgrade to paid tier.` },
+              id: message.id
+            }));
+            return;
+          }
+
+          const pws = connectToProvider();
+
+          const waitForOpen = () => new Promise((resolve, reject) => {
+            if (pws.readyState === WebSocket.OPEN) {
+              resolve();
+            } else {
+              pws.once('open', resolve);
+              pws.once('error', reject);
+              setTimeout(() => reject(new Error('Connection timeout')), 10000);
+            }
+          });
+
+          try {
+            await waitForOpen();
+            pws.send(JSON.stringify(message));
+            subscriptionCount++;
+            console.log(`[WS Gateway] Subscription requested: ${message.params?.[0]} (${subscriptionCount} active)`);
+          } catch (err) {
+            clientWs.send(JSON.stringify({
+              jsonrpc: '2.0',
+              error: { code: -32000, message: `Provider connection failed: ${err.message}` },
+              id: message.id
+            }));
+          }
+        } else if (message.method === 'eth_unsubscribe') {
+          if (providerWs && providerWs.readyState === WebSocket.OPEN) {
+            providerWs.send(JSON.stringify(message));
+            subscriptionCount = Math.max(0, subscriptionCount - 1);
+            console.log(`[WS Gateway] Unsubscribe: ${subscriptionCount} remaining`);
+          }
+        } else {
+          if (providerWs && providerWs.readyState === WebSocket.OPEN) {
+            providerWs.send(JSON.stringify(message));
+          } else {
+            clientWs.send(JSON.stringify({
+              jsonrpc: '2.0',
+              error: { code: -32000, message: 'No active provider connection' },
+              id: message.id
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('[WS Gateway] Client message error:', err.message);
+        clientWs.send(JSON.stringify({
+          jsonrpc: '2.0',
+          error: { code: -32700, message: 'Parse error' },
+          id: null
+        }));
+      }
+    });
+
+    clientWs.on('close', () => {
+      console.log(`[WS Gateway] Client disconnected: ${clientId}`);
+      if (providerWs) {
+        providerWs.close();
+      }
+      clientSubscriptions.delete(clientId);
+    });
+
+    clientWs.on('error', (err) => {
+      console.error(`[WS Gateway] Client error ${clientId}:`, err.message);
+    });
+
+    clientSubscriptions.set(clientId, { chain: normalizedChain, subscriptions });
+  });
+
+  return wss;
+}
+
+async function recordWsRevenue(db, clientId, chain) {
+  if (!db || !db.query) return;
+
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    await db.query(
+      `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+       VALUES ('ws_subscription', $1, $2, $3, 'success', $4, $5)`,
+      [chain, clientId, WS_EVENT_PRICE_USDT, `ws_${Date.now()}`, now]
+    );
+  } catch (e) {
+    console.error('[WS Gateway] Revenue record failed:', e.message);
+  }
+}
+
+export function getWsStats() {
+  return {
+    activeConnections: clientSubscriptions.size,
+    totalEvents: subscriptionStats.events,
+    totalRevenue: subscriptionStats.revenue.toFixed(6)
+  };
+}
+
+export { WS_PROVIDERS, WS_EVENT_PRICE_USDT };
