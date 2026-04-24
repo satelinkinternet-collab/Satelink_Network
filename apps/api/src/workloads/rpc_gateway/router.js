@@ -9,7 +9,7 @@
  */
 
 import { getProviders, getChainConfig, CHAIN_ALIASES } from './providers.js';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 
 const EMA_ALPHA = 0.2;
 const CIRCUIT_BREAKER_THRESHOLD = 3;
@@ -20,23 +20,27 @@ let redisClient = null;
 const circuitBreakers = new Map();
 
 async function getRedis() {
-  if (redisClient && redisClient.isOpen) return redisClient;
+  if (redisClient) return redisClient;
 
   const url = process.env.REDIS_URL || 'redis://localhost:6379';
-  redisClient = createClient({ url });
-
-  redisClient.on('error', (err) => {
-    console.error('[RPC Router] Redis error:', err.message);
-  });
 
   try {
+    redisClient = new Redis(url, {
+      maxRetriesPerRequest: 3,
+      retryDelayOnFailover: 100,
+      lazyConnect: true
+    });
+
+    redisClient.on('error', (err) => {
+      console.error('[RPC Router] Redis error:', err.message);
+    });
+
     await redisClient.connect();
+    return redisClient;
   } catch (err) {
     console.error('[RPC Router] Redis connect failed:', err.message);
     return null;
   }
-
-  return redisClient;
 }
 
 function getLatencyKey(chain, providerId) {
@@ -82,7 +86,7 @@ async function getProviderLatencies(chain, providers) {
   const keys = providers.map(p => getLatencyKey(chain, p.id));
 
   try {
-    const values = await redis.mGet(keys);
+    const values = await redis.mget(...keys);
     return providers.map((p, i) => ({
       ...p,
       latency: values[i] ? parseFloat(values[i]) : null
@@ -110,7 +114,7 @@ async function updateLatency(chain, providerId, newLatency) {
       ema = newLatency;
     }
 
-    await redis.set(key, ema.toFixed(2), { EX: 3600 });
+    await redis.set(key, ema.toFixed(2), 'EX', 3600);
   } catch (err) {
     console.error('[RPC Router] Failed to update latency:', err.message);
   }
