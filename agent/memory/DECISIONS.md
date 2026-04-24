@@ -35,3 +35,16 @@
 * Implication: Every feature built must serve at least one of L1-L9
 * Anti-pattern: Any feature that requires human sales to generate revenue
   is deprioritized until all 9 layers are operational
+
+## ADR-006: S1-RPC architecture — 7 components built April 2026
+* Date: April 2026
+* Status: Accepted — production RPC gateway architecture
+* Decision: Multi-provider RPC gateway with 7 core components
+* Components:
+  - Latency routing with EMA (0.8/0.2 weighting)
+  - Circuit breaker: 5 failures → OPEN, 30s → HALF_OPEN
+  - Cache TTLs: eth_blockNumber=5s, eth_chainId=3600s, writes=never
+  - Rate limits: free=100/day, basic=10K, pro=100K, enterprise=1M
+  - WebSocket: /rpc/ws/:chain for eth_subscribe
+* Files: apps/api/src/workloads/rpc_gateway/
+* Implication: 5000 RPS target with automatic failover and billing
