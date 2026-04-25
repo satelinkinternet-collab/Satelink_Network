@@ -1,48 +1,51 @@
 # CURRENT TASK
 
-**Status:** CHECKPOINT — Session ended April 25, 2026
-**Next Session:** April 27, 2026
+**Status:** COMPLETE — April 25, 2026
+**Task:** Full Marketing Website
 
-## S1-RPC: COMPLETE (12/12)
+## Completed
 
-All Multi-RPC Gateway Architecture tasks finished:
-- Multi-provider pool (18 providers, 5 chains)
-- Latency-based routing (EMA α=0.2)
-- 3-state circuit breaker
-- Redis response caching
-- Weighted load balancing
-- API key tiers (free/basic/pro/enterprise)
-- WebSocket RPC (eth_subscribe)
-- Health monitoring + Discord alerts
-- Prometheus metrics endpoint
-- Multi-chain (Polygon, Ethereum, Arbitrum, Base)
-- Self-service API key creation
-- Load test verification (60+ RPS, rate limiting confirmed)
+### Marketing Website: DONE (8 pages + legal)
 
-## Next Tasks
+**Pages Built:**
+1. **/** (Home) — Hero, HowItWorks, LiveStats, SupportedChains, UseCases, DevQuickStart, NodeTeaser, Footer
+2. **/developers** — Quick start (5 languages), API reference, key creation form, rate limits, WebSocket guide
+3. **/nodes** — Earnings calculator (slider), revenue split diagram, hardware requirements, 5-step setup, FAQ
+4. **/pricing** — 4 tier cards, cost calculator vs Alchemy, FAQ
+5. **/network** — Live provider status grid, chain health, 7-day uptime, Prometheus metrics
+6. **/about** — Mission, Why DePIN, economic model (50/30/20), roadmap (S0-S9)
+7. **/brand** — Logo variations, color palette, typography specimens, usage guidelines
+8. **/legal/terms** — API usage, node operator agreement, settlement terms
+9. **/legal/privacy** — Data collection, retention, GDPR-style rights
+10. **/legal/cookies** — Essential + analytics only, no tracking
 
-**Part 1:** Landing page in Claude Chat (no Code quota)
-**Part 2:** S2 Node Onboarding in Claude Code
+**SEO Completed:**
+- Google Analytics G-GS4195MH7N
+- JSON-LD SoftwareApplication schema
+- robots.txt (allows /, blocks /dashboard, /api)
+- sitemap.xml (10 pages)
+- Open Graph + Twitter cards
+- dns-prefetch for rpc.satelink.network
 
-## Key URLs Live
+**Components Added:**
+- NodeOperatorTeaser (earnings preview)
+- Updated Footer (live health status, Telegram)
+- 10 page components total
 
-| Endpoint | URL |
-|----------|-----|
-| Polygon Amoy RPC | https://rpc.satelink.network/rpc/amoy |
-| Ethereum RPC | https://rpc.satelink.network/rpc/ethereum |
-| Prometheus metrics | https://rpc.satelink.network/rpc/metrics |
-| Provider health | https://rpc.satelink.network/rpc/health |
-| Supported chains | https://rpc.satelink.network/rpc/chains |
-| API key creation | https://rpc.satelink.network/api/keys/create |
+## Commits
+- 48938cb: Marketing homepage + design system
+- 80a80d9: Complete website — 8 pages, SEO, GA4
 
-## Pending
-
-- Chainlist PR #2665 still OPEN — check status April 27
-- Deploy latest code to Railway (metrics, chains, api keys endpoints)
+## Deploy Next
+```bash
+cd apps/web
+npm run build
+npx vercel --prod
+```
 
 ## Overall Progress
-
-Tasks: 60/121 complete
+Tasks: 62/121 complete
 Revenue Readiness: 92%
-Production: 75%
-Launch: 62%
+Production: 80%
+Launch: 68%
+Website: 100% COMPLETE
