@@ -9,11 +9,12 @@ Revenue Readiness: 92% | Production: 78% | Launch: 65%
 Active URL: https://rpc.satelink.network
 Chainlist PR: #2665 OPEN (pending merge)
 S1-RPC: COMPLETE (12/12 tasks) — Multi-RPC Gateway Architecture
-Website: DEPLOYED ✅
-  URL: https://satelink-mvp.vercel.app
+Website: DEPLOYED ✅ (Premium rebuild April 25, 2026)
+  URL: https://satelink.network
   Pages: 11 (8 main + 3 legal)
   GA4: G-GS4195MH7N integrated
   SEO: sitemap + robots + JSON-LD + OG tags
+  Design: Ink palette + Signal teal (#1AFFD4) accent
 
 ## STAGE S0 — Production Blockers & Security Foundation (8/15)
 | ID | Task | Status | Notes |
