@@ -83,7 +83,7 @@ Chainlist PR: #2665 OPEN (pending merge)
 | P8-009 | JWT secret rotation | DONE | New 256-bit secret in .env |
 | P8-010 | README professional | DONE | Architecture, endpoints, revenue model |
 
-## STAGE S1-RPC — Multi-RPC Gateway Architecture (10/12)
+## STAGE S1-RPC — Multi-RPC Gateway Architecture (11/12)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | S1-RPC-001 | Multi-provider pool (18 providers, 5 chains) | DONE | providers.js |
@@ -96,7 +96,7 @@ Chainlist PR: #2665 OPEN (pending merge)
 | S1-RPC-008 | Health monitoring + alerting | DONE | health_monitor.js, Discord alerts |
 | S1-RPC-009 | Metrics dashboard endpoint | DONE | metrics.js, Prometheus format |
 | S1-RPC-010 | Multi-chain support (Ethereum, Arbitrum, Base) | DONE | Chain-specific pricing, /rpc/chains |
-| S1-RPC-011 | API key creation flow | PENDING | |
+| S1-RPC-011 | API key creation flow | DONE | api_keys.js, PostgreSQL, self-service |
 | S1-RPC-012 | Load test + 5000 RPS verification | PENDING | |
 
 ## STAGES S2–S9 — See Master Execution Plan

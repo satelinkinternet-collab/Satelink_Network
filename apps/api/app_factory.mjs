@@ -1,6 +1,7 @@
 import express from "express";
 import revenueRoutes from "./src/routes/revenue.js";
 import { createRpcGateway } from "./src/workloads/rpc_gateway/rpc_gateway.js";
+import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
 
 export function createApp(pool) {
   const app = express();
@@ -27,6 +28,9 @@ export function createApp(pool) {
 
   // RPC Gateway with latency-based routing
   app.use("/rpc", createRpcGateway(pool));
+
+  // API Key management
+  app.use("/api/keys", createApiKeysRouter(pool));
 
   // Revenue API routes
   app.use("/api", revenueRoutes(pool));
