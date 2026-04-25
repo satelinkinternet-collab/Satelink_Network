@@ -175,7 +175,8 @@ const CHAIN_ALIASES = {
   'amoy': 'polygon-amoy',
   'matic': 'polygon',
   'eth': 'ethereum',
-  'arb': 'arbitrum'
+  'arb': 'arbitrum',
+  'base-mainnet': 'base'
 };
 
 export function getChainConfig(chainKey) {

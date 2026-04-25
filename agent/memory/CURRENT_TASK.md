@@ -1,21 +1,26 @@
 # CURRENT TASK
 
-**Task:** S1-RPC-009 — Metrics dashboard endpoint
+**Task:** S1-RPC-010 — Multi-chain support
 **Status:** COMPLETE
 **Updated:** 2026-04-25
 
 ## Completed
 
-- Created metrics.js with comprehensive aggregation
-- GET /rpc/metrics — JSON network performance snapshot
-- GET /rpc/metrics/prometheus — Prometheus text format
-- Aggregates: provider health, circuit breakers, cache stats, revenue, WS connections
-- Fixed health_monitor.js import bug (PROVIDERS → PROVIDER_CONFIGS)
+- Verified providers.js has 5 chains: polygon-amoy, polygon, ethereum, arbitrum, base
+- Added chain-specific pricing (Ethereum=0.00005, Arbitrum/Base=0.00004, Polygon=0.00003)
+- Updated recordRevenue to use chain-aware pricing
+- Added GET /rpc/chains endpoint listing all chains with pricing
+- Added base-mainnet alias to CHAIN_ALIASES
 
-## New Endpoints
+## Chain Support
 
-- GET /rpc/metrics → full network snapshot (chains, revenue, rpcGateway)
-- GET /rpc/metrics/prometheus → Prometheus format for Grafana
+| Chain | ChainId | Providers | Price (USDT) |
+|-------|---------|-----------|--------------|
+| polygon-amoy | 80002 | 4 | 0.00003 |
+| polygon | 137 | 5 | 0.00003 |
+| ethereum | 1 | 5 | 0.00005 |
+| arbitrum | 42161 | 2 | 0.00004 |
+| base | 8453 | 2 | 0.00004 |
 
 ## S1-RPC Progress
 
@@ -30,7 +35,8 @@
 | S1-RPC-007 | ✓ WebSocket RPC (eth_subscribe) |
 | S1-RPC-008 | ✓ Health monitoring + alerting |
 | S1-RPC-009 | ✓ Metrics dashboard endpoint |
+| S1-RPC-010 | ✓ Multi-chain support |
 
 ## Next
 
-S1-RPC-010 through S1-RPC-012 remain
+S1-RPC-011 and S1-RPC-012 remain

@@ -9,7 +9,19 @@ import { createMetricsRouter } from './metrics.js';
 
 const SUPPORTED_CHAINS = new Set([...getSupportedChains(), ...Object.keys(CHAIN_ALIASES)]);
 
-const RPC_REWARD_USDT = 0.0003;
+const CHAIN_PRICING_USDT = {
+    'ethereum': 0.00005,
+    'eth': 0.00005,
+    'polygon': 0.00003,
+    'matic': 0.00003,
+    'polygon-amoy': 0.00003,
+    'amoy': 0.00003,
+    'arbitrum': 0.00004,
+    'arb': 0.00004,
+    'base': 0.00004
+};
+
+const DEFAULT_RPC_REWARD_USDT = 0.00003;
 
 function getClientIp(req) {
     return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
@@ -49,6 +61,23 @@ export function createRpcGateway(db) {
 
     router.get('/tiers', (req, res) => {
         res.json({ ok: true, tiers: getTiers() });
+    });
+
+    router.get('/chains', (req, res) => {
+        const chains = getSupportedChains().map(chainKey => {
+            const config = getChainConfig(chainKey);
+            return {
+                chain: chainKey,
+                chainId: config.chainId,
+                name: config.name,
+                providers: config.providers.length,
+                priceUsdt: CHAIN_PRICING_USDT[chainKey] || DEFAULT_RPC_REWARD_USDT,
+                aliases: Object.entries(CHAIN_ALIASES)
+                    .filter(([_, v]) => v === chainKey)
+                    .map(([k]) => k)
+            };
+        });
+        res.json({ ok: true, chains });
     });
 
     router.get('/usage', async (req, res) => {
@@ -136,7 +165,7 @@ export function createRpcGateway(db) {
             const cachedResponse = await getCached(chain, method, params);
 
             if (cachedResponse) {
-                await recordRevenue(db, 'edge_cache', client_id, request_id);
+                await recordRevenue(db, 'edge_cache', client_id, request_id, chain);
                 return res.status(200).json(cachedResponse);
             }
 
@@ -150,7 +179,7 @@ export function createRpcGateway(db) {
                 await setCached(chain, method, params, routeResult.result);
             }
 
-            await recordRevenue(db, routeResult.provider || 'external_provider', client_id, request_id);
+            await recordRevenue(db, routeResult.provider || 'external_provider', client_id, request_id, chain);
 
             res.status(200).json(routeResult.result);
         } catch (error) {
@@ -162,17 +191,19 @@ export function createRpcGateway(db) {
     return router;
 }
 
-async function recordRevenue(db, source, client_id, request_id) {
+async function recordRevenue(db, source, client_id, request_id, chain) {
     if (!db || !db.query) return;
+
+    const amount = CHAIN_PRICING_USDT[chain] || DEFAULT_RPC_REWARD_USDT;
 
     try {
         const now = Math.floor(Date.now() / 1000);
         await db.query(
             `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
              VALUES ('rpc_call', $1, $2, $3, 'success', $4, $5)`,
-            [source, client_id, RPC_REWARD_USDT, request_id, now]
+            [source, client_id, amount, request_id, now]
         );
-        console.log(`[RPC Gateway] Revenue: ${source} → $${RPC_REWARD_USDT}`);
+        console.log(`[RPC Gateway] Revenue: ${chain}/${source} → $${amount}`);
     } catch (e) {
         console.error('[RPC Gateway] Failed to record revenue:', e.message);
     }
