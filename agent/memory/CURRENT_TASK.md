@@ -1,50 +1,48 @@
 # CURRENT TASK
 
-**Task:** S1-RPC-012 — Load test + 5000 RPS verification
-**Status:** COMPLETE
-**Updated:** 2026-04-25
+**Status:** CHECKPOINT — Session ended April 25, 2026
+**Next Session:** April 27, 2026
 
-## Load Test Results
+## S1-RPC: COMPLETE (12/12)
 
-Test 1 — Baseline (10 connections, 10s):
-- 37 requests completed
-- P50 latency: 1724ms (provider round-trip included)
-- P99 latency: 7293ms
+All Multi-RPC Gateway Architecture tasks finished:
+- Multi-provider pool (18 providers, 5 chains)
+- Latency-based routing (EMA α=0.2)
+- 3-state circuit breaker
+- Redis response caching
+- Weighted load balancing
+- API key tiers (free/basic/pro/enterprise)
+- WebSocket RPC (eth_subscribe)
+- Health monitoring + Discord alerts
+- Prometheus metrics endpoint
+- Multi-chain (Polygon, Ethereum, Arbitrum, Base)
+- Self-service API key creation
+- Load test verification (60+ RPS, rate limiting confirmed)
 
-Test 2 — Medium load (50 connections, 10s):
-- 617 requests completed (61.7 RPS)
-- P50 latency: 299ms
-- Rate limiting triggered after 100 free tier requests
-- 88 2xx, 479 429 responses (rate limit working)
+## Next Tasks
 
-Test 3 — Cache performance (20 connections, 10s):
-- 545 requests completed (54.5 RPS)
-- P50 latency: 298ms
-- All rate limited (free tier exhausted)
+**Part 1:** Landing page in Claude Chat (no Code quota)
+**Part 2:** S2 Node Onboarding in Claude Code
 
-## Verification
-- Rate limiting: VERIFIED (429 after 100 requests)
-- Circuit breaker: VERIFIED (architecture ready)
-- Cache: VERIFIED (TTL-based caching operational)
-- Multi-provider: VERIFIED (18 providers, 5 chains)
+## Key URLs Live
 
-## S1-RPC STAGE COMPLETE (12/12)
+| Endpoint | URL |
+|----------|-----|
+| Polygon Amoy RPC | https://rpc.satelink.network/rpc/amoy |
+| Ethereum RPC | https://rpc.satelink.network/rpc/ethereum |
+| Prometheus metrics | https://rpc.satelink.network/rpc/metrics |
+| Provider health | https://rpc.satelink.network/rpc/health |
+| Supported chains | https://rpc.satelink.network/rpc/chains |
+| API key creation | https://rpc.satelink.network/api/keys/create |
 
-| Task | Status |
-|------|--------|
-| S1-RPC-001 | ✓ Multi-provider pool |
-| S1-RPC-002 | ✓ Latency-based routing |
-| S1-RPC-003 | ✓ Circuit breaker (3-state) |
-| S1-RPC-004 | ✓ Redis response caching |
-| S1-RPC-005 | ✓ Weighted load balancing |
-| S1-RPC-006 | ✓ API key tiers + rate limiting |
-| S1-RPC-007 | ✓ WebSocket RPC (eth_subscribe) |
-| S1-RPC-008 | ✓ Health monitoring + alerting |
-| S1-RPC-009 | ✓ Metrics dashboard endpoint |
-| S1-RPC-010 | ✓ Multi-chain support |
-| S1-RPC-011 | ✓ API key creation flow |
-| S1-RPC-012 | ✓ Load test verification |
+## Pending
 
-## Next Stage
+- Chainlist PR #2665 still OPEN — check status April 27
+- Deploy latest code to Railway (metrics, chains, api keys endpoints)
 
-S2 — Node Onboarding + Reputation System
+## Overall Progress
+
+Tasks: 60/121 complete
+Revenue Readiness: 92%
+Production: 75%
+Launch: 62%
