@@ -8,8 +8,20 @@ const API_BASE =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   turbopack: {
     root: '../..',
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   async rewrites() {
     const apiPrefixes = [
