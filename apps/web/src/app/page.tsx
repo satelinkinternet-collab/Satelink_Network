@@ -5,6 +5,7 @@ import { LiveNetworkStats } from "@/components/marketing/LiveNetworkStats";
 import { SupportedChains } from "@/components/marketing/SupportedChains";
 import { UseCases } from "@/components/marketing/UseCases";
 import { DeveloperQuickStart } from "@/components/marketing/DeveloperQuickStart";
+import { NodeOperatorTeaser } from "@/components/marketing/NodeOperatorTeaser";
 import { Footer } from "@/components/marketing/Footer";
 
 export default function HomePage() {
@@ -18,6 +19,7 @@ export default function HomePage() {
         <SupportedChains />
         <UseCases />
         <DeveloperQuickStart />
+        <NodeOperatorTeaser />
       </main>
       <Footer />
     </>

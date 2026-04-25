@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/satelink.css";
@@ -66,6 +67,21 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Satelink Network",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Web",
+  description: "Decentralized RPC infrastructure for blockchain applications",
+  offers: [
+    { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Basic", price: "10", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Pro", price: "50", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Enterprise", price: "200", priceCurrency: "USD" },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -76,6 +92,14 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <link rel="dns-prefetch" href="https://rpc.satelink.network" />
+        <meta name="application-name" content="Satelink Network" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body
         className="antialiased custom-scrollbar"
         style={{
@@ -85,6 +109,18 @@ export default function RootLayout({
         }}
       >
         {children}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-GS4195MH7N"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-GS4195MH7N');
+          `}
+        </Script>
       </body>
     </html>
   );

@@ -102,16 +102,11 @@ export function DeveloperQuickStart() {
 
             <div className="flex flex-wrap gap-4">
               <Link href="/developers" className="btn-glow">
+                Read the Docs
+              </Link>
+              <Link href="/developers#api-key" className="btn-outline">
                 Get API Key
               </Link>
-              <a
-                href="https://github.com/satelinkinternet-collab"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-outline"
-              >
-                View Docs
-              </a>
             </div>
           </div>
 

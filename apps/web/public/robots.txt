@@ -1,0 +1,10 @@
+# Satelink Network robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://satelink.network/sitemap.xml
+
+# Block dashboard routes from indexing
+Disallow: /dashboard
+Disallow: /api
