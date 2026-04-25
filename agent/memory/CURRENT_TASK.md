@@ -1,21 +1,21 @@
 # CURRENT TASK
 
-**Task:** S1-RPC-008 — Health monitoring + alerting
+**Task:** S1-RPC-009 — Metrics dashboard endpoint
 **Status:** COMPLETE
 **Updated:** 2026-04-25
 
 ## Completed
 
-- Created health_monitor.js with 60s health check cycle
-- Checks all providers via eth_blockNumber probe
-- Tracks success rate, avg latency, error count per provider
-- Discord webhook alerts for >30% error rate or >5000ms latency
-- Alert cooldown: 5 minutes per provider
-- GET /rpc/health endpoint with full provider status
+- Created metrics.js with comprehensive aggregation
+- GET /rpc/metrics — JSON network performance snapshot
+- GET /rpc/metrics/prometheus — Prometheus text format
+- Aggregates: provider health, circuit breakers, cache stats, revenue, WS connections
+- Fixed health_monitor.js import bug (PROVIDERS → PROVIDER_CONFIGS)
 
 ## New Endpoints
 
-- GET /rpc/health → provider health summary + per-provider stats
+- GET /rpc/metrics → full network snapshot (chains, revenue, rpcGateway)
+- GET /rpc/metrics/prometheus → Prometheus format for Grafana
 
 ## S1-RPC Progress
 
@@ -29,7 +29,8 @@
 | S1-RPC-006 | ✓ API key tiers + rate limiting |
 | S1-RPC-007 | ✓ WebSocket RPC (eth_subscribe) |
 | S1-RPC-008 | ✓ Health monitoring + alerting |
+| S1-RPC-009 | ✓ Metrics dashboard endpoint |
 
 ## Next
 
-S1-RPC-009 through S1-RPC-012 remain
+S1-RPC-010 through S1-RPC-012 remain

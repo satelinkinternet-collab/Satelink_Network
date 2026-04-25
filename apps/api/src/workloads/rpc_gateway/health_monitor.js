@@ -9,7 +9,7 @@
  * - GET /rpc/health endpoint
  */
 
-import { PROVIDERS } from './providers.js';
+import { PROVIDER_CONFIGS } from './providers.js';
 
 const HEALTH_CHECK_INTERVAL = 60_000;
 const ALERT_THRESHOLD_ERROR_RATE = 0.3;
@@ -20,12 +20,12 @@ const providerHealth = new Map();
 const lastAlertTime = new Map();
 
 function initializeHealthState() {
-  for (const chain of Object.keys(PROVIDERS)) {
-    for (const provider of PROVIDERS[chain]) {
-      const key = `${chain}:${provider.name}`;
+  for (const chain of Object.keys(PROVIDER_CONFIGS)) {
+    for (const provider of PROVIDER_CONFIGS[chain].providers) {
+      const key = `${chain}:${provider.id}`;
       providerHealth.set(key, {
         chain,
-        provider: provider.name,
+        provider: provider.id,
         url: provider.url,
         checks: 0,
         successes: 0,
@@ -40,7 +40,7 @@ function initializeHealthState() {
 }
 
 async function checkProvider(chain, provider) {
-  const key = `${chain}:${provider.name}`;
+  const key = `${chain}:${provider.id}`;
   const health = providerHealth.get(key);
 
   const startTime = Date.now();
@@ -121,9 +121,9 @@ async function runHealthChecks() {
 
   const results = [];
 
-  for (const chain of Object.keys(PROVIDERS)) {
-    for (const provider of PROVIDERS[chain]) {
-      const key = `${chain}:${provider.name}`;
+  for (const chain of Object.keys(PROVIDER_CONFIGS)) {
+    for (const provider of PROVIDER_CONFIGS[chain].providers) {
+      const key = `${chain}:${provider.id}`;
       const result = await checkProvider(chain, provider);
       results.push({ key, ...result });
 
@@ -134,7 +134,7 @@ async function runHealthChecks() {
       if (errorRate > ALERT_THRESHOLD_ERROR_RATE && shouldAlert(key)) {
         lastAlertTime.set(key, Date.now());
         await sendDiscordAlert(
-          `**${provider.name}** (${chain}) has ${(errorRate * 100).toFixed(1)}% error rate\n` +
+          `**${provider.id}** (${chain}) has ${(errorRate * 100).toFixed(1)}% error rate\n` +
           `Last error: ${health.lastError}`
         );
       }
@@ -142,7 +142,7 @@ async function runHealthChecks() {
       if (avgLatency > ALERT_THRESHOLD_LATENCY_MS && shouldAlert(`${key}:latency`)) {
         lastAlertTime.set(`${key}:latency`, Date.now());
         await sendDiscordAlert(
-          `**${provider.name}** (${chain}) high latency: ${avgLatency.toFixed(0)}ms avg`
+          `**${provider.id}** (${chain}) high latency: ${avgLatency.toFixed(0)}ms avg`
         );
       }
     }
