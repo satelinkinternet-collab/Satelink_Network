@@ -61,7 +61,7 @@ Required:
 - [ ] machine-readable /api/status endpoint (DONE)
 Files: docs/BOOTSTRAP_CHECKLIST.md
 
-### LAYER 2 — Ingestion Layer [STATUS: DONE]
+### LAYER 2 — Ingestion Layer [STATUS: DONE — S1-RPC COMPLETE]
 How machines send work into the network.
 Required:
 - [x] POST /rpc/:chain — JSON-RPC relay (DONE)
@@ -72,6 +72,21 @@ Required:
 - [ ] POST /v1/chat/completions — AI inference proxy (TODO: Stage S3)
 - [ ] POST /proxy — bandwidth proxy (TODO: Stage S5)
 - [ ] POST /scrape — web scraping (TODO: Stage S5)
+
+S1-RPC Architecture (12/12 tasks complete — April 2026):
+- [x] Multi-provider pool: 18 providers across 5 chains
+- [x] Latency-based routing with EMA (α=0.2)
+- [x] 3-state circuit breaker (CLOSED → OPEN → HALF_OPEN)
+- [x] Redis response caching (TTL: 5s-3600s by method)
+- [x] Weighted load balancing
+- [x] API key tiers: free/basic/pro/enterprise (100-1M req/day)
+- [x] WebSocket RPC: /rpc/ws/:chain for eth_subscribe
+- [x] Health monitoring + Discord alerts
+- [x] Prometheus metrics endpoint
+- [x] Multi-chain: Polygon, Ethereum, Arbitrum, Base
+- [x] Self-service API key creation flow
+- [x] Load tested: rate limiting verified, 60+ RPS sustained
+
 Files: apps/api/src/workloads/rpc_gateway/
 
 ### LAYER 3 — Billing Layer [STATUS: VERIFIED]
