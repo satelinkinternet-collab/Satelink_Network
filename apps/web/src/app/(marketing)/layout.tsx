@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
 import "@/styles/satelink.css";
+import "../globals.css";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-heading",
@@ -22,43 +22,33 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Satelink Network | Decentralized RPC Infrastructure for Machine Economies",
+  title: "Satelink Network — Decentralized RPC Infrastructure",
   description:
-    "The infrastructure layer for autonomous machine economies. Decentralized RPC gateway with USDT settlement, multi-chain support, and 50% revenue share for node operators.",
+    "The infrastructure layer for autonomous machine economies. Multi-chain RPC gateway with real-time USDT settlement on Polygon.",
   keywords: [
     "DePIN",
-    "decentralized infrastructure",
-    "RPC gateway",
+    "RPC",
     "blockchain",
+    "infrastructure",
     "Polygon",
     "Ethereum",
-    "node operators",
-    "USDT",
-    "machine economy",
-    "AI agents",
-    "DeFi bots",
+    "decentralized",
+    "API",
+    "node",
   ],
+  authors: [{ name: "Satelink Network" }],
   openGraph: {
-    title: "Satelink Network | Decentralized RPC Infrastructure",
+    title: "Satelink Network — Decentralized RPC Infrastructure",
     description:
-      "Power your dApps, DeFi bots, and AI agents with decentralized RPC infrastructure. Earn USDT as a node operator.",
+      "Multi-chain RPC gateway with real-time USDT settlement. Earn by running nodes.",
     type: "website",
-    url: "https://satelink.network",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Satelink Network - Decentralized Infrastructure",
-      },
-    ],
+    locale: "en_US",
+    siteName: "Satelink Network",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Satelink Network | Decentralized RPC Infrastructure",
-    description:
-      "Power your dApps, DeFi bots, and AI agents with decentralized RPC infrastructure.",
-    images: ["/og-image.png"],
+    title: "Satelink Network",
+    description: "Decentralized RPC infrastructure for autonomous machine economies.",
   },
   robots: {
     index: true,
@@ -66,11 +56,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default function MarketingLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html
       lang="en"

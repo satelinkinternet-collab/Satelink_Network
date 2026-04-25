@@ -1,25 +1,12 @@
+import { Navigation } from "@/components/marketing/Navigation";
+import { HeroSection } from "@/components/marketing/HeroSection";
+import { HowItWorks } from "@/components/marketing/HowItWorks";
+import { LiveNetworkStats } from "@/components/marketing/LiveNetworkStats";
+import { SupportedChains } from "@/components/marketing/SupportedChains";
+import { UseCases } from "@/components/marketing/UseCases";
+import { DeveloperQuickStart } from "@/components/marketing/DeveloperQuickStart";
+import { Footer } from "@/components/marketing/Footer";
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
-import "@/styles/satelink.css";
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
 
 export const metadata: Metadata = {
   title: "Satelink Network | Decentralized RPC Infrastructure for Machine Economies",
@@ -60,32 +47,21 @@ export const metadata: Metadata = {
       "Power your dApps, DeFi bots, and AI agents with decentralized RPC infrastructure.",
     images: ["/og-image.png"],
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function HomePage() {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
-    >
-      <body
-        className="antialiased custom-scrollbar"
-        style={{
-          background: "var(--bg-deep)",
-          color: "var(--text-primary)",
-          fontFamily: "var(--font-body)",
-        }}
-      >
-        {children}
-      </body>
-    </html>
+    <>
+      <Navigation />
+      <main>
+        <HeroSection />
+        <HowItWorks />
+        <LiveNetworkStats />
+        <SupportedChains />
+        <UseCases />
+        <DeveloperQuickStart />
+      </main>
+      <Footer />
+    </>
   );
 }
