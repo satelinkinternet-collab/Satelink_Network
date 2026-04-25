@@ -1,51 +1,40 @@
 # CURRENT TASK
 
-**Status:** COMPLETE — April 25, 2026
-**Task:** Full Marketing Website
+**Status:** IN_PROGRESS
+**Task:** Website Premium Rebuild
+**Started:** April 25, 2026
 
-## Completed
+## Context
+Rebuilding Satelink website with premium design system:
+- Sora/DM Sans/Fira Code fonts
+- Ink/Signal color palette (teal accent #1AFFD4)
+- Google-quality UX inspired by Linear, Vercel, Stripe
 
-### Marketing Website: DONE (8 pages + legal)
+## Completed Steps
+- [x] Created agent/memory/PROJECT_STATE.md
+- [x] Committed PROJECT_STATE.md (5f21bc6)
+- [x] Updated apps/web/src/styles/satelink.css (new design system)
+- [x] Updated apps/web/src/app/layout.tsx (Sora/DM Sans fonts, GA4)
+- [x] Updated components/marketing/Navigation.tsx
+- [x] Updated components/marketing/HeroSection.tsx
+- [x] Updated components/marketing/HowItWorks.tsx
+- [x] Updated components/marketing/SupportedChains.tsx
+- [x] Updated components/marketing/UseCases.tsx
+- [x] Updated components/marketing/DeveloperQuickStart.tsx
+- [x] Updated components/marketing/NodeOperatorTeaser.tsx
+- [x] Updated components/marketing/Footer.tsx
+- [x] Updated components/marketing/LiveNetworkStats.tsx
 
-**Pages Built:**
-1. **/** (Home) — Hero, HowItWorks, LiveStats, SupportedChains, UseCases, DevQuickStart, NodeTeaser, Footer
-2. **/developers** — Quick start (5 languages), API reference, key creation form, rate limits, WebSocket guide
-3. **/nodes** — Earnings calculator (slider), revenue split diagram, hardware requirements, 5-step setup, FAQ
-4. **/pricing** — 4 tier cards, cost calculator vs Alchemy, FAQ
-5. **/network** — Live provider status grid, chain health, 7-day uptime, Prometheus metrics
-6. **/about** — Mission, Why DePIN, economic model (50/30/20), roadmap (S0-S9)
-7. **/brand** — Logo variations, color palette, typography specimens, usage guidelines
-8. **/legal/terms** — API usage, node operator agreement, settlement terms
-9. **/legal/privacy** — Data collection, retention, GDPR-style rights
-10. **/legal/cookies** — Essential + analytics only, no tracking
+## Current Position
+Need to:
+- [ ] Update/create subpages (/developers, /nodes, /pricing, /network, /about, /brand)
+- [ ] Create legal pages (/legal/terms, /legal/privacy, /legal/cookies)
+- [ ] Create SEO files (robots.txt, sitemap.ts)
+- [ ] Build and test locally
+- [ ] Deploy to Vercel (satelink-dashboard project)
+- [ ] Verify all pages load on production
 
-**SEO Completed:**
-- Google Analytics G-GS4195MH7N
-- JSON-LD SoftwareApplication schema
-- robots.txt (allows /, blocks /dashboard, /api)
-- sitemap.xml (10 pages)
-- Open Graph + Twitter cards
-- dns-prefetch for rpc.satelink.network
-
-**Components Added:**
-- NodeOperatorTeaser (earnings preview)
-- Updated Footer (live health status, Telegram)
-- 10 page components total
-
-## Commits
-- 48938cb: Marketing homepage + design system
-- 80a80d9: Complete website — 8 pages, SEO, GA4
-
-## Deploy Next
-```bash
-cd apps/web
-npm run build
-npx vercel --prod
-```
-
-## Overall Progress
-Tasks: 62/121 complete
-Revenue Readiness: 92%
-Production: 80%
-Launch: 68%
-Website: 100% COMPLETE
+## Files Modified
+apps/web/src/styles/satelink.css
+apps/web/src/app/layout.tsx
+apps/web/src/components/marketing/*.tsx (all 9 components)

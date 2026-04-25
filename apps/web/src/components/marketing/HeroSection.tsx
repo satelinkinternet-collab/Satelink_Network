@@ -1,189 +1,215 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
-interface LiveStats {
-  chains: number;
-  cacheHitRate: string;
-  uptime: string;
-  revenue: string;
+interface ChainStatus {
+  name: string;
+  isLive: boolean;
+  latency: number | null;
+  blockNumber: string | null;
+}
+
+interface TerminalLine {
+  type: "command" | "response";
+  text: string;
 }
 
 export function HeroSection() {
-  const [stats, setStats] = useState<LiveStats>({
-    chains: 5,
-    cacheHitRate: "78.6%",
-    uptime: "99.9%",
-    revenue: "$0.00",
-  });
+  const [chains, setChains] = useState<ChainStatus[]>([
+    { name: "Polygon", isLive: true, latency: null, blockNumber: null },
+    { name: "Ethereum", isLive: true, latency: null, blockNumber: null },
+    { name: "Arbitrum", isLive: true, latency: null, blockNumber: null },
+    { name: "Base", isLive: true, latency: null, blockNumber: null },
+    { name: "Amoy", isLive: true, latency: null, blockNumber: null },
+  ]);
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch("https://rpc.satelink.network/rpc/metrics", {
-          next: { revalidate: 60 },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setStats({
-            chains: Object.keys(data.chains || {}).length || 5,
-            cacheHitRate: data.rpcGateway?.cacheStats?.hitRate || "78.6%",
-            uptime: "99.9%",
-            revenue: `$${parseFloat(data.revenue?.usdtToday || 0).toFixed(4)}`,
+  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([
+    { type: "command", text: "$ curl -X POST https://rpc.satelink.network/rpc/polygon \\" },
+    { type: "command", text: '    -d \'{"method":"eth_blockNumber","id":1}\'' },
+    { type: "response", text: '{"result":"0x...","id":1}' },
+  ]);
+
+  const fetchChainStatus = useCallback(async () => {
+    try {
+      const res = await fetch("https://rpc.satelink.network/rpc/health");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.chains) {
+          const chainMap: Record<string, string> = {
+            polygon: "Polygon",
+            ethereum: "Ethereum",
+            arbitrum: "Arbitrum",
+            base: "Base",
+            amoy: "Amoy",
+          };
+
+          const updatedChains = Object.entries(data.chains).map(([key, value]: [string, unknown]) => {
+            const chainData = value as { status?: string; avgLatency?: number; currentBlock?: number };
+            return {
+              name: chainMap[key] || key,
+              isLive: chainData.status === "healthy",
+              latency: chainData.avgLatency || null,
+              blockNumber: chainData.currentBlock ? `0x${chainData.currentBlock.toString(16)}` : null,
+            };
           });
+          setChains(updatedChains);
+
+          const polygonBlock = (data.chains.polygon as { currentBlock?: number })?.currentBlock;
+          if (polygonBlock) {
+            setTerminalLines([
+              { type: "command", text: "$ curl -X POST https://rpc.satelink.network/rpc/polygon \\" },
+              { type: "command", text: '    -d \'{"method":"eth_blockNumber","id":1}\'' },
+              { type: "response", text: `{"result":"0x${polygonBlock.toString(16)}","id":1}` },
+            ]);
+          }
         }
-      } catch {
-        // Use defaults
       }
+    } catch {
+      // Use defaults
     }
-    fetchStats();
   }, []);
 
+  useEffect(() => {
+    fetchChainStatus();
+    const interval = setInterval(fetchChainStatus, 5000);
+    return () => clearInterval(interval);
+  }, [fetchChainStatus]);
+
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden pt-20">
-      {/* Background gradient */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "var(--gradient-hero)" }}
-      />
+    <section className="hero">
+      <div className="hero-grid" />
 
-      {/* Particle network - CSS only */}
-      <ParticleNetwork />
+      <div className="hero-content">
+        <div className="hero-badge animate-fade-up">
+          <span style={{ color: "var(--earn)" }}>&#x2197;</span>
+          Chainlist Listed &middot; 5 Chains &middot; Public Beta
+        </div>
 
-      {/* Grid pattern overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(var(--brand-primary) 1px, transparent 1px),
-                            linear-gradient(90deg, var(--brand-primary) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-        }}
-      />
+        <h1 className="heading-display hero-title animate-fade-up delay-100">
+          The RPC Layer for
+          <br />
+          <span style={{ color: "var(--signal)" }}>Autonomous Machines</span>
+        </h1>
 
-      <div className="container-marketing relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--bg-card)] border border-[var(--border-subtle)] mb-8 animate-fade-in-up">
-            <span className="w-2 h-2 rounded-full bg-[var(--brand-accent)] animate-pulse" />
-            <span className="text-sm text-[var(--text-secondary)]">
-              Live on Polygon Mainnet
-            </span>
+        <p className="hero-subtitle animate-fade-up delay-200">
+          Decentralized infrastructure for DeFi bots, AI agents, and machine-to-machine
+          workloads. USDT settlement on Polygon.
+        </p>
+
+        <div className="hero-ctas animate-fade-up delay-300">
+          <Link href="/developers" className="btn btn-primary btn-lg">
+            Start for free &rarr;
+          </Link>
+          <Link href="/network" className="btn btn-signal-outline btn-lg">
+            View live network
+          </Link>
+        </div>
+
+        <div className="stats-bar animate-fade-up delay-400">
+          {chains.map((chain) => (
+            <div key={chain.name} className="stat-item">
+              <span className={`stat-dot ${!chain.isLive ? "offline" : ""}`} />
+              <span className="stat-label">{chain.name}</span>
+              {chain.latency && (
+                <span className="stat-value">{chain.latency}ms</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="hero-terminal animate-fade-up delay-500">
+          <div className="terminal-header">
+            <div className="terminal-dots">
+              <span className="terminal-dot red" />
+              <span className="terminal-dot yellow" />
+              <span className="terminal-dot green" />
+            </div>
+            <span className="terminal-title">Terminal</span>
           </div>
-
-          {/* Headline */}
-          <h1 className="heading-xl mb-6 animate-fade-in-up delay-100">
-            The Infrastructure Layer for{" "}
-            <span className="text-gradient">Autonomous Machine Economies</span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="text-body-lg max-w-2xl mx-auto mb-10 animate-fade-in-up delay-200">
-            Decentralized RPC. Real-time settlement. USDT rewards. Powered by
-            distributed nodes across 5 chains.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-fade-in-up delay-300">
-            <Link
-              href="#developers"
-              className="btn-glow text-base px-8 py-4 w-full sm:w-auto"
-            >
-              Start Building Free
-            </Link>
-            <Link
-              href="#nodes"
-              className="btn-outline text-base px-8 py-4 w-full sm:w-auto"
-            >
-              Earn as Node Operator
-            </Link>
-          </div>
-
-          {/* Live Stats Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up delay-400">
-            <StatBadge label="Active Chains" value={stats.chains.toString()} />
-            <StatBadge label="Cache Hit Rate" value={stats.cacheHitRate} />
-            <StatBadge label="Uptime" value={stats.uptime} />
-            <StatBadge label="Revenue Today" value={stats.revenue} accent />
+          <div className="terminal-body">
+            {terminalLines.map((line, i) => (
+              <div key={i} className={`terminal-line ${line.type}`}>
+                {line.text}
+              </div>
+            ))}
+            <span className="terminal-cursor">_</span>
           </div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
-        <div className="w-6 h-10 rounded-full border-2 border-[var(--border-default)] flex items-start justify-center p-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] animate-pulse" />
-        </div>
-      </div>
+      <style jsx>{`
+        .hero-terminal {
+          max-width: 640px;
+          margin: var(--space-12) auto 0;
+          background: var(--ink-950);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xl);
+          overflow: hidden;
+          text-align: left;
+        }
+
+        .terminal-header {
+          display: flex;
+          align-items: center;
+          gap: var(--space-4);
+          padding: var(--space-3) var(--space-4);
+          background: var(--ink-900);
+          border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .terminal-dots {
+          display: flex;
+          gap: 6px;
+        }
+
+        .terminal-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #EF4444; }
+        .terminal-dot.yellow { background: #F59E0B; }
+        .terminal-dot.green { background: #22C55E; }
+
+        .terminal-title {
+          font-family: var(--font-mono);
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
+
+        .terminal-body {
+          padding: var(--space-4);
+          font-family: var(--font-mono);
+          font-size: 0.875rem;
+          line-height: 1.7;
+        }
+
+        .terminal-line {
+          white-space: pre-wrap;
+          word-break: break-all;
+        }
+
+        .terminal-line.command {
+          color: var(--text-secondary);
+        }
+
+        .terminal-line.response {
+          color: var(--earn);
+          margin-top: var(--space-2);
+        }
+
+        .terminal-cursor {
+          color: var(--signal);
+          animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
     </section>
-  );
-}
-
-function StatBadge({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="glass-card p-4 text-center">
-      <div
-        className={`text-2xl font-bold mb-1 ${
-          accent ? "text-[var(--brand-accent)]" : "text-[var(--text-primary)]"
-        }`}
-        style={{ fontFamily: "var(--font-heading)" }}
-      >
-        {value}
-      </div>
-      <div className="text-xs text-[var(--text-muted)] uppercase tracking-wider">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function ParticleNetwork() {
-  const particles = Array.from({ length: 20 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    top: `${Math.random() * 100}%`,
-    delay: `${Math.random() * 5}s`,
-    duration: `${6 + Math.random() * 4}s`,
-  }));
-
-  return (
-    <div className="particle-network">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="particle"
-          style={{
-            left: p.left,
-            top: p.top,
-            animationDelay: p.delay,
-            animationDuration: p.duration,
-          }}
-        />
-      ))}
-      {/* Connection lines - SVG */}
-      <svg className="absolute inset-0 w-full h-full opacity-20">
-        <defs>
-          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="var(--brand-primary)" stopOpacity="0" />
-            <stop offset="50%" stopColor="var(--brand-primary)" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="var(--brand-primary)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line x1="10%" y1="20%" x2="30%" y2="40%" stroke="url(#lineGradient)" strokeWidth="1" />
-        <line x1="30%" y1="40%" x2="60%" y2="30%" stroke="url(#lineGradient)" strokeWidth="1" />
-        <line x1="60%" y1="30%" x2="80%" y2="50%" stroke="url(#lineGradient)" strokeWidth="1" />
-        <line x1="20%" y1="60%" x2="50%" y2="70%" stroke="url(#lineGradient)" strokeWidth="1" />
-        <line x1="50%" y1="70%" x2="85%" y2="60%" stroke="url(#lineGradient)" strokeWidth="1" />
-        <line x1="40%" y1="20%" x2="70%" y2="80%" stroke="url(#lineGradient)" strokeWidth="1" />
-      </svg>
-    </div>
   );
 }

@@ -1,25 +1,6 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
-import "@/styles/satelink.css";
-import "../globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Satelink Network — Decentralized RPC Infrastructure",
@@ -61,21 +42,5 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
-    >
-      <body
-        className="antialiased custom-scrollbar"
-        style={{
-          background: "var(--bg-deep)",
-          color: "var(--text-primary)",
-          fontFamily: "var(--font-body)",
-        }}
-      >
-        {children}
-      </body>
-    </html>
-  );
+  return <>{children}</>;
 }

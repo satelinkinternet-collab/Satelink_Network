@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 export default function HealthPage() {
     return (
         <div style={{ padding: '20px', fontFamily: 'monospace', background: '#000', color: '#0f0', height: '100vh' }}>

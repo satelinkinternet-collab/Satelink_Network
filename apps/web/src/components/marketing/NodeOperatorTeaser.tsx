@@ -1,146 +1,189 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 export function NodeOperatorTeaser() {
+  const [dailyRequests, setDailyRequests] = useState(100000);
+  const pricePerRequest = 0.00003;
+  const operatorShare = 0.50;
+
+  const dailyEarnings = dailyRequests * pricePerRequest * operatorShare;
+  const monthlyEarnings = dailyEarnings * 30;
+
   return (
-    <section id="nodes" className="py-24 relative overflow-hidden">
-      {/* Background gradient */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, rgba(0, 255, 148, 0.08) 0%, transparent 60%)",
-        }}
-      />
+    <section className="section" id="nodes">
+      <div className="container">
+        <div className="node-cta-card">
+          <span className="badge badge-live" style={{ marginBottom: "var(--space-6)" }}>
+            Node Operators
+          </span>
 
-      <div className="container-marketing relative z-10">
-        <div className="glass-card p-12 lg:p-16 text-center relative overflow-hidden">
-          {/* Animated border */}
-          <div className="absolute inset-0 rounded-2xl border border-[var(--brand-accent)]/20 animate-pulse-glow" />
-
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--brand-accent)]/10 border border-[var(--brand-accent)]/20 mb-8">
-            <ServerIcon />
-            <span className="text-[var(--brand-accent)] text-sm font-medium">
-              Node Operators
-            </span>
-          </div>
-
-          <h2 className="heading-lg mb-6">
+          <h2 className="heading-lg" style={{ marginBottom: "var(--space-4)" }}>
             Turn idle hardware into{" "}
-            <span className="text-[var(--brand-accent)]">passive USDT income</span>
+            <span style={{ color: "var(--earn)" }}>USDT income</span>
           </h2>
 
-          <p className="text-body-lg max-w-2xl mx-auto mb-12">
-            Run a Satelink node and earn a share of every RPC request you process.
-            Automatic settlement in USDT on Polygon Network.
+          <p className="text-body-lg" style={{ maxWidth: "640px", margin: "0 auto var(--space-8)" }}>
+            50% of all revenue routes to node operators. Claim when you hit 1 USDT.
+            Paid in USDT on Polygon.
           </p>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-3xl mx-auto">
-            <StatItem
-              value="50%"
-              label="Revenue Share"
-              sublabel="Operators keep half"
-              accent
-            />
-            <StatItem
-              value="1 USDT"
-              label="Min Claim"
-              sublabel="Low withdrawal threshold"
-            />
-            <StatItem
-              value="Polygon"
-              label="Settlement"
-              sublabel="Fast, low-fee transfers"
-            />
-          </div>
-
-          {/* Earnings preview */}
-          <div className="bg-[var(--bg-surface)]/50 rounded-xl p-6 mb-10 max-w-xl mx-auto border border-[var(--border-subtle)]">
-            <div className="text-sm text-[var(--text-muted)] mb-2">
-              Example: 100K requests/day
+          <div className="stats-row">
+            <div className="stat-item-large">
+              <div className="stat-value-large" style={{ color: "var(--earn)" }}>50%</div>
+              <div className="stat-label-large">Revenue Share</div>
             </div>
-            <div className="flex items-baseline justify-center gap-2">
-              <span
-                className="text-4xl font-bold text-[var(--brand-accent)]"
-                style={{ fontFamily: "var(--font-heading)" }}
-              >
-                $45
-              </span>
-              <span className="text-[var(--text-secondary)]">USDT/month</span>
+            <div className="stat-item-large">
+              <div className="stat-value-large">1 USDT</div>
+              <div className="stat-label-large">Min Claim</div>
             </div>
-            <div className="text-xs text-[var(--text-muted)] mt-2">
-              (100,000 × $0.00003 × 0.50 × 30 days)
+            <div className="stat-item-large">
+              <div className="stat-value-large">Polygon</div>
+              <div className="stat-label-large">Settlement</div>
             </div>
           </div>
 
-          <Link href="/nodes" className="btn-glow inline-flex">
-            Calculate Your Earnings
-            <ArrowRightIcon />
+          <div className="calculator">
+            <div className="calculator-header">
+              <span>Daily Requests</span>
+              <span className="calculator-value">{dailyRequests.toLocaleString()}</span>
+            </div>
+            <input
+              type="range"
+              min="1000"
+              max="1000000"
+              step="1000"
+              value={dailyRequests}
+              onChange={(e) => setDailyRequests(Number(e.target.value))}
+              className="calculator-slider"
+            />
+            <div className="calculator-result">
+              <div className="result-item">
+                <span className="result-label">Monthly USDT</span>
+                <span className="result-value">${monthlyEarnings.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          <Link href="/nodes" className="btn btn-primary btn-lg" style={{ marginTop: "var(--space-8)" }}>
+            Calculate earnings &rarr;
           </Link>
         </div>
       </div>
+
+      <style jsx>{`
+        .node-cta-card {
+          background: var(--gradient-card);
+          border: 1px solid var(--border-default);
+          border-radius: var(--radius-2xl);
+          padding: var(--space-12);
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .node-cta-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, var(--earn), transparent);
+        }
+
+        .stats-row {
+          display: flex;
+          justify-content: center;
+          gap: var(--space-12);
+          margin-bottom: var(--space-8);
+          flex-wrap: wrap;
+        }
+
+        .stat-item-large {
+          text-align: center;
+        }
+
+        .stat-value-large {
+          font-family: var(--font-heading);
+          font-size: 2rem;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin-bottom: var(--space-1);
+        }
+
+        .stat-label-large {
+          font-size: 0.875rem;
+          color: var(--text-muted);
+        }
+
+        .calculator {
+          max-width: 400px;
+          margin: 0 auto;
+          padding: var(--space-6);
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xl);
+        }
+
+        .calculator-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: var(--space-4);
+          font-size: 0.875rem;
+          color: var(--text-secondary);
+        }
+
+        .calculator-value {
+          font-family: var(--font-mono);
+          color: var(--text-primary);
+          font-weight: 600;
+        }
+
+        .calculator-slider {
+          width: 100%;
+          height: 4px;
+          background: var(--border-subtle);
+          border-radius: 2px;
+          outline: none;
+          -webkit-appearance: none;
+          margin-bottom: var(--space-6);
+        }
+
+        .calculator-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 16px;
+          height: 16px;
+          background: var(--signal);
+          border-radius: 50%;
+          cursor: pointer;
+        }
+
+        .calculator-result {
+          padding-top: var(--space-4);
+          border-top: 1px solid var(--border-subtle);
+        }
+
+        .result-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .result-label {
+          color: var(--text-muted);
+          font-size: 0.875rem;
+        }
+
+        .result-value {
+          font-family: var(--font-heading);
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--earn);
+        }
+      `}</style>
     </section>
-  );
-}
-
-function StatItem({
-  value,
-  label,
-  sublabel,
-  accent,
-}: {
-  value: string;
-  label: string;
-  sublabel: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="text-center">
-      <div
-        className={`text-3xl font-bold mb-1 ${
-          accent ? "text-[var(--brand-accent)]" : "text-[var(--text-primary)]"
-        }`}
-        style={{ fontFamily: "var(--font-heading)" }}
-      >
-        {value}
-      </div>
-      <div className="text-sm font-medium text-[var(--text-primary)]">{label}</div>
-      <div className="text-xs text-[var(--text-muted)]">{sublabel}</div>
-    </div>
-  );
-}
-
-function ServerIcon() {
-  return (
-    <svg
-      className="w-4 h-4 text-[var(--brand-accent)]"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={1.5}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z"
-      />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg
-      className="w-4 h-4 ml-2"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-    </svg>
   );
 }

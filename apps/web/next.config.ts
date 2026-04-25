@@ -8,6 +8,9 @@ const API_BASE =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: '../..',
+  },
   async rewrites() {
     const apiPrefixes = [
       'auth', 'me', 'admin-api', 'node-api', 'builder-api', 'dist-api',

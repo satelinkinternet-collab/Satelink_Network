@@ -1,26 +1,9 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import "@/styles/satelink.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Satelink Network | Decentralized RPC Infrastructure for Machine Economies",
@@ -28,23 +11,31 @@ export const metadata: Metadata = {
     "The infrastructure layer for autonomous machine economies. Decentralized RPC gateway with USDT settlement, multi-chain support, and 50% revenue share for node operators.",
   keywords: [
     "DePIN",
-    "decentralized infrastructure",
-    "RPC gateway",
-    "blockchain",
-    "Polygon",
-    "Ethereum",
+    "decentralized RPC",
+    "blockchain infrastructure",
+    "Polygon RPC",
+    "Ethereum RPC",
+    "Arbitrum RPC",
+    "Base RPC",
     "node operators",
-    "USDT",
+    "USDT settlement",
     "machine economy",
     "AI agents",
     "DeFi bots",
+    "RPC gateway",
   ],
+  authors: [{ name: "Satelink Network" }],
+  creator: "Satelink Network",
+  publisher: "Satelink Network",
+  metadataBase: new URL("https://satelink.network"),
   openGraph: {
     title: "Satelink Network | Decentralized RPC Infrastructure",
     description:
       "Power your dApps, DeFi bots, and AI agents with decentralized RPC infrastructure. Earn USDT as a node operator.",
     type: "website",
     url: "https://satelink.network",
+    siteName: "Satelink Network",
+    locale: "en_US",
     images: [
       {
         url: "/og-image.png",
@@ -64,6 +55,13 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -71,9 +69,11 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "Satelink Network",
+  url: "https://satelink.network",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Web",
-  description: "Decentralized RPC infrastructure for blockchain applications",
+  description:
+    "Decentralized RPC gateway for DeFi bots, AI agents, and machine networks. USDT settlement on Polygon.",
   offers: [
     { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
     { "@type": "Offer", name: "Basic", price: "10", priceCurrency: "USD" },
@@ -88,13 +88,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
-    >
+    <html lang="en">
       <head>
         <link rel="dns-prefetch" href="https://rpc.satelink.network" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="application-name" content="Satelink Network" />
+        <meta name="theme-color" content="#080E1A" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -103,12 +103,14 @@ export default function RootLayout({
       <body
         className="antialiased custom-scrollbar"
         style={{
-          background: "var(--bg-deep)",
+          background: "var(--bg-page)",
           color: "var(--text-primary)",
           fontFamily: "var(--font-body)",
         }}
       >
         {children}
+
+        {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GS4195MH7N"
           strategy="afterInteractive"
