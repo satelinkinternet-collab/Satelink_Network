@@ -127,7 +127,6 @@ export class AbuseFirewall {
 
         // If no active enforcement, allow.
         // We rely on 'recordMetric' + 'evaluateRules' to create enforcements asynchronously/reactively.
-        // Doing full rule eval on every request is too slow for SQLite.
         return { decision: 'allow', reason_codes: [], ttl_seconds: 0 };
     }
 

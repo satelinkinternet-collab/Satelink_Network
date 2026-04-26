@@ -53,8 +53,8 @@ const CHECKS = [
     {
         name: 'db_type',
         category: 'database',
-        description: 'Database is PostgreSQL (not SQLite)',
-        check: () => process.env.DB_TYPE !== 'sqlite',
+        description: 'Database is PostgreSQL',
+        check: () => !!process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgres'),
         severity: 'critical'
     },
     {

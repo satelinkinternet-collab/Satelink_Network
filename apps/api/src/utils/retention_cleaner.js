@@ -37,7 +37,6 @@ export class RetentionCleaner {
             ).all([traceCutoff]);
             stats.traces_removed = traceRes.length || 0;
 
-            // Refined approach for SQLite compatibility
             await this._prune('request_traces', 'created_at', traceCutoff, 'traces_removed', stats);
 
             // 2. Errors - 30 days

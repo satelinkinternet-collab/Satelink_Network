@@ -6,15 +6,11 @@ export function validateEnv() {
     const isProd = process.env.NODE_ENV === "production";
 
     if (isProd) {
-        // Relaxing constraint for local testing: allow SQLite in mock production runs.
-        // DATABASE_URL is only strictly required if we aren't using SQLite.
-        const dbType = process.env.DB_TYPE ? process.env.DB_TYPE.toLowerCase() : 'sqlite';
-        if (dbType !== 'sqlite' && !process.env.DATABASE_URL) {
-            console.error("[FATAL] Missing required production env vars: DATABASE_URL (for non-sqlite DBs)");
+        if (!process.env.DATABASE_URL) {
+            console.error("[FATAL] Missing required production env var: DATABASE_URL (PostgreSQL required)");
             process.exit(1);
         }
 
-        // [harden-prod] Require security-critical env vars in production
         const securityRequired = ["IP_HASH_SALT", "IP_SALT"];
         const missingSecVars = securityRequired.filter(k => !process.env[k]);
         if (missingSecVars.length) {
@@ -32,7 +28,6 @@ export function validateEnv() {
         isProd: process.env.NODE_ENV === "production",
         port: parseInt(process.env.PORT || "8080", 10),
         dbUrl: process.env.DATABASE_URL,
-        sqlitePath: process.env.SQLITE_PATH || "satelink.db",
         moonpaySecret: process.env.MOONPAY_WEBHOOK_SECRET || "",
         moonpaySigMode: process.env.MOONPAY_SIG_MODE || "raw",
         nodeopsKey: process.env.NODEOPS_API_KEY || ""
