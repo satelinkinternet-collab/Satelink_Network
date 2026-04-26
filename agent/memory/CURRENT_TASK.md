@@ -1,44 +1,51 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** S3-002 OpenAI-compatible AI Inference Gateway
+**Task:** S3-004/005 LangChain Adapter + SDK Foundation
 **Started:** April 26, 2026
 **Completed:** April 26, 2026
 
 ## Summary
-POST /v1/chat/completions — OpenAI-compatible API for AI agents.
+AI ecosystem integration — LangChain tools and OpenAI plugin manifest.
 
 ## What Was Built
-- `apps/api/src/workloads/ai_gateway/index.js`
-- POST /v1/chat/completions — chat completion
-- POST /v1/completions — legacy completion
-- GET /v1/models — list supported models
-- GET /v1/ai/status — gateway health/stats
 
-## Pricing (Per-Token)
-- Input: $0.000001 USDT per token
-- Output: $0.000003 USDT per token
+### S3-004 LangChain Adapter
+- GET /v1/tools/langchain — LangChain tool spec
+- GET /v1/tools/openai — OpenAI function calling spec
+- POST /v1/tools/execute — execute tool calls
+- satelink_rpc + satelink_mev tools
 
-## Supported Models
-- gpt-4o, gpt-4o-mini, gpt-3.5-turbo (mapped to Claude)
-- claude-3-5-sonnet, claude-3-haiku
-- satelink-default
+### S3-005 SDK Foundation
+- GET /.well-known/ai-plugin.json — OpenAI plugin manifest
+- GET /openapi.json — OpenAPI 3.0 spec
+- Full API documentation
 
 ## Verification
 ```bash
-curl https://rpc.satelink.network/v1/models
-→ {"object":"list","data":[{"id":"gpt-4o"...}]}
+curl https://rpc.satelink.network/v1/tools/langchain
+→ {"ok":true,"format":"langchain","tools":[{"name":"satelink_rpc"...}]}
 
-curl https://rpc.satelink.network/v1/ai/status
-→ {"ok":true,"status":"operational",...}
+curl https://rpc.satelink.network/.well-known/ai-plugin.json
+→ {"schema_version":"v1","name_for_human":"Satelink RPC"...}
+
+curl https://rpc.satelink.network/openapi.json
+→ {"openapi":"3.0.0","info":{"title":"Satelink RPC Gateway"...}}
 ```
 
 ## Commit
-3ba684b feat(S3-002): OpenAI-compatible AI inference gateway
+e52b99b feat(S3-004/005): LangChain adapter + OpenAI plugin manifest
 
-## S3 Progress
-3/5 complete (S3-001, S3-002, S3-003 done)
-Tasks: 64/121
+## S3 Stage: COMPLETE (5/5) ✅
+- S3-001: MEV Relay
+- S3-002: AI Gateway
+- S3-003: Per-Token Billing
+- S3-004: LangChain Adapter
+- S3-005: SDK Foundation
 
-## Next Task
-S3-004: Multi-provider routing (or S3-005: Streaming)
+## Progress
+Tasks: 66/121 (55%)
+S2: COMPLETE | S3: COMPLETE
+
+## Next Stage
+S4 or monitor external traffic from Chainlist

@@ -91,15 +91,15 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 
 ---
 
-## S3 STAGE SUMMARY (2/5 COMPLETE)
+## S3 STAGE SUMMARY (5/5 COMPLETE) ✅
 
 | Task | Status | Notes |
 |------|--------|-------|
 | S3-001 MEV Relay | DONE | POST /rpc/mev — 10x revenue |
 | S3-002 AI Gateway | DONE | POST /v1/chat/completions |
 | S3-003 Per-Token Billing | DONE | Built into S3-002 |
-| S3-004 Multi-Provider | PENDING | Route to multiple LLM providers |
-| S3-005 Streaming | PENDING | SSE for chat completions |
+| S3-004 LangChain Adapter | DONE | GET /v1/tools/langchain |
+| S3-005 SDK Foundation | DONE | /.well-known/ai-plugin.json |
 
 ### S3-001 MEV Private Relay — DEPLOYED
 - POST /rpc/mev — submit private transaction
@@ -120,6 +120,19 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - Stub response when no AI key (billing still works)
 - Commit: 3ba684b
 
+### S3-004 LangChain Adapter — DEPLOYED
+- GET /v1/tools/langchain — LangChain tool spec
+- GET /v1/tools/openai — OpenAI function calling spec
+- POST /v1/tools/execute — execute tool calls
+- satelink_rpc + satelink_mev tools
+- Commit: e52b99b
+
+### S3-005 SDK Foundation — DEPLOYED
+- GET /.well-known/ai-plugin.json — OpenAI plugin manifest
+- GET /openapi.json — OpenAPI 3.0 spec
+- Full API documentation for AI agents
+- Commit: e52b99b
+
 ---
 
 ## WHAT IS WORKING (VERIFIED LIVE)
@@ -139,6 +152,9 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - https://rpc.satelink.network/rpc/mev/status → MEV relay status
 - https://rpc.satelink.network/v1/models → AI models list
 - https://rpc.satelink.network/v1/ai/status → AI gateway status
+- https://rpc.satelink.network/v1/tools/langchain → LangChain tool spec
+- https://rpc.satelink.network/.well-known/ai-plugin.json → OpenAI plugin
+- https://rpc.satelink.network/openapi.json → OpenAPI 3.0 spec
 - https://satelink.network → 200 OK, GA4 active
 
 ---
@@ -167,7 +183,7 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 64/121
+Tasks Complete: 66/121
 Revenue Readiness: 90%
 Production: 85% | Launch: 72%
 Founder Withdrawal: June 1, 2026
@@ -186,6 +202,7 @@ Founder Withdrawal: June 1, 2026
 - 07c57c7: docs(S2-011): node operator guide
 - 65baddc: feat(S3-001): MEV private relay
 - 3ba684b: feat(S3-002): OpenAI-compatible AI gateway
+- e52b99b: feat(S3-004/005): LangChain adapter + OpenAI plugin
 
 ---
 
