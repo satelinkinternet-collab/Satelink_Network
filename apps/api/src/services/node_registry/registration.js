@@ -468,5 +468,59 @@ export function createNodeRegistryRouter(db, redis) {
     }
   });
 
+  router.post('/:nodeId/heartbeat', async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const { cpu_pct, ram_pct, uptime_seconds, rpc_calls_served } = req.body || {};
+
+      if (!db || !db.query) {
+        return res.status(503).json({ ok: false, error: 'Database unavailable' });
+      }
+
+      const nodeResult = await db.query(
+        'SELECT node_id, status FROM registered_nodes WHERE node_id = $1',
+        [nodeId]
+      );
+
+      if (nodeResult.rows.length === 0) {
+        return res.status(404).json({ ok: false, error: 'Node not found' });
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const currentStatus = nodeResult.rows[0].status;
+      const newStatus = currentStatus === 'pending' ? 'active' : currentStatus;
+
+      await db.query(
+        `UPDATE registered_nodes
+         SET last_heartbeat_at = $1, status = $2, updated_at = $1
+         WHERE node_id = $3`,
+        [now, newStatus, nodeId]
+      );
+
+      if (redis) {
+        try {
+          await redis.set(
+            `node:heartbeat:${nodeId}`,
+            JSON.stringify({ cpu_pct, ram_pct, uptime_seconds, rpc_calls_served, timestamp: now }),
+            'EX',
+            300
+          );
+        } catch (e) { /* redis optional */ }
+      }
+
+      console.log(`[NodeRegistry] Heartbeat: ${nodeId} status=${newStatus}`);
+
+      res.json({
+        ok: true,
+        nodeId,
+        status: newStatus,
+        lastHeartbeatAt: now
+      });
+    } catch (err) {
+      console.error('[NodeRegistry] Heartbeat error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to process heartbeat' });
+    }
+  });
+
   return router;
 }
