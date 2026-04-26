@@ -1,25 +1,38 @@
 # CURRENT TASK
 
-**Status:** IN_PROGRESS
-**Task:** Deploy S2-002 heartbeat endpoint
+**Status:** COMPLETED
+**Task:** Fix 3 Audit Issues
 **Started:** April 26, 2026
+**Completed:** April 26, 2026
 
-## Completed Steps
-- [x] FIX 1: SQLite removal (S0-008) — commit e54efe2
-- [x] FIX 2: Railway deploy — all 5 endpoints 200 OK
-- [x] FIX 3: S2-002 heartbeat endpoint — commit 1b514d7
-- [x] Update PROJECT_STATE.md with verified state
-- [ ] Deploy heartbeat to Railway
-- [ ] Test heartbeat endpoint on production
+## Summary
+Fixed all 3 critical issues found in audit:
 
-## Current Position
-File: apps/api/src/services/node_registry/registration.js
-Function: POST /:nodeId/heartbeat (lines 469-518)
-Status: Code ready, needs deploy
+### FIX 1: SQLite Removal (S0-008) — DONE
+- Removed sqlite fallback from env_v2.js
+- Simplified db/index.js to PostgreSQL-only
+- Commit: e54efe2
 
-## Test Command
-curl -X POST https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb/heartbeat \
-  -H "Content-Type: application/json" \
-  -d '{"cpu_pct":12,"ram_pct":34,"uptime_seconds":86400,"rpc_calls_served":1000}'
+### FIX 2: Railway Deploy — DONE
+All endpoints verified 200 OK:
+- /api/nodes
+- /rpc/metrics
+- /rpc/chains
+- /api/keys/create
+- /rpc/health
 
-Expected: {"ok":true,"nodeId":"NODE-ap-south-1-...","status":"active"}
+### FIX 3: S2-002 Heartbeat — DONE
+- POST /api/nodes/:nodeId/heartbeat endpoint added
+- Updates last_heartbeat_at timestamp
+- Changes status from "pending" to "active"
+- Verified: NODE-ap-south-1-a09becbb now active
+- Commit: 1b514d7
+
+## Verification
+```
+curl https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb
+→ status: "active", lastHeartbeatAt: 1777187145
+```
+
+## Next Task
+S2-003: Reputation scoring system
