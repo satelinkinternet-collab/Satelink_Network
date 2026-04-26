@@ -2,6 +2,7 @@ import express from "express";
 import revenueRoutes from "./src/routes/revenue.js";
 import { createRpcGateway } from "./src/workloads/rpc_gateway/rpc_gateway.js";
 import { createMevRelayRouter } from "./src/workloads/mev_relay/index.js";
+import { createAiGatewayRouter } from "./src/workloads/ai_gateway/index.js";
 import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
 import { createNodeRegistryRouter } from "./src/services/node_registry/registration.js";
 
@@ -33,6 +34,9 @@ export function createApp(pool, redis) {
 
   // MEV Private Relay (S3-001) — 10x pricing, requires API key
   app.use("/rpc/mev", createMevRelayRouter(pool, redis));
+
+  // AI Inference Gateway (S3-002) — OpenAI-compatible, per-token billing
+  app.use("/v1", createAiGatewayRouter(pool, redis));
 
   // API Key management
   app.use("/api/keys", createApiKeysRouter(pool));
