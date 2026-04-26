@@ -20,35 +20,54 @@ async function ensureTable(db) {
   if (!db || !db.query) return;
 
   try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS registered_nodes (
-        id SERIAL PRIMARY KEY,
-        node_id TEXT UNIQUE NOT NULL,
-        wallet TEXT NOT NULL,
-        node_type TEXT NOT NULL DEFAULT 'rpc',
-        endpoint_url TEXT NOT NULL,
-        region TEXT NOT NULL,
-        chain_ids JSONB NOT NULL DEFAULT '[]',
-        hardware_json JSONB,
-        status TEXT NOT NULL DEFAULT 'pending',
-        tier TEXT NOT NULL DEFAULT 'bronze',
-        reputation_score INTEGER DEFAULT 0,
-        uptime_pct NUMERIC(5,2) DEFAULT 0,
-        registered_at BIGINT NOT NULL,
-        last_heartbeat_at BIGINT,
-        updated_at BIGINT
+    const tableExists = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'registered_nodes'
       )
     `);
 
-    await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_registered_nodes_wallet ON registered_nodes(wallet)
-    `);
-    await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_registered_nodes_region ON registered_nodes(region)
-    `);
-    await db.query(`
-      CREATE INDEX IF NOT EXISTS idx_registered_nodes_status ON registered_nodes(status)
-    `);
+    if (!tableExists.rows[0]?.exists) {
+      await db.query(`
+        CREATE TABLE registered_nodes (
+          id SERIAL PRIMARY KEY,
+          node_id TEXT UNIQUE NOT NULL,
+          wallet TEXT NOT NULL,
+          node_type TEXT NOT NULL DEFAULT 'rpc',
+          endpoint_url TEXT NOT NULL,
+          region TEXT NOT NULL,
+          chain_ids JSONB NOT NULL DEFAULT '[]',
+          hardware_json JSONB,
+          status TEXT NOT NULL DEFAULT 'pending',
+          tier TEXT NOT NULL DEFAULT 'bronze',
+          reputation_score INTEGER DEFAULT 0,
+          uptime_pct NUMERIC(5,2) DEFAULT 0,
+          registered_at BIGINT NOT NULL,
+          last_heartbeat_at BIGINT,
+          updated_at BIGINT
+        )
+      `);
+      console.log('[NodeRegistry] Table created');
+    } else {
+      const migrations = [
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS region TEXT DEFAULT 'unknown'",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS endpoint_url TEXT DEFAULT ''",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS chain_ids JSONB DEFAULT '[]'",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS hardware_json JSONB",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS reputation_score INTEGER DEFAULT 0",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS uptime_pct NUMERIC(5,2) DEFAULT 0",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS last_heartbeat_at BIGINT",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS updated_at BIGINT"
+      ];
+      for (const sql of migrations) {
+        try { await db.query(sql); } catch (e) { /* column may already exist */ }
+      }
+      console.log('[NodeRegistry] Table migrated');
+    }
+
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_registered_nodes_wallet ON registered_nodes(wallet)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_registered_nodes_region ON registered_nodes(region)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_registered_nodes_status ON registered_nodes(status)`);
 
     console.log('[NodeRegistry] Table ensured');
   } catch (err) {
