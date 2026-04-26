@@ -50,12 +50,16 @@ async function ensureTable(db) {
       console.log('[NodeRegistry] Table created');
     } else {
       const migrations = [
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS node_type TEXT DEFAULT 'rpc'",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS region TEXT DEFAULT 'unknown'",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS endpoint_url TEXT DEFAULT ''",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS chain_ids JSONB DEFAULT '[]'",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS hardware_json JSONB",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'bronze'",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS reputation_score INTEGER DEFAULT 0",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS uptime_pct NUMERIC(5,2) DEFAULT 0",
+        "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS registered_at BIGINT DEFAULT 0",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS last_heartbeat_at BIGINT",
         "ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS updated_at BIGINT"
       ];
