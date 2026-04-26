@@ -11,13 +11,13 @@ Security         ████████░░ 80%
 RPC Gateway      ██████████ 100% (ALL endpoints LIVE)
 Settlement       ████████░░ 75% (epoch close + reputation)
 Website          ██████████ 100% (LIVE, all pages 200 OK)
-Node Onboarding  ████████░░ 75% (S2-001 to S2-008 DONE)
+Node Onboarding  █████████░ 90% (S2-001 to S2-010 DONE)
 Demand/Traffic   ██░░░░░░░░ 20% (Chainlist PR #2665 pending)
 Revenue          ███░░░░░░░ 30% (billing proven, no external traffic)
 
 ---
 
-## S2 STAGE SUMMARY (8/11 COMPLETE)
+## S2 STAGE SUMMARY (10/11 COMPLETE)
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -29,8 +29,8 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 | S2-006 Dashboard | DONE | apps/web/src/app/dashboard/ exists |
 | S2-007 Node Agent | DONE | agents/node-agent/ exists |
 | S2-008 Health Checks | DONE | 2-min scheduler, /health endpoint |
-| S2-009 Offline Detection | PENDING | Auto-mark nodes inactive |
-| S2-010 Earnings Aggregation | PENDING | Per-node earnings API |
+| S2-009 Offline Detection | DONE | 3 missed HB → offline, 24h → suspended |
+| S2-010 Earnings Aggregation | DONE | Per-epoch earnings with tier multipliers |
 | S2-011 Documentation | PENDING | Node operator docs |
 
 ---
@@ -69,6 +69,21 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - GET /system/health-monitor status endpoint
 - Commit: 3cf8baf
 
+### S2-009 Offline Detection — DEPLOYED
+- 3 missed heartbeats (6 min) → status = 'offline'
+- Heartbeat received → restore to 'active'
+- Offline > 24 hours → status = 'suspended'
+- Discord alerts for all state changes
+- GET /system/offline-detector status endpoint
+- Commit: 568db79
+
+### S2-010 Earnings Aggregation — DEPLOYED
+- node_earnings table with per-epoch records
+- Tier multipliers: platinum 1.10x, gold 1.00x, silver 0.95x, bronze 0.90x
+- Called automatically after epoch close
+- GET /api/nodes/:nodeId/earnings with epoch breakdown
+- Commit: 568db79
+
 ---
 
 ## WHAT IS WORKING (VERIFIED LIVE)
@@ -97,10 +112,9 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 ---
 
 ## NEXT TASKS
-1. S2-009: Offline detection (mark nodes inactive after 3 missed health checks)
-2. S2-010: Per-node earnings aggregation API
-3. S2-011: Node operator documentation
-4. Check Chainlist PR #2665 status
+1. S2-011: Node operator documentation
+2. Check Chainlist PR #2665 status
+3. S3 stage: Multi-chain expansion
 
 ---
 
@@ -114,7 +128,7 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 58/121
+Tasks Complete: 60/121
 Revenue Readiness: 90%
 Production: 85% | Launch: 72%
 Founder Withdrawal: June 1, 2026
@@ -129,6 +143,7 @@ Founder Withdrawal: June 1, 2026
 - 37daa3c: feat(S2-003): reputation scoring
 - cd1a986: feat(S2-004): wire reputation to epoch close
 - 3cf8baf: feat(S2-008): node health check monitoring
+- 568db79: feat(S2-009/010): offline detection + earnings aggregation
 
 ---
 
