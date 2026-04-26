@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
+import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -45,15 +46,23 @@ async function start() {
       res.json({ ok: true, ...getWsStats() });
     });
 
+    app.get('/system/health-monitor', (req, res) => {
+      res.json({ ok: true, ...healthMonitorStatus });
+    });
+
     const httpServer = createServer(app);
 
     createWsGateway(httpServer, pool);
+
+    // Start node health monitor (S2-008)
+    startHealthMonitor(pool);
 
     const PORT = process.env.PORT || 8080;
 
     httpServer.listen(PORT, () => {
       console.log(`✅ Satelink Backend Running on port ${PORT}`);
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
+      console.log(`🏥 Health monitor started (2min interval)`);
     });
 
   } catch (err) {

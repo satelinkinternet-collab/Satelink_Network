@@ -21,6 +21,7 @@ import {
   calculateReputationDelta,
   ensureReputationHistoryTable
 } from './reputation_engine.js';
+import { getNodeHealthSummary } from '../../scheduler/node_health_monitor.js';
 
 const VALID_REGIONS = ['ap-south-1', 'us-east-1', 'eu-west-1', 'ap-southeast-1'];
 const VALID_NODE_TYPES = ['rpc', 'bandwidth', 'compute'];
@@ -612,6 +613,37 @@ export function createNodeRegistryRouter(db, redis) {
     } catch (err) {
       console.error('[NodeRegistry] Reputation update error:', err.message);
       res.status(500).json({ ok: false, error: err.message || 'Failed to update reputation' });
+    }
+  });
+
+  router.get('/:nodeId/health', async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+
+      if (!db || !db.query) {
+        return res.status(503).json({ ok: false, error: 'Database unavailable' });
+      }
+
+      const nodeResult = await db.query(
+        'SELECT node_id, status FROM registered_nodes WHERE node_id = $1',
+        [nodeId]
+      );
+
+      if (nodeResult.rows.length === 0) {
+        return res.status(404).json({ ok: false, error: 'Node not found' });
+      }
+
+      const healthData = await getNodeHealthSummary(nodeId, db, 10);
+
+      res.json({
+        ok: true,
+        nodeId,
+        nodeStatus: nodeResult.rows[0].status,
+        health: healthData
+      });
+    } catch (err) {
+      console.error('[NodeRegistry] Health error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to get health data' });
     }
   });
 
