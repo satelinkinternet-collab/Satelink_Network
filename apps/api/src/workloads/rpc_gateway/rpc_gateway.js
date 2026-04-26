@@ -42,6 +42,7 @@ export function createRpcGateway(db) {
     router.get('/stats/:chain', async (req, res) => {
         const { chain } = req.params;
         try {
+console.log("REVENUE_TRY_START");
             const providerStats = await getRouterStats(chain);
             const cacheStats = getCacheStats();
             res.json({
@@ -55,6 +56,7 @@ export function createRpcGateway(db) {
                 }
             });
         } catch (err) {
+console.error("REVENUE_ERROR", err.message);
             res.status(500).json({ ok: false, error: err.message });
         }
     });
@@ -106,9 +108,11 @@ export function createRpcGateway(db) {
         }
 
         try {
+console.log("REVENUE_TRY_START");
             const result = await createApiKey(tier, owner);
             res.json({ ok: true, ...result });
         } catch (err) {
+console.error("REVENUE_ERROR", err.message);
             res.status(400).json({ ok: false, error: err.message });
         }
     });
@@ -162,6 +166,7 @@ export function createRpcGateway(db) {
         const params = body.params || [];
 
         try {
+console.log("REVENUE_TRY_START");
             const cachedResponse = await getCached(chain, method, params);
 
             if (cachedResponse) {
@@ -192,11 +197,13 @@ export function createRpcGateway(db) {
 }
 
 async function recordRevenue(db, source, client_id, request_id, chain) {
+console.log("REVENUE_CALLED", source, client_id, request_id, chain);
     if (!db || !db.query) return;
 
     const amount = CHAIN_PRICING_USDT[chain] || DEFAULT_RPC_REWARD_USDT;
 
     try {
+console.log("REVENUE_TRY_START");
         const now = Math.floor(Date.now() / 1000);
         await db.query(
             `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
