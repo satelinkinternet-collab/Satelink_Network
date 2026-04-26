@@ -7,10 +7,20 @@
  * - GET /api/nodes — List active nodes (public)
  * - GET /api/nodes/:nodeId — Get node details (public)
  * - GET /api/nodes/:nodeId/earnings — Get node earnings (authenticated)
+ * - POST /api/nodes/:nodeId/heartbeat — Update node heartbeat
+ * - GET /api/nodes/:nodeId/reputation — Get reputation score and history
  */
 
 import { Router } from 'express';
 import crypto from 'crypto';
+import {
+  getNodeTier,
+  getTierBenefits,
+  getNodeReputationHistory,
+  updateNodeReputation,
+  calculateReputationDelta,
+  ensureReputationHistoryTable
+} from './reputation_engine.js';
 
 const VALID_REGIONS = ['ap-south-1', 'us-east-1', 'eu-west-1', 'ap-southeast-1'];
 const VALID_NODE_TYPES = ['rpc', 'bandwidth', 'compute'];
@@ -133,6 +143,7 @@ export function createNodeRegistryRouter(db, redis) {
   const router = Router();
 
   ensureTable(db);
+  ensureReputationHistoryTable(db);
 
   router.post('/register', async (req, res) => {
     try {
@@ -519,6 +530,88 @@ export function createNodeRegistryRouter(db, redis) {
     } catch (err) {
       console.error('[NodeRegistry] Heartbeat error:', err.message);
       res.status(500).json({ ok: false, error: 'Failed to process heartbeat' });
+    }
+  });
+
+  router.get('/:nodeId/reputation', async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+
+      if (!db || !db.query) {
+        return res.status(503).json({ ok: false, error: 'Database unavailable' });
+      }
+
+      const nodeResult = await db.query(
+        'SELECT node_id, reputation_score, tier FROM registered_nodes WHERE node_id = $1',
+        [nodeId]
+      );
+
+      if (nodeResult.rows.length === 0) {
+        return res.status(404).json({ ok: false, error: 'Node not found' });
+      }
+
+      const { reputation_score, tier } = nodeResult.rows[0];
+      const score = reputation_score || 0;
+      const currentTier = tier || getNodeTier(score);
+      const benefits = getTierBenefits(currentTier);
+      const history = await getNodeReputationHistory(nodeId, db, 5);
+
+      res.json({
+        ok: true,
+        reputation: {
+          nodeId,
+          score,
+          tier: currentTier,
+          tierBenefits: benefits,
+          history: history.map(h => ({
+            epochId: h.epoch_id,
+            score: h.score,
+            tier: h.tier,
+            delta: h.delta,
+            createdAt: h.created_at
+          }))
+        }
+      });
+    } catch (err) {
+      console.error('[NodeRegistry] Reputation error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to get reputation' });
+    }
+  });
+
+  router.post('/:nodeId/reputation/update', async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const adminKey = req.headers['x-admin-key'];
+
+      if (adminKey !== process.env.ADMIN_API_KEY) {
+        return res.status(403).json({ ok: false, error: 'Admin access required' });
+      }
+
+      if (!db || !db.query) {
+        return res.status(503).json({ ok: false, error: 'Database unavailable' });
+      }
+
+      const { heartbeatsReceived, rpcCallsServed, missedHeartbeats, downtimeEvents, slaViolations } = req.body || {};
+
+      const epochStats = {
+        heartbeatsReceived: parseInt(heartbeatsReceived) || 0,
+        rpcCallsServed: parseInt(rpcCallsServed) || 0,
+        missedHeartbeats: parseInt(missedHeartbeats) || 0,
+        downtimeEvents: parseInt(downtimeEvents) || 0,
+        slaViolations: parseInt(slaViolations) || 0
+      };
+
+      const delta = calculateReputationDelta(epochStats);
+      const result = await updateNodeReputation(nodeId, delta, db);
+
+      res.json({
+        ok: true,
+        ...result,
+        tierBenefits: getTierBenefits(result.newTier)
+      });
+    } catch (err) {
+      console.error('[NodeRegistry] Reputation update error:', err.message);
+      res.status(500).json({ ok: false, error: err.message || 'Failed to update reputation' });
     }
   });
 
