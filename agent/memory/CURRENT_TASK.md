@@ -1,51 +1,42 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** S3-004/005 LangChain Adapter + SDK Foundation
+**Task:** S4-001 @satelink/sdk
 **Started:** April 26, 2026
 **Completed:** April 26, 2026
 
 ## Summary
-AI ecosystem integration — LangChain tools and OpenAI plugin manifest.
+Official TypeScript SDK for Satelink — blockchain RPC and AI inference.
 
 ## What Was Built
 
-### S3-004 LangChain Adapter
-- GET /v1/tools/langchain — LangChain tool spec
-- GET /v1/tools/openai — OpenAI function calling spec
-- POST /v1/tools/execute — execute tool calls
-- satelink_rpc + satelink_mev tools
+### @satelink/sdk package
+- `packages/sdk/` — full TypeScript SDK
+- `SatelinkRPC` — blockchain calls (getBlockNumber, getBalance, call, sendRawTransaction)
+- `SatelinkAI` — OpenAI-compatible chat/completions
+- `createProvider()` — EIP-1193 for ethers.js/viem/wagmi
+- Full type definitions (ChatMessage, JsonRpcRequest, etc.)
+- README with usage examples
 
-### S3-005 SDK Foundation
-- GET /.well-known/ai-plugin.json — OpenAI plugin manifest
-- GET /openapi.json — OpenAPI 3.0 spec
-- Full API documentation
-
-## Verification
-```bash
-curl https://rpc.satelink.network/v1/tools/langchain
-→ {"ok":true,"format":"langchain","tools":[{"name":"satelink_rpc"...}]}
-
-curl https://rpc.satelink.network/.well-known/ai-plugin.json
-→ {"schema_version":"v1","name_for_human":"Satelink RPC"...}
-
-curl https://rpc.satelink.network/openapi.json
-→ {"openapi":"3.0.0","info":{"title":"Satelink RPC Gateway"...}}
-```
+### Files Created
+- packages/sdk/package.json
+- packages/sdk/tsconfig.json
+- packages/sdk/src/types.ts
+- packages/sdk/src/rpc.ts
+- packages/sdk/src/ai.ts
+- packages/sdk/src/index.ts
+- packages/sdk/README.md
 
 ## Commit
-e52b99b feat(S3-004/005): LangChain adapter + OpenAI plugin manifest
+340a82e feat(S4-001): @satelink/sdk — SatelinkRPC, SatelinkAI, wagmi provider
 
-## S3 Stage: COMPLETE (5/5) ✅
-- S3-001: MEV Relay
-- S3-002: AI Gateway
-- S3-003: Per-Token Billing
-- S3-004: LangChain Adapter
-- S3-005: SDK Foundation
+## S4 Stage: IN PROGRESS (1/?)
+- S4-001: @satelink/sdk ✅
 
 ## Progress
-Tasks: 66/121 (55%)
-S2: COMPLETE | S3: COMPLETE
+Tasks: 67/121 (55%)
+S2: COMPLETE | S3: COMPLETE | S4: IN PROGRESS
 
-## Next Stage
-S4 or monitor external traffic from Chainlist
+## Next
+- Monitor external traffic from Chainlist
+- Continue S4 Developer Tools (CLI, docs)

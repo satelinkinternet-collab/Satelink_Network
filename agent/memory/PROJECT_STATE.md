@@ -1,7 +1,7 @@
 # SATELINK — PROJECT STATE
 
 ## STAGE
-LIVE-INFRASTRUCTURE / S3-MEV-AI-GATEWAY / CHAINLIST-MERGED
+LIVE-INFRASTRUCTURE / S4-SDK-DEVELOPER-TOOLS / CHAINLIST-MERGED
 
 ---
 
@@ -101,6 +101,22 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 | S3-004 LangChain Adapter | DONE | GET /v1/tools/langchain |
 | S3-005 SDK Foundation | DONE | /.well-known/ai-plugin.json |
 
+---
+
+## S4 STAGE SUMMARY (1/? IN PROGRESS)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| S4-001 @satelink/sdk | DONE | SatelinkRPC, SatelinkAI, EIP-1193 provider |
+
+### S4-001 @satelink/sdk — COMPLETE
+- packages/sdk/ — full TypeScript SDK
+- SatelinkRPC: getBlockNumber, getBalance, call, sendRawTransaction
+- SatelinkAI: chat, complete, models (OpenAI-compatible)
+- createProvider(): EIP-1193 for ethers.js/viem/wagmi
+- README with usage examples
+- Commit: 340a82e
+
 ### S3-001 MEV Private Relay — DEPLOYED
 - POST /rpc/mev — submit private transaction
 - POST /rpc/mev/bundle — submit MEV bundle
@@ -183,7 +199,7 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 66/121
+Tasks Complete: 67/121
 Revenue Readiness: 90%
 Production: 85% | Launch: 72%
 Founder Withdrawal: June 1, 2026
@@ -203,8 +219,9 @@ Founder Withdrawal: June 1, 2026
 - 65baddc: feat(S3-001): MEV private relay
 - 3ba684b: feat(S3-002): OpenAI-compatible AI gateway
 - e52b99b: feat(S3-004/005): LangChain adapter + OpenAI plugin
+- 340a82e: feat(S4-001): @satelink/sdk — SatelinkRPC, SatelinkAI, wagmi provider
 
 ---
 
 ## LAST UPDATED
-2026-04-26T18:15:00+05:30
+2026-04-26T19:30:00+05:30
