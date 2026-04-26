@@ -91,13 +91,13 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 
 ---
 
-## S3 STAGE SUMMARY (1/5 COMPLETE)
+## S3 STAGE SUMMARY (2/5 COMPLETE)
 
 | Task | Status | Notes |
 |------|--------|-------|
 | S3-001 MEV Relay | DONE | POST /rpc/mev — 10x revenue |
-| S3-002 AI Gateway | PENDING | OpenAI-compatible inference |
-| S3-003 Per-Token Billing | PENDING | AI billing in revenue_events_v2 |
+| S3-002 AI Gateway | DONE | POST /v1/chat/completions |
+| S3-003 Per-Token Billing | DONE | Built into S3-002 |
 | S3-004 Multi-Provider | PENDING | Route to multiple LLM providers |
 | S3-005 Streaming | PENDING | SSE for chat completions |
 
@@ -109,6 +109,16 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - Providers: Flashbots, MEV Blocker, LlamaRPC
 - Auth: API key required (no free tier)
 - Commit: 65baddc
+
+### S3-002 AI Inference Gateway — DEPLOYED
+- POST /v1/chat/completions — OpenAI-compatible chat
+- POST /v1/completions — legacy completion
+- GET /v1/models — list supported models
+- GET /v1/ai/status — gateway health/stats
+- Per-token billing: $0.000001/input, $0.000003/output
+- Model mapping: gpt-4o → claude-3-5-sonnet
+- Stub response when no AI key (billing still works)
+- Commit: 3ba684b
 
 ---
 
@@ -127,6 +137,8 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - https://rpc.satelink.network/api/nodes/:nodeId/heartbeat → heartbeat
 - https://rpc.satelink.network/api/nodes/:nodeId/reputation → reputation
 - https://rpc.satelink.network/rpc/mev/status → MEV relay status
+- https://rpc.satelink.network/v1/models → AI models list
+- https://rpc.satelink.network/v1/ai/status → AI gateway status
 - https://satelink.network → 200 OK, GA4 active
 
 ---
@@ -155,7 +167,7 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 62/121
+Tasks Complete: 64/121
 Revenue Readiness: 90%
 Production: 85% | Launch: 72%
 Founder Withdrawal: June 1, 2026
@@ -173,6 +185,7 @@ Founder Withdrawal: June 1, 2026
 - 568db79: feat(S2-009/010): offline detection + earnings aggregation
 - 07c57c7: docs(S2-011): node operator guide
 - 65baddc: feat(S3-001): MEV private relay
+- 3ba684b: feat(S3-002): OpenAI-compatible AI gateway
 
 ---
 
