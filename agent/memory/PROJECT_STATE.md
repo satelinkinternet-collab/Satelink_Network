@@ -6,12 +6,12 @@ LIVE-INFRASTRUCTURE / S2-NODE-ONBOARDING / PRE-EXTERNAL-TRAFFIC
 ---
 
 ## PROGRESS (VERIFIED 2026-04-26)
-System Build     ████████░░ 80%
+System Build     ████████░░ 82%
 Security         ████████░░ 80%
 RPC Gateway      ██████████ 100% (ALL endpoints LIVE)
 Settlement       ██████░░░░ 60%
 Website          ██████████ 100% (LIVE, all pages 200 OK)
-Node Onboarding  ███░░░░░░░ 30% (S2-001 DONE, S2-002 DONE)
+Node Onboarding  █████░░░░░ 50% (S2-001, S2-002, S2-003 DONE)
 Demand/Traffic   ██░░░░░░░░ 20% (Chainlist PR #2665 pending)
 Revenue          ███░░░░░░░ 30% (billing proven, no external traffic)
 
@@ -24,25 +24,25 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - db/index.js: simplified to PostgreSQL-only
 - Commit: e54efe2
 
-### Railway Deploy — DONE
-All endpoints now returning 200:
-- /api/nodes → 200 (empty list)
-- /rpc/metrics → 200
-- /rpc/chains → 200
-- /api/keys/create → 200
-- /rpc/health → 200
-
 ### S2-001 Node Registration — DEPLOYED + WORKING
 - POST /api/nodes/register → creates nodes
 - GET /api/nodes → lists nodes
 - GET /api/nodes/:nodeId → node details
 - Test: NODE-ap-south-1-a09becbb registered successfully
 
-### S2-002 Heartbeat Endpoint — DONE
+### S2-002 Heartbeat Endpoint — DEPLOYED + WORKING
 - POST /api/nodes/:nodeId/heartbeat
 - Updates last_heartbeat_at
 - Activates pending nodes on first heartbeat
-- Commit: 1b514d7
+
+### S2-003 Reputation Scoring — DEPLOYED + WORKING
+- GET /api/nodes/:nodeId/reputation → score, tier, benefits, history
+- POST /api/nodes/:nodeId/reputation/update → admin endpoint
+- Score: 0-1000 points
+- Tiers: bronze(0-199), silver(200-399), gold(400-699), platinum(700-1000)
+- Scoring: +10/heartbeat, +5/rpc call, -20/missed, -50/downtime
+- Tier benefits: daily limits, earnings multiplier (0.9-1.1)
+- Commit: 37daa3c
 
 ---
 
@@ -58,6 +58,8 @@ All endpoints now returning 200:
 - https://rpc.satelink.network/api/keys/create → API key generation
 - https://rpc.satelink.network/api/nodes → node list (200 OK)
 - https://rpc.satelink.network/api/nodes/register → node registration
+- https://rpc.satelink.network/api/nodes/:nodeId/heartbeat → heartbeat
+- https://rpc.satelink.network/api/nodes/:nodeId/reputation → reputation
 - https://satelink.network → 200 OK, GA4 active
 - Railway: PostgreSQL + Upstash Redis + backend
 
@@ -71,9 +73,9 @@ All endpoints now returning 200:
 ---
 
 ## NEXT TASKS
-1. S2-003: Reputation scoring system
-2. S2-004: Node tier upgrade logic
-3. Deploy heartbeat endpoint to production
+1. S2-004: Wire reputation to epoch close job
+2. S2-005: Quality-weighted routing (high reputation = more traffic)
+3. S2-006: Node dashboard UI
 4. Check Chainlist PR #2665 status
 
 ---
@@ -88,9 +90,9 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 55/121
+Tasks Complete: 56/121
 Revenue Readiness: 88%
-Production: 80% | Launch: 68%
+Production: 82% | Launch: 70%
 Founder Withdrawal: June 1, 2026
 
 ---
@@ -100,8 +102,11 @@ Founder Withdrawal: June 1, 2026
 - 9a2d5b1: fix(S2-001): auto-migrate registered_nodes columns
 - 99e7d2b: fix(S2-001): add all missing columns to migration
 - 1b514d7: feat(S2-002): add heartbeat endpoint
+- c9c1748: docs(state): update PROJECT_STATE.md
+- 919a4ef: docs(task): mark audit fixes complete
+- 37daa3c: feat(S2-003): reputation scoring
 
 ---
 
 ## LAST UPDATED
-2026-04-26T12:30:00+05:30
+2026-04-26T13:00:00+05:30

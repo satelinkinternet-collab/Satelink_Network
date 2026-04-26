@@ -1,38 +1,32 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** Fix 3 Audit Issues
+**Task:** S2-003 Reputation Scoring System
 **Started:** April 26, 2026
 **Completed:** April 26, 2026
 
 ## Summary
-Fixed all 3 critical issues found in audit:
+Implemented complete reputation scoring system for DePIN nodes.
 
-### FIX 1: SQLite Removal (S0-008) — DONE
-- Removed sqlite fallback from env_v2.js
-- Simplified db/index.js to PostgreSQL-only
-- Commit: e54efe2
+## What Was Built
+- `apps/api/src/services/node_registry/reputation_engine.js` (new file)
+- GET /api/nodes/:nodeId/reputation endpoint
+- POST /api/nodes/:nodeId/reputation/update (admin)
 
-### FIX 2: Railway Deploy — DONE
-All endpoints verified 200 OK:
-- /api/nodes
-- /rpc/metrics
-- /rpc/chains
-- /api/keys/create
-- /rpc/health
-
-### FIX 3: S2-002 Heartbeat — DONE
-- POST /api/nodes/:nodeId/heartbeat endpoint added
-- Updates last_heartbeat_at timestamp
-- Changes status from "pending" to "active"
-- Verified: NODE-ap-south-1-a09becbb now active
-- Commit: 1b514d7
+## Scoring System
+- Score: 0-1000 points
+- Tiers: bronze(0-199), silver(200-399), gold(400-699), platinum(700-1000)
+- Per epoch: +10/heartbeat, +5/rpc call, -20/missed, -50/downtime, -100/SLA violation
+- Tier benefits: daily limits (1k-unlimited), earnings multiplier (0.9-1.1)
 
 ## Verification
-```
-curl https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb
-→ status: "active", lastHeartbeatAt: 1777187145
+```bash
+curl https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb/reputation
+→ {"ok":true,"reputation":{"nodeId":"NODE-ap-south-1-a09becbb","score":0,"tier":"bronze"...}}
 ```
 
+## Commit
+37daa3c feat(S2-003): reputation scoring — 4 tiers, epoch-based, earnings multiplier
+
 ## Next Task
-S2-003: Reputation scoring system
+S2-004: Wire reputation to epoch close job
