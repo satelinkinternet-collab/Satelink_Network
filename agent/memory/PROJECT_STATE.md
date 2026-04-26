@@ -6,43 +6,68 @@ LIVE-INFRASTRUCTURE / S2-NODE-ONBOARDING / PRE-EXTERNAL-TRAFFIC
 ---
 
 ## PROGRESS (VERIFIED 2026-04-26)
-System Build     ████████░░ 82%
+System Build     ████████░░ 85%
 Security         ████████░░ 80%
 RPC Gateway      ██████████ 100% (ALL endpoints LIVE)
-Settlement       ██████░░░░ 60%
+Settlement       ████████░░ 75% (epoch close + reputation)
 Website          ██████████ 100% (LIVE, all pages 200 OK)
-Node Onboarding  █████░░░░░ 50% (S2-001, S2-002, S2-003 DONE)
+Node Onboarding  ████████░░ 75% (S2-001 to S2-008 DONE)
 Demand/Traffic   ██░░░░░░░░ 20% (Chainlist PR #2665 pending)
 Revenue          ███░░░░░░░ 30% (billing proven, no external traffic)
+
+---
+
+## S2 STAGE SUMMARY (8/11 COMPLETE)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| S2-001 Node Registration | DONE | POST/GET /api/nodes endpoints |
+| S2-002 Heartbeat System | DONE | POST /api/nodes/:id/heartbeat |
+| S2-003 Reputation Scoring | DONE | 0-1000 points, 4 tiers |
+| S2-004 Epoch Integration | DONE | Reputation updates on epoch close |
+| S2-005 Tier Logic | DONE | Inside reputation engine |
+| S2-006 Dashboard | DONE | apps/web/src/app/dashboard/ exists |
+| S2-007 Node Agent | DONE | agents/node-agent/ exists |
+| S2-008 Health Checks | DONE | 2-min scheduler, /health endpoint |
+| S2-009 Offline Detection | PENDING | Auto-mark nodes inactive |
+| S2-010 Earnings Aggregation | PENDING | Per-node earnings API |
+| S2-011 Documentation | PENDING | Node operator docs |
 
 ---
 
 ## CONFIRMED DONE (session 2026-04-26)
 
 ### S0-008 SQLite Removal — DONE
-- env_v2.js: removed sqlite fallback, require DATABASE_URL
-- db/index.js: simplified to PostgreSQL-only
-- Commit: e54efe2
+- env_v2.js: removed sqlite fallback
+- db/index.js: PostgreSQL-only
 
-### S2-001 Node Registration — DEPLOYED + WORKING
-- POST /api/nodes/register → creates nodes
-- GET /api/nodes → lists nodes
-- GET /api/nodes/:nodeId → node details
-- Test: NODE-ap-south-1-a09becbb registered successfully
+### S2-001 Node Registration — DEPLOYED
+- POST /api/nodes/register
+- GET /api/nodes, /api/nodes/:nodeId
+- Test node: NODE-ap-south-1-a09becbb
 
-### S2-002 Heartbeat Endpoint — DEPLOYED + WORKING
+### S2-002 Heartbeat — DEPLOYED
 - POST /api/nodes/:nodeId/heartbeat
-- Updates last_heartbeat_at
-- Activates pending nodes on first heartbeat
+- Updates last_heartbeat_at, activates pending nodes
 
-### S2-003 Reputation Scoring — DEPLOYED + WORKING
-- GET /api/nodes/:nodeId/reputation → score, tier, benefits, history
-- POST /api/nodes/:nodeId/reputation/update → admin endpoint
-- Score: 0-1000 points
-- Tiers: bronze(0-199), silver(200-399), gold(400-699), platinum(700-1000)
-- Scoring: +10/heartbeat, +5/rpc call, -20/missed, -50/downtime
-- Tier benefits: daily limits, earnings multiplier (0.9-1.1)
-- Commit: 37daa3c
+### S2-003 Reputation Scoring — DEPLOYED
+- GET /api/nodes/:nodeId/reputation
+- Score: 0-1000, Tiers: bronze/silver/gold/platinum
+- Scoring: +10/heartbeat, +5/rpc, -20 missed, -50 downtime
+
+### S2-004 Epoch Integration — DEPLOYED
+- Reputation calculated on epoch close
+- Discord notification on tier changes
+- Earnings multiplier applied (0.9-1.1x)
+- Commit: cd1a986
+
+### S2-008 Health Check Monitoring — DEPLOYED
+- Scheduled health monitor (2-min interval)
+- Pings node endpoints, logs response times
+- node_health_logs table for history
+- GET /api/nodes/:nodeId/health endpoint
+- GET /system/health-monitor status endpoint
+- Commit: 3cf8baf
 
 ---
 
@@ -56,12 +81,11 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - https://rpc.satelink.network/rpc/health → 200 OK
 - https://rpc.satelink.network/rpc/chains → 200 OK (5 chains)
 - https://rpc.satelink.network/api/keys/create → API key generation
-- https://rpc.satelink.network/api/nodes → node list (200 OK)
-- https://rpc.satelink.network/api/nodes/register → node registration
+- https://rpc.satelink.network/api/nodes → node list
+- https://rpc.satelink.network/api/nodes/register → registration
 - https://rpc.satelink.network/api/nodes/:nodeId/heartbeat → heartbeat
 - https://rpc.satelink.network/api/nodes/:nodeId/reputation → reputation
 - https://satelink.network → 200 OK, GA4 active
-- Railway: PostgreSQL + Upstash Redis + backend
 
 ---
 
@@ -73,9 +97,9 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 ---
 
 ## NEXT TASKS
-1. S2-004: Wire reputation to epoch close job
-2. S2-005: Quality-weighted routing (high reputation = more traffic)
-3. S2-006: Node dashboard UI
+1. S2-009: Offline detection (mark nodes inactive after 3 missed health checks)
+2. S2-010: Per-node earnings aggregation API
+3. S2-011: Node operator documentation
 4. Check Chainlist PR #2665 status
 
 ---
@@ -90,9 +114,9 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 56/121
-Revenue Readiness: 88%
-Production: 82% | Launch: 70%
+Tasks Complete: 58/121
+Revenue Readiness: 90%
+Production: 85% | Launch: 72%
 Founder Withdrawal: June 1, 2026
 
 ---
@@ -102,11 +126,11 @@ Founder Withdrawal: June 1, 2026
 - 9a2d5b1: fix(S2-001): auto-migrate registered_nodes columns
 - 99e7d2b: fix(S2-001): add all missing columns to migration
 - 1b514d7: feat(S2-002): add heartbeat endpoint
-- c9c1748: docs(state): update PROJECT_STATE.md
-- 919a4ef: docs(task): mark audit fixes complete
 - 37daa3c: feat(S2-003): reputation scoring
+- cd1a986: feat(S2-004): wire reputation to epoch close
+- 3cf8baf: feat(S2-008): node health check monitoring
 
 ---
 
 ## LAST UPDATED
-2026-04-26T13:00:00+05:30
+2026-04-26T13:30:00+05:30

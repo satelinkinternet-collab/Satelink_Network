@@ -1,32 +1,36 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** S2-003 Reputation Scoring System
+**Task:** S2-008 Node Health Check Monitoring
 **Started:** April 26, 2026
 **Completed:** April 26, 2026
 
 ## Summary
-Implemented complete reputation scoring system for DePIN nodes.
+Scheduled health checks for registered nodes — ping endpoints every 2 min.
 
 ## What Was Built
-- `apps/api/src/services/node_registry/reputation_engine.js` (new file)
-- GET /api/nodes/:nodeId/reputation endpoint
-- POST /api/nodes/:nodeId/reputation/update (admin)
+- `apps/api/src/scheduler/node_health_monitor.js` (new file)
+- GET /api/nodes/:nodeId/health endpoint
+- GET /system/health-monitor status endpoint
+- node_health_logs table auto-migration
 
-## Scoring System
-- Score: 0-1000 points
-- Tiers: bronze(0-199), silver(200-399), gold(400-699), platinum(700-1000)
-- Per epoch: +10/heartbeat, +5/rpc call, -20/missed, -50/downtime, -100/SLA violation
-- Tier benefits: daily limits (1k-unlimited), earnings multiplier (0.9-1.1)
+## Features
+- Batch checks nodes every 2 minutes (10 concurrent max)
+- Logs response time and status per check
+- getNodeHealthSummary(): 24-hour health rate calculation
+- Feeds into reputation scoring and offline detection
 
 ## Verification
 ```bash
-curl https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb/reputation
-→ {"ok":true,"reputation":{"nodeId":"NODE-ap-south-1-a09becbb","score":0,"tier":"bronze"...}}
+curl https://rpc.satelink.network/system/health-monitor
+→ {"ok":true,"last_run_time":null,"last_status":null,...}
+
+curl https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb/health
+→ {"ok":true,"nodeId":"NODE-ap-south-1-a09becbb","nodeStatus":"active",...}
 ```
 
 ## Commit
-37daa3c feat(S2-003): reputation scoring — 4 tiers, epoch-based, earnings multiplier
+3cf8baf feat(S2-008): node health check monitoring
 
 ## Next Task
-S2-004: Wire reputation to epoch close job
+S2-009: Offline detection (mark nodes inactive after 3 consecutive failed health checks)
