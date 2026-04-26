@@ -1,7 +1,7 @@
 # SATELINK — PROJECT STATE
 
 ## STAGE
-LIVE-INFRASTRUCTURE / S2-NODE-ONBOARDING / PRE-EXTERNAL-TRAFFIC
+LIVE-INFRASTRUCTURE / S3-MEV-AI-GATEWAY / CHAINLIST-MERGED
 
 ---
 
@@ -12,7 +12,7 @@ RPC Gateway      ██████████ 100% (ALL endpoints LIVE)
 Settlement       ████████░░ 75% (epoch close + reputation)
 Website          ██████████ 100% (LIVE, all pages 200 OK)
 Node Onboarding  ██████████ 100% ✅ (S2 COMPLETE)
-Demand/Traffic   ██░░░░░░░░ 20% (Chainlist PR #2665 pending)
+Demand/Traffic   ████░░░░░░ 40% (Chainlist PR #2665 MERGED ✅)
 Revenue          ███░░░░░░░ 30% (billing proven, no external traffic)
 
 ---
@@ -91,6 +91,27 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 
 ---
 
+## S3 STAGE SUMMARY (1/5 COMPLETE)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| S3-001 MEV Relay | DONE | POST /rpc/mev — 10x revenue |
+| S3-002 AI Gateway | PENDING | OpenAI-compatible inference |
+| S3-003 Per-Token Billing | PENDING | AI billing in revenue_events_v2 |
+| S3-004 Multi-Provider | PENDING | Route to multiple LLM providers |
+| S3-005 Streaming | PENDING | SSE for chat completions |
+
+### S3-001 MEV Private Relay — DEPLOYED
+- POST /rpc/mev — submit private transaction
+- POST /rpc/mev/bundle — submit MEV bundle
+- GET /rpc/mev/status — relay health/stats
+- Pricing: $0.001/tx (10x standard), $0.005/bundle
+- Providers: Flashbots, MEV Blocker, LlamaRPC
+- Auth: API key required (no free tier)
+- Commit: 65baddc
+
+---
+
 ## WHAT IS WORKING (VERIFIED LIVE)
 - https://rpc.satelink.network/health → ok
 - https://rpc.satelink.network/rpc/amoy → real Polygon blocks
@@ -105,21 +126,22 @@ Revenue          ███░░░░░░░ 30% (billing proven, no external
 - https://rpc.satelink.network/api/nodes/register → registration
 - https://rpc.satelink.network/api/nodes/:nodeId/heartbeat → heartbeat
 - https://rpc.satelink.network/api/nodes/:nodeId/reputation → reputation
+- https://rpc.satelink.network/rpc/mev/status → MEV relay status
 - https://satelink.network → 200 OK, GA4 active
 
 ---
 
 ## BLOCKERS / ERRORS
-- Chainlist PR #2665 waiting for maintainer merge
+- Chainlist PR #2665: MERGED ✅ — awaiting propagation
 - WS Alchemy demo key 429 (add WS_POLYGON_AMOY env)
-- External traffic: ZERO until Chainlist merges
+- External traffic: monitoring for first real calls
 
 ---
 
 ## NEXT TASKS
-1. S3 stage: MEV + AI Gateway expansion
-2. Check Chainlist PR #2665 status
-3. External traffic acquisition
+1. S3-002: AI Gateway (OpenAI-compatible inference)
+2. S3-003: Per-token billing
+3. Monitor external traffic (Chainlist merged)
 
 ---
 
@@ -133,7 +155,7 @@ Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 ---
 
 ## TASK COUNTER
-Tasks Complete: 61/121
+Tasks Complete: 62/121
 Revenue Readiness: 90%
 Production: 85% | Launch: 72%
 Founder Withdrawal: June 1, 2026
@@ -150,8 +172,9 @@ Founder Withdrawal: June 1, 2026
 - 3cf8baf: feat(S2-008): node health check monitoring
 - 568db79: feat(S2-009/010): offline detection + earnings aggregation
 - 07c57c7: docs(S2-011): node operator guide
+- 65baddc: feat(S3-001): MEV private relay
 
 ---
 
 ## LAST UPDATED
-2026-04-26T13:30:00+05:30
+2026-04-26T18:15:00+05:30
