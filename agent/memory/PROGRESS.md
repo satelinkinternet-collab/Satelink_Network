@@ -1,39 +1,38 @@
 # SATELINK PROGRESS TRACKER
-# Updated: April 25, 2026
+# Updated: April 26, 2026 (AUDIT VERIFIED)
 # Network: Polygon (migrated from Fuse)
-# DB: PostgreSQL (migrated from SQLite)
+# DB: PostgreSQL (SQLite refs still in code — needs cleanup)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 61 | In Progress: 0 | Pending: 60
-Revenue Readiness: 92% | Production: 78% | Launch: 65%
+Total Tasks: 121 | Complete: 52 | In Progress: 2 | Pending: 67
+Revenue Readiness: 85% | Production: 70% | Launch: 60%
 Active URL: https://rpc.satelink.network
 Chainlist PR: #2665 OPEN (pending merge)
-S1-RPC: COMPLETE (12/12 tasks) — Multi-RPC Gateway Architecture
-Website: DEPLOYED ✅ (Premium rebuild April 25, 2026)
+S1-RPC: 90% COMPLETE (code done, partial deploy)
+Website: DEPLOYED ✅ (all pages verified 200 OK)
   URL: https://satelink.network
-  Pages: 11 (8 main + 3 legal)
-  GA4: G-GS4195MH7N integrated
-  SEO: sitemap + robots + JSON-LD + OG tags
-  Design: Ink palette + Signal teal (#1AFFD4) accent
+  Pages: 11 (8 main + 3 legal) — ALL VERIFIED
+  GA4: G-GS4195MH7N integrated (2 refs found)
+CRITICAL: Railway deploy OUTDATED — many endpoints return 404
 
-## STAGE S0 — Production Blockers & Security Foundation (8/15)
+## STAGE S0 — Production Blockers & Security Foundation (9/15)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
-| S0-001 | NodeRegistryV2 contract | DONE | AccessControl + Pausable |
-| S0-002 | RevenueDistributor contract | DONE | USDT ERC-20, Polygon |
-| S0-003 | ClaimsContract | DONE | ReentrancyGuard, 10 USDT min, 24h cooldown |
-| S0-004 | SplitEngine | DONE | Governance basis points, 5% cap |
-| S0-005 | Branch consolidation (35 branches) | PENDING | |
-| S0-006 | env.js hard-fail on missing JWT_SECRET | DONE | No fallback |
-| S0-007 | Fix billing middleware async bugs | DONE | Fixed 5 files, 15+ missing awaits |
-| S0-008 | Fix all 9 async/sync DB bugs | PENDING | P0 — silent data corruption |
-| S0-009 | Remove 733 duplicate OZ files in utils/lib/ | PENDING | |
-| S0-010 | Remove 4 fake stub services | PENDING | |
-| S0-011 | Remove real JWT from token.txt | DONE | Purged from git history via git-filter-repo |
-| S0-012 | .env.example with all vars | DONE | |
-| S0-013 | Security gates + ecosystem setup | DONE | All 6 gates pass |
-| S0-014 | Git branch governance + protection rules | DONE | Pre-commit hooks, Dependabot, CI security |
-| S0-015 | CI security gate scripts | PENDING | |
+| S0-001 | NodeRegistryV2 contract | DONE | VERIFIED: contracts/NodeRegistryV2.sol |
+| S0-002 | RevenueDistributor contract | DONE | VERIFIED: contracts/RevenueDistributor.sol |
+| S0-003 | ClaimsContract | DONE | VERIFIED: contracts/ClaimsContract.sol |
+| S0-004 | SplitEngine | DONE | VERIFIED: contracts/SplitEngine.sol, 10000 basis points |
+| S0-005 | Branch consolidation (35 branches) | DONE | VERIFIED: 8 branches now (down from 35) |
+| S0-006 | env.js hard-fail on missing JWT_SECRET | DONE | VERIFIED: auth_v2.js:148,201 throws |
+| S0-007 | Fix billing middleware async bugs | DONE | VERIFIED: 385 await calls in gateway routes |
+| S0-008 | Remove SQLite references | PENDING | FOUND: env_v2.js:11,35 + db/index.js:17 |
+| S0-009 | Remove 733 duplicate OZ files in utils/lib/ | DONE | VERIFIED: no contracts/lib/ dir exists |
+| S0-010 | Remove 4 fake stub services | DONE | VERIFIED: no stub matches in services |
+| S0-011 | Remove real JWT from token.txt | PARTIAL | FOUND: 1 ref still in git history |
+| S0-012 | .env.example with all vars | DONE | VERIFIED: file exists |
+| S0-013 | Security gates + ecosystem setup | DONE | VERIFIED: 6 scripts in scripts/security/ |
+| S0-014 | Git branch governance + protection rules | DONE | VERIFIED: 9 workflows in .github/workflows/ |
+| S0-015 | CI security gate scripts | DONE | VERIFIED: security-gate.yml exists |
 
 ## PHASE P1 — Revenue Infrastructure (6/6 COMPLETE)
 | ID | Task | Status | Notes |
@@ -106,7 +105,21 @@ Website: DEPLOYED ✅ (Premium rebuild April 25, 2026)
 | S1-RPC-011 | API key creation flow | DONE | api_keys.js, PostgreSQL, self-service |
 | S1-RPC-012 | Load test + 5000 RPS verification | DONE | 60+ RPS sustained, rate limit verified |
 
-## STAGES S2–S9 — See Master Execution Plan
+## STAGE S2 — Node Onboarding (AUDIT VERIFIED 2026-04-26)
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| S2-001 | Node registration API | CODE READY | registration.js exists, NOT DEPLOYED to Railway |
+| S2-002 | Node heartbeat + uptime | PARTIAL | dashboard_api + node_heartbeat.js exist |
+| S2-003 | Reputation scoring | PARTIAL | node_reputation.js + reputation_engine.js exist |
+| S2-004 | Geographic routing | DONE | traffic_balancer.js, global_gateway_router.js |
+| S2-005 | Tier upgrade logic | PARTIAL | reputation_engine.js has gold/platinum logic |
+| S2-006 | Dashboard pages | DONE | apps/web/src/app/dashboard/ exists |
+| S2-007 | Node agent | DONE | agents/node-agent/ directory exists |
+| S2-008 | Node health checks | DONE | cron_source.js node_health_poll |
+| S2-009 | Offline detection | PENDING | No direct implementation found |
+| S2-010 | Node earnings API | DONE | epoch_earnings + nodes_overview.js |
+
+## STAGES S3–S9 — See Master Execution Plan
 [Reference: Satelink_Master_Execution_Plan.docx]
 
 ---
