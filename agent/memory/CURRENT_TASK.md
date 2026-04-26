@@ -1,39 +1,35 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** S2-009 + S2-010 (Offline Detection + Earnings Aggregation)
+**Task:** S2-011 Node Operator Documentation
 **Started:** April 26, 2026
 **Completed:** April 26, 2026
 
 ## Summary
-Offline detection and per-node earnings aggregation with tier multipliers.
+Created comprehensive node operator guide for DePIN node operators.
 
 ## What Was Built
-
-### S2-009 Offline Detection
-- `apps/api/src/services/node_registry/offline_detector.js` (new)
-- 3 missed heartbeats (6 min) → status = 'offline'
-- Heartbeat on offline node → restore to 'active' + Discord alert
-- Offline > 24 hours → status = 'suspended'
-- GET /system/offline-detector status endpoint
-
-### S2-010 Earnings Aggregation
-- `apps/api/src/services/node_registry/earnings_aggregator.js` (new)
-- node_earnings table with tier multipliers (platinum: 1.10x, gold: 1.00x, silver: 0.95x, bronze: 0.90x)
-- Wired into epoch close job
-- GET /api/nodes/:nodeId/earnings with per-epoch breakdown
-
-## Verification
-```bash
-curl https://rpc.satelink.network/system/offline-detector
-→ {"ok":true,"last_run_time":null,"last_status":null,...}
-
-curl https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb/earnings
-→ {"ok":true,"earnings":{"total_earned_usdt":0,"pending_usdt":0,"epochs_participated":0,...}}
-```
+- `docs/NODE_OPERATOR_GUIDE.md`
+- Covers: setup, earnings model, hardware requirements, reputation tiers, API reference
 
 ## Commit
-568db79 feat(S2-009/010): offline detection + earnings aggregation
+07c57c7 docs(S2-011): node operator guide — setup, earnings, tiers, API reference
 
-## S2 Progress
-10/11 complete. Only S2-011 (documentation) remaining.
+## S2 Stage Status
+**COMPLETE (11/11)** ✅
+
+All S2 tasks done:
+- S2-001: Node registration API
+- S2-002: Heartbeat system
+- S2-003: Reputation scoring
+- S2-004: Epoch integration
+- S2-005: Tier logic
+- S2-006: Dashboard
+- S2-007: Node agent
+- S2-008: Health checks
+- S2-009: Offline detection
+- S2-010: Earnings aggregation
+- S2-011: Documentation
+
+## Next Stage
+S3: MEV + AI Gateway
