@@ -2,8 +2,9 @@ import express from "express";
 import revenueRoutes from "./src/routes/revenue.js";
 import { createRpcGateway } from "./src/workloads/rpc_gateway/rpc_gateway.js";
 import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
+import { createNodeRegistryRouter } from "./src/services/node_registry/registration.js";
 
-export function createApp(pool) {
+export function createApp(pool, redis) {
   const app = express();
 
   app.use(express.json());
@@ -34,6 +35,9 @@ export function createApp(pool) {
 
   // Revenue API routes
   app.use("/api", revenueRoutes(pool));
+
+  // Node Registry (S2-001)
+  app.use("/api/nodes", createNodeRegistryRouter(pool, redis));
 
   return app;
 }

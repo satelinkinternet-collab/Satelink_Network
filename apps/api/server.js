@@ -2,8 +2,30 @@ import { createServer } from 'http';
 import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import pkg from "pg";
+import Redis from "ioredis";
 
 const { Pool } = pkg;
+
+function createRedisClient() {
+  const url = process.env.REDIS_URL;
+  if (!url || url === 'redis://') {
+    console.log('[Redis] No REDIS_URL configured, running without Redis');
+    return null;
+  }
+
+  try {
+    const redis = new Redis(url, {
+      maxRetriesPerRequest: 3,
+      tls: url.startsWith('rediss://') ? {} : undefined
+    });
+    redis.on('error', (err) => console.error('[Redis] Error:', err.message));
+    redis.on('connect', () => console.log('[Redis] Connected'));
+    return redis;
+  } catch (err) {
+    console.error('[Redis] Failed to create client:', err.message);
+    return null;
+  }
+}
 
 async function start() {
   try {
@@ -16,7 +38,8 @@ async function start() {
         : false,
     });
 
-    const app = createApp(pool);
+    const redis = createRedisClient();
+    const app = createApp(pool, redis);
 
     app.get('/ws/stats', (req, res) => {
       res.json({ ok: true, ...getWsStats() });

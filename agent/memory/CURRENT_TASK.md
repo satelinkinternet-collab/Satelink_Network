@@ -1,26 +1,29 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** Website Premium Rebuild
-**Started:** April 25, 2026
-**Completed:** April 25, 2026
+**Task:** S2-001 Node Registration API
+**Started:** April 26, 2026
+**Completed:** April 26, 2026
 
 ## Summary
-Rebuilt Satelink website with premium design system and deployed to production.
+Built complete node registration flow for DePIN network operators.
 
 ## Completed Steps
-- [x] Created agent/memory/PROJECT_STATE.md
-- [x] Updated apps/web/src/styles/satelink.css (new design system)
-- [x] Updated apps/web/src/app/layout.tsx (GA4)
-- [x] Updated all 9 marketing components
-- [x] Fixed Next.js 16 build issues (typescript, styled-jsx, global-error)
-- [x] Deployed to Vercel `web` project
-- [x] Assigned satelink.network domain to new deployment
-- [x] Verified: HTTP 200, GA4 tag present
+- [x] Created apps/api/src/services/node_registry/registration.js
+- [x] POST /api/nodes/register endpoint (wallet, endpoint, region, chains)
+- [x] GET /api/nodes endpoint (list with pagination, filters)
+- [x] GET /api/nodes/:nodeId endpoint (single node details)
+- [x] GET /api/nodes/:nodeId/earnings endpoint (authenticated)
+- [x] Created sql/013_registered_nodes.sql migration
+- [x] Updated app_factory.mjs to mount router
+- [x] Updated server.js with Redis initialization
+- [x] Updated PROJECT_STATE.md with current state
 
-## Production URL
-https://satelink.network
+## Endpoints Created
+- POST /api/nodes/register
+- GET /api/nodes
+- GET /api/nodes/:nodeId
+- GET /api/nodes/:nodeId/earnings
 
-## Commits
-- cf2933a feat(website): premium design system rebuild
-- 0b9840f fix: resolve Next.js 16 build issues for Vercel deployment
+## Next Task
+S2-002: Node heartbeat + uptime tracking

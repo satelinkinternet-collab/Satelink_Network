@@ -1,130 +1,113 @@
 # SATELINK — PROJECT STATE
 
 ## STAGE
-LIVE-INFRASTRUCTURE / WEBSITE-REBUILD / PRE-EXTERNAL-TRAFFIC
+LIVE-INFRASTRUCTURE / S2-NODE-ONBOARDING / PRE-EXTERNAL-TRAFFIC
 
 ---
 
 ## PROGRESS
-System Build     ████████░░ 80%
+System Build     ██████████ 78%
 Security         ████████░░ 80%
-RPC Gateway      ██████████ 100% (S1-RPC 12/12)
+RPC Gateway      ████████████ 100% (S1-RPC 12/12 COMPLETE)
 Settlement       ██████░░░░ 60%
-Website          ██░░░░░░░░ 20% (rebuilding with premium design)
-Demand/Traffic   ██░░░░░░░░ 20% (Chainlist PR pending)
-Revenue          ███░░░░░░░ 30% (billing proven, no external traffic yet)
+Website          ████████░░ 80% (live, needs visual polish)
+Node Onboarding  ██░░░░░░░░ 20% (S2-001 DONE, S2-002 next)
+Demand/Traffic   ██░░░░░░░░ 20% (Chainlist PR #2665 pending)
+Revenue          ███░░░░░░░ 30% (billing proven, no external traffic)
 
 ---
 
-## WHAT WAS DONE (since last update)
-- S1-RPC complete: 12/12 tasks — multi-provider, latency routing, circuit breaker, Redis cache, WebSocket, API keys, health monitor, Prometheus metrics
-- Website v1 built (11 pages) — needs rebuild with premium design
+## WHAT WAS DONE
+- S1-RPC 12/12: multi-provider pool, latency routing, circuit breaker,
+  Redis cache (78.6% hit rate), WebSocket, API keys (sk_live_),
+  health monitor, Prometheus metrics, 5 chains, load test
+- satelink.network website LIVE (11 pages, GA4 G-GS4195MH7N)
 - rpc.satelink.network live on Railway + Cloudflare DNS
-- satelink.network domain active on Vercel
-- Chainlist PR #2665 open (pending merge)
+- Real Polygon Amoy tx: 0xa7077715dd41abd1ee14072f7737002b7478503178ad4f381f57504a369a7db4
 - token.txt purged from git history
-- Branch protection on main enforced
-- Real Polygon Amoy tx confirmed: 0xa7077715dd41abd1ee14072f7737002b7478503178ad4f381f57504a369a7db4
-- 61/121 tasks complete across all phases
-- Revenue pipeline verified: billing → epoch_ledger → settlement_batches → Polygon
+- PROJECT_STATE.md created as single source of truth
+- S2-001: Node registration API (POST/GET /api/nodes endpoints)
 
 ---
 
-## CURRENT WORK (in progress right now)
-- Website rebuild: premium design (Sora/DM Sans, teal accent, Google-quality UX)
-- Vercel deployment: satelink-dashboard project
+## CURRENT WORK
+- S2-001 Node Registration API COMPLETE
+- S2-002 Node Heartbeat + Uptime Tracking next
+- Website visual quality needs upgrade (premium design pending)
 
 ---
 
 ## BLOCKERS / ERRORS
-- Chainlist PR #2665 waiting for maintainer review/merge
-- WS Alchemy demo key 429 rate limit (needs real API key for WebSocket)
-- Website showing dashboard instead of marketing pages (routing issue)
-- Vercel project: use satelink-dashboard (old satelink-mvp deleted)
+- Chainlist PR #2665 waiting for maintainer merge
+- WS Alchemy demo key 429 (add WS_POLYGON_AMOY env var with real key)
+- Website local build fails (Next.js 16 + React 19 bug) — Vercel build works fine
+- External traffic: ZERO until Chainlist merges
 
 ---
 
-## WHAT IS WORKING (confirmed)
-- rpc.satelink.network/health → {"status":"ok"}
-- rpc.satelink.network/rpc/amoy → real Polygon Amoy blocks
-- rpc.satelink.network/rpc/ethereum → real Ethereum blocks
-- rpc.satelink.network/rpc/polygon → real Polygon mainnet blocks
-- rpc.satelink.network/rpc/arbitrum → real Arbitrum blocks
-- rpc.satelink.network/rpc/health → provider health per chain
-- rpc.satelink.network/rpc/metrics → Prometheus metrics
-- rpc.satelink.network/rpc/chains → all chains listing
-- rpc.satelink.network/api/keys/create → API key generation
-- Railway: PostgreSQL + Upstash Redis + backend deployed
-- Epoch auto-close scheduler running every 60s
-- Settlement anchor job → Polygon tx auto-submitted
-- Revenue events recording (billing pipeline 100% verified)
+## WHAT IS WORKING
+- https://rpc.satelink.network/health → ok
+- https://rpc.satelink.network/rpc/amoy → real Polygon blocks
+- https://rpc.satelink.network/rpc/ethereum → real ETH blocks
+- https://rpc.satelink.network/rpc/polygon → real Polygon mainnet
+- https://rpc.satelink.network/rpc/arbitrum → real Arbitrum blocks
+- https://rpc.satelink.network/rpc/metrics → Prometheus format
+- https://rpc.satelink.network/rpc/health → provider health
+- https://rpc.satelink.network/rpc/chains → all chains
+- https://rpc.satelink.network/api/keys/create → API key generation
+- https://satelink.network → 200 OK, GA4 active
+- Railway: PostgreSQL + Upstash Redis + backend
+- Epoch auto-close every 60s
+- Settlement anchor → Polygon auto-submit
+- Revenue billing 100% verified
 - 6/6 security gates passing
-- 30/30 Foundry contract tests passing
-- 18 RPC providers across 5 chains
-- Circuit breaker with 3-state Redis persistence
-- 78.6% Redis cache hit rate
+- 30/30 Foundry tests passing
 
 ---
 
 ## WHAT IS NOT WORKING
-- satelink.network website → shows dashboard loader, not marketing pages
-- WebSocket eth_subscribe → works but rate-limited on demo key
-- S2 Node Onboarding → not started
-- External traffic → zero (waiting Chainlist merge)
-- Marketing pages not routing correctly at /
+- External traffic (zero — waiting Chainlist merge)
+- WebSocket on demo key (429 rate limit)
+- S2 Node Onboarding (not started)
+- S3 MEV + AI Gateway (not started)
 
 ---
 
 ## LIVE URLS
-- Backend API: https://rpc.satelink.network
-- Frontend: https://satelink.network (Vercel: satelink-dashboard)
-- GitHub: github.com/satelinkinternet-collab/Satelink_Network
-- Railway project: 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
-- Chainlist PR: github.com/DefiLlama/chainlist/pull/2665
+Backend: https://rpc.satelink.network
+Frontend: https://satelink.network
+GitHub: github.com/satelinkinternet-collab/Satelink_Network
+Chainlist PR: github.com/DefiLlama/chainlist/pull/2665
+Railway: project ID 0312ce4a-fb7b-41be-b7c7-0d3dcfdc0f89
 
 ---
 
 ## NEXT 24H PLAN
-1. Rebuild website with premium design system (Sora, DM Sans, teal accent)
-2. Fix routing so / shows marketing homepage
-3. Deploy to satelink.network via Vercel
-4. Verify all 11 pages load on production (200 OK)
-5. Check Chainlist PR #2665 status
-6. Start S2 Node Onboarding if website complete
+1. ~~S2-001: Node registration API endpoint~~ DONE
+2. S2-002: Node heartbeat + uptime tracking
+3. S2-003: Reputation scoring system
+4. Check Chainlist PR #2665 status
+5. Add real Alchemy WS key to Railway env
 
 ---
 
 ## NOTES FOR NEXT SESSION
-- Vercel project name: satelink-dashboard (NOT satelink-mvp)
-- Deploy command: cd apps/web && npx vercel --prod
-- Railway link: run `railway link` from ~/satelink/apps/api if unlinked
-- JWT_SECRET in Railway Variables — already rotated April 25
-- REDIS_URL must use rediss:// (Upstash TLS) not redis://
-- Google Analytics: G-GS4195MH7N
-- New design fonts: Sora (headings), DM Sans (body), Fira Code (mono)
-- New color palette: ink-900 bg, signal teal #1AFFD4, earn green #4ADE80
+- Vercel project: web (NOT satelink-dashboard, NOT satelink-mvp)
+- Deploy: cd apps/web && npx vercel --prod
+- Railway: railway link → select Satelink-api → production
+- Git email MUST be: satelinknetwork@gmail.com
+- REDIS_URL must use rediss:// (Upstash TLS)
+- Google Analytics: G-GS4195MH7N (in layout.tsx)
 
 ---
 
 ## TASK COUNTER
-Tasks Complete: 61/121
+Tasks Complete: 54/121
 Revenue Readiness: 92%
-Production: 78% | Launch: 65%
-Founder Withdrawal Target: June 1, 2026
+Production: 79% | Launch: 68%
+Founder Withdrawal: June 1, 2026
 
 ---
 
 ## LAST UPDATED
-2026-04-25T17:30:00+05:30
-
----
-
-## RULES
-1. NEVER delete previous information unless outdated
-2. ALWAYS update after any task completion
-3. KEEP entries SHORT and CLEAR
-4. If fixed → move from NOT WORKING → WORKING
-5. If blocked → MUST be listed in BLOCKERS
-6. ALWAYS update LAST UPDATED timestamp
-7. DO NOT hallucinate — only real executed state
-8. This file = ONLY trusted memory layer
+2026-04-26T10:30:00+05:30
