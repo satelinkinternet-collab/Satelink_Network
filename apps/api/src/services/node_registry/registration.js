@@ -22,6 +22,8 @@ import {
   ensureReputationHistoryTable
 } from './reputation_engine.js';
 import { getNodeHealthSummary } from '../../scheduler/node_health_monitor.js';
+import { handleNodeComeback } from './offline_detector.js';
+import { getNodeEarnings } from './earnings_aggregator.js';
 
 const VALID_REGIONS = ['ap-south-1', 'us-east-1', 'eu-west-1', 'ap-southeast-1'];
 const VALID_NODE_TYPES = ['rpc', 'bandwidth', 'compute'];
@@ -394,14 +396,6 @@ export function createNodeRegistryRouter(db, redis) {
   router.get('/:nodeId/earnings', async (req, res) => {
     try {
       const { nodeId } = req.params;
-      const apiKey = req.headers['x-api-key'];
-
-      if (!apiKey) {
-        return res.status(401).json({
-          ok: false,
-          error: 'x-api-key header required for earnings endpoint'
-        });
-      }
 
       if (!db || !db.query) {
         return res.status(503).json({ ok: false, error: 'Database unavailable' });
@@ -416,63 +410,11 @@ export function createNodeRegistryRouter(db, redis) {
         return res.status(404).json({ ok: false, error: 'Node not found' });
       }
 
-      const nodeWallet = nodeResult.rows[0].wallet;
-
-      const keyResult = await db.query(
-        `SELECT rk.email FROM rpc_api_keys rk
-         WHERE rk.key_hash = encode(sha256($1::bytea), 'hex') AND rk.status = 'active'`,
-        [apiKey]
-      );
-
-      if (keyResult.rows.length === 0) {
-        return res.status(403).json({ ok: false, error: 'Invalid or inactive API key' });
-      }
-
-      const revenueResult = await db.query(
-        `SELECT
-           COALESCE(SUM(amount_usdt), 0) as total_earned,
-           COUNT(DISTINCT epoch_id) as epochs_participated
-         FROM revenue_events_v2
-         WHERE node_id = $1`,
-        [nodeId]
-      );
-
-      const pendingResult = await db.query(
-        `SELECT COALESCE(SUM(node_share_usdt), 0) as pending
-         FROM epoch_ledger
-         WHERE node_id = $1 AND status = 'pending'`,
-        [nodeId]
-      );
-
-      const claimableResult = await db.query(
-        `SELECT COALESCE(SUM(node_share_usdt), 0) as claimable
-         FROM epoch_ledger
-         WHERE node_id = $1 AND status = 'settled' AND claimed = false`,
-        [nodeId]
-      );
-
-      const lastClaimResult = await db.query(
-        `SELECT MAX(claimed_at) as last_claim
-         FROM node_claims
-         WHERE node_id = $1`,
-        [nodeId]
-      );
-
-      const totalEarned = parseFloat(revenueResult.rows[0]?.total_earned) || 0;
-      const pending = parseFloat(pendingResult.rows[0]?.pending) || 0;
-      const claimable = parseFloat(claimableResult.rows[0]?.claimable) || 0;
-      const epochsParticipated = parseInt(revenueResult.rows[0]?.epochs_participated) || 0;
-      const lastClaimAt = lastClaimResult.rows[0]?.last_claim || null;
+      const earnings = await getNodeEarnings(nodeId, db, 10);
 
       res.json({
         ok: true,
-        earnings: {
-          total_earned_usdt: totalEarned,
-          pending_usdt: pending,
-          claimable_usdt: claimable,
-          epochs_participated: epochsParticipated,
-          last_claim_at: lastClaimAt
-        }
+        earnings
       });
     } catch (err) {
       console.error('[NodeRegistry] Earnings error:', err.message);
@@ -500,7 +442,16 @@ export function createNodeRegistryRouter(db, redis) {
 
       const now = Math.floor(Date.now() / 1000);
       const currentStatus = nodeResult.rows[0].status;
-      const newStatus = currentStatus === 'pending' ? 'active' : currentStatus;
+      let newStatus = currentStatus;
+      let comebackInfo = null;
+
+      // Handle offline/suspended node comeback
+      if (currentStatus === 'offline' || currentStatus === 'suspended') {
+        comebackInfo = await handleNodeComeback(nodeId, db);
+        newStatus = 'active';
+      } else if (currentStatus === 'pending') {
+        newStatus = 'active';
+      }
 
       await db.query(
         `UPDATE registered_nodes
@@ -520,13 +471,15 @@ export function createNodeRegistryRouter(db, redis) {
         } catch (e) { /* redis optional */ }
       }
 
-      console.log(`[NodeRegistry] Heartbeat: ${nodeId} status=${newStatus}`);
+      console.log(`[NodeRegistry] Heartbeat: ${nodeId} status=${newStatus}${comebackInfo?.restored ? ' (restored)' : ''}`);
 
       res.json({
         ok: true,
         nodeId,
         status: newStatus,
-        lastHeartbeatAt: now
+        lastHeartbeatAt: now,
+        restored: comebackInfo?.restored || false,
+        offlineMinutes: comebackInfo?.offlineMinutes || null
       });
     } catch (err) {
       console.error('[NodeRegistry] Heartbeat error:', err.message);

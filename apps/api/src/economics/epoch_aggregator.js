@@ -5,6 +5,7 @@ import {
     updateNodeReputation,
     getNodeTier
 } from '../services/node_registry/reputation_engine.js';
+import { aggregateNodeEarnings } from '../services/node_registry/earnings_aggregator.js';
 
 /**
  * Epoch Aggregation Engine (V1)
@@ -151,6 +152,16 @@ export async function closeEpoch(db, epochId) {
     } catch (repErr) {
         console.error(`[Epoch] Reputation processing failed for epoch ${epochId}:`, repErr.message);
         resultSummary.reputation_error = repErr.message;
+    }
+
+    // S2-010: Aggregate node earnings with tier multipliers
+    try {
+        const earningsResults = await aggregateNodeEarnings(epochId, resultSummary.node_pool_usdt, db);
+        resultSummary.earnings_processed = earningsResults.processed;
+        resultSummary.earnings_distributed = earningsResults.totalDistributed;
+    } catch (earnErr) {
+        console.error(`[Epoch] Earnings aggregation failed for epoch ${epochId}:`, earnErr.message);
+        resultSummary.earnings_error = earnErr.message;
     }
 
     return resultSummary;
