@@ -90,7 +90,7 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
     await pool.query(
       `INSERT INTO revenue_events_v2 (op_type, client_id, amount_usdt, status, request_id, created_at)
        VALUES ($1, $2, $3, $4, $5, $6)`,
-      ['rpc_call', apiKey || 'public', costUsdt, 'completed', requestId || String(Date.now()), Date.now()]
+      ['rpc_call', apiKey || 'public', costUsdt, 'completed', requestId || String(Date.now()), Math.floor(Date.now() / 1000)]
     );
     console.log(`[Billing] ✓ $${costUsdt}`);
   } catch (err) {
