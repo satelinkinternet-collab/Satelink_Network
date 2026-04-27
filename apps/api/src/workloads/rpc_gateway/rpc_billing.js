@@ -87,17 +87,17 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   }
 
   try {
-    // Idempotent INSERT — request_id is UNIQUE, ON CONFLICT prevents duplicates
+    // INSERT only columns that exist on Railway: op_type, client_id, amount_usdt, status, request_id, created_at
     const result = await pool.query(
       `INSERT INTO revenue_events_v2
-       (op_type, node_id, client_id, amount_usdt, status, request_id, created_at, chain, method, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (op_type, client_id, amount_usdt, status, request_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (request_id) DO NOTHING
        RETURNING id`,
-      ['rpc_call', source, clientId, costUsdt, 'success', requestId, now, chain, method, source]
+      ['rpc_call', clientId, costUsdt, 'completed', requestId, now]
     );
     if (result.rows.length > 0) {
-      console.log(`[Billing] ✓ ${method} $${costUsdt}`);
+      console.log(`[Billing] ✓ $${costUsdt}`);
     }
   } catch (err) {
     console.error('[Billing] INSERT failed:', err.message);
