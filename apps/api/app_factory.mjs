@@ -56,15 +56,19 @@ export function createApp(pool, redis) {
   // Node Registry (S2-001)
   app.use("/api/nodes", createNodeRegistryRouter(pool, redis));
 
-  // Migration endpoint: creates all billing tables (remove after use)
+  // Migration endpoint: creates billing tables with EXACT source schema (remove after use)
   app.post('/admin/migrate/billing', async (req, res) => {
     if (req.headers['x-admin-secret'] !== process.env.JWT_SECRET) {
       return res.status(403).json({ error: 'forbidden' });
     }
     try {
-      // Create revenue_events_v2 (from docker/init/init.sql)
+      // Drop existing tables to fix wrong schema
+      await pool.query('DROP TABLE IF EXISTS epoch_ledger CASCADE');
+      await pool.query('DROP TABLE IF EXISTS revenue_events_v2 CASCADE');
+
+      // Create revenue_events_v2 (EXACT from docker/init/init.sql)
       await pool.query(`
-        CREATE TABLE IF NOT EXISTS revenue_events_v2 (
+        CREATE TABLE revenue_events_v2 (
           id SERIAL PRIMARY KEY,
           epoch_id INTEGER,
           op_type TEXT NOT NULL,
@@ -75,31 +79,43 @@ export function createApp(pool, redis) {
           request_id TEXT,
           created_at BIGINT NOT NULL,
           metadata_hash TEXT,
+          price_version INTEGER DEFAULT 1,
+          surge_multiplier REAL DEFAULT 1.0,
+          unit_cost REAL DEFAULT 0,
+          unit_count INTEGER DEFAULT 1,
           UNIQUE(client_id, op_type, request_id)
         )
       `);
 
-      // Create epoch_ledger
+      // Create epoch_ledger (EXACT from 020_epoch_ledger.sql)
       await pool.query(`
-        CREATE TABLE IF NOT EXISTS epoch_ledger (
+        CREATE TABLE epoch_ledger (
           id SERIAL PRIMARY KEY,
-          epoch_id INTEGER,
+          epoch_id INTEGER UNIQUE,
           status TEXT NOT NULL DEFAULT 'OPEN',
           started_at BIGINT NOT NULL,
           closed_at BIGINT,
           total_revenue NUMERIC(18,8) DEFAULT 0,
-          created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+          node_pool NUMERIC(18,8) DEFAULT 0,
+          platform_fee NUMERIC(18,8) DEFAULT 0,
+          distribution_pool NUMERIC(18,8) DEFAULT 0,
+          merkle_root TEXT,
+          tx_hash TEXT,
+          created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
         )
       `);
 
-      // Insert initial open epoch if none exists
+      // Create indexes
+      await pool.query('CREATE INDEX idx_epoch_ledger_status ON epoch_ledger (status)');
+      await pool.query('CREATE INDEX idx_epoch_ledger_epoch_id ON epoch_ledger (epoch_id)');
+
+      // Insert initial open epoch
       await pool.query(`
         INSERT INTO epoch_ledger (epoch_id, status, started_at, total_revenue)
-        SELECT 1, 'OPEN', EXTRACT(EPOCH FROM NOW()) * 1000, 0
-        WHERE NOT EXISTS (SELECT 1 FROM epoch_ledger WHERE status = 'OPEN')
+        VALUES (1, 'OPEN', EXTRACT(EPOCH FROM NOW()), 0)
       `);
 
-      res.json({ ok: true, message: 'revenue_events_v2 + epoch_ledger created' });
+      res.json({ ok: true, tables: ['epoch_ledger', 'revenue_events_v2'] });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }

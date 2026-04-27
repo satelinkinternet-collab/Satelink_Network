@@ -97,7 +97,7 @@ async function getRevenueStats(db) {
       ),
       db.query(
         `SELECT epoch_id FROM epoch_ledger
-         WHERE status = 'open'
+         WHERE status = 'OPEN'
          ORDER BY epoch_id DESC LIMIT 1`
       )
     ]);
