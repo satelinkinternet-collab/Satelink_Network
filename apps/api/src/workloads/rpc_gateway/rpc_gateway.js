@@ -6,6 +6,7 @@ import { getCached, setCached, isCacheable, getCacheStats } from './cache.js';
 import { checkRateLimit, incrementUsage, createApiKey, getUsageStats, getTiers } from './rate_limiter.js';
 import { createHealthEndpoint, startHealthMonitor } from './health_monitor.js';
 import { createMetricsRouter } from './metrics.js';
+import { recordRpcRevenue } from './rpc_billing.js';
 
 const SUPPORTED_CHAINS = new Set([...getSupportedChains(), ...Object.keys(CHAIN_ALIASES)]);
 
@@ -42,7 +43,6 @@ export function createRpcGateway(db) {
     router.get('/stats/:chain', async (req, res) => {
         const { chain } = req.params;
         try {
-console.log("REVENUE_TRY_START");
             const providerStats = await getRouterStats(chain);
             const cacheStats = getCacheStats();
             res.json({
@@ -56,7 +56,7 @@ console.log("REVENUE_TRY_START");
                 }
             });
         } catch (err) {
-console.error("REVENUE_ERROR", err.message);
+            console.error('[RPC Gateway] Stats error:', err.message);
             res.status(500).json({ ok: false, error: err.message });
         }
     });
@@ -108,11 +108,10 @@ console.error("REVENUE_ERROR", err.message);
         }
 
         try {
-console.log("REVENUE_TRY_START");
             const result = await createApiKey(tier, owner);
             res.json({ ok: true, ...result });
         } catch (err) {
-console.error("REVENUE_ERROR", err.message);
+            console.error('[RPC Gateway] Key creation error:', err.message);
             res.status(400).json({ ok: false, error: err.message });
         }
     });
@@ -166,11 +165,17 @@ console.error("REVENUE_ERROR", err.message);
         const params = body.params || [];
 
         try {
-console.log("REVENUE_TRY_START");
             const cachedResponse = await getCached(chain, method, params);
 
             if (cachedResponse) {
-                await recordRevenue(db, 'edge_cache', client_id, request_id, chain);
+                await recordRpcRevenue({
+                    pool: db,
+                    chain,
+                    method,
+                    apiKey,
+                    source: 'edge_cache',
+                    requestId: request_id
+                });
                 return res.status(200).json(cachedResponse);
             }
 
@@ -184,7 +189,14 @@ console.log("REVENUE_TRY_START");
                 await setCached(chain, method, params, routeResult.result);
             }
 
-            await recordRevenue(db, routeResult.provider || 'external_provider', client_id, request_id, chain);
+            await recordRpcRevenue({
+                pool: db,
+                chain,
+                method,
+                apiKey,
+                source: routeResult.provider || 'external_provider',
+                requestId: request_id
+            });
 
             res.status(200).json(routeResult.result);
         } catch (error) {
@@ -194,24 +206,4 @@ console.log("REVENUE_TRY_START");
     });
 
     return router;
-}
-
-async function recordRevenue(db, source, client_id, request_id, chain) {
-console.log("REVENUE_CALLED", source, client_id, request_id, chain);
-    if (!db || !db.query) return;
-
-    const amount = CHAIN_PRICING_USDT[chain] || DEFAULT_RPC_REWARD_USDT;
-
-    try {
-console.log("REVENUE_TRY_START");
-        const now = Math.floor(Date.now() / 1000);
-        await db.query(
-            `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
-             VALUES ('rpc_call', $1, $2, $3, 'success', $4, $5)`,
-            [source, client_id, amount, request_id, now]
-        );
-        console.log(`[RPC Gateway] Revenue: ${chain}/${source} → $${amount}`);
-    } catch (e) {
-        console.error('[RPC Gateway] Failed to record revenue:', e.message);
-    }
 }
