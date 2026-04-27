@@ -1,42 +1,48 @@
 # CURRENT TASK
 
 **Status:** COMPLETED
-**Task:** S4-001 @satelink/sdk
-**Started:** April 26, 2026
-**Completed:** April 26, 2026
+**Task:** P0-BILLING — Fix billing pipeline
+**Started:** April 27, 2026
+**Completed:** April 27, 2026
 
-## Summary
-Official TypeScript SDK for Satelink — blockchain RPC and AI inference.
+## 🎉 MILESTONE ACHIEVED
 
-## What Was Built
+**Billing Pipeline: LIVE**
+- Revenue events: 664
+- USDT earned: $0.019920
+- Every RPC call now records real revenue
 
-### @satelink/sdk package
-- `packages/sdk/` — full TypeScript SDK
-- `SatelinkRPC` — blockchain calls (getBlockNumber, getBalance, call, sendRawTransaction)
-- `SatelinkAI` — OpenAI-compatible chat/completions
-- `createProvider()` — EIP-1193 for ethers.js/viem/wagmi
-- Full type definitions (ChatMessage, JsonRpcRequest, etc.)
-- README with usage examples
+## What Was Fixed
 
-### Files Created
-- packages/sdk/package.json
-- packages/sdk/tsconfig.json
-- packages/sdk/src/types.ts
-- packages/sdk/src/rpc.ts
-- packages/sdk/src/ai.ts
-- packages/sdk/src/index.ts
-- packages/sdk/README.md
+### Root Causes Identified & Fixed:
+1. Missing `await` on DB queries (silent failures)
+2. Missing `epoch_ledger` and `revenue_events_v2` tables on Railway
+3. Wrong column names in INSERT statements
+4. Schema mismatch between local and Railway
+5. Dockerfile paths wrong for rootDirectory build context
+6. Metrics query using non-existent columns
 
-## Commit
-340a82e feat(S4-001): @satelink/sdk — SatelinkRPC, SatelinkAI, wagmi provider
+### Final Solution:
+- Auto-migration on server startup (`ensureBillingTables()`)
+- Hardcoded INSERT with confirmed columns
+- Simplified metrics query (no epoch_ledger dependency)
+- Fixed Dockerfile for Railway's rootDirectory=apps/api
 
-## S4 Stage: IN PROGRESS (1/?)
-- S4-001: @satelink/sdk ✅
+## Commits (11 total)
+- 24b458d → 006cfe0
 
-## Progress
-Tasks: 67/121 (55%)
-S2: COMPLETE | S3: COMPLETE | S4: IN PROGRESS
+## Verification
+```
+curl -s https://rpc.satelink.network/rpc/metrics | jq
+{
+  "revenue": {
+    "eventsToday": 664,
+    "usdtToday": "0.019920"
+  }
+}
+```
 
 ## Next
-- Monitor external traffic from Chainlist
-- Continue S4 Developer Tools (CLI, docs)
+- Monitor external traffic (Chainlist merged)
+- S4-002: CLI tool
+- On-chain settlement
