@@ -56,7 +56,7 @@ async function ensureBillingTables(pool) {
         client_id TEXT,
         amount_usdt NUMERIC(18,8) NOT NULL DEFAULT 0,
         status TEXT DEFAULT 'pending',
-        request_id TEXT,
+        request_id TEXT UNIQUE,
         created_at BIGINT,
         chain TEXT,
         method TEXT,
@@ -64,6 +64,13 @@ async function ensureBillingTables(pool) {
         epoch_id INTEGER
       )
     `);
+
+    // Add UNIQUE constraint if table already exists without it
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_revenue_events_v2_request_id
+      ON revenue_events_v2 (request_id)
+      WHERE request_id IS NOT NULL
+    `).catch(() => {});
 
     await pool.query(`
       INSERT INTO epoch_ledger (epoch_id, status, started_at, total_revenue)

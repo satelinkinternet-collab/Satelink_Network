@@ -72,15 +72,18 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   }
 
   try {
-    // Schema from server.js ensureBillingTables():
-    // op_type, node_id, client_id, amount_usdt, status, request_id, created_at, chain, method, source
-    await pool.query(
+    // Idempotent INSERT — request_id is UNIQUE, ON CONFLICT prevents duplicates
+    const result = await pool.query(
       `INSERT INTO revenue_events_v2
        (op_type, node_id, client_id, amount_usdt, status, request_id, created_at, chain, method, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (request_id) DO NOTHING
+       RETURNING id`,
       ['rpc_call', source, clientId, costUsdt, 'success', requestId, now, chain, method, source]
     );
-    console.log(`[Billing] ✓ ${method} $${costUsdt}`);
+    if (result.rows.length > 0) {
+      console.log(`[Billing] ✓ ${method} $${costUsdt}`);
+    }
   } catch (err) {
     console.error('[Billing] INSERT failed:', err.message);
   }
