@@ -56,6 +56,24 @@ export function createApp(pool, redis) {
   // Node Registry (S2-001)
   app.use("/api/nodes", createNodeRegistryRouter(pool, redis));
 
+  // Debug: check actual schema on Railway (remove after debugging)
+  app.get('/admin/debug/schema', async (req, res) => {
+    if (req.headers['x-admin-secret'] !== process.env.JWT_SECRET) {
+      return res.status(403).end();
+    }
+    try {
+      const r = await pool.query(`
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'revenue_events_v2'
+        ORDER BY ordinal_position
+      `);
+      res.json(r.rows);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // One-time migration endpoint (remove after use)
   app.post('/admin/migrate/epoch-ledger', async (req, res) => {
     const secret = req.headers['x-admin-secret'];

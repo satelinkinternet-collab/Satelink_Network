@@ -85,14 +85,8 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
     );
     console.log(`[RPC Billing] ✓ ${method} on ${chain} = $${costUsdt} USDT (${source})`);
   } catch (err) {
-    console.error('[RPC Billing] DB insert failed:', err.message);
-    // Check for specific errors
-    if (err.message.includes('does not exist')) {
-      console.error('[RPC Billing] Table revenue_events_v2 may not exist — run migrations!');
-    }
-    if (err.message.includes('duplicate key')) {
-      console.error('[RPC Billing] Duplicate request_id — this call was already billed');
-    }
+    console.error('[BILLING FAILED]', err.message, err.stack?.split('\n')[1]);
+    console.error('[BILLING FAILED] Query params:', { source, clientId, costUsdt, requestId, now });
   }
 }
 
