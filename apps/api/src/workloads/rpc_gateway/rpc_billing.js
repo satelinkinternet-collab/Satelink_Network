@@ -52,8 +52,23 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   const now = Math.floor(Date.now() / 1000);
   const today = new Date().toISOString().split('T')[0];
 
-  // 1. Increment Redis counters (for real-time metrics)
   const redis = getRedis();
+
+  // 0. Redis-based dedup — skip if already billed this requestId
+  if (redis && requestId) {
+    const dedupKey = `billing:dedup:${requestId}`;
+    try {
+      const alreadyBilled = await redis.get(dedupKey);
+      if (alreadyBilled) {
+        return;
+      }
+      await redis.set(dedupKey, '1', 'EX', 60);
+    } catch (err) {
+      // Continue even if dedup check fails
+    }
+  }
+
+  // 1. Increment Redis counters (for real-time metrics)
   if (redis) {
     try {
       await Promise.all([
