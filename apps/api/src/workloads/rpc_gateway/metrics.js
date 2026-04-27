@@ -85,27 +85,23 @@ async function getRevenueStats(db) {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const startOfDay = Math.floor(new Date(today).getTime() / 1000);
+    // Query only revenue_events_v2 using confirmed columns: amount_usdt, created_at
+    // created_at is stored as Unix seconds in rpc_billing.js
+    const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
 
-    const [eventsResult, epochResult] = await Promise.all([
-      db.query(
-        `SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total
-         FROM revenue_events_v2
-         WHERE created_at >= $1`,
-        [startOfDay]
-      ),
-      db.query(
-        `SELECT epoch_id FROM epoch_ledger
-         WHERE status = 'OPEN'
-         ORDER BY epoch_id DESC LIMIT 1`
-      )
-    ]);
+    const result = await db.query(
+      `SELECT
+         COUNT(*) as events_today,
+         COALESCE(SUM(amount_usdt), 0) as usdt_today
+       FROM revenue_events_v2
+       WHERE created_at > $1`,
+      [oneDayAgo]
+    );
 
     return {
-      eventsToday: parseInt(eventsResult.rows[0]?.count, 10) || 0,
-      usdtToday: parseFloat(eventsResult.rows[0]?.total) || 0,
-      activeEpoch: epochResult.rows[0]?.epoch_id || null
+      eventsToday: parseInt(result.rows[0]?.events_today, 10) || 0,
+      usdtToday: parseFloat(result.rows[0]?.usdt_today) || 0,
+      activeEpoch: null
     };
   } catch (err) {
     console.error('[Metrics] Revenue query failed:', err.message);
