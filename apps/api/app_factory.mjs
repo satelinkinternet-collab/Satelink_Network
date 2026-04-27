@@ -7,6 +7,7 @@ import { createLangChainAdapterRouter } from "./src/workloads/ai_gateway/langcha
 import { createPluginManifestRouter, createOpenApiRouter } from "./src/workloads/ai_gateway/plugin_manifest.js";
 import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
 import { createNodeRegistryRouter } from "./src/services/node_registry/registration.js";
+import { createSdkAnalyticsRouter } from "./src/workloads/rpc_gateway/sdk_analytics.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -55,6 +56,9 @@ export function createApp(pool, redis) {
 
   // Node Registry (S2-001)
   app.use("/api/nodes", createNodeRegistryRouter(pool, redis));
+
+  // SDK Analytics (S4-005)
+  app.use("/api", createSdkAnalyticsRouter());
 
   return app;
 }

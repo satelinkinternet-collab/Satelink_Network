@@ -90,28 +90,65 @@ const models = await ai.models;
 
 ## EIP-1193 Provider
 
-Use with any library that accepts EIP-1193 providers:
+Full EIP-1193 compatible provider with event support:
 
 ```typescript
-import { createProvider } from '@satelink/sdk';
+import { SatelinkProvider } from '@satelink/sdk';
 
-const provider = createProvider({
-  chain: 'polygon',
+const provider = new SatelinkProvider({
+  chainId: 137, // Polygon
   apiKey: 'sk_live_...'
 });
 
-// Use with ethers.js
-import { BrowserProvider } from 'ethers';
-const ethersProvider = new BrowserProvider(provider);
+// Standard EIP-1193 request
+const blockNumber = await provider.request({ method: 'eth_blockNumber' });
 
-// Use with viem
-import { createWalletClient, custom } from 'viem';
+// Listen for chain changes
+provider.on('chainChanged', (chainId) => {
+  console.log('Chain changed to:', chainId);
+});
+
+// Switch chains
+await provider.request({
+  method: 'wallet_switchEthereumChain',
+  params: [{ chainId: '0x89' }] // Polygon
+});
+```
+
+### wagmi Integration
+
+```typescript
+import { createConfig, http } from 'wagmi';
+import { polygon, arbitrum, base } from 'wagmi/chains';
+
+const config = createConfig({
+  chains: [polygon, arbitrum, base],
+  transports: {
+    [polygon.id]: http('https://rpc.satelink.network/rpc/polygon'),
+    [arbitrum.id]: http('https://rpc.satelink.network/rpc/arbitrum'),
+    [base.id]: http('https://rpc.satelink.network/rpc/base'),
+  },
+});
+```
+
+### viem / ethers.js
+
+```typescript
+// viem
+import { createPublicClient, http } from 'viem';
 import { polygon } from 'viem/chains';
 
-const client = createWalletClient({
+const client = createPublicClient({
   chain: polygon,
-  transport: custom(provider)
+  transport: http('https://rpc.satelink.network/rpc/polygon'),
 });
+
+// ethers.js
+import { BrowserProvider } from 'ethers';
+import { SatelinkProvider } from '@satelink/sdk';
+
+const provider = new SatelinkProvider({ chainId: 137 });
+const ethersProvider = new BrowserProvider(provider);
 ```
 
 ## Supported Chains
@@ -129,6 +166,30 @@ const client = createWalletClient({
 - **RPC calls**: $0.00003 USDT per call (varies by chain)
 - **AI inference**: $0.000001 per input token, $0.000003 per output token
 - **MEV relay**: $0.001 per transaction (10x standard)
+
+## Node Operator CLI
+
+Run your own Satelink node to earn USDT:
+
+```bash
+# Install globally
+npm install -g @satelink/node-agent
+
+# Register your node
+satelink-node register --wallet 0xYourWallet --region ap-south-1
+
+# Start sending heartbeats (every 2 min)
+satelink-node start
+
+# Check status
+satelink-node status
+```
+
+| Command | Description |
+|---------|-------------|
+| `register -w <wallet> -r <region>` | Register node |
+| `start` | Start heartbeat daemon |
+| `status` | Show node status |
 
 ## Links
 
