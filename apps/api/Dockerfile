@@ -4,18 +4,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 
 WORKDIR /usr/src/app
 
-# Copy root package files for workspace setup
 COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
+RUN npm install --production
 
-# Install dependencies from root (handles workspaces)
-RUN npm install --production --workspace=@satelink/api
-
-# Copy API source
-COPY apps/api/ ./apps/api/
-
-# Change to api directory for runtime
-WORKDIR /usr/src/app/apps/api
+COPY . .
 
 EXPOSE 8080
 
