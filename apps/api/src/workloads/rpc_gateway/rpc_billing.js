@@ -77,13 +77,70 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   }
 
   try {
-    await pool.query(
-      `INSERT INTO revenue_events_v2
-       (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
-       VALUES ('rpc_call', $1, $2, $3, 'success', $4, $5)`,
-      [source, clientId, costUsdt, requestId, now]
-    );
-    console.log(`[RPC Billing] ✓ ${method} on ${chain} = $${costUsdt} USDT (${source})`);
+    // First check what columns exist on Railway
+    const cols = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'revenue_events_v2'
+    `);
+    const colNames = cols.rows.map(r => r.column_name);
+    console.log('[BILLING] Available columns:', colNames.join(', '));
+
+    // Build INSERT based on available columns
+    const insertCols = [];
+    const insertVals = [];
+
+    if (colNames.includes('amount_usdt')) {
+      insertCols.push('amount_usdt');
+      insertVals.push(costUsdt);
+    }
+    if (colNames.includes('chain')) {
+      insertCols.push('chain');
+      insertVals.push(chain);
+    }
+    if (colNames.includes('method')) {
+      insertCols.push('method');
+      insertVals.push(method);
+    }
+    if (colNames.includes('source')) {
+      insertCols.push('source');
+      insertVals.push(source);
+    }
+    if (colNames.includes('node_id')) {
+      insertCols.push('node_id');
+      insertVals.push(source);
+    }
+    if (colNames.includes('client_id')) {
+      insertCols.push('client_id');
+      insertVals.push(clientId);
+    }
+    if (colNames.includes('op_type')) {
+      insertCols.push('op_type');
+      insertVals.push('rpc_call');
+    }
+    if (colNames.includes('status')) {
+      insertCols.push('status');
+      insertVals.push('success');
+    }
+    if (colNames.includes('request_id')) {
+      insertCols.push('request_id');
+      insertVals.push(requestId);
+    }
+    if (colNames.includes('created_at')) {
+      insertCols.push('created_at');
+      insertVals.push(now);
+    }
+
+    if (insertCols.length === 0) {
+      console.error('[BILLING] No matching columns found in revenue_events_v2!');
+      return;
+    }
+
+    const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
+    const sql = `INSERT INTO revenue_events_v2 (${insertCols.join(', ')}) VALUES (${placeholders})`;
+    console.log('[BILLING] SQL:', sql);
+
+    await pool.query(sql, insertVals);
+    console.log(`[BILLING] ✓ Inserted revenue event: $${costUsdt} USDT`);
   } catch (err) {
     console.error('[BILLING FAILED]', err.message, err.stack?.split('\n')[1]);
     console.error('[BILLING FAILED] Query params:', { source, clientId, costUsdt, requestId, now });
