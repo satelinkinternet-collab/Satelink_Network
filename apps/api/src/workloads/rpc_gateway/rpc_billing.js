@@ -1,8 +1,10 @@
 /**
  * RPC Billing Helper
- * P0 Fix: Wire billing into every RPC request
+ * Records revenue to PostgreSQL + Redis counters
  *
- * Records revenue to PostgreSQL + increments Redis counters for metrics
+ * Schema (from docker/init/init.sql):
+ *   revenue_events_v2(id, epoch_id, op_type, node_id, client_id,
+ *                     amount_usdt, status, request_id, created_at, ...)
  */
 
 import Redis from 'ioredis';
@@ -36,10 +38,10 @@ function getRedis() {
       maxRetriesPerRequest: 3,
       tls: url.startsWith('rediss://') ? {} : undefined
     });
-    redisClient.on('error', (err) => console.error('[RPC Billing] Redis error:', err.message));
+    redisClient.on('error', (err) => console.error('[Billing] Redis error:', err.message));
     return redisClient;
   } catch (err) {
-    console.error('[RPC Billing] Redis init failed:', err.message);
+    console.error('[Billing] Redis init failed:', err.message);
     return null;
   }
 }
@@ -50,104 +52,38 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   const now = Math.floor(Date.now() / 1000);
   const today = new Date().toISOString().split('T')[0];
 
-  // Always increment Redis counters (even if db fails)
+  // 1. Increment Redis counters (for real-time metrics)
   const redis = getRedis();
   if (redis) {
     try {
       await Promise.all([
         redis.incr(`rpc:requests:${today}`),
-        redis.incrbyfloat(`rpc:revenue:${today}`, costUsdt),
-        redis.incr('rpc:requests:today'),
-        redis.incrbyfloat('rpc:revenue:today', costUsdt)
+        redis.incrbyfloat(`rpc:revenue:${today}`, costUsdt)
       ]);
     } catch (err) {
-      console.error('[RPC Billing] Redis increment failed:', err.message);
+      console.error('[Billing] Redis error:', err.message);
     }
   }
 
-  // Record to PostgreSQL
-  if (!pool) {
-    console.error('[RPC Billing] CRITICAL: pool is undefined — billing not recording to database!');
-    return;
-  }
-
-  if (!pool.query) {
-    console.error('[RPC Billing] CRITICAL: pool.query is undefined — wrong db object type!');
+  // 2. Insert into PostgreSQL
+  if (!pool || !pool.query) {
+    console.error('[Billing] CRITICAL: pool is undefined!');
     return;
   }
 
   try {
-    // First check what columns exist on Railway
-    const schema = await pool.query(
-      "SELECT column_name FROM information_schema.columns WHERE table_name='revenue_events_v2' ORDER BY ordinal_position"
+    // Columns from docker/init/init.sql CREATE TABLE revenue_events_v2:
+    // op_type, node_id, client_id, amount_usdt, created_at are NOT NULL
+    // status has default 'success', request_id is optional
+    await pool.query(
+      `INSERT INTO revenue_events_v2
+       (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      ['rpc_call', source, clientId, costUsdt, 'success', requestId, now]
     );
-    const colNames = schema.rows.map(r => r.column_name);
-    console.log('[BILLING SCHEMA]', colNames.join(','));
-
-    if (colNames.length === 0) {
-      console.error('[BILLING] TABLE revenue_events_v2 DOES NOT EXIST! Run migration first.');
-      return;
-    }
-
-    // Build INSERT based on available columns
-    const insertCols = [];
-    const insertVals = [];
-
-    if (colNames.includes('amount_usdt')) {
-      insertCols.push('amount_usdt');
-      insertVals.push(costUsdt);
-    }
-    if (colNames.includes('chain')) {
-      insertCols.push('chain');
-      insertVals.push(chain);
-    }
-    if (colNames.includes('method')) {
-      insertCols.push('method');
-      insertVals.push(method);
-    }
-    if (colNames.includes('source')) {
-      insertCols.push('source');
-      insertVals.push(source);
-    }
-    if (colNames.includes('node_id')) {
-      insertCols.push('node_id');
-      insertVals.push(source);
-    }
-    if (colNames.includes('client_id')) {
-      insertCols.push('client_id');
-      insertVals.push(clientId);
-    }
-    if (colNames.includes('op_type')) {
-      insertCols.push('op_type');
-      insertVals.push('rpc_call');
-    }
-    if (colNames.includes('status')) {
-      insertCols.push('status');
-      insertVals.push('success');
-    }
-    if (colNames.includes('request_id')) {
-      insertCols.push('request_id');
-      insertVals.push(requestId);
-    }
-    if (colNames.includes('created_at')) {
-      insertCols.push('created_at');
-      insertVals.push(now);
-    }
-
-    if (insertCols.length === 0) {
-      console.error('[BILLING] No matching columns found in revenue_events_v2!');
-      return;
-    }
-
-    const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
-    const sql = `INSERT INTO revenue_events_v2 (${insertCols.join(', ')}) VALUES (${placeholders})`;
-    console.log('[BILLING] SQL:', sql);
-
-    await pool.query(sql, insertVals);
-    console.log(`[BILLING] ✓ Inserted revenue event: $${costUsdt} USDT`);
+    console.log(`[Billing] ✓ ${method} $${costUsdt}`);
   } catch (err) {
-    console.error('[BILLING FAILED]', err.message, err.stack?.split('\n')[1]);
-    console.error('[BILLING FAILED] Query params:', { source, clientId, costUsdt, requestId, now });
+    console.error('[Billing] INSERT failed:', err.message);
   }
 }
 
