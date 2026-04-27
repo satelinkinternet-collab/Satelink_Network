@@ -78,12 +78,16 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
 
   try {
     // First check what columns exist on Railway
-    const cols = await pool.query(`
-      SELECT column_name FROM information_schema.columns
-      WHERE table_name = 'revenue_events_v2'
-    `);
-    const colNames = cols.rows.map(r => r.column_name);
-    console.log('[BILLING] Available columns:', colNames.join(', '));
+    const schema = await pool.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_name='revenue_events_v2' ORDER BY ordinal_position"
+    );
+    const colNames = schema.rows.map(r => r.column_name);
+    console.log('[BILLING SCHEMA]', colNames.join(','));
+
+    if (colNames.length === 0) {
+      console.error('[BILLING] TABLE revenue_events_v2 DOES NOT EXIST! Run migration first.');
+      return;
+    }
 
     // Build INSERT based on available columns
     const insertCols = [];
