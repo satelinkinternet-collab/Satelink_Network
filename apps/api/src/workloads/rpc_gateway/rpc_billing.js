@@ -72,14 +72,13 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   }
 
   try {
-    // Columns from docker/init/init.sql CREATE TABLE revenue_events_v2:
-    // op_type, node_id, client_id, amount_usdt, created_at are NOT NULL
-    // status has default 'success', request_id is optional
+    // Schema from server.js ensureBillingTables():
+    // op_type, node_id, client_id, amount_usdt, status, request_id, created_at, chain, method, source
     await pool.query(
       `INSERT INTO revenue_events_v2
-       (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      ['rpc_call', source, clientId, costUsdt, 'success', requestId, now]
+       (op_type, node_id, client_id, amount_usdt, status, request_id, created_at, chain, method, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      ['rpc_call', source, clientId, costUsdt, 'success', requestId, now, chain, method, source]
     );
     console.log(`[Billing] ✓ ${method} $${costUsdt}`);
   } catch (err) {

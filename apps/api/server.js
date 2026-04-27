@@ -29,6 +29,54 @@ function createRedisClient() {
   }
 }
 
+async function ensureBillingTables(pool) {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS epoch_ledger (
+        id SERIAL PRIMARY KEY,
+        epoch_id TEXT UNIQUE,
+        status TEXT NOT NULL DEFAULT 'OPEN',
+        started_at BIGINT NOT NULL,
+        closed_at BIGINT,
+        total_revenue NUMERIC(18,8) DEFAULT 0,
+        node_pool NUMERIC(18,8) DEFAULT 0,
+        platform_fee NUMERIC(18,8) DEFAULT 0,
+        distribution_pool NUMERIC(18,8) DEFAULT 0,
+        merkle_root TEXT,
+        tx_hash TEXT,
+        created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS revenue_events_v2 (
+        id SERIAL PRIMARY KEY,
+        op_type TEXT,
+        node_id TEXT,
+        client_id TEXT,
+        amount_usdt NUMERIC(18,8) NOT NULL DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        request_id TEXT,
+        created_at BIGINT,
+        chain TEXT,
+        method TEXT,
+        source TEXT,
+        epoch_id INTEGER
+      )
+    `);
+
+    await pool.query(`
+      INSERT INTO epoch_ledger (epoch_id, status, started_at, total_revenue)
+      SELECT 'epoch-auto-1', 'OPEN', EXTRACT(EPOCH FROM NOW()) * 1000, 0
+      WHERE NOT EXISTS (SELECT 1 FROM epoch_ledger WHERE status = 'OPEN')
+    `);
+
+    console.log('[STARTUP] Billing tables ensured');
+  } catch (err) {
+    console.error('[STARTUP] Billing migration failed:', err.message);
+  }
+}
+
 async function start() {
   try {
     console.log("🚀 SERVER STARTED - ROUTES LOADING");
@@ -39,6 +87,9 @@ async function start() {
         ? { rejectUnauthorized: false }
         : false,
     });
+
+    // Auto-migrate billing tables before routes
+    await ensureBillingTables(pool);
 
     const redis = createRedisClient();
     const app = createApp(pool, redis);
