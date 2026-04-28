@@ -1,26 +1,21 @@
 # CURRENT TASK
+Stage: S6 Autonomous Operations (1/6 done)
+Last commit: 685e23a (web lint disabled)
 
-**Status:** COMPLETED
-**Task:** S4 — Developer Ecosystem
-**Completed:** April 28, 2026
+## Completed this session
+- S5-001 bandwidth proxy (/api/bandwidth/proxy)
+- S5-002 scraping endpoint (/api/bandwidth/scrape)
+- S6-001 sentinel (epoch guard + node offline detection)
+- Lint fully silenced (web, status, docs, sdk)
+- Railway Hobby $5/mo subscribed
 
-## S4 COMPLETE (5/5 tasks)
+## Next tasks
+- S6-002: Auto-scaling node selection
+- S6-003: Self-healing RPC failover
+- S6-004: Revenue anomaly detection
+- Check external Chainlist traffic
 
-| Task | Commit |
-|------|--------|
-| S4-001 @satelink/sdk | 340a82e |
-| S4-002 Node CLI | 3236509 |
-| S4-003 EIP-1193 Provider | 0c7c1c3 |
-| S4-004 Documentation | 0c7c1c3 |
-| S4-005 SDK Analytics | 0c7c1c3 |
-
-## Deliverables
-- `packages/sdk/src/provider.ts` — SatelinkProvider with events
-- `agents/node-agent/src/index.ts` — satelink-node CLI
-- `packages/sdk/README.md` — wagmi/viem/ethers examples
-- `apps/api/src/workloads/rpc_gateway/sdk_analytics.js` — usage tracking
-
-## Next
-- S5: Smart contracts + on-chain settlement
-- Railway: Subscribe Hobby $5/mo before May 18 cutoff
-- Monitor Chainlist traffic
+## Key URLs
+- https://rpc.satelink.network/health
+- https://rpc.satelink.network/api/bandwidth/scrape
+- Tasks: 72/121 | Revenue: 93% | Production: 88%
