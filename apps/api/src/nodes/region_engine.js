@@ -50,7 +50,7 @@ export class RegionEngine {
         ).get([code]);
         if (!region) return { allowed: true };
 
-        const dayAgo = Date.now() - 86400000;
+        const dayAgo = Math.floor(Date.now() / 1000) - 86400;
 
         // Check revenue cap
         const rev = await this.db.prepare(

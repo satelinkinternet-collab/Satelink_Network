@@ -1,19 +1,24 @@
 # SATELINK PROGRESS TRACKER
-# Updated: April 26, 2026 (AUDIT VERIFIED)
+# Updated: April 27, 2026 (P0 BILLING FIX)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 52 | In Progress: 2 | Pending: 67
-Revenue Readiness: 85% | Production: 70% | Launch: 60%
+Total Tasks: 121 | Complete: 53 | In Progress: 1 | Pending: 67
+Revenue Readiness: 90% | Production: 75% | Launch: 65%
 Active URL: https://rpc.satelink.network
 Chainlist PR: #2665 OPEN (pending merge)
-S1-RPC: 90% COMPLETE (code done, partial deploy)
+S1-RPC: 95% COMPLETE (billing fix deployed)
 Website: DEPLOYED ✅ (all pages verified 200 OK)
   URL: https://satelink.network
   Pages: 11 (8 main + 3 legal) — ALL VERIFIED
   GA4: G-GS4195MH7N integrated (2 refs found)
-CRITICAL: Railway deploy OUTDATED — many endpoints return 404
+BLOCKER FIXED: Billing pipeline now wired — every RPC call records revenue
+
+## P0 HOTFIXES — Critical Production Issues
+| ID | Task | Status | Notes |
+|----|------|--------|-------|
+| P0-BILLING | Wire billing into RPC gateway | DONE | 24b458d — recordRpcRevenue + Redis counters |
 
 ## STAGE S0 — Production Blockers & Security Foundation (9/15)
 | ID | Task | Status | Notes |

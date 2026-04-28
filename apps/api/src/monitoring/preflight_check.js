@@ -85,7 +85,7 @@ export class PreflightCheckService {
         const recentShadowFailures = await this.db.prepare(`
             SELECT COUNT(*) as c FROM settlement_shadow_log 
             WHERE created_at > ?
-        `).get([Date.now() - 86400000]);
+        `).get([Math.floor(Date.now() / 1000) - 86400]);
         const shadowOk = recentShadowFailures.c === 0;
         checks.push({ name: 'Shadow Settlement (24h)', status: shadowOk ? 'PASS' : 'WARN', details: `${recentShadowFailures.c} mismatches` });
         if (!shadowOk) warnings.push("Settlement Shadow Mode detected mismatches in last 24h.");
