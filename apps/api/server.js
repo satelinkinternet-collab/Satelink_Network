@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import { createApp } from "./app_factory.mjs";
+import { startSentinel } from "./src/autonomous/sentinel.js";import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
@@ -122,7 +122,7 @@ async function start() {
 
     // Start offline detector (S2-009)
     startOfflineDetector(pool);
-
+    startSentinel(pool, redis);
     const PORT = process.env.PORT || 8080;
 
     httpServer.listen(PORT, () => {

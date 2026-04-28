@@ -1,0 +1,27 @@
+import { createRequire } from 'module'
+
+export async function startSentinel(pool, redis) {
+  console.log('[Sentinel] Started — monitoring revenue + node health')
+  
+  setInterval(async () => {
+    try {
+      const epoch = await pool.query("SELECT id, total_revenue FROM epoch_ledger WHERE status='OPEN' ORDER BY id DESC LIMIT 1")
+      if (!epoch.rows.length) {
+        await pool.query("INSERT INTO epoch_ledger (status, started_at, total_revenue) VALUES ('OPEN', $1, 0)", [Math.floor(Date.now()/1000)])
+        console.log('[Sentinel] New epoch opened')
+      }
+      const revenue = await pool.query("SELECT COALESCE(SUM(amount_usdt),0) as total FROM revenue_events_v2 WHERE created_at > $1", [Math.floor(Date.now()/1000) - 3600])
+      await redis.set('sentinel:revenue_last_hour', revenue.rows[0].total)
+    } catch(e) { console.error('[Sentinel] Error:', e.message) }
+  }, 60000)
+
+  setInterval(async () => {
+    try {
+      const offline = await pool.query("SELECT node_id, region FROM registered_nodes WHERE status='active' AND last_heartbeat_at < $1", [Math.floor(Date.now()/1000) - 360])
+      for (const node of offline.rows) {
+        await pool.query("UPDATE registered_nodes SET status='offline' WHERE node_id=$1", [node.node_id])
+        console.log(`[Sentinel] Node ${node.node_id} marked offline`)
+      }
+    } catch(e) { console.error('[Sentinel] Node check error:', e.message) }
+  }, 120000)
+}
