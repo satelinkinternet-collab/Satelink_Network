@@ -12,3 +12,10 @@ export {
   incrementNodeLoad,
   updateNodeWeights
 } from './auto_scaler.js'
+export {
+  startRpcHealer,
+  getHealerStats,
+  runHealingCycle,
+  detectCascadeFailure,
+  tryFallbackRoute
+} from './rpc_healer.js'

@@ -1,21 +1,22 @@
 # CURRENT TASK
-Stage: S6 Autonomous Operations (2/6 done)
+Stage: S6 Autonomous Operations (3/6 done)
 Last commit: pending
 
 ## Completed this session
 - S6-002: Auto-scaling node selection (auto_scaler.js)
-  - Dynamic weight calculation based on load
-  - Node selection with utilization-aware routing
-  - /system/scaling-stats endpoint
-  - 8/8 tests passing
+- S6-003: Self-healing RPC failover (rpc_healer.js)
+  - Background health probing of failed providers
+  - Fallback chain routing (polygon→amoy, eth→arb/base)
+  - Cascade failure detection (>50% alert)
+  - /system/rpc-healer/:chain endpoint
+  - 7/7 tests passing
 
 ## Next tasks
-- S6-003: Self-healing RPC failover
 - S6-004: Revenue anomaly detection
 - S6-005: Treasury auto-refill
 - S6-006: Capacity alerting
 
 ## Key URLs
-- https://rpc.satelink.network/health
 - https://rpc.satelink.network/system/scaling-stats
-- Tasks: 73/121 | Revenue: 93% | Production: 88%
+- https://rpc.satelink.network/system/rpc-healer/polygon-amoy
+- Tasks: 74/121 | Revenue: 93% | Production: 89%

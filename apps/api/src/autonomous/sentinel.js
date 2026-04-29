@@ -1,10 +1,12 @@
 import { createRequire } from 'module'
 import { startAutoScaler } from './auto_scaler.js'
+import { startRpcHealer } from './rpc_healer.js'
 
 export async function startSentinel(pool, redis) {
   console.log('[Sentinel] Started — monitoring revenue + node health')
 
   startAutoScaler(pool, redis)
+  startRpcHealer(redis)
   
   setInterval(async () => {
     try {

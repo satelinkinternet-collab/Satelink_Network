@@ -1,6 +1,7 @@
 import { createServer } from 'http';
 import { startSentinel } from "./src/autonomous/sentinel.js";
 import { getScalingStats } from "./src/autonomous/auto_scaler.js";
+import { getHealerStats } from "./src/autonomous/rpc_healer.js";
 import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
@@ -124,6 +125,16 @@ async function start() {
       }
     });
 
+    app.get('/system/rpc-healer/:chain?', async (req, res) => {
+      try {
+        const chain = req.params.chain || 'polygon-amoy';
+        const stats = await getHealerStats(chain);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     const httpServer = createServer(app);
 
     createWsGateway(httpServer, pool);
@@ -142,6 +153,7 @@ async function start() {
       console.log(`🏥 Health monitor started (2min interval)`);
       console.log(`🔍 Offline detector started (2min interval)`);
       console.log(`⚖️ Auto-scaler started (30s interval)`);
+      console.log(`🔧 RPC-healer started (60s interval)`);
     });
 
   } catch (err) {
