@@ -41,8 +41,6 @@ export function createApp(pool, redis) {
   // AI Inference Gateway (S3-002) — OpenAI-compatible, per-token billing
   app.use("/v1", createAiGatewayRouter(pool, redis));
 
-  const { createBandwidthRouter } = await import("./src/workloads/bandwidth_proxy/index.js");
-  app.use("/api/bandwidth", createBandwidthRouter(pool, redis));
   // LangChain Tool Adapter (S3-004) — AI agent tool definitions
   app.use("/v1/tools", createLangChainAdapterRouter(pool, redis));
 
