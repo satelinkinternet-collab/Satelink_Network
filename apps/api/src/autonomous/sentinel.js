@@ -2,13 +2,17 @@ import { createRequire } from 'module'
 import { startAutoScaler } from './auto_scaler.js'
 import { startRpcHealer } from './rpc_healer.js'
 import { startRevenueMonitor } from './revenue_anomaly.js'
+import { startTreasuryMonitor } from './treasury_monitor.js'
+import { startCapacityAlerter } from './capacity_alerter.js'
 
 export async function startSentinel(pool, redis) {
-  console.log('[Sentinel] Started — monitoring revenue + node health')
+  console.log('[Sentinel] Started — autonomous operations active')
 
   startAutoScaler(pool, redis)
   startRpcHealer(redis)
   startRevenueMonitor(pool, redis)
+  startTreasuryMonitor(redis)
+  startCapacityAlerter(pool, redis)
   
   setInterval(async () => {
     try {

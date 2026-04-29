@@ -1,24 +1,31 @@
 # CURRENT TASK
-Stage: S6 Autonomous Operations (4/6 done)
+Stage: S6 Autonomous Operations COMPLETE (6/6 done)
 Last commit: pending
 
-## Completed this session
+## Completed this session (Stage S6)
+- S6-001: Sentinel (epoch guard + offline detection)
 - S6-002: Auto-scaling node selection (8/8 tests)
 - S6-003: Self-healing RPC failover (7/7 tests)
-- S6-004: Revenue anomaly detection (revenue_anomaly.js)
-  - Dead interval detection (>30min no revenue)
-  - Drop detection (<50% of rolling avg)
-  - Spike detection (>300% of rolling avg)
-  - Revenue velocity tracking
-  - /system/revenue-anomalies endpoint
-  - 7/7 tests passing
+- S6-004: Revenue anomaly detection (7/7 tests)
+- S6-005: Treasury auto-refill monitor (11/11 tests)
+- S6-006: Capacity alerting (10/10 tests)
 
-## Next tasks
-- S6-005: Treasury auto-refill
-- S6-006: Capacity alerting
+## Autonomous Operations Summary
+Total tests: 43 passing
+Monitors running:
+- Auto-scaler (30s)
+- RPC-healer (60s)
+- Revenue-monitor (5min)
+- Treasury-monitor (10min)
+- Capacity-alerter (2min)
 
-## Key URLs
+## API Endpoints Added
 - /system/scaling-stats
 - /system/rpc-healer/:chain
 - /system/revenue-anomalies
-- Tasks: 75/121 | Revenue: 94% | Production: 90%
+- /system/treasury
+- /system/capacity
+
+## Next Stage
+- S7: DeFi Integration (protocol integrations, yield)
+- Tasks: 77/121 | Revenue: 95% | Production: 92%
