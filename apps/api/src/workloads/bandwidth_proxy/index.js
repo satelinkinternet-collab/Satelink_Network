@@ -29,7 +29,7 @@ export function createBandwidthRouter(pool, redis) {
       const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || ''
       const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 5000)
       const links = [...html.matchAll(/href="([^"]+)"/g)].map(m => m[1]).slice(0, 20)
-      await pool.query('INSERT INTO revenue_events_v2 (op_type, client_id, amount_usdt, status, request_id, created_at) VALUES ($1,$2,$3,$4,$5,$6)', ['scrape', apiKey || 'public', '0.001', 'completed', 'sc_' + Date.now(), Math.floor(Date.now()/1000)])
+      await pool.query('INSERT INTO revenue_events_v2 (op_type, client_id, amount_usdt, status, request_id, created_at) VALUES ($1,$2,$3,$4,$5,$6)', ['scrape', null, apiKey || 'public', '0.001', 'completed', 'sc_' + Date.now(), Math.floor(Date.now()/1000)])
       res.json({ ok: true, title, text, links, cost_usdt: '0.001000' })
     } catch (e) { res.status(500).json({ error: e.message }) }
   })
