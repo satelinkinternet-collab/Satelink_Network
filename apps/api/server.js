@@ -1,5 +1,7 @@
 import { createServer } from 'http';
-import { startSentinel } from "./src/autonomous/sentinel.js";import { createApp } from "./app_factory.mjs";
+import { startSentinel } from "./src/autonomous/sentinel.js";
+import { getScalingStats } from "./src/autonomous/auto_scaler.js";
+import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
@@ -113,6 +115,15 @@ async function start() {
       res.json({ ok: true, ...offlineDetectorStatus });
     });
 
+    app.get('/system/scaling-stats', async (req, res) => {
+      try {
+        const stats = await getScalingStats(pool, redis);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     const httpServer = createServer(app);
 
     createWsGateway(httpServer, pool);
@@ -130,6 +141,7 @@ async function start() {
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
       console.log(`🏥 Health monitor started (2min interval)`);
       console.log(`🔍 Offline detector started (2min interval)`);
+      console.log(`⚖️ Auto-scaler started (30s interval)`);
     });
 
   } catch (err) {
