@@ -128,7 +128,7 @@ async function start() {
       }
     });
 
-    app.get('/system/rpc-healer/:chain?', async (req, res) => {
+    app.get('/system/rpc-healer{/:chain}', async (req, res) => {
       try {
         const chain = req.params.chain || 'polygon-amoy';
         const stats = await getHealerStats(chain);
