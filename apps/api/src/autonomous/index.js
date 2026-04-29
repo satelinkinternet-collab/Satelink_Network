@@ -19,3 +19,9 @@ export {
   detectCascadeFailure,
   tryFallbackRoute
 } from './rpc_healer.js'
+export {
+  startRevenueMonitor,
+  getAnomalyStats,
+  detectAnomalies,
+  getRevenueVelocity
+} from './revenue_anomaly.js'

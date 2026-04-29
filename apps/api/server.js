@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import { startSentinel } from "./src/autonomous/sentinel.js";
 import { getScalingStats } from "./src/autonomous/auto_scaler.js";
 import { getHealerStats } from "./src/autonomous/rpc_healer.js";
+import { getAnomalyStats } from "./src/autonomous/revenue_anomaly.js";
 import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
@@ -135,6 +136,15 @@ async function start() {
       }
     });
 
+    app.get('/system/revenue-anomalies', async (req, res) => {
+      try {
+        const stats = await getAnomalyStats(pool, redis);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     const httpServer = createServer(app);
 
     createWsGateway(httpServer, pool);
@@ -154,6 +164,7 @@ async function start() {
       console.log(`🔍 Offline detector started (2min interval)`);
       console.log(`⚖️ Auto-scaler started (30s interval)`);
       console.log(`🔧 RPC-healer started (60s interval)`);
+      console.log(`💰 Revenue-monitor started (5min interval)`);
     });
 
   } catch (err) {
