@@ -29,7 +29,7 @@ const PROVIDER_CONFIGS = {
       },
       {
         id: 'ankr-amoy',
-        url: process.env.ANKR_AMOY_URL || 'https://rpc.ankr.com/polygon/_amoy',
+        url: process.env.ANKR_AMOY_URL || 'https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce_amoy',
         priority: 3,
         rateLimit: 100,
         type: 'ankr'
@@ -64,7 +64,7 @@ const PROVIDER_CONFIGS = {
       },
       {
         id: 'ankr-polygon',
-        url: process.env.ANKR_POLYGON_URL || 'https://rpc.ankr.com/polygon/',
+        url: process.env.ANKR_POLYGON_URL || 'https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce',
         priority: 3,
         rateLimit: 100,
         type: 'ankr'
