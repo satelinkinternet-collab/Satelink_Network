@@ -84,6 +84,13 @@ async function ensureBillingTables(pool) {
       WHERE NOT EXISTS (SELECT 1 FROM epoch_ledger WHERE status = 'OPEN')
     `);
 
+    // Drop NOT NULL constraint on node_id if it exists (production fix)
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ALTER COLUMN node_id DROP NOT NULL
+    `).catch(() => {});
+    console.log('[STARTUP] node_id constraint dropped');
+
     console.log('[STARTUP] Billing tables ensured');
   } catch (err) {
     console.error('[STARTUP] Billing migration failed:', err.message);
