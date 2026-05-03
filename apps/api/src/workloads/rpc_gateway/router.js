@@ -5,10 +5,20 @@
  * S1-RPC-005: Weighted load balancing across providers
  */
 
-import { getProviders, getChainConfig, CHAIN_ALIASES } from './providers.js';
-import { isOpen, recordSuccess, recordFailure, getCircuitStats } from './circuit_breaker.js';
-import { selectWeightedProvider, incrementRequestCount, getRequestCounts, getWeightsForProviders } from './load_balancer.js';
-import Redis from 'ioredis';
+import { getProviders, getChainConfig, CHAIN_ALIASES } from "./providers.js";
+import {
+  isOpen,
+  recordSuccess,
+  recordFailure,
+  getCircuitStats,
+} from "./circuit_breaker.js";
+import {
+  selectWeightedProvider,
+  incrementRequestCount,
+  getRequestCounts,
+  getWeightsForProviders,
+} from "./load_balancer.js";
+import Redis from "ioredis";
 
 const EMA_ALPHA = 0.2;
 const REQUEST_TIMEOUT_MS = 10000;
@@ -19,7 +29,7 @@ async function getRedis() {
   if (redisClient) return redisClient;
 
   const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
+  if (!url || url === "redis://") {
     return null;
   }
 
@@ -27,16 +37,16 @@ async function getRedis() {
     redisClient = new Redis(url, {
       maxRetriesPerRequest: 3,
       retryDelayOnFailover: 100,
-      tls: url.startsWith('rediss://') ? {} : undefined
+      tls: url.startsWith("rediss://") ? {} : undefined,
     });
 
-    redisClient.on('error', (err) => {
-      console.error('[RPC Router] Redis error:', err.message);
+    redisClient.on("error", (err) => {
+      console.error("[RPC Router] Redis error:", err.message);
     });
 
     return redisClient;
   } catch (err) {
-    console.error('[RPC Router] Redis connect failed:', err.message);
+    console.error("[RPC Router] Redis connect failed:", err.message);
     return null;
   }
 }
@@ -49,20 +59,20 @@ function getLatencyKey(chain, providerId) {
 async function getProviderLatencies(chain, providers) {
   const redis = await getRedis();
   if (!redis) {
-    return providers.map(p => ({ ...p, latency: null }));
+    return providers.map((p) => ({ ...p, latency: null }));
   }
 
-  const keys = providers.map(p => getLatencyKey(chain, p.id));
+  const keys = providers.map((p) => getLatencyKey(chain, p.id));
 
   try {
     const values = await redis.mget(...keys);
     return providers.map((p, i) => ({
       ...p,
-      latency: values[i] ? parseFloat(values[i]) : null
+      latency: values[i] ? parseFloat(values[i]) : null,
     }));
   } catch (err) {
-    console.error('[RPC Router] Failed to get latencies:', err.message);
-    return providers.map(p => ({ ...p, latency: null }));
+    console.error("[RPC Router] Failed to get latencies:", err.message);
+    return providers.map((p) => ({ ...p, latency: null }));
   }
 }
 
@@ -83,9 +93,9 @@ async function updateLatency(chain, providerId, newLatency) {
       ema = newLatency;
     }
 
-    await redis.set(key, ema.toFixed(2), 'EX', 3600);
+    await redis.set(key, ema.toFixed(2), "EX", 3600);
   } catch (err) {
-    console.error('[RPC Router] Failed to update latency:', err.message);
+    console.error("[RPC Router] Failed to update latency:", err.message);
   }
 }
 
@@ -108,15 +118,15 @@ async function executeRpcCall(providerUrl, method, params, id) {
 
   try {
     const response = await fetch(providerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         method,
         params: params || [],
-        id: id || 1
+        id: id || 1,
       }),
-      signal: controller.signal
+      signal: controller.signal,
     });
 
     clearTimeout(timeout);
@@ -129,7 +139,7 @@ async function executeRpcCall(providerUrl, method, params, id) {
     const result = await response.json();
 
     if (result.error) {
-      throw new Error(result.error.message || 'RPC error');
+      throw new Error(result.error.message || "RPC error");
     }
 
     return { success: true, result, latency };
@@ -162,7 +172,9 @@ export async function routeRpcRequest(chain, method, params, id) {
   }
 
   if (availableProviders.length === 0) {
-    console.warn('[RPC Router] All providers circuit-broken, trying first anyway');
+    console.warn(
+      "[RPC Router] All providers circuit-broken, trying first anyway",
+    );
     availableProviders.push(providersWithLatency[0]);
   }
 
@@ -171,13 +183,17 @@ export async function routeRpcRequest(chain, method, params, id) {
 
   while (remainingProviders.length > 0) {
     const provider = selectWeightedProvider(remainingProviders);
+
+    // 🔥 NEW DEBUG LOG (BEFORE CALL)
+    console.log(`[RPC Router DEBUG] Trying → ${chain} → ${provider.id}`);
+
     attemptedProviders.push(provider.id);
 
     const { success, result, error, latency } = await executeRpcCall(
       provider.url,
       method,
       params,
-      id
+      id,
     );
 
     if (success) {
@@ -185,26 +201,28 @@ export async function routeRpcRequest(chain, method, params, id) {
       await updateLatency(chain, provider.id, latency);
       await incrementRequestCount(chain, provider.id);
 
-      console.log(`[RPC Router] ${chain} → ${provider.id} (${latency}ms) [weighted]`);
+      console.log(
+        `[RPC Router] ${chain} → ${provider.id} (${latency}ms) [weighted]`,
+      );
 
       return {
         success: true,
         result,
         provider: provider.id,
-        latency
+        latency,
       };
     }
 
     console.warn(`[RPC Router] ${provider.id} failed: ${error} (${latency}ms)`);
     await recordFailure(chain, provider.id);
 
-    remainingProviders = remainingProviders.filter(p => p.id !== provider.id);
+    remainingProviders = remainingProviders.filter((p) => p.id !== provider.id);
   }
 
   return {
     success: false,
-    error: 'All providers failed',
-    attemptedProviders
+    error: "All providers failed",
+    attemptedProviders,
   };
 }
 
@@ -212,13 +230,16 @@ export async function getRouterStats(chain) {
   const providers = getProviders(chain);
   const providersWithLatency = await getProviderLatencies(chain, providers);
   const weights = getWeightsForProviders(providersWithLatency);
-  const requestCounts = await getRequestCounts(chain, providers.map(p => p.id));
+  const requestCounts = await getRequestCounts(
+    chain,
+    providers.map((p) => p.id),
+  );
 
   const stats = [];
   for (let i = 0; i < providersWithLatency.length; i++) {
     const p = providersWithLatency[i];
     const circuit = await getCircuitStats(chain, p.id);
-    const weightInfo = weights.find(w => w.id === p.id);
+    const weightInfo = weights.find((w) => w.id === p.id);
 
     stats.push({
       id: p.id,
@@ -229,8 +250,8 @@ export async function getRouterStats(chain) {
       circuit: {
         state: circuit.state,
         failures: circuit.failures,
-        timeUntilReset: circuit.timeUntilReset
-      }
+        timeUntilReset: circuit.timeUntilReset,
+      },
     });
   }
 
