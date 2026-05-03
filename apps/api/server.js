@@ -1,3 +1,4 @@
+const { createCompatibilityGatewayRoutes } = require('./src/gateway/routes/compatibility_gateway_api');
 const compatibilityRoutes = require('./gateway/routes/compatibility_gateway_api');import { createServer } from 'http';
 import { startSentinel } from "./src/autonomous/sentinel.js";
 import { getScalingStats } from "./src/autonomous/auto_scaler.js";
