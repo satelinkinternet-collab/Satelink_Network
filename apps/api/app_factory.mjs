@@ -10,6 +10,8 @@ import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
 import { createNodeRegistryRouter } from "./src/services/node_registry/registration.js";
 import { createSdkAnalyticsRouter } from "./src/workloads/rpc_gateway/sdk_analytics.js";
 import { createSettlementAuditRouter } from "./src/services/settlement/audit.js";
+import { createWebhookRouter, ensureWebhookTable } from "./src/workloads/webhooks/index.js";
+import { createOracleRouter } from "./src/workloads/oracle/index.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -64,6 +66,13 @@ export function createApp(pool, redis) {
 
   // Settlement Audit (S7-004)
   app.use("/api/settlement", createSettlementAuditRouter(pool));
+
+  // Webhook Delivery System (S8-003)
+  app.use("/api/webhooks", createWebhookRouter(pool, redis));
+  ensureWebhookTable(pool).catch(e => console.error('[Webhooks] Table setup failed:', e.message));
+
+  // Oracle Price Feed (S8-004)
+  app.use("/api/oracle", createOracleRouter(pool, redis));
 
   return app;
 }

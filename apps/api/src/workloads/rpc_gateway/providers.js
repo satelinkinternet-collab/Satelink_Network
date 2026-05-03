@@ -181,6 +181,27 @@ const PROVIDER_CONFIGS = {
       },
     ],
   },
+
+  solana: {
+    chainId: 0,
+    name: "Solana Mainnet",
+    providers: [
+      {
+        id: "solana-official",
+        url: "https://api.mainnet-beta.solana.com",
+        priority: 1,
+        rateLimit: 100,
+        type: "public",
+      },
+      {
+        id: "solana-ankr",
+        url: `https://rpc.ankr.com/solana/${process.env.ANKR_API_KEY || ""}`,
+        priority: 2,
+        rateLimit: 100,
+        type: "ankr",
+      },
+    ],
+  },
 };
 
 const CHAIN_ALIASES = {
@@ -189,6 +210,7 @@ const CHAIN_ALIASES = {
   eth: "ethereum",
   arb: "arbitrum",
   "base-mainnet": "base",
+  sol: "solana",
 };
 
 export function getChainConfig(chainKey) {
