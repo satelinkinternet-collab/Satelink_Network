@@ -11,6 +11,12 @@ REVENUE-LIVE / S4-COMPLETE / CHAINLIST-MERGED
 - Every RPC call now records real revenue
 - Chainlist PR #2665 MERGED — external traffic incoming
 
+## 🔧 HOTFIX: node_id NOT NULL constraint (May 3, 2026)
+- **Issue:** revenue_events_v2 had node_id NOT NULL but RPC billing doesn't include node_id
+- **Fix:** ALTER TABLE runs at startup to drop NOT NULL constraint
+- **Result:** Billing recording restored — all 5 test calls show `[Billing] ✓`
+- **Commits:** fba1b9e (fix runs first, independently)
+
 ---
 
 ## PROGRESS (VERIFIED 2026-04-27)
