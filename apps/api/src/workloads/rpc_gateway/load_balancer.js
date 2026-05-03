@@ -13,8 +13,8 @@
  * - Still favors faster, more reliable providers
  */
 
-import Redis from 'ioredis';
-import { CHAIN_ALIASES } from './providers.js';
+import Redis from "ioredis";
+import { CHAIN_ALIASES } from "./providers.js";
 
 const DEFAULT_LATENCY = 500;
 const MIN_WEIGHT = 1;
@@ -26,7 +26,7 @@ function getRedis() {
   if (redis) return redis;
 
   const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
+  if (!url || url === "redis://") {
     return null;
   }
 
@@ -34,16 +34,16 @@ function getRedis() {
     redis = new Redis(url, {
       maxRetriesPerRequest: 3,
       retryDelayOnFailover: 100,
-      tls: url.startsWith('rediss://') ? {} : undefined
+      tls: url.startsWith("rediss://") ? {} : undefined,
     });
 
-    redis.on('error', (err) => {
-      console.error('[LoadBalancer] Redis error:', err.message);
+    redis.on("error", (err) => {
+      console.error("[LoadBalancer] Redis error:", err.message);
     });
 
     return redis;
   } catch (err) {
-    console.error('[LoadBalancer] Redis init failed:', err.message);
+    console.error("[LoadBalancer] Redis init failed:", err.message);
     return null;
   }
 }
@@ -57,7 +57,7 @@ export function calculateWeight(provider) {
   const latency = provider.latency || DEFAULT_LATENCY;
   const rateLimit = provider.rateLimit || 100;
 
-  const latencyScore = Math.max(1, 1000 / latency);
+  const latencyScore = 1 / Math.sqrt(latency);
   const rateLimitBonus = Math.log10(rateLimit + 1);
   const priorityBonus = (10 - Math.min(provider.priority || 1, 10)) / 10;
 
@@ -72,9 +72,9 @@ export function selectWeightedProvider(providers) {
   if (providers.length === 0) return null;
   if (providers.length === 1) return providers[0];
 
-  const weights = providers.map(p => ({
+  const weights = providers.map((p) => ({
     provider: p,
-    weight: calculateWeight(p)
+    weight: calculateWeight(p),
   }));
 
   const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
@@ -105,7 +105,10 @@ export async function incrementRequestCount(chain, providerId) {
     await client.incr(key);
     await client.expire(key, 3600);
   } catch (err) {
-    console.error('[LoadBalancer] Failed to increment request count:', err.message);
+    console.error(
+      "[LoadBalancer] Failed to increment request count:",
+      err.message,
+    );
   }
 }
 
@@ -116,21 +119,21 @@ export async function getRequestCounts(chain, providerIds) {
   }
 
   try {
-    const keys = providerIds.map(id => getRequestCountKey(chain, id));
+    const keys = providerIds.map((id) => getRequestCountKey(chain, id));
     const values = await client.mget(...keys);
-    return values.map(v => parseInt(v) || 0);
+    return values.map((v) => parseInt(v) || 0);
   } catch (err) {
-    console.error('[LoadBalancer] Failed to get request counts:', err.message);
+    console.error("[LoadBalancer] Failed to get request counts:", err.message);
     return providerIds.map(() => 0);
   }
 }
 
 export function getWeightsForProviders(providers) {
-  return providers.map(p => ({
+  return providers.map((p) => ({
     id: p.id,
     weight: calculateWeight(p),
     latency: p.latency,
-    rateLimit: p.rateLimit
+    rateLimit: p.rateLimit,
   }));
 }
 
