@@ -1,3 +1,4 @@
+import { routeRpcRequest } from "../../workloads/rpc_gateway/router.js";
 /**
  * Compatibility Gateway HTTP Routes
  *
