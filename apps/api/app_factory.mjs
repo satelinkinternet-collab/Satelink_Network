@@ -9,6 +9,7 @@ import { createPluginManifestRouter, createOpenApiRouter } from "./src/workloads
 import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
 import { createNodeRegistryRouter } from "./src/services/node_registry/registration.js";
 import { createSdkAnalyticsRouter } from "./src/workloads/rpc_gateway/sdk_analytics.js";
+import { createSettlementAuditRouter } from "./src/services/settlement/audit.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -60,6 +61,9 @@ export function createApp(pool, redis) {
 
   // SDK Analytics (S4-005)
   app.use("/api", createSdkAnalyticsRouter());
+
+  // Settlement Audit (S7-004)
+  app.use("/api/settlement", createSettlementAuditRouter(pool));
 
   return app;
 }

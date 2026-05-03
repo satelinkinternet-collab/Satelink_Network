@@ -30,7 +30,8 @@ export async function getMaticBalance(rpcUrl, address) {
     const result = await response.json();
     if (result.error) throw new Error(result.error.message);
 
-    const wei = BigInt(result.result);
+    const safeHex = (result.result || '0x0') === '0x' ? '0x0' : (result.result || '0x0');
+    const wei = BigInt(safeHex);
     return Number(wei) / 1e18;
   } catch (e) {
     console.error('[Treasury] Failed to get MATIC balance:', e.message);
@@ -58,7 +59,8 @@ export async function getUsdtBalance(rpcUrl, usdtContract, address) {
     const result = await response.json();
     if (result.error) throw new Error(result.error.message);
 
-    const raw = BigInt(result.result);
+    const safeHex = (result.result || '0x0') === '0x' ? '0x0' : (result.result || '0x0');
+    const raw = BigInt(safeHex);
     return Number(raw) / 1e6; // USDT has 6 decimals
   } catch (e) {
     console.error('[Treasury] Failed to get USDT balance:', e.message);

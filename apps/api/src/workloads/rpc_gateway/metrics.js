@@ -85,8 +85,6 @@ async function getRevenueStats(db) {
   }
 
   try {
-    // Query only revenue_events_v2 using confirmed columns: amount_usdt, created_at
-    // created_at is stored as Unix seconds in rpc_billing.js
     const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
 
     const result = await db.query(
@@ -98,10 +96,15 @@ async function getRevenueStats(db) {
       [oneDayAgo]
     );
 
+    const epochRow = await db.query(
+      "SELECT id FROM epoch_ledger WHERE status='OPEN' ORDER BY id DESC LIMIT 1"
+    );
+    const activeEpoch = epochRow.rows[0]?.id || null;
+
     return {
       eventsToday: parseInt(result.rows[0]?.events_today, 10) || 0,
       usdtToday: parseFloat(result.rows[0]?.usdt_today) || 0,
-      activeEpoch: null
+      activeEpoch
     };
   } catch (err) {
     console.error('[Metrics] Revenue query failed:', err.message);

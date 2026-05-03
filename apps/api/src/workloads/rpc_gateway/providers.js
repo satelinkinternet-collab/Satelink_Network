@@ -65,7 +65,7 @@ const PROVIDER_CONFIGS = {
         id: "alchemy-polygon",
         url:
           process.env.ALCHEMY_POLYGON_URL ||
-          `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "demo"}`,
+          `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY || "demo"}`,
         priority: 2,
         rateLimit: 300,
         type: "alchemy",
@@ -74,7 +74,7 @@ const PROVIDER_CONFIGS = {
         id: "ankr-polygon",
         url:
           process.env.ANKR_POLYGON_URL ||
-          "https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce",
+          `https://rpc.ankr.com/polygon/${process.env.ANKR_API_KEY || ""}`,
         priority: 1,
         rateLimit: 100,
         type: "ankr",
