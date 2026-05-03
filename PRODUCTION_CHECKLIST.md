@@ -29,8 +29,8 @@ Last updated: 2026-05-03
 - [x] 50/30/20 split logic in SplitEngine.sol
 - [x] Revenue events v2 table schema stable
 - [x] Merkle root anchoring implemented
-- [ ] USDT mainnet contract deployed (S9 blocker)
-- [ ] MATIC balance > 1 (currently 0.06 — needs top up)
+- [x] USDT mainnet contract deployed (S9 blocker) — deployed 2026-05-04
+- [x] MATIC balance > 1 (4.75 POL available)
 
 ## RPC Gateway
 
@@ -67,13 +67,14 @@ Last updated: 2026-05-03
 
 ## Launch Blockers
 
-1. **USDT contract on Polygon mainnet not deployed**
-   - Status: Pending contract audit
-   - ETA: Before mainnet launch
+1. ~~**USDT contract on Polygon mainnet not deployed**~~ ✅ DEPLOYED
+   - NodeRegistryV2: `0x27D7320d5786D5B4B4dE8aAAC6cf62338ADeC037`
+   - RevenueDistributor: `0x8a9CefBD801574806a634aF179f538ABB5926F5a`
+   - RevenueVault: `0xa77512B9255D504B3fD450037f1448D4df6A1b6d`
+   - ClaimsContract: `0xE475c53B88190FD2130dB1E37504991EFe283fb0`
 
-2. **MATIC balance critically low (0.06)**
-   - Need: 2+ MATIC for gas operations
-   - Action: Top up treasury wallet
+2. ~~**MATIC balance critically low (0.06)**~~ ✅ RESOLVED
+   - Treasury has 4.75 POL, ~4.2 remaining after deployment
 
 3. **API key rate limiting finalization**
    - Status: Basic limits in place
@@ -81,12 +82,12 @@ Last updated: 2026-05-03
 
 ## Pre-Launch Final Steps
 
-- [ ] Run full security audit (all 6 scripts)
+- [x] Run full security audit (all 6 scripts) — passed 2026-05-03
 - [ ] Load test RPC endpoints (target: 5,000 req/s)
 - [ ] Verify epoch close under high volume
 - [ ] Test settlement batch flow end-to-end
-- [ ] Deploy USDT contract to Polygon mainnet
-- [ ] Top up MATIC balance
+- [x] Deploy contracts to Polygon mainnet — 2026-05-04
+- [x] Top up MATIC balance — 4.75 POL available
 - [ ] Enable production Discord alerts
 - [ ] Publish API documentation
 - [ ] Submit to additional chain registries
