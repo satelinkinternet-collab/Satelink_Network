@@ -1,4 +1,4 @@
-import { createServer } from 'http';
+const compatibilityRoutes = require('./gateway/routes/compatibility_gateway_api');import { createServer } from 'http';
 import { startSentinel } from "./src/autonomous/sentinel.js";
 import { getScalingStats } from "./src/autonomous/auto_scaler.js";
 import { getHealerStats } from "./src/autonomous/rpc_healer.js";
@@ -210,3 +210,5 @@ async function start() {
 }
 
 start();
+
+app.use('/', compatibilityRoutes);
