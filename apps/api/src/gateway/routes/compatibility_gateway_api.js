@@ -17,7 +17,6 @@
 import { Router } from "express";
 import { DemandBuffer } from "../../queue/demand_buffer.js";
 import { CompatibilityGateway } from "../../gateway/compatibility_gateway.js";
-import { routeRpcRequest } from "../../workloads/rpc_gateway/router.js";
 
 /**
  * @param {DemandBuffer}           [demandBuffer]  — supply existing buffer or create new
@@ -46,7 +45,6 @@ export function createCompatibilityGatewayRoutes(demandBuffer) {
     }
 
     try {
-      const routeResult = await routeRpcRequest(
         chain,
         method,
         params ?? [],
@@ -119,7 +117,6 @@ export function createCompatibilityGatewayRoutes(demandBuffer) {
   return { workloadRouter, computeRouter, webhookRouter, adminRouter, gateway };
 }
 
-import { routeRpcRequest } from "../../workloads/rpc_gateway/router.js";
 
 app.post("/rpc/:chain", async (req, res) => {
   const { chain } = req.params;
@@ -127,7 +124,6 @@ app.post("/rpc/:chain", async (req, res) => {
 
   console.log("[RPC ENTRY]", chain, method);
 
-  const result = await routeRpcRequest(chain, method, params, id);
 
   if (result.success) {
     return res.json(result.result);
@@ -148,7 +144,6 @@ export function __forceRpcRoute(app) {
 
     console.log('[RPC ENTRY]', chain, method);
 
-    const result = await routeRpcRequest(chain, method, params, id);
 
     if (result.success) {
       return res.json(result.result);
