@@ -36,6 +36,17 @@ function createRedisClient() {
 }
 
 async function ensureBillingTables(pool) {
+  // CRITICAL: Drop NOT NULL on node_id FIRST (runs independently)
+  try {
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ALTER COLUMN node_id DROP NOT NULL
+    `);
+    console.log('[STARTUP] node_id constraint dropped');
+  } catch (e) {
+    // Ignore - constraint may not exist or table may not exist yet
+  }
+
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS epoch_ledger (
@@ -82,14 +93,7 @@ async function ensureBillingTables(pool) {
       INSERT INTO epoch_ledger (epoch_id, status, started_at, total_revenue)
       SELECT 'epoch-auto-1', 'OPEN', EXTRACT(EPOCH FROM NOW()) * 1000, 0
       WHERE NOT EXISTS (SELECT 1 FROM epoch_ledger WHERE status = 'OPEN')
-    `);
-
-    // Drop NOT NULL constraint on node_id if it exists (production fix)
-    await pool.query(`
-      ALTER TABLE revenue_events_v2
-      ALTER COLUMN node_id DROP NOT NULL
-    `).catch(() => {});
-    console.log('[STARTUP] node_id constraint dropped');
+    `).catch(() => {}); // Ignore if epoch_ledger schema differs
 
     console.log('[STARTUP] Billing tables ensured');
   } catch (err) {
