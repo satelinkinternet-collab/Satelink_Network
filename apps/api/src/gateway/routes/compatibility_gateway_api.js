@@ -138,3 +138,25 @@ app.post("/rpc/:chain", async (req, res) => {
     attempted: result.attemptedProviders,
   });
 });
+
+
+/* === FORCE RPC ROUTE INJECTION === */
+export function __forceRpcRoute(app) {
+  app.post('/rpc/:chain', async (req, res) => {
+    const { chain } = req.params;
+    const { method, params, id } = req.body;
+
+    console.log('[RPC ENTRY]', chain, method);
+
+    const result = await routeRpcRequest(chain, method, params, id);
+
+    if (result.success) {
+      return res.json(result.result);
+    }
+
+    return res.status(500).json({
+      error: result.error,
+      attempted: result.attemptedProviders
+    });
+  });
+}
