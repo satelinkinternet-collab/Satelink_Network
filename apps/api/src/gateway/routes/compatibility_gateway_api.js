@@ -45,13 +45,12 @@ export function createCompatibilityGatewayRoutes(demandBuffer) {
     }
 
     try {
+      const routeResult = await routeRpcRequest(
         chain,
         method,
         params ?? [],
-        id,
-      );
-
-      if (!routeResult.success) {
+        id
+      );if (!routeResult.success) {
         return res.status(502).json({
           jsonrpc: "2.0",
           id: id ?? null,
