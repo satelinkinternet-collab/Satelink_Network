@@ -9,174 +9,186 @@
  */
 
 const PROVIDER_CONFIGS = {
-  'polygon-amoy': {
+  "polygon-amoy": {
     chainId: 80002,
-    name: 'Polygon Amoy Testnet',
+    name: "Polygon Amoy Testnet",
     providers: [
       {
-        id: 'polygon-amoy-official',
-        url: process.env.RPC_POLYGON_AMOY_1 || 'https://rpc-amoy.polygon.technology',
+        id: "polygon-amoy-official",
+        url:
+          process.env.RPC_POLYGON_AMOY_1 ||
+          "https://rpc-amoy.polygon.technology",
         priority: 1,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'alchemy-amoy',
-        url: process.env.ALCHEMY_AMOY_URL || `https://polygon-amoy.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || 'demo'}`,
+        id: "alchemy-amoy",
+        url:
+          process.env.ALCHEMY_AMOY_URL ||
+          `https://polygon-amoy.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "demo"}`,
         priority: 2,
         rateLimit: 300,
-        type: 'alchemy'
+        type: "alchemy",
       },
       {
-        id: 'ankr-amoy',
-        url: process.env.ANKR_AMOY_URL || 'https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce_amoy',
+        id: "ankr-amoy",
+        url:
+          process.env.ANKR_AMOY_URL ||
+          "https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce_amoy",
         priority: 3,
         rateLimit: 100,
-        type: 'ankr'
+        type: "ankr",
       },
       {
-        id: 'drpc-amoy',
-        url: process.env.DRPC_AMOY_URL || 'https://polygon-amoy.drpc.org',
+        id: "drpc-amoy",
+        url: process.env.DRPC_AMOY_URL || "https://polygon-amoy.drpc.org",
         priority: 4,
         rateLimit: 100,
-        type: 'drpc'
-      }
-    ]
+        type: "drpc",
+      },
+    ],
   },
 
-  'polygon': {
+  polygon: {
     chainId: 137,
-    name: 'Polygon PoS Mainnet',
+    name: "Polygon PoS Mainnet",
     providers: [
       {
-        id: 'polygon-official',
-        url: process.env.RPC_POLYGON_1 || 'https://polygon-rpc.com',
+        id: "polygon-official",
+        url: process.env.RPC_POLYGON_1 || "https://polygon-rpc.com",
         priority: 1,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'alchemy-polygon',
-        url: process.env.ALCHEMY_POLYGON_URL || `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || 'demo'}`,
+        id: "alchemy-polygon",
+        url:
+          process.env.ALCHEMY_POLYGON_URL ||
+          `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "demo"}`,
         priority: 2,
         rateLimit: 300,
-        type: 'alchemy'
+        type: "alchemy",
       },
       {
-        id: 'ankr-polygon',
-        url: process.env.ANKR_POLYGON_URL || 'https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce',
-        priority: 3,
+        id: "ankr-polygon",
+        url:
+          process.env.ANKR_POLYGON_URL ||
+          "https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce",
+        priority: 1,
         rateLimit: 100,
-        type: 'ankr'
+        type: "ankr",
       },
       {
-        id: 'llamarpc-polygon',
-        url: 'https://polygon.llamarpc.com',
+        id: "llamarpc-polygon",
+        url: "https://polygon.llamarpc.com",
         priority: 4,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'drpc-polygon',
-        url: process.env.DRPC_POLYGON_URL || 'https://polygon.drpc.org',
-        priority: 5,
+        id: "drpc-polygon",
+        url: process.env.DRPC_POLYGON_URL || "https://polygon.drpc.org",
+        priority: 4,
         rateLimit: 100,
-        type: 'drpc'
-      }
-    ]
+        type: "drpc",
+      },
+    ],
   },
 
-  'ethereum': {
+  ethereum: {
     chainId: 1,
-    name: 'Ethereum Mainnet',
+    name: "Ethereum Mainnet",
     providers: [
       {
-        id: 'llamarpc-eth',
-        url: 'https://eth.llamarpc.com',
+        id: "llamarpc-eth",
+        url: "https://eth.llamarpc.com",
         priority: 1,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'alchemy-eth',
-        url: process.env.ALCHEMY_ETH_URL || `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || 'demo'}`,
+        id: "alchemy-eth",
+        url:
+          process.env.ALCHEMY_ETH_URL ||
+          `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "demo"}`,
         priority: 2,
         rateLimit: 300,
-        type: 'alchemy'
+        type: "alchemy",
       },
       {
-        id: 'ankr-eth',
-        url: process.env.ANKR_ETH_URL || 'https://rpc.ankr.com/eth',
+        id: "ankr-eth",
+        url: process.env.ANKR_ETH_URL || "https://rpc.ankr.com/eth",
         priority: 3,
         rateLimit: 100,
-        type: 'ankr'
+        type: "ankr",
       },
       {
-        id: 'cloudflare-eth',
-        url: 'https://cloudflare-eth.com',
+        id: "cloudflare-eth",
+        url: "https://cloudflare-eth.com",
         priority: 4,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'drpc-eth',
-        url: process.env.DRPC_ETH_URL || 'https://eth.drpc.org',
+        id: "drpc-eth",
+        url: process.env.DRPC_ETH_URL || "https://eth.drpc.org",
         priority: 5,
         rateLimit: 100,
-        type: 'drpc'
-      }
-    ]
+        type: "drpc",
+      },
+    ],
   },
 
-  'arbitrum': {
+  arbitrum: {
     chainId: 42161,
-    name: 'Arbitrum One',
+    name: "Arbitrum One",
     providers: [
       {
-        id: 'arbitrum-official',
-        url: 'https://arb1.arbitrum.io/rpc',
+        id: "arbitrum-official",
+        url: "https://arb1.arbitrum.io/rpc",
         priority: 1,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'ankr-arbitrum',
-        url: 'https://rpc.ankr.com/arbitrum',
+        id: "ankr-arbitrum",
+        url: "https://rpc.ankr.com/arbitrum",
         priority: 2,
         rateLimit: 100,
-        type: 'ankr'
-      }
-    ]
+        type: "ankr",
+      },
+    ],
   },
 
-  'base': {
+  base: {
     chainId: 8453,
-    name: 'Base Mainnet',
+    name: "Base Mainnet",
     providers: [
       {
-        id: 'base-official',
-        url: 'https://mainnet.base.org',
+        id: "base-official",
+        url: "https://mainnet.base.org",
         priority: 1,
         rateLimit: 100,
-        type: 'public'
+        type: "public",
       },
       {
-        id: 'ankr-base',
-        url: 'https://rpc.ankr.com/base',
+        id: "ankr-base",
+        url: "https://rpc.ankr.com/base",
         priority: 2,
         rateLimit: 100,
-        type: 'ankr'
-      }
-    ]
-  }
+        type: "ankr",
+      },
+    ],
+  },
 };
 
 const CHAIN_ALIASES = {
-  'amoy': 'polygon-amoy',
-  'matic': 'polygon',
-  'eth': 'ethereum',
-  'arb': 'arbitrum',
-  'base-mainnet': 'base'
+  amoy: "polygon-amoy",
+  matic: "polygon",
+  eth: "ethereum",
+  arb: "arbitrum",
+  "base-mainnet": "base",
 };
 
 export function getChainConfig(chainKey) {
