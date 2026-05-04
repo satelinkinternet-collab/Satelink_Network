@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
 interface ChainStatus {
@@ -8,11 +8,6 @@ interface ChainStatus {
   isLive: boolean;
   latency: number | null;
   blockNumber: string | null;
-}
-
-interface RevenueMetrics {
-  totalRevenue: number;
-  eventsToday: number;
 }
 
 interface TerminalLine {
@@ -34,54 +29,6 @@ export function HeroSection() {
     { type: "command", text: '    -d \'{"method":"eth_blockNumber","id":1}\'' },
     { type: "response", text: '{"result":"0x...","id":1}' },
   ]);
-
-  const [revenue, setRevenue] = useState<RevenueMetrics>({ totalRevenue: 0, eventsToday: 0 });
-  const displayRevenue = useRef(0);
-  const [animatedRevenue, setAnimatedRevenue] = useState("0.000000");
-
-  const fetchRevenue = useCallback(async () => {
-    try {
-      const res = await fetch("https://rpc.satelink.network/rpc/metrics");
-      if (res.ok) {
-        const data = await res.json();
-        const newRevenue = parseFloat(data.revenue?.usdtToday || "0");
-        setRevenue({
-          totalRevenue: newRevenue,
-          eventsToday: data.revenue?.eventsToday || 0,
-        });
-      }
-    } catch {
-      // Use defaults
-    }
-  }, []);
-
-  useEffect(() => {
-    const target = revenue.totalRevenue;
-    const start = displayRevenue.current;
-    const duration = 1000;
-    const startTime = performance.now();
-
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      const current = start + (target - start) * easeOut;
-      displayRevenue.current = current;
-      setAnimatedRevenue(current.toFixed(6));
-
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [revenue.totalRevenue]);
-
-  useEffect(() => {
-    fetchRevenue();
-    const interval = setInterval(fetchRevenue, 10000);
-    return () => clearInterval(interval);
-  }, [fetchRevenue]);
 
   const fetchChainStatus = useCallback(async () => {
     try {
@@ -136,13 +83,7 @@ export function HeroSection() {
       <div className="hero-content">
         <div className="hero-badge animate-fade-up">
           <span style={{ color: "var(--earn)" }}>&#x2197;</span>
-          Chainlist Listed &middot; 6 Chains &middot; Mainnet Live
-        </div>
-
-        <div className="revenue-ticker animate-fade-up delay-50">
-          <span className="ticker-label">Total Revenue Distributed:</span>
-          <span className="ticker-value">${animatedRevenue}</span>
-          <span className="ticker-currency">USDT</span>
+          Chainlist Listed &middot; 5 Chains &middot; Public Beta
         </div>
 
         <h1 className="heading-display hero-title animate-fade-up delay-100">
@@ -198,35 +139,6 @@ export function HeroSection() {
       </div>
 
       <style jsx>{`
-        .revenue-ticker {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: var(--space-2);
-          padding: var(--space-2) var(--space-4);
-          background: linear-gradient(90deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
-          border: 1px solid rgba(34, 197, 94, 0.3);
-          border-radius: var(--radius-full);
-          margin-bottom: var(--space-4);
-        }
-
-        .ticker-label {
-          font-size: 0.875rem;
-          color: var(--text-muted);
-        }
-
-        .ticker-value {
-          font-family: var(--font-mono);
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #22C55E;
-        }
-
-        .ticker-currency {
-          font-size: 0.875rem;
-          color: var(--text-muted);
-        }
-
         .hero-terminal {
           max-width: 640px;
           margin: var(--space-12) auto 0;

@@ -12,7 +12,6 @@ import { createSdkAnalyticsRouter } from "./src/workloads/rpc_gateway/sdk_analyt
 import { createSettlementAuditRouter } from "./src/services/settlement/audit.js";
 import { createWebhookRouter, ensureWebhookTable } from "./src/workloads/webhooks/index.js";
 import { createOracleRouter } from "./src/workloads/oracle/index.js";
-import { createClaimsRouter } from "./src/routes/claims.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -74,9 +73,6 @@ export function createApp(pool, redis) {
 
   // Oracle Price Feed (S8-004)
   app.use("/api/oracle", createOracleRouter(pool, redis));
-
-  // Claims & Withdrawals (S10)
-  app.use("/api", createClaimsRouter(pool, redis));
 
   return app;
 }
