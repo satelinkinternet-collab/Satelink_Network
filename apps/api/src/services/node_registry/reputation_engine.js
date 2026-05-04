@@ -238,3 +238,20 @@ export async function ensureReputationHistoryTable(pool) {
     console.error('[Reputation] History table creation failed:', err.message);
   }
 }
+
+// Auto-migration fix — run on startup
+export async function ensureReputationTable(pool) {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reputation_history (
+        id SERIAL PRIMARY KEY,
+        node_id TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        tier TEXT NOT NULL,
+        delta INTEGER DEFAULT 0,
+        reason TEXT,
+        recorded_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
+      )
+    `)
+  } catch(e) { console.error('[Reputation] Table init error:', e.message) }
+}
