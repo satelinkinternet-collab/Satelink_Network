@@ -162,7 +162,7 @@ export default function NetworkDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6">
+    <div className="min-h-screen bg-[#2C3333] text-white p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <div>
@@ -200,7 +200,7 @@ export default function NetworkDashboard() {
         {/* Chain Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {chains.map((chain) => (
-            <div key={chain.name} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+            <div key={chain.name} className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">{chain.name}</h3>
                 <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ export default function NetworkDashboard() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Block</span>
-                  <span className="font-mono text-[#1AFFD4]">
+                  <span className="font-mono text-[#0E8388]">
                     {chain.currentBlock ? chain.currentBlock.toLocaleString() : "—"}
                   </span>
                 </div>
@@ -236,7 +236,7 @@ export default function NetworkDashboard() {
                 {chain.cacheStats && (
                   <div className="flex justify-between">
                     <span className="text-gray-400">Cache Hit</span>
-                    <span className="text-[#1AFFD4]">{chain.cacheStats.hitRate}</span>
+                    <span className="text-[#0E8388]">{chain.cacheStats.hitRate}</span>
                   </div>
                 )}
               </div>
@@ -246,12 +246,12 @@ export default function NetworkDashboard() {
 
         {/* Provider Table */}
         {providers.length > 0 && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
             <h2 className="text-xl font-semibold mb-4">All Providers ({providers.length})</h2>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-gray-400 border-b border-gray-800">
+                  <tr className="text-left text-gray-400 border-b border-[#0E838840]">
                     <th className="pb-3">Provider</th>
                     <th className="pb-3">Chain</th>
                     <th className="pb-3">Status</th>
@@ -261,7 +261,7 @@ export default function NetworkDashboard() {
                 </thead>
                 <tbody>
                   {providers.map((provider, i) => (
-                    <tr key={i} className="border-b border-gray-800/50">
+                    <tr key={i} className="border-b border-[#0E838840]/50">
                       <td className="py-3 font-medium">{provider.name}</td>
                       <td className="py-3 capitalize">{provider.chain}</td>
                       <td className="py-3">
@@ -286,7 +286,7 @@ export default function NetworkDashboard() {
         )}
 
         {/* Legend */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h3 className="text-sm font-semibold text-gray-400 mb-4">Status Legend</h3>
           <div className="flex flex-wrap gap-6 text-sm">
             <div className="flex items-center gap-2">
@@ -317,13 +317,13 @@ export default function NetworkDashboard() {
         </div>
 
         {/* RPC Endpoints */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h2 className="text-xl font-semibold mb-4">Public RPC Endpoints</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {chains.map((chain) => (
               <div key={chain.name} className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-sm text-gray-400 mb-1">{chain.name}</p>
-                <code className="text-[#1AFFD4] text-sm">
+                <code className="text-[#0E8388] text-sm">
                   https://rpc.satelink.network/rpc/{chain.name.toLowerCase()}
                 </code>
               </div>
@@ -348,11 +348,11 @@ function StatBox({
     color === "green"
       ? "text-green-400"
       : color === "cyan"
-      ? "text-[#1AFFD4]"
+      ? "text-[#0E8388]"
       : "text-white";
 
   return (
-    <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+    <div className="bg-[#1A3C3C] rounded-lg p-4 border border-[#0E838840]">
       <p className="text-gray-400 text-xs">{label}</p>
       <p className={`text-xl font-bold mt-1 ${valueColor}`}>{value}</p>
     </div>

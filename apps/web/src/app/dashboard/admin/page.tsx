@@ -126,8 +126,8 @@ export default function AdminDashboard() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center p-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-8 w-full max-w-md">
+      <div className="min-h-screen bg-[#2C3333] text-white flex items-center justify-center p-6">
+        <div className="bg-[#1A3C3C] border border-[#0E838840] rounded-xl p-8 w-full max-w-md">
           <div className="text-center mb-6">
             <div className="text-4xl mb-4">🔐</div>
             <h1 className="text-2xl font-bold">Admin Access</h1>
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6">
+    <div className="min-h-screen bg-[#2C3333] text-white p-6">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <div>
@@ -201,7 +201,7 @@ export default function AdminDashboard() {
 
         {/* Revenue Overview */}
         {metrics && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
             <h2 className="text-xl font-semibold mb-4">Revenue Overview (Today)</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="bg-gray-800/50 rounded-lg p-4">
@@ -218,14 +218,14 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-gray-400 text-sm">Cache Hit Rate</p>
-                <p className="text-3xl font-bold text-[#1AFFD4] mt-1">{metrics.cacheHitRate}</p>
+                <p className="text-3xl font-bold text-[#0E8388] mt-1">{metrics.cacheHitRate}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Network Health */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h2 className="text-xl font-semibold mb-4">Network Health</h2>
           {chains.length === 0 ? (
             <p className="text-gray-500 text-center py-8">Loading chain health...</p>
@@ -233,7 +233,7 @@ export default function AdminDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-gray-400 border-b border-gray-800">
+                  <tr className="text-left text-gray-400 border-b border-[#0E838840]">
                     <th className="pb-3">Chain</th>
                     <th className="pb-3">Status</th>
                     <th className="pb-3">Providers</th>
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {chains.map((chain) => (
-                    <tr key={chain.name} className="border-b border-gray-800/50">
+                    <tr key={chain.name} className="border-b border-[#0E838840]/50">
                       <td className="py-3 font-medium">{chain.name}</td>
                       <td className="py-3">
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Settlement History */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h2 className="text-xl font-semibold mb-4">Settlement History</h2>
           {settlements.length === 0 ? (
             <p className="text-gray-500 text-center py-8">No settlement history available</p>
@@ -276,7 +276,7 @@ export default function AdminDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-gray-400 border-b border-gray-800">
+                  <tr className="text-left text-gray-400 border-b border-[#0E838840]">
                     <th className="pb-3">Epoch</th>
                     <th className="pb-3">Status</th>
                     <th className="pb-3">Revenue (USDT)</th>
@@ -286,7 +286,7 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {settlements.slice(0, 20).map((s) => (
-                    <tr key={s.epoch_id} className="border-b border-gray-800/50">
+                    <tr key={s.epoch_id} className="border-b border-[#0E838840]/50">
                       <td className="py-3 font-mono">{s.epoch_id}</td>
                       <td className="py-3">
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Contract Info */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h2 className="text-xl font-semibold mb-4">Deployed Contracts (Polygon Mainnet)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {CONTRACTS.map((contract) => (
@@ -330,7 +330,7 @@ export default function AdminDashboard() {
                   <p className="font-medium">{contract.name}</p>
                   <p className="text-gray-500 font-mono text-sm">{contract.address}</p>
                 </div>
-                <span className="text-gray-500 group-hover:text-[#1AFFD4] transition-colors">
+                <span className="text-gray-500 group-hover:text-[#0E8388] transition-colors">
                   ↗
                 </span>
               </a>
@@ -339,7 +339,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Revenue Split Info */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h2 className="text-xl font-semibold mb-4">Revenue Split (50/30/20)</h2>
           <div className="flex items-center gap-1 h-8 rounded-lg overflow-hidden">
             <div className="h-full bg-blue-600 flex items-center justify-center text-sm font-medium" style={{ width: "50%" }}>

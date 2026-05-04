@@ -4,11 +4,11 @@ import Link from "next/link";
 
 export default function DashboardLanding() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6">
+    <div className="min-h-screen bg-[#2C3333] text-[#CBE4DE] p-6">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Satelink Dashboard</h1>
-          <p className="text-gray-400">Select a dashboard to continue</p>
+          <p className="text-[#8FB5B0]">Select a dashboard to continue</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -17,14 +17,14 @@ export default function DashboardLanding() {
             title="Node Operator"
             description="View earnings, claim USDT rewards, check reputation score"
             icon="⚡"
-            color="#1AFFD4"
+            color="#0E8388"
           />
           <DashboardCard
             href="/dashboard/admin"
             title="Admin"
             description="Revenue overview, network health, settlement history"
             icon="🔐"
-            color="#8B5CF6"
+            color="#0E8388"
             badge="Protected"
           />
           <DashboardCard
@@ -32,13 +32,13 @@ export default function DashboardLanding() {
             title="Network Status"
             description="Live provider status, chain health, uptime metrics"
             icon="🌐"
-            color="#22C55E"
+            color="#4ADE80"
             badge="Public"
           />
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-[#8FB5B0] text-sm">
             Mainnet Contracts on Polygon
           </p>
           <div className="flex flex-wrap justify-center gap-4 mt-3">
@@ -70,7 +70,7 @@ function DashboardCard({
   return (
     <Link
       href={href}
-      className="block bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-600 transition-all group"
+      className="block bg-[#1A3C3C] border border-[#0E838840] rounded-xl p-6 hover:border-[#0E8388] transition-all group"
     >
       <div className="flex items-start justify-between mb-4">
         <span className="text-3xl">{icon}</span>
@@ -83,10 +83,10 @@ function DashboardCard({
           </span>
         )}
       </div>
-      <h2 className="text-xl font-semibold mb-2 group-hover:text-[#1AFFD4] transition-colors">
+      <h2 className="text-xl font-semibold mb-2 group-hover:text-[#0E8388] transition-colors">
         {title}
       </h2>
-      <p className="text-gray-400 text-sm">{description}</p>
+      <p className="text-[#8FB5B0] text-sm">{description}</p>
       <div className="mt-4 text-sm" style={{ color }}>
         Open dashboard →
       </div>
@@ -100,7 +100,7 @@ function ContractLink({ name, address }: { name: string; address: string }) {
       href={`https://polygonscan.com/address/${address}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-xs font-mono text-gray-500 hover:text-[#1AFFD4] transition-colors"
+      className="text-xs font-mono text-[#8FB5B0] hover:text-[#0E8388] transition-colors"
     >
       {name}: {address.slice(0, 6)}...{address.slice(-4)}
     </a>

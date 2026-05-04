@@ -161,7 +161,7 @@ export default function OperatorDashboard() {
   const tierStyle = TIER_COLORS[reputation?.tier || "bronze"];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6">
+    <div className="min-h-screen bg-[#2C3333] text-white p-6">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <div>
@@ -177,12 +177,12 @@ export default function OperatorDashboard() {
               placeholder="Enter Node ID"
               value={nodeId}
               onChange={(e) => setNodeId(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 w-64 focus:border-[#1AFFD4] focus:outline-none"
+              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 w-64 focus:border-[#0E8388] focus:outline-none"
             />
             <button
               onClick={handleSetNode}
               disabled={!nodeId}
-              className="bg-[#1AFFD4] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#15e6c0] disabled:opacity-50"
+              className="bg-[#0E8388] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#15e6c0] disabled:opacity-50"
             >
               Load
             </button>
@@ -191,7 +191,7 @@ export default function OperatorDashboard() {
 
         {savedNodeId && (
           <div className="text-sm text-gray-500">
-            Active Node: <span className="font-mono text-[#1AFFD4]">{savedNodeId}</span>
+            Active Node: <span className="font-mono text-[#0E8388]">{savedNodeId}</span>
           </div>
         )}
 
@@ -215,7 +215,7 @@ export default function OperatorDashboard() {
               highlight={!!canClaim}
             />
             {reputation && (
-              <div className={`rounded-xl p-6 border ${tierStyle.bg} border-gray-800`}>
+              <div className={`rounded-xl p-6 border ${tierStyle.bg} border-[#0E838840]`}>
                 <p className="text-gray-400 text-sm">Node Tier</p>
                 <div className="flex items-center gap-2 mt-1">
                   <p className={`text-2xl font-bold ${tierStyle.text}`}>
@@ -229,7 +229,7 @@ export default function OperatorDashboard() {
         )}
 
         {/* Node Status Table */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
           <h2 className="text-xl font-semibold mb-4">Registered Nodes</h2>
           {nodes.length === 0 ? (
             <p className="text-gray-500 text-center py-8">No nodes registered yet</p>
@@ -237,7 +237,7 @@ export default function OperatorDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-gray-400 border-b border-gray-800">
+                  <tr className="text-left text-gray-400 border-b border-[#0E838840]">
                     <th className="pb-3">Node ID</th>
                     <th className="pb-3">Region</th>
                     <th className="pb-3">Tier</th>
@@ -249,8 +249,8 @@ export default function OperatorDashboard() {
                   {nodes.slice(0, 10).map((node) => (
                     <tr
                       key={node.id}
-                      className={`border-b border-gray-800/50 cursor-pointer hover:bg-gray-800/30 ${
-                        node.id === savedNodeId ? "bg-[#1AFFD4]/5" : ""
+                      className={`border-b border-[#0E838840]/50 cursor-pointer hover:bg-gray-800/30 ${
+                        node.id === savedNodeId ? "bg-[#0E8388]/5" : ""
                       }`}
                       onClick={() => {
                         setNodeId(node.id);
@@ -283,7 +283,7 @@ export default function OperatorDashboard() {
 
         {/* Reputation Section */}
         {reputation && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
             <h2 className="text-xl font-semibold mb-4">Reputation Score</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="flex items-center gap-3">
@@ -298,7 +298,7 @@ export default function OperatorDashboard() {
                 <p className="text-gray-400 text-sm mb-2">Score: {reputation.score}/1000</p>
                 <div className="bg-gray-700 rounded-full h-4 overflow-hidden">
                   <div
-                    className="bg-[#1AFFD4] h-full transition-all duration-500"
+                    className="bg-[#0E8388] h-full transition-all duration-500"
                     style={{ width: `${(reputation.score / 1000) * 100}%` }}
                   />
                 </div>
@@ -328,7 +328,7 @@ export default function OperatorDashboard() {
 
         {/* Claim Section */}
         {earnings && savedNodeId && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+          <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
             <h2 className="text-xl font-semibold mb-4">Claim Your Earnings</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -351,7 +351,7 @@ export default function OperatorDashboard() {
                     placeholder="0x..."
                     value={claimWallet}
                     onChange={(e) => setClaimWallet(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:border-[#1AFFD4] focus:outline-none"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:border-[#0E8388] focus:outline-none"
                   />
                 </div>
                 <div>
@@ -363,7 +363,7 @@ export default function OperatorDashboard() {
                       placeholder="0.00"
                       value={claimAmount}
                       onChange={(e) => setClaimAmount(e.target.value)}
-                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:border-[#1AFFD4] focus:outline-none"
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:border-[#0E8388] focus:outline-none"
                     />
                     <button
                       onClick={() => setClaimAmount(earnings.claimable.toString())}
@@ -419,10 +419,10 @@ export default function OperatorDashboard() {
         )}
 
         {!savedNodeId && (
-          <div className="bg-gray-900 rounded-xl p-12 border border-gray-800 text-center">
+          <div className="bg-[#1A3C3C] rounded-xl p-12 border border-[#0E838840] text-center">
             <p className="text-gray-400 mb-4">Enter your Node ID above to view earnings and reputation</p>
             <p className="text-gray-500 text-sm">
-              Demo node: <span className="font-mono text-[#1AFFD4]">{DEMO_NODE_ID}</span>
+              Demo node: <span className="font-mono text-[#0E8388]">{DEMO_NODE_ID}</span>
             </p>
           </div>
         )}
@@ -445,7 +445,7 @@ function StatCard({
   return (
     <div
       className={`rounded-xl p-6 border ${
-        highlight ? "bg-green-900/20 border-green-500" : "bg-gray-900 border-gray-800"
+        highlight ? "bg-green-900/20 border-green-500" : "bg-[#1A3C3C] border-[#0E838840]"
       }`}
     >
       <p className="text-gray-400 text-sm">{label}</p>

@@ -94,7 +94,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="application-name" content="Satelink Network" />
-        <meta name="theme-color" content="#080E1A" />
+        <meta name="theme-color" content="#2C3333" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

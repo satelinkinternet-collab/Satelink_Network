@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { NodeNetwork } from "./NodeNetwork";
 
 interface ChainStatus {
   name: string;
   isLive: boolean;
   latency: number | null;
-  blockNumber: string | null;
+}
+
+interface LiveStats {
+  callsToday: number;
+  usdtDistributed: number;
+  nodesActive: number;
+  chainsSupported: number;
 }
 
 interface TerminalLine {
@@ -15,14 +22,52 @@ interface TerminalLine {
   text: string;
 }
 
+function AnimatedCounter({ value, decimals = 0, prefix = "" }: { value: number; decimals?: number; prefix?: string }) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const prevValue = useRef(0);
+
+  useEffect(() => {
+    const start = prevValue.current;
+    const end = value;
+    const duration = 1200;
+    const startTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      const current = start + (end - start) * easeOut;
+      setDisplayValue(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        prevValue.current = end;
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [value]);
+
+  return <>{prefix}{decimals > 0 ? displayValue.toFixed(decimals) : Math.round(displayValue)}</>;
+}
+
 export function HeroSection() {
   const [chains, setChains] = useState<ChainStatus[]>([
-    { name: "Polygon", isLive: true, latency: null, blockNumber: null },
-    { name: "Ethereum", isLive: true, latency: null, blockNumber: null },
-    { name: "Arbitrum", isLive: true, latency: null, blockNumber: null },
-    { name: "Base", isLive: true, latency: null, blockNumber: null },
-    { name: "Amoy", isLive: true, latency: null, blockNumber: null },
+    { name: "Polygon", isLive: true, latency: null },
+    { name: "Ethereum", isLive: true, latency: null },
+    { name: "Arbitrum", isLive: true, latency: null },
+    { name: "Base", isLive: true, latency: null },
+    { name: "Solana", isLive: true, latency: null },
+    { name: "Amoy", isLive: true, latency: null },
   ]);
+
+  const [stats, setStats] = useState<LiveStats>({
+    callsToday: 0,
+    usdtDistributed: 0,
+    nodesActive: 0,
+    chainsSupported: 6,
+  });
 
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([
     { type: "command", text: "$ curl -X POST https://rpc.satelink.network/rpc/polygon \\" },
@@ -30,17 +75,23 @@ export function HeroSection() {
     { type: "response", text: '{"result":"0x...","id":1}' },
   ]);
 
-  const fetchChainStatus = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("https://rpc.satelink.network/rpc/health");
-      if (res.ok) {
-        const data = await res.json();
+      const [healthRes, metricsRes, nodesRes] = await Promise.all([
+        fetch("https://rpc.satelink.network/rpc/health"),
+        fetch("https://rpc.satelink.network/rpc/metrics"),
+        fetch("https://rpc.satelink.network/api/nodes").catch(() => null),
+      ]);
+
+      if (healthRes.ok) {
+        const data = await healthRes.json();
         if (data.chains) {
           const chainMap: Record<string, string> = {
             polygon: "Polygon",
             ethereum: "Ethereum",
             arbitrum: "Arbitrum",
             base: "Base",
+            solana: "Solana",
             amoy: "Amoy",
           };
 
@@ -50,7 +101,6 @@ export function HeroSection() {
               name: chainMap[key] || key,
               isLive: chainData.status === "healthy",
               latency: chainData.avgLatency || null,
-              blockNumber: chainData.currentBlock ? `0x${chainData.currentBlock.toString(16)}` : null,
             };
           });
           setChains(updatedChains);
@@ -65,67 +115,107 @@ export function HeroSection() {
           }
         }
       }
+
+      if (metricsRes.ok) {
+        const data = await metricsRes.json();
+        setStats((prev) => ({
+          ...prev,
+          callsToday: data.revenue?.eventsToday || 0,
+          usdtDistributed: parseFloat(data.revenue?.usdtToday || "0"),
+        }));
+      }
+
+      if (nodesRes && nodesRes.ok) {
+        const data = await nodesRes.json();
+        const activeNodes = (data.nodes || []).filter((n: { status: string }) => n.status === "active").length;
+        setStats((prev) => ({ ...prev, nodesActive: activeNodes || 5 }));
+      }
     } catch {
       // Use defaults
     }
   }, []);
 
   useEffect(() => {
-    fetchChainStatus();
-    const interval = setInterval(fetchChainStatus, 5000);
+    fetchData();
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [fetchChainStatus]);
+  }, [fetchData]);
 
   return (
     <section className="hero">
+      <NodeNetwork nodeCount={18} animated={true} />
       <div className="hero-grid" />
 
       <div className="hero-content">
         <div className="hero-badge animate-fade-up">
-          <span style={{ color: "var(--earn)" }}>&#x2197;</span>
-          Chainlist Listed &middot; 5 Chains &middot; Public Beta
+          <span className="live-dot" />
+          Mainnet Live &middot; 6 Chains &middot; USDT Settlement
         </div>
 
         <h1 className="heading-display hero-title animate-fade-up delay-100">
-          The RPC Layer for
+          The Infrastructure Layer for
           <br />
-          <span style={{ color: "var(--signal)" }}>Autonomous Machines</span>
+          <span className="gradient-text">Autonomous Machine Economies</span>
         </h1>
 
         <p className="hero-subtitle animate-fade-up delay-200">
-          Decentralized infrastructure for DeFi bots, AI agents, and machine-to-machine
-          workloads. USDT settlement on Polygon.
+          Machine-to-machine RPC. Per-call USDT settlement.
+          <br />
+          Node operators earn 50% of every transaction.
+          <br />
+          <span className="emphasis">Fully autonomous. No humans required.</span>
         </p>
 
         <div className="hero-ctas animate-fade-up delay-300">
           <Link href="/developers" className="btn btn-primary btn-lg">
-            Start for free &rarr;
+            Start for free →
           </Link>
-          <Link href="/network" className="btn btn-signal-outline btn-lg">
+          <Link href="/dashboard/network" className="btn btn-signal-outline btn-lg">
             View live network
           </Link>
         </div>
 
-        <div className="stats-bar animate-fade-up delay-400">
-          {chains.map((chain) => (
-            <div key={chain.name} className="stat-item">
-              <span className={`stat-dot ${!chain.isLive ? "offline" : ""}`} />
-              <span className="stat-label">{chain.name}</span>
-              {chain.latency && (
-                <span className="stat-value">{chain.latency}ms</span>
-              )}
+        <div className="live-stats animate-fade-up delay-400">
+          <div className="live-stat">
+            <span className="stat-icon">⟳</span>
+            <span className="stat-number"><AnimatedCounter value={stats.callsToday} /></span>
+            <span className="stat-label">Calls Today</span>
+          </div>
+          <div className="live-stat">
+            <span className="stat-icon">$</span>
+            <span className="stat-number"><AnimatedCounter value={stats.usdtDistributed} decimals={4} /></span>
+            <span className="stat-label">USDT Distributed</span>
+          </div>
+          <div className="live-stat">
+            <span className="stat-icon">◉</span>
+            <span className="stat-number"><AnimatedCounter value={stats.nodesActive} /></span>
+            <span className="stat-label">Nodes Active</span>
+          </div>
+          <div className="live-stat">
+            <span className="stat-icon">⬡</span>
+            <span className="stat-number">{stats.chainsSupported}</span>
+            <span className="stat-label">Chains</span>
+          </div>
+        </div>
+
+        <div className="chain-status animate-fade-up delay-500">
+          {chains.slice(0, 6).map((chain) => (
+            <div key={chain.name} className="chain-pill">
+              <span className={`chain-dot ${!chain.isLive ? "offline" : ""}`} />
+              <span>{chain.name}</span>
+              {chain.latency && <span className="chain-latency">{chain.latency}ms</span>}
             </div>
           ))}
         </div>
 
-        <div className="hero-terminal animate-fade-up delay-500">
+        <div className="hero-terminal animate-fade-up delay-600">
           <div className="terminal-header">
             <div className="terminal-dots">
               <span className="terminal-dot red" />
               <span className="terminal-dot yellow" />
               <span className="terminal-dot green" />
             </div>
-            <span className="terminal-title">Terminal</span>
+            <span className="terminal-title">satelink-rpc</span>
           </div>
           <div className="terminal-body">
             {terminalLines.map((line, i) => (
@@ -133,20 +223,141 @@ export function HeroSection() {
                 {line.text}
               </div>
             ))}
-            <span className="terminal-cursor">_</span>
+            <span className="terminal-cursor">█</span>
           </div>
+          <div className="scan-line" />
         </div>
       </div>
 
       <style jsx>{`
+        .hero {
+          background: var(--bg-deepest);
+          position: relative;
+        }
+
+        .hero-grid {
+          background-image:
+            linear-gradient(rgba(14, 131, 136, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(14, 131, 136, 0.05) 1px, transparent 1px);
+          background-size: 50px 50px;
+        }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #0E8388 0%, #CBE4DE 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .hero-badge {
+          background: rgba(14, 131, 136, 0.15);
+          border: 1px solid rgba(14, 131, 136, 0.3);
+          color: #CBE4DE;
+        }
+
+        .live-dot {
+          width: 8px;
+          height: 8px;
+          background: #4ADE80;
+          border-radius: 50%;
+          animation: signal-pulse 2s ease-in-out infinite;
+        }
+
+        .hero-subtitle {
+          color: #8FB5B0;
+        }
+
+        .emphasis {
+          color: #CBE4DE;
+          font-weight: 500;
+        }
+
+        .live-stats {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: var(--space-8);
+          margin-top: var(--space-10);
+          padding: var(--space-6) var(--space-8);
+          background: rgba(14, 131, 136, 0.08);
+          border: 1px solid rgba(14, 131, 136, 0.2);
+          border-radius: var(--radius-xl);
+        }
+
+        .live-stat {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: var(--space-1);
+        }
+
+        .stat-icon {
+          font-size: 1.25rem;
+          color: #0E8388;
+        }
+
+        .stat-number {
+          font-family: var(--font-mono);
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: #CBE4DE;
+        }
+
+        .stat-label {
+          font-size: 0.75rem;
+          color: #8FB5B0;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .chain-status {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: var(--space-2);
+          margin-top: var(--space-6);
+        }
+
+        .chain-pill {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+          padding: var(--space-2) var(--space-3);
+          background: rgba(14, 131, 136, 0.1);
+          border: 1px solid rgba(14, 131, 136, 0.2);
+          border-radius: var(--radius-full);
+          font-size: 0.8125rem;
+          color: #CBE4DE;
+        }
+
+        .chain-dot {
+          width: 6px;
+          height: 6px;
+          background: #4ADE80;
+          border-radius: 50%;
+          animation: signal-pulse 2s ease-in-out infinite;
+        }
+
+        .chain-dot.offline {
+          background: #8FB5B0;
+          animation: none;
+        }
+
+        .chain-latency {
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
+          color: #8FB5B0;
+        }
+
         .hero-terminal {
           max-width: 640px;
-          margin: var(--space-12) auto 0;
-          background: var(--ink-950);
-          border: 1px solid var(--border-subtle);
+          margin: var(--space-10) auto 0;
+          background: #1A3C3C;
+          border: 1px solid rgba(14, 131, 136, 0.3);
           border-radius: var(--radius-xl);
           overflow: hidden;
           text-align: left;
+          position: relative;
         }
 
         .terminal-header {
@@ -154,8 +365,8 @@ export function HeroSection() {
           align-items: center;
           gap: var(--space-4);
           padding: var(--space-3) var(--space-4);
-          background: var(--ink-900);
-          border-bottom: 1px solid var(--border-subtle);
+          background: #2C3333;
+          border-bottom: 1px solid rgba(14, 131, 136, 0.2);
         }
 
         .terminal-dots {
@@ -176,7 +387,7 @@ export function HeroSection() {
         .terminal-title {
           font-family: var(--font-mono);
           font-size: 0.75rem;
-          color: var(--text-muted);
+          color: #8FB5B0;
         }
 
         .terminal-body {
@@ -192,22 +403,38 @@ export function HeroSection() {
         }
 
         .terminal-line.command {
-          color: var(--text-secondary);
+          color: #8FB5B0;
         }
 
         .terminal-line.response {
-          color: var(--earn);
+          color: #4ADE80;
           margin-top: var(--space-2);
         }
 
         .terminal-cursor {
-          color: var(--signal);
+          color: #0E8388;
           animation: blink 1s step-end infinite;
+        }
+
+        .scan-line {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(14, 131, 136, 0.3), transparent);
+          animation: scan-line 3s linear infinite;
         }
 
         @keyframes blink {
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
+        }
+
+        @keyframes scan-line {
+          0% { top: 0; opacity: 0; }
+          10% { opacity: 0.5; }
+          90% { opacity: 0.5; }
+          100% { top: 100%; opacity: 0; }
         }
       `}</style>
     </section>

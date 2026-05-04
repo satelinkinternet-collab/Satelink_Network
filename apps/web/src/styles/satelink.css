@@ -6,56 +6,59 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Fira+Code:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap');
 
 :root {
-  /* ═══ Ink Palette — Deep, refined backgrounds ═══ */
-  --ink-950: #04070D;
-  --ink-900: #080E1A;
-  --ink-800: #0C1526;
-  --ink-700: #111E33;
-  --ink-600: #192740;
-  --ink-400: #3D5A7A;
-  --ink-200: #8BA3BE;
-  --ink-50: #E8F0F8;
+  /* ═══ DePIN Teal Palette — Ocean/Space Infrastructure ═══ */
+  --ink-950: #2C3333;  /* deepest background */
+  --ink-900: #2E4F4F;  /* page background */
+  --ink-800: #1A3C3C;  /* surface background */
+  --ink-700: #0E8388;  /* teal accent - cards, highlights */
+  --ink-600: #2E5555;  /* hover states */
+  --ink-400: #8FB5B0;  /* muted mint text */
+  --ink-200: #CBE4DE;  /* mint white - primary text */
+  --ink-50: #CBE4DE;   /* mint white */
 
-  /* ═══ Signal — Teal accent, use sparingly ═══ */
-  --signal: #1AFFD4;
-  --signal-rgb: 26, 255, 212;
-  --signal-dim: rgba(26, 255, 212, 0.08);
-  --signal-border: rgba(26, 255, 212, 0.20);
-  --signal-glow: rgba(26, 255, 212, 0.15);
+  /* ═══ Signal — Teal accent (DePIN theme) ═══ */
+  --signal: #0E8388;
+  --signal-rgb: 14, 131, 136;
+  --signal-dim: rgba(14, 131, 136, 0.12);
+  --signal-border: rgba(14, 131, 136, 0.35);
+  --signal-glow: rgba(14, 131, 136, 0.25);
+  --signal-bright: #CBE4DE;
 
   /* ═══ Semantic Colors ═══ */
   --earn: #4ADE80;
   --earn-rgb: 74, 222, 128;
   --warn: #F97316;
   --warn-rgb: 249, 115, 22;
-  --chain: #818CF8;
-  --chain-rgb: 129, 140, 248;
+  --chain: #0E8388;
+  --chain-rgb: 14, 131, 136;
   --error: #EF4444;
   --error-rgb: 239, 68, 68;
 
   /* ═══ Background Aliases ═══ */
-  --bg-deep: var(--ink-950);
-  --bg-page: var(--ink-900);
-  --bg-card: var(--ink-800);
-  --bg-elevated: var(--ink-700);
-  --bg-hover: var(--ink-600);
+  --bg-deepest: #2C3333;
+  --bg-deep: #2C3333;
+  --bg-page: #2E4F4F;
+  --bg-card: #0E8388;
+  --bg-surface: #1A3C3C;
+  --bg-elevated: #1A3C3C;
+  --bg-hover: #2E5555;
 
   /* ═══ Text Colors ═══ */
-  --text-primary: var(--ink-50);
-  --text-secondary: var(--ink-200);
-  --text-muted: var(--ink-400);
+  --text-primary: #CBE4DE;
+  --text-secondary: #8FB5B0;
+  --text-muted: #8FB5B0;
 
   /* ═══ Border Colors ═══ */
-  --border-subtle: rgba(139, 163, 190, 0.08);
-  --border-default: rgba(139, 163, 190, 0.15);
-  --border-strong: rgba(139, 163, 190, 0.25);
+  --border-subtle: rgba(14, 131, 136, 0.15);
+  --border-default: rgba(14, 131, 136, 0.25);
+  --border-strong: rgba(14, 131, 136, 0.40);
   --border-signal: var(--signal-border);
 
   /* ═══ Gradients ═══ */
-  --gradient-hero: linear-gradient(135deg, var(--ink-950) 0%, var(--ink-900) 50%, #0A1020 100%);
-  --gradient-card: linear-gradient(180deg, var(--ink-800) 0%, rgba(12, 21, 38, 0.95) 100%);
-  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, var(--signal-glow) 0%, transparent 60%);
-  --gradient-signal: linear-gradient(135deg, var(--signal) 0%, #00D4AA 100%);
+  --gradient-hero: linear-gradient(135deg, #2C3333 0%, #2E4F4F 50%, #1A3C3C 100%);
+  --gradient-card: linear-gradient(180deg, #1A3C3C 0%, rgba(14, 131, 136, 0.15) 100%);
+  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(14, 131, 136, 0.3) 0%, transparent 60%);
+  --gradient-signal: linear-gradient(135deg, #0E8388 0%, #CBE4DE 100%);
 
   /* ═══ Typography ═══ */
   --font-heading: 'Sora', -apple-system, sans-serif;
@@ -185,8 +188,55 @@
     box-shadow: 0 0 20px var(--signal-glow);
   }
   50% {
-    box-shadow: 0 0 40px var(--signal-glow), 0 0 60px rgba(26, 255, 212, 0.1);
+    box-shadow: 0 0 40px var(--signal-glow), 0 0 60px rgba(14, 131, 136, 0.15);
   }
+}
+
+@keyframes node-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    r: 4;
+  }
+  50% {
+    opacity: 0.8;
+    r: 6;
+  }
+}
+
+@keyframes packet-travel {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes terminal-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -578,7 +628,7 @@
   right: 0;
   z-index: var(--z-sticky);
   padding: var(--space-4) 0;
-  background: rgba(8, 14, 26, 0.8);
+  background: rgba(44, 51, 51, 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
