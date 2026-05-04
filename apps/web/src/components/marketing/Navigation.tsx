@@ -20,12 +20,12 @@ export function Navigation() {
     { href: "/developers", label: "Developers" },
     { href: "/nodes", label: "Nodes" },
     { href: "/pricing", label: "Pricing" },
-    { href: "/about", label: "About" },
+    { href: "/dashboard", label: "Dashboard" },
   ];
 
   return (
     <nav className="nav" style={{
-      background: isScrolled ? "rgba(8, 14, 26, 0.9)" : "rgba(8, 14, 26, 0.6)",
+      background: isScrolled ? "rgba(44, 51, 51, 0.95)" : "rgba(44, 51, 51, 0.7)",
       borderBottomColor: isScrolled ? "var(--border-default)" : "transparent"
     }}>
       <div className="nav-container">
@@ -46,8 +46,8 @@ export function Navigation() {
           <Link href="/developers#api-key" className="btn btn-signal-outline btn-sm desktop-only">
             Get API Key
           </Link>
-          <Link href="/network" className="btn btn-ghost btn-sm desktop-only">
-            Dashboard
+          <Link href="/dashboard/network" className="btn btn-ghost btn-sm desktop-only">
+            Live Status
           </Link>
           <button
             className="mobile-menu-btn"

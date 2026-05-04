@@ -23,7 +23,7 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="container">
-        <div className="footer-grid">
+        <div className="footer-grid" style={{ gridTemplateColumns: "2fr repeat(4, 1fr)" }}>
           <div className="footer-brand">
             <Link href="/" className="footer-logo">
               <span>Satelink</span>
@@ -66,11 +66,19 @@ export function Footer() {
           </div>
 
           <div className="footer-column">
+            <h4>Platform</h4>
+            <ul className="footer-links">
+              <FooterLink href="/dashboard">Dashboard</FooterLink>
+              <FooterLink href="/dashboard/operator">Node Dashboard</FooterLink>
+              <FooterLink href="/dashboard/network">Network Status</FooterLink>
+              <FooterLink href="/dashboard/admin">Admin</FooterLink>
+            </ul>
+          </div>
+
+          <div className="footer-column">
             <h4>Company</h4>
             <ul className="footer-links">
               <FooterLink href="/about">About</FooterLink>
-              <FooterLink href="/brand">Brand</FooterLink>
-              <FooterLink href="/network">Network Status</FooterLink>
               <FooterLink href="/legal/terms">Terms</FooterLink>
               <FooterLink href="/legal/privacy">Privacy</FooterLink>
             </ul>
