@@ -1,3 +1,5 @@
+import { finalizeClosedEpochEarningsInTransaction } from './epoch_finalizer.js';
+
 const DEFAULT_INTERVAL_MS = 60_000;
 const EPOCH_LOCK_ID = 738_291;
 
@@ -118,6 +120,8 @@ export async function runEpochCycle(dbOrPool) {
             return { ok: true, status: 'skipped_already_closed', epoch_id: epoch.id };
         }
 
+        const earnings = await finalizeClosedEpochEarningsInTransaction(client, Number(epoch.id), nowSeconds);
+
         const nextOpen = await client.query(`
             INSERT INTO epochs (starts_at, status, total_revenue_usdt, node_pool_usdt, platform_share_usdt, distributor_share_usdt)
             VALUES ($1, 'OPEN', 0, 0, 0, 0)
@@ -150,7 +154,8 @@ export async function runEpochCycle(dbOrPool) {
             total_revenue_usdt: Number(closedEpoch.total_revenue_usdt),
             node_pool_usdt: Number(closedEpoch.node_pool_usdt),
             platform_share_usdt: Number(closedEpoch.platform_share_usdt),
-            distributor_share_usdt: Number(closedEpoch.distributor_share_usdt)
+            distributor_share_usdt: Number(closedEpoch.distributor_share_usdt),
+            earnings
         };
     } catch (error) {
         try {

@@ -37,6 +37,29 @@ function makePool() {
                 };
             }
 
+            if (/SELECT id, total_revenue_usdt FROM epochs WHERE id = \$1 AND status = 'CLOSED' FOR UPDATE/.test(calls.at(-1).sql)) {
+                return { rows: [{ id: 7, total_revenue_usdt: '10' }], rowCount: 1 };
+            }
+
+            if (/SELECT DISTINCT node_id FROM revenue_events_v2/.test(calls.at(-1).sql)) {
+                return { rows: [{ node_id: 'node-a' }, { node_id: 'node-b' }], rowCount: 2 };
+            }
+
+            if (/WITH split AS/.test(calls.at(-1).sql)) {
+                return {
+                    rows: [{
+                        platform_rows_inserted: 1,
+                        distribution_rows_inserted: 1,
+                        node_rows_inserted: 2,
+                        total_revenue_usdt: '10',
+                        node_pool_usdt: '5',
+                        platform_share_usdt: '3',
+                        distributor_share_usdt: '2'
+                    }],
+                    rowCount: 1
+                };
+            }
+
             if (/INSERT INTO epochs/.test(sql)) {
                 return { rows: [{ id: 8 }], rowCount: 1 };
             }

@@ -11,6 +11,10 @@
 - DONE: Added `/system/epoch-scheduler` status endpoint
 - DONE: Added focused unit test (`apps/api/test/epoch_scheduler.test.js`)
 - VERIFIED: `node --check apps/api/server.js`, `node --check apps/api/src/economics/epoch_scheduler.js`, `node --check apps/api/test/epoch_scheduler.test.js`, `npx mocha test/epoch_scheduler.test.js`
+- DONE: Added epoch earnings finalizer (`apps/api/src/economics/epoch_finalizer.js`) for CLOSED epochs
+- DONE: Finalizer inserts idempotent `epoch_earnings` rows for equal node-operator split, `PLATFORM_TREASURY`, and `DAO_POOL`
+- DONE: Scheduler now calls finalizer before opening the next epoch
+- VERIFIED: `node --check apps/api/src/economics/epoch_finalizer.js`, `node --check apps/api/test/epoch_finalizer.test.js`, `npx mocha test/epoch_finalizer.test.js test/epoch_scheduler.test.js`
 
 ## OVERALL STATUS
 Total Tasks: 121 | Complete: 53 | In Progress: 1 | Pending: 67
