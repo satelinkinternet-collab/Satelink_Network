@@ -1,4 +1,5 @@
 import { createServer } from 'http';
+import { pathToFileURL } from 'url';
 import { startSentinel } from "./src/autonomous/sentinel.js";
 import { getScalingStats } from "./src/autonomous/auto_scaler.js";
 import { getHealerStats } from "./src/autonomous/rpc_healer.js";
@@ -9,6 +10,7 @@ import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
+import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -130,6 +132,10 @@ async function start() {
       res.json({ ok: true, ...offlineDetectorStatus });
     });
 
+    app.get('/system/epoch-scheduler', (req, res) => {
+      res.json({ ok: true, ...schedulerStatus });
+    });
+
     app.get('/system/scaling-stats', async (req, res) => {
       try {
         const stats = await getScalingStats(pool, redis);
@@ -188,6 +194,10 @@ async function start() {
 
     // Start offline detector (S2-009)
     startOfflineDetector(pool);
+
+    // Start epoch scheduler (60s interval)
+    startEpochScheduler(pool);
+
     startSentinel(pool, redis);
     const PORT = process.env.PORT || 8080;
 
@@ -196,6 +206,7 @@ async function start() {
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
       console.log(`🏥 Health monitor started (2min interval)`);
       console.log(`🔍 Offline detector started (2min interval)`);
+      console.log(`⏱️ Epoch scheduler started (60s interval)`);
       console.log(`⚖️ Auto-scaler started (30s interval)`);
       console.log(`🔧 RPC-healer started (60s interval)`);
       console.log(`💰 Revenue-monitor started (5min interval)`);
@@ -209,4 +220,6 @@ async function start() {
   }
 }
 
-start();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  start();
+}

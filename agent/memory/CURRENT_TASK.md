@@ -1,36 +1,26 @@
 # CURRENT TASK
 
 **Status:** IDLE — No active task
-**Stage:** S9-COMPLETE / MAINNET LIVE
 
-## Session Summary (May 4, 2026)
+## Session Summary (May 6, 2026)
 
 ### Completed Work
-1. ✅ Mainnet contracts deployed (4 contracts on Polygon)
-2. ✅ Node Operator Dashboard (`/dashboard/operator`)
-3. ✅ Admin Dashboard (`/dashboard/admin`)
-4. ✅ Distributor Dashboard (`/dashboard/distributor`)
-5. ✅ Claim API backend (`/api/nodes/:id/claim`)
-6. ✅ Founder Withdrawal API (`/api/admin/withdraw`)
-7. ✅ Website upgrade (revenue ticker + contract badges)
-8. ✅ E2E proof test script (`scripts/e2e_proof_test.sh`)
-9. ✅ All changes committed to git
+1. Implemented PostgreSQL epoch scheduler in `apps/api/src/economics/epoch_scheduler.js`
+2. Wired scheduler into backend startup with a 60-second interval
+3. Added transactional epoch close/open flow with advisory lock and row lock protection
+4. Aggregated `revenue_events_v2` into epoch revenue totals
+5. Applied 50/30/20 split to `node_pool_usdt`, `platform_share_usdt`, and `distributor_share_usdt`
+6. Added `/system/epoch-scheduler` status endpoint
+7. Added focused unit test in `apps/api/test/epoch_scheduler.test.js`
+8. Added direct-run guard to `apps/api/server.js` so tests can import modules without starting the backend
 
-### Deployed Contracts
-| Contract | Address |
-|----------|---------|
-| NodeRegistryV2 | `0x27D7320d5786D5B4B4dE8aAAC6cf62338ADeC037` |
-| RevenueDistributor | `0x8a9CefBD801574806a634aF179f538ABB5926F5a` |
-| RevenueVault | `0xa77512B9255D504B3fD450037f1448D4df6A1b6d` |
-| ClaimsContract | `0xE475c53B88190FD2130dB1E37504991EFe283fb0` |
-
-### Production URLs
-- API: https://rpc.satelink.network
-- Website: https://satelink.network
-- Dashboards: https://satelink.network/dashboard/*
+### Verification
+- `node --check apps/api/server.js`
+- `node --check apps/api/src/economics/epoch_scheduler.js`
+- `node --check apps/api/test/epoch_scheduler.test.js`
+- `npx mocha test/epoch_scheduler.test.js`
 
 ## Next Session Options
-- Verify contracts on Polygonscan
-- Run E2E proof test: `./scripts/e2e_proof_test.sh`
-- Test real USDT settlement flow
-- Enable production Discord alerts
+- Run the full API test suite with a reachable PostgreSQL test database
+- Validate the scheduler against staging data
+- Add metrics/alerts for repeated scheduler failures

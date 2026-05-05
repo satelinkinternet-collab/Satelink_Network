@@ -3,6 +3,15 @@
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
 
+## SESSION UPDATE — May 6, 2026
+- DONE: Implemented PostgreSQL epoch scheduler (`apps/api/src/economics/epoch_scheduler.js`)
+- DONE: Scheduler runs every 60 seconds from backend startup (`apps/api/server.js`)
+- DONE: Scheduler uses SQL transaction, `pg_try_advisory_xact_lock`, row-level `FOR UPDATE SKIP LOCKED`, and guarded `UPDATE ... WHERE status = 'OPEN'`
+- DONE: Scheduler aggregates `revenue_events_v2` into `total_revenue_usdt`, applies 50% node / 30% platform / 20% distributor split, marks epoch `CLOSED`, and creates next `OPEN` epoch
+- DONE: Added `/system/epoch-scheduler` status endpoint
+- DONE: Added focused unit test (`apps/api/test/epoch_scheduler.test.js`)
+- VERIFIED: `node --check apps/api/server.js`, `node --check apps/api/src/economics/epoch_scheduler.js`, `node --check apps/api/test/epoch_scheduler.test.js`, `npx mocha test/epoch_scheduler.test.js`
+
 ## OVERALL STATUS
 Total Tasks: 121 | Complete: 53 | In Progress: 1 | Pending: 67
 Revenue Readiness: 90% | Production: 75% | Launch: 65%
