@@ -15,6 +15,9 @@
 - DONE: Finalizer inserts idempotent `epoch_earnings` rows for equal node-operator split, `PLATFORM_TREASURY`, and `DAO_POOL`
 - DONE: Scheduler now calls finalizer before opening the next epoch
 - VERIFIED: `node --check apps/api/src/economics/epoch_finalizer.js`, `node --check apps/api/test/epoch_finalizer.test.js`, `npx mocha test/epoch_finalizer.test.js test/epoch_scheduler.test.js`
+- DONE: Added claim generator (`apps/api/src/settlement/claim_generator.js`) for `UNPAID` `epoch_earnings`
+- DONE: Claim generator creates idempotent `epoch_claims` records and then marks matching earnings `CLAIMED`
+- VERIFIED: `node --check apps/api/src/settlement/claim_generator.js`, `node --check apps/api/test/claim_generator.test.js`, `npx mocha test/claim_generator.test.js`
 
 ## OVERALL STATUS
 Total Tasks: 121 | Complete: 53 | In Progress: 1 | Pending: 67
