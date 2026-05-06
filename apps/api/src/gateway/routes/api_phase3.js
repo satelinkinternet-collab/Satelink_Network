@@ -1,110 +1,130 @@
-import { Router } from 'express';
-import { RevenueOracle } from '../../economics/revenue_oracle.js';
-import { TreasuryMonitor } from '../../monitoring/treasury_monitor.js';
-import fuseService from '../../security/fuse.js';
-import { requireJWT, requireRole } from '../../security/auth_middleware.js';
-import { executeWithdrawal, withdrawRateLimitMiddleware } from '../../settlement/withdraw_service.js';
+import { Router } from "express";
+import { RevenueOracle } from "../../economics/revenue_oracle.js";
+import { TreasuryMonitor } from "../../monitoring/treasury_monitor.js";
+import fuseService from "../../security/fuse.js";
+import { requireJWT, requireRole } from "../../security/auth_middleware.js";
+import {
+  executeWithdrawal,
+  withdrawRateLimitMiddleware,
+} from "../../settlement/withdraw_service.js";
 
 export function createPhase3Router(db, opsEngine) {
-    const router = Router();
-    const oracle = new RevenueOracle(fuseService, db);
-    const treasury = new TreasuryMonitor(fuseService, db);
+  const router = Router();
+  const oracle = new RevenueOracle(fuseService, db);
+  const treasury = new TreasuryMonitor(fuseService, db);
 
-    // GET /api/treasury/status
-    router.get('/treasury/status', async (req, res) => {
-        try {
-            // Ideally we capture snapshot periodically, but for MVP we can proxy it or fetch latest
-            const latest = treasury.getLatestSnapshot();
-            if (latest) {
-                res.json({ ok: true, data: latest });
-            } else {
-                // Generate on the fly if no snapshot exists
-                const snapshot = await treasury.captureSnapshot();
-                res.json({ ok: true, data: snapshot });
-            }
-        } catch (error) {
-            res.status(500).json({ ok: false, error: 'Failed to fetch treasury status' });
-        }
+  // GET /api/treasury/status
+  router.get("/treasury/status", async (req, res) => {
+    try {
+      // Ideally we capture snapshot periodically, but for MVP we can proxy it or fetch latest
+      const latest = treasury.getLatestSnapshot();
+      if (latest) {
+        res.json({ ok: true, data: latest });
+      } else {
+        // Generate on the fly if no snapshot exists
+        const snapshot = await treasury.captureSnapshot();
+        res.json({ ok: true, data: snapshot });
+      }
+    } catch (error) {
+      res
+        .status(500)
+        .json({ ok: false, error: "Failed to fetch treasury status" });
+    }
+  });
+
+  // GET /api/settlement/mode
+  router.get("/services/settlement/mode", (req, res) => {
+    // Look at FEATURE_REAL_SETTLEMENT or similar. If we are running EVM we return EVM.
+    // For phase 3 we are doing EVM
+    res.json({
+      ok: true,
+      data: {
+        mode:
+          process.env.FEATURE_REAL_SETTLEMENT === "true" ? "EVM" : "SIMULATED",
+        chainName: "Fuse (Testnet)",
+        contractAddress: process.env.REVENUE_VAULT_CONTRACT || "0x...",
+      },
     });
+  });
 
-    // GET /api/settlement/mode
-    router.get('/services/settlement/mode', (req, res) => {
-        // Look at FEATURE_REAL_SETTLEMENT or similar. If we are running EVM we return EVM.
-        // For phase 3 we are doing EVM
-        res.json({
-            ok: true,
-            data: {
-                mode: process.env.FEATURE_REAL_SETTLEMENT === 'true' ? 'EVM' : 'SIMULATED',
-                chainName: 'Fuse (Testnet)',
-                contractAddress: process.env.REVENUE_VAULT_CONTRACT || '0x...'
-            }
+  // We assume authentication middleware runs before this or we check req.user
+  const requireAuth = [requireJWT, requireRole("node_operator")];
+
+  // POST /api/node/me/claim
+  router.post("/node/me/claim", requireAuth, async (req, res) => {
+    try {
+      const { epochId } = req.body;
+      const wallet = req.user.wallet;
+
+      if (epochId === undefined) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "epochId is required" });
+      }
+
+      const claimData = oracle.getClaimData(epochId, wallet);
+
+      if (!claimData) {
+        return res.status(404).json({
+          ok: false,
+          error: "No claim entitlement found for this epoch",
         });
+      }
+
+      res.json({
+        ok: true,
+        claim: {
+          epochId,
+          amount: claimData.amount_usdt,
+          proof: claimData.proof,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
+
+  // POST /api/node/me/withdraw - Routes through canonical withdrawal service
+  // On-chain execution recorded alongside canonical withdrawal pipeline
+  router.post("/node/me/withdraw", async (req, res) => {
+    router.post("/debug/withdraw-test", async (req, res) => {
+      try {
+        const { executeWithdrawal } =
+          await import("../../settlement/withdraw_service.js");
+        const result = await executeWithdrawal(
+          "0xfad15978a7219ef2abdb71fabf53d29045e6b723",
+          0.001,
+          { db: { query: async () => [], get: async () => ({}) } },
+        );
+        res.json({ ok: true, result });
+      } catch (e) {
+        res.status(500).json({ error: e.message });
+      }
     });
+    try {
+      const { claimId, amount, txHash } = req.body;
+      const wallet = req.user.wallet;
 
-    // We assume authentication middleware runs before this or we check req.user
-    const requireAuth = [requireJWT, requireRole('node_operator')];
-
-    // POST /api/node/me/claim
-    router.post('/node/me/claim', requireAuth, async (req, res) => {
-        try {
-            const { epochId } = req.body;
-            const wallet = req.user.wallet;
-
-            if (epochId === undefined) {
-                return res.status(400).json({ ok: false, error: 'epochId is required' });
-            }
-
-            const claimData = oracle.getClaimData(epochId, wallet);
-
-            if (!claimData) {
-                return res.status(404).json({ ok: false, error: 'No claim entitlement found for this epoch' });
-            }
-
-            res.json({
-                ok: true,
-                claim: {
-                    epochId,
-                    amount: claimData.amount_usdt,
-                    proof: claimData.proof
-                }
-            });
-        } catch (error) {
-            res.status(500).json({ ok: false, error: error.message });
-        }
-    });
-
-    // POST /api/node/me/withdraw - Routes through canonical withdrawal service
-    // On-chain execution recorded alongside canonical withdrawal pipeline
-    router.post('/node/me/withdraw', requireAuth, withdrawRateLimitMiddleware, async (req, res) => {
-router.post("/debug/withdraw-test", async (req, res) => {
-  try {
-    const { executeWithdrawal } = await import("../../settlement/withdraw_service.js");
-    const result = await executeWithdrawal("0xfad15978a7219ef2abdb71fabf53d29045e6b723", 0.001, { db: { query: async () => [], get: async () => ({}) } });
-    res.json({ ok: true, result });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-        try {
-            const { claimId, amount, txHash } = req.body;
-            const wallet = req.user.wallet;
-
-            // Record the withdrawal intent/success in DB
-            await db.prepare(`
+      // Record the withdrawal intent/success in DB
+      await db
+        .prepare(
+          `
                 INSERT INTO claim_withdrawals (operator_wallet, amount_usdt, tx_hash, withdrawn_at)
                 VALUES (?, ?, ?, ?)
-            `).run([wallet, amount, txHash, Date.now()]);
+            `,
+        )
+        .run([wallet, amount, txHash, Date.now()]);
 
-            res.json({
-                ok: true,
-                status: 'RECORDED',
-                hash: txHash
-            });
-        } catch (error) {
-            const status = error.statusCode || 500;
-            res.status(status).json({ ok: false, error: error.message });
-        }
-    });
+      res.json({
+        ok: true,
+        status: "RECORDED",
+        hash: txHash,
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      res.status(status).json({ ok: false, error: error.message });
+    }
+  });
 
-    return router;
+  return router;
 }
