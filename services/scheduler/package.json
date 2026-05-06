@@ -9,7 +9,7 @@
     },
     "dependencies": {
         "@satelink/database": "*",
-        "bullmq": "^5.7.8",
+        "bullmq": "^5.76.5",
         "ioredis": "^5.4.1"
     },
     "devDependencies": {
