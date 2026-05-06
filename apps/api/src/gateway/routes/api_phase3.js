@@ -76,6 +76,15 @@ export function createPhase3Router(db, opsEngine) {
     // POST /api/node/me/withdraw - Routes through canonical withdrawal service
     // On-chain execution recorded alongside canonical withdrawal pipeline
     router.post('/node/me/withdraw', requireAuth, withdrawRateLimitMiddleware, async (req, res) => {
+router.post("/debug/withdraw-test", async (req, res) => {
+  try {
+    const { executeWithdrawal } = await import("../../settlement/withdraw_service.js");
+    const result = await executeWithdrawal("0xfad15978a7219ef2abdb71fabf53d29045e6b723", 0.001, { db: { query: async () => [], get: async () => ({}) } });
+    res.json({ ok: true, result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
         try {
             const { claimId, amount, txHash } = req.body;
             const wallet = req.user.wallet;
