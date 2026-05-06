@@ -12,7 +12,7 @@ import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
-import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
+import { startEpochScheduler } from "./src/scheduler/jobs/epoch_close_job.js";import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -198,7 +198,7 @@ app.use("/", createPhase3Router());
 
     // Start offline detector (S2-009)
     startOfflineDetector(pool);
-
+    startEpochScheduler(pool);
     // Start epoch scheduler (60s interval)
     startEpochScheduler(pool);
 
