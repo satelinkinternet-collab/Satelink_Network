@@ -1,10 +1,58 @@
 import { logger } from '../monitoring/logger.js';
+import { ethers } from 'ethers';
 
 /**
  * Canonical Withdrawal Service
  * Single source of truth for all withdrawal creation.
  * Every withdrawal route MUST go through this service.
  */
+
+// Polygon Mainnet USDT contract
+const USDT_ADDRESS = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
+const USDT_ABI = [
+    'function transfer(address to, uint256 amount) returns (bool)',
+    'function balanceOf(address) view returns (uint256)'
+];
+
+/**
+ * Execute real USDT transfer on Polygon mainnet.
+ * @param {string} toAddress - Destination wallet
+ * @param {number} amountUsdt - Amount in USDT (decimal)
+ * @returns {Promise<string>} Transaction hash
+ */
+async function executeUsdtTransfer(toAddress, amountUsdt) {
+    const rpcUrl = process.env.POLYGON_RPC_URL ||
+        'https://polygon-mainnet.g.alchemy.com/v2/ZdR6Od2Clb0P2Jq1URQkc';
+
+    const signerKey = process.env.SETTLEMENT_EVM_SIGNER_PRIVATE_KEY;
+    if (!signerKey) {
+        throw new Error('SETTLEMENT_EVM_SIGNER_PRIVATE_KEY not configured');
+    }
+
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const signer = new ethers.Wallet(signerKey, provider);
+    const usdt = new ethers.Contract(USDT_ADDRESS, USDT_ABI, signer);
+
+    // USDT on Polygon has 6 decimals
+    const amount = ethers.parseUnits(amountUsdt.toFixed(6), 6);
+
+    // Check balance first
+    const balance = await usdt.balanceOf(signer.address);
+    if (balance < amount) {
+        throw new Error(`Insufficient USDT. Have: ${ethers.formatUnits(balance, 6)}, Need: ${amountUsdt}`);
+    }
+
+    logger.info({ toAddress, amountUsdt, signerBalance: ethers.formatUnits(balance, 6) },
+        'USDT_TRANSFER: initiating on-chain transfer');
+
+    const tx = await usdt.transfer(toAddress, amount, { gasLimit: 100000 });
+    const receipt = await tx.wait();
+
+    logger.info({ txHash: receipt.hash, toAddress, amountUsdt },
+        'USDT_TRANSFER: completed successfully');
+
+    return receipt.hash;
+}
 
 // In-memory per-wallet rate limit tracker
 const withdrawRateMap = new Map(); // wallet -> [{ ts }]
@@ -140,6 +188,51 @@ export async function executeWithdrawal(wallet, amount, opsEngine, options = {})
     // ── Record rate limit hit ──
     recordRateLimitHit(wallet);
 
+    // ── Execute real USDT transfer on Polygon mainnet ──
+    let txHash = null;
+    let polygonscanUrl = null;
+
+    if (status !== 'PENDING') {
+        try {
+            txHash = await executeUsdtTransfer(wallet, numAmount);
+            polygonscanUrl = `https://polygonscan.com/tx/${txHash}`;
+
+            // Update withdrawal record with tx hash
+            await opsEngine.db.query(
+                "UPDATE withdrawals SET status = 'COMPLETED', tx_hash = ? WHERE id = ?",
+                [txHash, withdrawalId]
+            );
+            status = 'COMPLETED';
+
+            logger.info({
+                wallet,
+                amount: numAmount,
+                withdrawalId,
+                txHash,
+                polygonscanUrl
+            }, 'WITHDRAW_COMPLETED: on-chain USDT transfer successful');
+        } catch (transferErr) {
+            // Mark as FAILED, log the error
+            await opsEngine.db.query(
+                "UPDATE withdrawals SET status = 'FAILED', error_message = ? WHERE id = ?",
+                [transferErr.message, withdrawalId]
+            );
+            status = 'FAILED';
+
+            logger.error({
+                wallet,
+                amount: numAmount,
+                withdrawalId,
+                error: transferErr.message
+            }, 'WITHDRAW_FAILED: on-chain transfer error');
+
+            throw Object.assign(
+                new Error(`USDT transfer failed: ${transferErr.message}`),
+                { statusCode: 500, withdrawalId }
+            );
+        }
+    }
+
     // ── Security logging ──
     logger.info({
         wallet,
@@ -147,10 +240,11 @@ export async function executeWithdrawal(wallet, amount, opsEngine, options = {})
         timestamp: now,
         withdrawalId,
         sourceRoute,
-        status
+        status,
+        txHash
     }, `WITHDRAW_REQUEST wallet=${wallet} amount=${numAmount} route=${sourceRoute}`);
 
-    return { withdrawalId, status };
+    return { withdrawalId, status, txHash, polygonscanUrl };
 }
 
 /**
