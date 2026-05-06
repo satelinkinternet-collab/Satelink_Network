@@ -1,3 +1,5 @@
+import express from "express";
+import { createPhase3Router } from "./src/gateway/routes/api_phase3.js";
 import { createServer } from 'http';
 import { pathToFileURL } from 'url';
 import { startSentinel } from "./src/autonomous/sentinel.js";
@@ -119,6 +121,8 @@ async function start() {
 
     const redis = createRedisClient();
     const app = createApp(pool, redis);
+app.use(express.json());
+app.use("/", createPhase3Router());
 
     app.get('/ws/stats', (req, res) => {
       res.json({ ok: true, ...getWsStats() });
