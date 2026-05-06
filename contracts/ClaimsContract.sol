@@ -5,77 +5,126 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
-interface IRevenueVault {
-    function withdraw(address to, uint256 amount) external;
-    function token() external view returns (address);
-}
-
-contract ClaimsContract is AccessControl, ReentrancyGuard {
+/**
+ * @title ClaimsContract
+ * @notice Pull model claim contract - node operators claim rewards with platform signature
+ * @dev Uses EIP-712 typed signatures for secure claim verification
+ */
+contract ClaimsContract is AccessControl, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
-    bytes32 public constant CLAIM_CREATOR_ROLE = keccak256("CLAIM_CREATOR_ROLE");
+    bytes32 public constant CLAIM_TYPEHASH = keccak256(
+        "Claim(string nodeId,address wallet,uint256 amount,uint256 nonce,uint256 expiry)"
+    );
 
-    IRevenueVault public immutable vault;
     IERC20 public immutable usdt;
+    address public platformSigner;
 
-    uint256 public constant CLAIM_EXPIRY = 48 days;
+    mapping(uint256 => bool) public usedNonces;
+    mapping(address => uint256) public totalClaimed;
 
-    struct Claim {
-        address beneficiary;
-        uint256 amount;
-        uint256 createdAt;
-        bool claimed;
-    }
+    event Claimed(string indexed nodeId, address indexed wallet, uint256 amount, uint256 nonce);
+    event PlatformSignerUpdated(address indexed oldSigner, address indexed newSigner);
 
-    mapping(bytes32 => Claim) public claims;
-    mapping(address => uint256) public userBalances;
-    uint256 private nonce;
+    constructor(address _usdt, address _platformSigner) EIP712("SatelinkClaims", "1") {
+        require(_usdt != address(0), "Invalid USDT address");
+        require(_platformSigner != address(0), "Invalid signer address");
 
-    event ClaimCreated(bytes32 indexed claimId, address indexed beneficiary, uint256 amount);
-    event ClaimRedeemed(bytes32 indexed claimId, address indexed beneficiary, uint256 amount);
-    event FundsWithdrawn(address indexed user, uint256 amount);
+        usdt = IERC20(_usdt);
+        platformSigner = _platformSigner;
 
-    constructor(address _vault) {
-        vault = IRevenueVault(_vault);
-        usdt = IERC20(vault.token());
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(CLAIM_CREATOR_ROLE, msg.sender);
     }
 
-    function createClaim(address beneficiary, uint256 amount)
-        external
-        onlyRole(CLAIM_CREATOR_ROLE)
-        returns (bytes32 claimId)
-    {
-        claimId = keccak256(abi.encodePacked(beneficiary, amount, block.timestamp, nonce++));
+    /**
+     * @notice Claim rewards using platform signature (pull model)
+     * @param nodeId The node identifier
+     * @param amount Amount in USDT (6 decimals)
+     * @param nonce Unique nonce to prevent replay
+     * @param expiry Signature expiry timestamp
+     * @param signature EIP-712 signature from platform
+     */
+    function claim(
+        string memory nodeId,
+        uint256 amount,
+        uint256 nonce,
+        uint256 expiry,
+        bytes memory signature
+    ) external nonReentrant {
+        require(block.timestamp < expiry, "Claim expired");
+        require(!usedNonces[nonce], "Nonce already used");
+        require(amount > 0, "Amount must be positive");
 
-        claims[claimId] = Claim({beneficiary: beneficiary, amount: amount, createdAt: block.timestamp, claimed: false});
+        // Verify platform signature
+        bytes32 structHash = keccak256(abi.encode(
+            CLAIM_TYPEHASH,
+            keccak256(bytes(nodeId)),
+            msg.sender,
+            amount,
+            nonce,
+            expiry
+        ));
 
-        emit ClaimCreated(claimId, beneficiary, amount);
-    }
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
+        require(signer == platformSigner, "Invalid signature");
 
-    function claimReward(bytes32 claimId) external nonReentrant {
-        Claim storage c = claims[claimId];
+        // Mark nonce as used
+        usedNonces[nonce] = true;
 
-        require(c.beneficiary == msg.sender, "Not beneficiary");
-        require(!c.claimed, "Already claimed");
-        require(block.timestamp <= c.createdAt + CLAIM_EXPIRY, "Claim expired");
+        // Update total claimed
+        totalClaimed[msg.sender] += amount;
 
-        c.claimed = true;
-        userBalances[msg.sender] += c.amount;
-
-        vault.withdraw(address(this), c.amount);
-
-        emit ClaimRedeemed(claimId, msg.sender, c.amount);
-    }
-
-    function withdrawFunds(uint256 amount) external nonReentrant {
-        require(userBalances[msg.sender] >= amount, "Insufficient balance");
-
-        userBalances[msg.sender] -= amount;
+        // Transfer USDT from contract to caller (msg.sender pays gas)
         usdt.safeTransfer(msg.sender, amount);
 
-        emit FundsWithdrawn(msg.sender, amount);
+        emit Claimed(nodeId, msg.sender, amount, nonce);
+    }
+
+    /**
+     * @notice Check if a nonce has been used
+     * @param nonce The nonce to check
+     */
+    function isNonceUsed(uint256 nonce) external view returns (bool) {
+        return usedNonces[nonce];
+    }
+
+    /**
+     * @notice Get USDT balance of the contract
+     */
+    function getContractBalance() external view returns (uint256) {
+        return usdt.balanceOf(address(this));
+    }
+
+    /**
+     * @notice Update platform signer (admin only)
+     * @param newSigner New signer address
+     */
+    function setPlatformSigner(address newSigner) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newSigner != address(0), "Invalid signer address");
+        address oldSigner = platformSigner;
+        platformSigner = newSigner;
+        emit PlatformSignerUpdated(oldSigner, newSigner);
+    }
+
+    /**
+     * @notice Emergency withdraw (admin only)
+     * @param to Destination address
+     * @param amount Amount to withdraw
+     */
+    function emergencyWithdraw(address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(to != address(0), "Invalid destination");
+        usdt.safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Get the EIP-712 domain separator
+     */
+    function domainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
     }
 }
