@@ -110,4 +110,4 @@ console.log('Current block:', block);
 
 - Documentation: https://docs.satelink.network
 - Discord: https://discord.gg/satelink
-- Email: support@satelink.network
+- Email: satelinknetwork@gmail.com

@@ -49,7 +49,7 @@ export default function InvestorsPage() {
                     <p className="text-zinc-400 mb-8 leading-relaxed">
                         By eliminating the legacy inflationary subsidy mechanism, Satelink is the first verifiable infrastructure network possessing the economic durability required to outlast transient market cycles.
                     </p>
-                    <a href="mailto:investors@satelink.network" className="inline-block px-8 py-3 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors">
+                    <a href="mailto:satelinknetwork@gmail.com" className="inline-block px-8 py-3 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 transition-colors">
                         Contact Investor Relations
                     </a>
                 </div>

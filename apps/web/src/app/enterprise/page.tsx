@@ -54,7 +54,7 @@ export default function EnterprisePage() {
                         <p className="text-zinc-400 leading-relaxed max-w-sm mx-auto">
                             Our operators strictly depend on enterprise revenue, fully aligning their economic incentives with your required uptime.
                         </p>
-                        <CTAButton href="mailto:enterprise@satelink.network" variant="primary" className="py-4 mx-auto w-full md:w-auto mt-4 px-10">
+                        <CTAButton href="mailto:satelinknetwork@gmail.com" variant="primary" className="py-4 mx-auto w-full md:w-auto mt-4 px-10">
                             Contact Sales <ArrowRight className="w-5 h-5 ml-2" />
                         </CTAButton>
                     </div>

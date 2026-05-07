@@ -6,59 +6,65 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Fira+Code:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap');
 
 :root {
-  /* ═══ DePIN Teal Palette — Ocean/Space Infrastructure ═══ */
-  --ink-950: #2C3333;  /* deepest background */
-  --ink-900: #2E4F4F;  /* page background */
-  --ink-800: #1A3C3C;  /* surface background */
-  --ink-700: #0E8388;  /* teal accent - cards, highlights */
-  --ink-600: #2E5555;  /* hover states */
-  --ink-400: #8FB5B0;  /* muted mint text */
-  --ink-200: #CBE4DE;  /* mint white - primary text */
-  --ink-50: #CBE4DE;   /* mint white */
+  /* ═══ SATELINK BRAND PALETTE ═══ */
+  --brand-dark: #272829;   /* backgrounds, headers */
+  --brand-mid: #61677A;    /* borders, subtext, muted */
+  --brand-light: #D8D9DA;  /* body text, icons */
+  --brand-cream: #FFF6E0;  /* headings, highlights, CTAs */
 
-  /* ═══ Signal — Teal accent (DePIN theme) ═══ */
-  --signal: #0E8388;
-  --signal-rgb: 14, 131, 136;
-  --signal-dim: rgba(14, 131, 136, 0.12);
-  --signal-border: rgba(14, 131, 136, 0.35);
-  --signal-glow: rgba(14, 131, 136, 0.25);
-  --signal-bright: #CBE4DE;
+  /* ═══ Ink Scale (derived from brand) ═══ */
+  --ink-950: #272829;  /* deepest background */
+  --ink-900: #2F3031;  /* page background */
+  --ink-800: #3A3B3D;  /* surface background */
+  --ink-700: #61677A;  /* accent - muted elements */
+  --ink-600: #4A4D52;  /* hover states */
+  --ink-400: #D8D9DA;  /* light text */
+  --ink-200: #FFF6E0;  /* cream - primary text */
+  --ink-50: #FFF6E0;   /* cream white */
+
+  /* ═══ Signal — Cream accent (brand highlight) ═══ */
+  --signal: #FFF6E0;
+  --signal-rgb: 255, 246, 224;
+  --signal-dim: rgba(255, 246, 224, 0.12);
+  --signal-border: rgba(255, 246, 224, 0.35);
+  --signal-glow: rgba(255, 246, 224, 0.25);
+  --signal-bright: #FFF6E0;
 
   /* ═══ Semantic Colors ═══ */
   --earn: #4ADE80;
   --earn-rgb: 74, 222, 128;
   --warn: #F97316;
   --warn-rgb: 249, 115, 22;
-  --chain: #0E8388;
-  --chain-rgb: 14, 131, 136;
+  --chain: #FFF6E0;
+  --chain-rgb: 255, 246, 224;
   --error: #EF4444;
   --error-rgb: 239, 68, 68;
 
   /* ═══ Background Aliases ═══ */
-  --bg-deepest: #2C3333;
-  --bg-deep: #2C3333;
-  --bg-page: #2E4F4F;
-  --bg-card: #0E8388;
-  --bg-surface: #1A3C3C;
-  --bg-elevated: #1A3C3C;
-  --bg-hover: #2E5555;
+  --bg-deepest: #272829;
+  --bg-deep: #272829;
+  --bg-page: #272829;
+  --bg-card: #2F3031;
+  --bg-surface: #3A3B3D;
+  --bg-elevated: #3A3B3D;
+  --bg-hover: #4A4D52;
 
   /* ═══ Text Colors ═══ */
-  --text-primary: #CBE4DE;
-  --text-secondary: #8FB5B0;
-  --text-muted: #8FB5B0;
+  --text-primary: #FFF6E0;
+  --text-secondary: #D8D9DA;
+  --text-muted: #61677A;
 
   /* ═══ Border Colors ═══ */
-  --border-subtle: rgba(14, 131, 136, 0.15);
-  --border-default: rgba(14, 131, 136, 0.25);
-  --border-strong: rgba(14, 131, 136, 0.40);
+  --border-subtle: rgba(97, 103, 122, 0.25);
+  --border-default: rgba(97, 103, 122, 0.40);
+  --border-strong: rgba(97, 103, 122, 0.60);
   --border-signal: var(--signal-border);
 
   /* ═══ Gradients ═══ */
-  --gradient-hero: linear-gradient(135deg, #2C3333 0%, #2E4F4F 50%, #1A3C3C 100%);
-  --gradient-card: linear-gradient(180deg, #1A3C3C 0%, rgba(14, 131, 136, 0.15) 100%);
-  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(14, 131, 136, 0.3) 0%, transparent 60%);
-  --gradient-signal: linear-gradient(135deg, #0E8388 0%, #CBE4DE 100%);
+  --gradient-hero: linear-gradient(135deg, #272829 0%, #2F3031 50%, #3A3B3D 100%);
+  --gradient-card: linear-gradient(180deg, #3A3B3D 0%, rgba(97, 103, 122, 0.15) 100%);
+  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(255, 246, 224, 0.15) 0%, transparent 60%);
+  --gradient-signal: linear-gradient(135deg, #FFF6E0 0%, #D8D9DA 100%);
 
   /* ═══ Typography ═══ */
   --font-heading: 'Sora', -apple-system, sans-serif;

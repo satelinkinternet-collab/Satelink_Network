@@ -48,41 +48,48 @@
 }
 
 /* ══════════════════════════════════════════════════
-   DARK-FIRST THEME — Deep Contrast Palette
-   Background: #09090b (zinc-950)
-   Surface:    #18181b (zinc-900)
-   Elevated:   #27272a (zinc-800)
-   Accent:     Electric Blue (#3b82f6)
+   SATELINK BRAND THEME
+   Brand Palette:
+   - Dark:   #272829 (backgrounds, headers)
+   - Mid:    #61677A (borders, subtext, muted)
+   - Light:  #D8D9DA (body text, icons)
+   - Cream:  #FFF6E0 (headings, highlights, CTAs)
    ══════════════════════════════════════════════════ */
 
 :root, .dark {
   --radius: 0.625rem;
 
+  /* Brand Colors */
+  --color-brand-dark: #272829;
+  --color-brand-mid: #61677A;
+  --color-brand-light: #D8D9DA;
+  --color-brand-cream: #FFF6E0;
+
   /* Deep Dark Backgrounds */
-  --background: #0A0A0A;
-  --foreground: #FFFFFF;
-  --surface: #111111;
+  --background: #272829;
+  --foreground: #D8D9DA;
+  --surface: #1E1F20;
 
   /* Elevated Surface Cards */
-  --card: #1A1A1A;
-  --card-foreground: #FFFFFF;
+  --card: #2F3031;
+  --card-foreground: #D8D9DA;
 
-  --popover: #1A1A1A;
-  --popover-foreground: #FFFFFF;
+  --popover: #2F3031;
+  --popover-foreground: #D8D9DA;
 
-  /* Primary */
-  --primary: #FFFFFF;
-  --primary-foreground: #0A0A0A;
+  /* Primary (CTA buttons, highlights) */
+  --primary: #FFF6E0;
+  --primary-foreground: #272829;
 
-  /* Subtle Surface for secondary */
-  --secondary: #111111;
-  --secondary-foreground: #FFFFFF;
+  /* Secondary surfaces */
+  --secondary: #1E1F20;
+  --secondary-foreground: #D8D9DA;
 
-  --muted: #9CA3AF;
-  --muted-foreground: #111111;
+  --muted: #61677A;
+  --muted-foreground: #1E1F20;
 
-  --accent: #3B82F6;
-  --accent-foreground: #FFFFFF;
+  --accent: #FFF6E0;
+  --accent-foreground: #272829;
 
   --success: #22C55E;
   --success-foreground: #FFFFFF;
@@ -93,26 +100,26 @@
   --destructive: #EF4444; /* danger */
   --destructive-foreground: #FFFFFF;
 
-  --border: #262626;
-  --input: #262626;
-  --ring: #3B82F6;
+  --border: #61677A;
+  --input: #61677A;
+  --ring: #FFF6E0;
 
   /* Charts */
-  --chart-1: #3B82F6;
+  --chart-1: #FFF6E0;
   --chart-2: #22C55E;
   --chart-3: #F59E0B;
   --chart-4: #EF4444;
-  --chart-5: #9CA3AF;
+  --chart-5: #61677A;
 
   /* Sidebar */
-  --sidebar: #0A0A0A;
-  --sidebar-foreground: #9CA3AF;
-  --sidebar-primary: #FFFFFF;
-  --sidebar-primary-foreground: #0A0A0A;
-  --sidebar-accent: #111111;
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #262626;
-  --sidebar-ring: #3B82F6;
+  --sidebar: #272829;
+  --sidebar-foreground: #D8D9DA;
+  --sidebar-primary: #FFF6E0;
+  --sidebar-primary-foreground: #272829;
+  --sidebar-accent: #1E1F20;
+  --sidebar-accent-foreground: #D8D9DA;
+  --sidebar-border: #61677A;
+  --sidebar-ring: #FFF6E0;
 }
 
 @layer base {
