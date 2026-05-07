@@ -1,7 +1,30 @@
 # SATELINK — PROJECT STATE
 
 ## STAGE
-🚀 MAINNET LIVE / S9-COMPLETE / CONTRACTS-DEPLOYED
+⚠️ AUDIT REQUIRED / SETTLEMENT NOT WIRED / BACKEND DOWN
+
+---
+
+## 🔴 DEEP AUDIT (May 7, 2026)
+
+### Critical Issues Found:
+1. **Backend DOWN** — All endpoints return timeout (Railway?)
+2. **Claim API NOT WIRED** — `claim_processor.js` exists but no route
+3. **Claim expiry job NOT STARTED** — `startClaimExpiryJob` never called
+4. **30+ orphan files** — settlement/, dashboard_api/ never imported
+5. **Auth middleware orphaned** — `routes.js` with verifyJWT not imported
+6. **Duplicate import bug** — server.js line 15 has two imports on same line
+7. **No revenue source validation** — test/synthetic revenue can generate real claims
+
+### Actual Progress (VERIFIED 2026-05-07):
+System Build     ██████░░░░ 60% (43% code orphaned)
+Security         ██████░░░░ 55% (auth middleware not applied)
+RPC Gateway      ████████░░ 75% (backend DOWN)
+Settlement       ████░░░░░░ 40% (epoch close works, claims NOT wired)
+Website          ████████░░ 80% (pages exist, backend DOWN)
+Node Onboarding  ████████░░ 80% (API works when backend up)
+Demand/Traffic   ██████░░░░ 60% (Chainlist MERGED)
+Revenue          ██████░░░░ 55% (recording works, NO claims flow)
 
 ---
 
@@ -10,24 +33,13 @@
 - USDT earned: $0.019920
 - Every RPC call now records real revenue
 - Chainlist PR #2665 MERGED — external traffic incoming
+- ⚠️ BUT no way to claim these earnings (API not wired)
 
 ## 🔧 HOTFIX: node_id NOT NULL constraint (May 3, 2026)
 - **Issue:** revenue_events_v2 had node_id NOT NULL but RPC billing doesn't include node_id
 - **Fix:** ALTER TABLE runs at startup to drop NOT NULL constraint
 - **Result:** Billing recording restored — all 5 test calls show `[Billing] ✓`
 - **Commits:** fba1b9e (fix runs first, independently)
-
----
-
-## PROGRESS (VERIFIED 2026-04-27)
-System Build     ████████░░ 85%
-Security         ████████░░ 80%
-RPC Gateway      ██████████ 100% (ALL endpoints LIVE)
-Settlement       ████████░░ 75% (epoch close + reputation)
-Website          ██████████ 100% (LIVE, all pages 200 OK)
-Node Onboarding  ██████████ 100% ✅ (S2 COMPLETE)
-Demand/Traffic   ██████░░░░ 60% (Chainlist MERGED, traffic flowing)
-Revenue          ████████░░ 80% ✅ (664 events, $0.019920 USDT confirmed)
 
 ---
 
