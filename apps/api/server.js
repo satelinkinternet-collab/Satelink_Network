@@ -123,23 +123,56 @@ async function ensureBillingTables(pool) {
 }
 
 async function start() {
-  try {
-    console.log("🚀 SERVER STARTED - ROUTES LOADING");
+  console.log("🚀 SERVER STARTED - BOOT SEQUENCE BEGINNING");
 
-    const pool = new Pool({
+  // Step 1: Create PostgreSQL pool
+  let pool;
+  try {
+    pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: process.env.NODE_ENV === "production"
         ? { rejectUnauthorized: false }
         : false,
     });
+    console.log('[BOOT] ✅ PostgreSQL pool created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at Pool creation:', err.message);
+    process.exit(1);
+  }
 
-    // Auto-migrate billing tables before routes
+  // Step 2: Run billing table migrations
+  try {
     await ensureBillingTables(pool);
+    console.log('[BOOT] ✅ Billing tables ensured');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
+    process.exit(1);
+  }
 
-    const redis = createRedisClient();
-    const app = createApp(pool, redis);
-app.use(express.json());
-app.use("/", createPhase3Router());
+  // Step 3: Create Redis client
+  let redis;
+  try {
+    redis = createRedisClient();
+    console.log('[BOOT] ✅ Redis client created (or skipped)');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createRedisClient:', err.message);
+    process.exit(1);
+  }
+
+  // Step 4: Create Express app
+  let app;
+  try {
+    app = createApp(pool, redis);
+    console.log('[BOOT] ✅ Express app created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createApp:', err.message);
+    process.exit(1);
+  }
+
+  // Step 5: Mount additional middleware and routes
+  try {
+    app.use(express.json());
+    app.use("/", createPhase3Router());
 
     app.get('/ws/stats', (req, res) => {
       res.json({ ok: true, ...getWsStats() });
@@ -205,25 +238,81 @@ app.use("/", createPhase3Router());
         res.status(500).json({ ok: false, error: e.message });
       }
     });
+    console.log('[BOOT] ✅ Additional routes mounted');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
+    process.exit(1);
+  }
 
-    const httpServer = createServer(app);
+  // Step 6: Create HTTP server
+  let httpServer;
+  try {
+    httpServer = createServer(app);
+    console.log('[BOOT] ✅ HTTP server created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createServer:', err.message);
+    process.exit(1);
+  }
 
+  // Step 7: Create WebSocket gateway
+  try {
     createWsGateway(httpServer, pool);
+    console.log('[BOOT] ✅ WebSocket gateway created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createWsGateway:', err.message);
+    process.exit(1);
+  }
 
-    // Start node health monitor (S2-008)
+  // Step 8: Start health monitor
+  try {
     startHealthMonitor(pool);
+    console.log('[BOOT] ✅ Health monitor started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startHealthMonitor:', err.message);
+    process.exit(1);
+  }
 
-    // Start offline detector (S2-009)
+  // Step 9: Start offline detector
+  try {
     startOfflineDetector(pool);
+    console.log('[BOOT] ✅ Offline detector started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startOfflineDetector:', err.message);
+    process.exit(1);
+  }
 
-    // Start epoch scheduler (60s interval)
+  // Step 10: Start epoch scheduler
+  try {
     startEpochScheduler(pool);
+    console.log('[BOOT] ✅ Epoch scheduler started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startEpochScheduler:', err.message);
+    process.exit(1);
+  }
 
+  // Step 11: Start sentinel (auto-scaler, healer, anomaly, treasury, capacity)
+  try {
     startSentinel(pool, redis);
-    startClaimExpiryJob(pool);
-    const PORT = process.env.PORT || 8080;
+    console.log('[BOOT] ✅ Sentinel started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startSentinel:', err.message);
+    process.exit(1);
+  }
 
+  // Step 12: Start claim expiry job
+  try {
+    startClaimExpiryJob(pool);
+    console.log('[BOOT] ✅ Claim expiry job started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startClaimExpiryJob:', err.message);
+    process.exit(1);
+  }
+
+  // Step 13: Bind to port
+  const PORT = process.env.PORT || 8080;
+  try {
     httpServer.listen(PORT, () => {
+      console.log('[BOOT] ✅ Server listening on port ' + PORT);
       console.log(`✅ Satelink Backend Running on port ${PORT}`);
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
       console.log(`🏥 Health monitor started (2min interval)`);
@@ -235,9 +324,8 @@ app.use("/", createPhase3Router());
       console.log(`🏦 Treasury-monitor started (10min interval)`);
       console.log(`📊 Capacity-alerter started (2min interval)`);
     });
-
   } catch (err) {
-    console.error("BOOT FAILURE IN SERVER:", err);
+    console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
     process.exit(1);
   }
 }
