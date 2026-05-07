@@ -10,6 +10,14 @@
 ### Next Task
 - Test POST /api/nodes/:nodeId/claim end to end
 
+### Parallel Track (May 8, 2026)
+- Satelink OS Phase 2+ deepening completed:
+  - Zustand infra engine store added
+  - Realtime event simulation and store synchronization added
+  - Dedicated `/satelink/os/*` route system added
+  - Deployment terminal + deployment detail inspector added
+  - Backend realtime scaffolding added in `apps/api/src/realtime/*`
+
 ### Blocked On
 - MATIC top-up for gas fees (current balance: 0.06 MATIC)
 

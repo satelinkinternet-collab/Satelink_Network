@@ -15,9 +15,9 @@ export function NodeNetworkBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext("2d")!;
     let animId: number;
     let W = 0, H = 0;
     let nodes: Node[] = [];
@@ -31,8 +31,8 @@ export function NodeNetworkBackground() {
     };
 
     function resize() {
-      W = canvas.width = canvas.offsetWidth;
-      H = canvas.height = canvas.offsetHeight;
+      W = canvasEl!.width = canvasEl!.offsetWidth;
+      H = canvasEl!.height = canvasEl!.offsetHeight;
       initNodes();
     }
 
@@ -131,7 +131,7 @@ export function NodeNetworkBackground() {
     }
 
     const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    ro.observe(canvasEl);
     resize();
     draw();
 

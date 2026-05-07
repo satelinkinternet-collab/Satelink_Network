@@ -41,5 +41,11 @@
     "soak-test:docker": "bash scripts/run_72h_test.sh",
     "deploy": "bash scripts/deploy.sh",
     "deploy:skip-cert": "bash scripts/deploy.sh --skip-cert"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.100.9",
+    "@xyflow/react": "^12.10.2",
+    "cmdk": "^1.1.1",
+    "zustand": "^5.0.13"
   }
 }

@@ -130,3 +130,21 @@ Optional vars (warn if missing):
 - [ ] PROGRESS.md updated
 - [ ] Committed to feature branch
 - [ ] CI passes
+
+## SESSION CONTEXT UPDATE — 2026-05-08
+
+### Satelink OS Phase 2+ Deepening
+- Added a typed Zustand infrastructure store for deployments, nodes, topology, queue, events, metrics, logs, notifications, environments, and projects.
+- Added realtime mock event engine + websocket abstraction in frontend (`lib/events`, `lib/realtime`, `lib/mock-engine`) and state synchronization provider.
+- Added dedicated Satelink OS route system under `/satelink/os/*` with responsive shell, reusable page template, and keyboard route shortcuts (`G D`, `G N`, `G A`).
+- Added deployment terminal UX and deployment detail inspector routes.
+- Added backend realtime scaffolding (`apps/api/src/realtime/*`) with event contracts, lifecycle state machine, and websocket broadcaster scaffold.
+
+### Memory/Docs Updated
+- `/docs/architecture/current-system-state.md`
+- `/docs/architecture/frontend-map.md`
+- `/docs/architecture/backend-map.md`
+- `/docs/architecture/design-system.md`
+- `/docs/architecture/infra-engine.md`
+- `/docs/changelog.md`
+- `/docs/todos/next-phase.md`

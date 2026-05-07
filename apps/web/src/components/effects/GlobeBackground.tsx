@@ -5,9 +5,9 @@ export function GlobeBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext("2d")!;
     let animId: number;
     let W = 0, H = 0, rot = 0;
 
@@ -45,8 +45,8 @@ export function GlobeBackground() {
     }
 
     function resize() {
-      W = canvas.width = canvas.offsetWidth;
-      H = canvas.height = canvas.offsetHeight;
+      W = canvasEl!.width = canvasEl!.offsetWidth;
+      H = canvasEl!.height = canvasEl!.offsetHeight;
       stars = Array.from({ length: 200 }, () => ({
         x: Math.random() * W,
         y: Math.random() * H,
@@ -176,7 +176,7 @@ export function GlobeBackground() {
     }
 
     const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    ro.observe(canvasEl);
     resize();
     draw();
     return () => {

@@ -15,6 +15,15 @@
 - DONE: Fixed reputation_history epoch_id migration
 - Commits this session: 9fcfabd, 07336de, 964488f
 
+## SESSION UPDATE — May 8, 2026 (SATELINK OS PHASE 2+)
+- DONE: Added Zustand stateful infrastructure store for Satelink OS
+- DONE: Added realtime mock websocket/event engine and synchronization provider
+- DONE: Added dedicated Satelink OS routes (`/satelink/os/*`) including deployments detail route
+- DONE: Added Railway/Vercel-style deployment terminal experience
+- DONE: Added keyboard-first navigation (`G D`, `G N`, `G A`) and responsive OS shell
+- DONE: Added backend realtime scaffolding contracts/state machine/event broadcaster/websocket gateway
+- DONE: Added architecture memory docs in `/docs/architecture`, changelog, and next-phase todo plan
+
 ### Remaining Blockers
 - MATIC balance low (0.06) — needs top-up for on-chain claims
 - No organic revenue yet — need first real RPC customer
