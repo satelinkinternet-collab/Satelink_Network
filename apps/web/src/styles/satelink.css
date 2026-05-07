@@ -6,65 +6,66 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Fira+Code:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap');
 
 :root {
-  /* ═══ SATELINK BRAND PALETTE ═══ */
-  --brand-dark: #272829;   /* backgrounds, headers */
-  --brand-mid: #61677A;    /* borders, subtext, muted */
-  --brand-light: #D8D9DA;  /* body text, icons */
-  --brand-cream: #FFF6E0;  /* headings, highlights, CTAs */
+  /* ═══ SATELINK BRAND PALETTE v2 ═══ */
+  --brand-bg: #091413;       /* background, dark sections */
+  --brand-primary: #408A71;  /* primary green, CTAs, active states */
+  --brand-sec: #285A48;      /* secondary green, borders, hover */
+  --brand-light: #B0E4CC;    /* headings, high contrast text */
+  --brand-glow: #00D1FF;     /* accent, glow effects, highlights */
 
   /* ═══ Ink Scale (derived from brand) ═══ */
-  --ink-950: #272829;  /* deepest background */
-  --ink-900: #2F3031;  /* page background */
-  --ink-800: #3A3B3D;  /* surface background */
-  --ink-700: #61677A;  /* accent - muted elements */
-  --ink-600: #4A4D52;  /* hover states */
-  --ink-400: #D8D9DA;  /* light text */
-  --ink-200: #FFF6E0;  /* cream - primary text */
-  --ink-50: #FFF6E0;   /* cream white */
+  --ink-950: #091413;  /* deepest background */
+  --ink-900: #0a1816;  /* page background */
+  --ink-800: #0d1f1d;  /* surface background */
+  --ink-700: #285A48;  /* accent - muted elements */
+  --ink-600: #408A71;  /* hover states */
+  --ink-400: #B0E4CC;  /* light text */
+  --ink-200: #B0E4CC;  /* primary text */
+  --ink-50: #B0E4CC;   /* brightest */
 
-  /* ═══ Signal — Cream accent (brand highlight) ═══ */
-  --signal: #FFF6E0;
-  --signal-rgb: 255, 246, 224;
-  --signal-dim: rgba(255, 246, 224, 0.12);
-  --signal-border: rgba(255, 246, 224, 0.35);
-  --signal-glow: rgba(255, 246, 224, 0.25);
-  --signal-bright: #FFF6E0;
+  /* ═══ Signal — Cyan glow accent ═══ */
+  --signal: #00D1FF;
+  --signal-rgb: 0, 209, 255;
+  --signal-dim: rgba(0, 209, 255, 0.12);
+  --signal-border: rgba(0, 209, 255, 0.35);
+  --signal-glow: rgba(0, 209, 255, 0.25);
+  --signal-bright: #00D1FF;
 
   /* ═══ Semantic Colors ═══ */
-  --earn: #4ADE80;
-  --earn-rgb: 74, 222, 128;
-  --warn: #F97316;
-  --warn-rgb: 249, 115, 22;
-  --chain: #FFF6E0;
-  --chain-rgb: 255, 246, 224;
+  --earn: #408A71;
+  --earn-rgb: 64, 138, 113;
+  --warn: #F59E0B;
+  --warn-rgb: 245, 158, 11;
+  --chain: #00D1FF;
+  --chain-rgb: 0, 209, 255;
   --error: #EF4444;
   --error-rgb: 239, 68, 68;
 
   /* ═══ Background Aliases ═══ */
-  --bg-deepest: #272829;
-  --bg-deep: #272829;
-  --bg-page: #272829;
-  --bg-card: #2F3031;
-  --bg-surface: #3A3B3D;
-  --bg-elevated: #3A3B3D;
-  --bg-hover: #4A4D52;
+  --bg-deepest: #091413;
+  --bg-deep: #091413;
+  --bg-page: #091413;
+  --bg-card: #0d1f1d;
+  --bg-surface: #0a1816;
+  --bg-elevated: #0d1f1d;
+  --bg-hover: #285A48;
 
   /* ═══ Text Colors ═══ */
-  --text-primary: #FFF6E0;
-  --text-secondary: #D8D9DA;
-  --text-muted: #61677A;
+  --text-primary: #B0E4CC;
+  --text-secondary: #408A71;
+  --text-muted: #285A48;
 
   /* ═══ Border Colors ═══ */
-  --border-subtle: rgba(97, 103, 122, 0.25);
-  --border-default: rgba(97, 103, 122, 0.40);
-  --border-strong: rgba(97, 103, 122, 0.60);
+  --border-subtle: rgba(40, 90, 72, 0.25);
+  --border-default: rgba(40, 90, 72, 0.40);
+  --border-strong: rgba(40, 90, 72, 0.60);
   --border-signal: var(--signal-border);
 
   /* ═══ Gradients ═══ */
-  --gradient-hero: linear-gradient(135deg, #272829 0%, #2F3031 50%, #3A3B3D 100%);
-  --gradient-card: linear-gradient(180deg, #3A3B3D 0%, rgba(97, 103, 122, 0.15) 100%);
-  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(255, 246, 224, 0.15) 0%, transparent 60%);
-  --gradient-signal: linear-gradient(135deg, #FFF6E0 0%, #D8D9DA 100%);
+  --gradient-hero: linear-gradient(135deg, #091413 0%, #0d1f1d 50%, #0a1816 100%);
+  --gradient-card: linear-gradient(180deg, #0d1f1d 0%, rgba(40, 90, 72, 0.15) 100%);
+  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(0, 209, 255, 0.15) 0%, transparent 60%);
+  --gradient-signal: linear-gradient(135deg, #00D1FF 0%, #B0E4CC 100%);
 
   /* ═══ Typography ═══ */
   --font-heading: 'Sora', -apple-system, sans-serif;

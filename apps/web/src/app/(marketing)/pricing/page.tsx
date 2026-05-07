@@ -12,8 +12,8 @@ const PRICING_TIERS = [
     period: "forever",
     description: "Perfect for development and testing",
     features: [
-      { text: "100 requests/day", included: true },
-      { text: "All 5 chains", included: true },
+      { text: "1,000 requests/day", included: true },
+      { text: "Polygon Mainnet", included: true },
       { text: "Community support", included: true },
       { text: "WebSocket", included: false },
       { text: "Priority routing", included: false },
@@ -78,20 +78,20 @@ const PRICING_TIERS = [
 
 const FAQ_ITEMS = [
   {
-    question: "Can I change plans anytime?",
-    answer: "Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately, and billing is prorated.",
+    question: "What chains does Satelink support?",
+    answer: "Polygon Mainnet (chain 137) is our primary network. Ethereum and Arbitrum support is coming in Stage S3.",
   },
   {
-    question: "What happens if I exceed my daily limit?",
-    answer: "Requests beyond your daily limit return a 429 rate limit error. You can upgrade your plan or wait for the limit to reset at midnight UTC.",
+    question: "Is Satelink production ready?",
+    answer: "Satelink is currently in public beta. The RPC gateway, epoch settlement, and claim infrastructure are live. Use in production at your own discretion.",
   },
   {
-    question: "Do you offer annual billing?",
-    answer: "Yes, annual billing is available for Basic and above with a 20% discount. Contact us for details.",
+    question: "Is there a free tier?",
+    answer: "Yes. The public RPC endpoint at rpc.satelink.network/rpc/polygon is free up to 1,000 requests/day with no API key required.",
   },
   {
-    question: "Is there a free trial for paid plans?",
-    answer: "The Free tier lets you test all functionality. Paid plans have a 7-day money-back guarantee.",
+    question: "How does revenue settlement work?",
+    answer: "Revenue from RPC calls is recorded per epoch (60s windows). Node operators earn 50% of epoch revenue, claimable as USDT on Polygon after the epoch closes.",
   },
 ];
 
@@ -101,7 +101,7 @@ export default function PricingPage() {
 
   const alchemyPrice = dailyRequests <= 300 ? 0 : 49; // Alchemy Growth is $49 for >300/day
   const satelinkPrice =
-    dailyRequests <= 100 ? 0 : dailyRequests <= 10000 ? 10 : dailyRequests <= 100000 ? 50 : 200;
+    dailyRequests <= 1000 ? 0 : dailyRequests <= 10000 ? 10 : dailyRequests <= 100000 ? 50 : 200;
   const savings = alchemyPrice - satelinkPrice;
 
   return (

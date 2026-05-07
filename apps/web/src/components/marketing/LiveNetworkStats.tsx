@@ -11,10 +11,10 @@ interface NetworkStats {
 
 export function LiveNetworkStats() {
   const [stats, setStats] = useState<NetworkStats>({
-    totalRequests: "2.4M",
-    activeProviders: 18,
-    avgLatency: "45ms",
-    cacheHitRate: "78.6%",
+    totalRequests: "—",
+    activeProviders: 0,
+    avgLatency: "—",
+    cacheHitRate: "—",
   });
 
   useEffect(() => {
@@ -24,10 +24,10 @@ export function LiveNetworkStats() {
         if (res.ok) {
           const data = await res.json();
           setStats({
-            totalRequests: formatNumber(data.totalRequests || 2400000),
-            activeProviders: data.activeNodes || 18,
-            avgLatency: `${data.avgLatency || 45}ms`,
-            cacheHitRate: data.rpcGateway?.cacheStats?.hitRate || "78.6%",
+            totalRequests: formatNumber(data.totalRequests || 0),
+            activeProviders: data.activeNodes || 0,
+            avgLatency: data.avgLatency ? `${data.avgLatency}ms` : "—",
+            cacheHitRate: data.rpcGateway?.cacheStats?.hitRate || "—",
           });
         }
       } catch {

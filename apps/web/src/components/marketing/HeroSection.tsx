@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { NodeNetworkBackground } from "@/components/effects/NodeNetworkBackground";
+import { GlobeBackground } from "@/components/effects/GlobeBackground";
 
 interface ChainStatus {
   name: string;
@@ -142,14 +142,14 @@ export function HeroSection() {
   }, [fetchData]);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#272829]">
-      <NodeNetworkBackground />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#091413]">
+      <GlobeBackground />
       <div className="hero-grid absolute inset-0 pointer-events-none" />
 
       <div className="hero-content relative z-10">
         <div className="hero-badge animate-fade-up">
           <span className="live-dot" />
-          Mainnet Live &middot; 6 Chains &middot; USDT Settlement
+          Public Beta &middot; Polygon Mainnet &middot; USDT Settlement
         </div>
 
         <h1 className="heading-display hero-title animate-fade-up delay-100">
@@ -170,7 +170,7 @@ export function HeroSection() {
           <Link href="/developers" className="btn btn-primary btn-lg">
             Start for free →
           </Link>
-          <Link href="/dashboard/network" className="btn btn-signal-outline btn-lg">
+          <Link href="/dashboard/network" className="btn btn-secondary btn-lg">
             View live network
           </Link>
         </div>
@@ -232,39 +232,72 @@ export function HeroSection() {
       <style jsx>{`
         .hero-grid {
           background-image:
-            linear-gradient(rgba(97, 103, 122, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(97, 103, 122, 0.08) 1px, transparent 1px);
+            linear-gradient(rgba(40, 90, 72, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(40, 90, 72, 0.06) 1px, transparent 1px);
           background-size: 50px 50px;
         }
 
         .gradient-text {
-          background: linear-gradient(135deg, #FFF6E0 0%, #D8D9DA 100%);
+          background: linear-gradient(135deg, #00D1FF 0%, #B0E4CC 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
+          text-shadow: 0 0 40px rgba(0, 209, 255, 0.3);
         }
 
         .hero-badge {
-          background: rgba(255, 246, 224, 0.1);
-          border: 1px solid rgba(255, 246, 224, 0.2);
-          color: #FFF6E0;
+          background: rgba(0, 209, 255, 0.1);
+          border: 1px solid rgba(0, 209, 255, 0.25);
+          color: #00D1FF;
         }
 
         .live-dot {
           width: 8px;
           height: 8px;
-          background: #22C55E;
+          background: #408A71;
           border-radius: 50%;
           animation: signal-pulse 2s ease-in-out infinite;
         }
 
         .hero-subtitle {
-          color: #D8D9DA;
+          color: #408A71;
         }
 
         .emphasis {
-          color: #FFF6E0;
+          color: #B0E4CC;
           font-weight: 500;
+        }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          border-radius: 8px;
+          padding: 12px 24px;
+          transition: all 0.2s;
+        }
+
+        .btn-primary {
+          background: #408A71;
+          color: #091413;
+          border: none;
+        }
+
+        .btn-primary:hover {
+          background: #285A48;
+          box-shadow: 0 0 20px rgba(0, 209, 255, 0.3);
+        }
+
+        .btn-secondary {
+          background: transparent;
+          color: #B0E4CC;
+          border: 1px solid #408A71;
+        }
+
+        .btn-secondary:hover {
+          border-color: #00D1FF;
+          color: #00D1FF;
         }
 
         .live-stats {
@@ -274,8 +307,8 @@ export function HeroSection() {
           gap: var(--space-8);
           margin-top: var(--space-10);
           padding: var(--space-6) var(--space-8);
-          background: rgba(255, 246, 224, 0.05);
-          border: 1px solid rgba(97, 103, 122, 0.3);
+          background: rgba(64, 138, 113, 0.08);
+          border: 1px solid rgba(40, 90, 72, 0.4);
           border-radius: var(--radius-xl);
         }
 
@@ -288,19 +321,19 @@ export function HeroSection() {
 
         .stat-icon {
           font-size: 1.25rem;
-          color: #FFF6E0;
+          color: #00D1FF;
         }
 
         .stat-number {
           font-family: var(--font-mono);
           font-size: 1.75rem;
           font-weight: 700;
-          color: #FFF6E0;
+          color: #B0E4CC;
         }
 
         .stat-label {
           font-size: 0.75rem;
-          color: #61677A;
+          color: #408A71;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -318,37 +351,37 @@ export function HeroSection() {
           align-items: center;
           gap: var(--space-2);
           padding: var(--space-2) var(--space-3);
-          background: rgba(255, 246, 224, 0.05);
-          border: 1px solid rgba(97, 103, 122, 0.3);
+          background: rgba(64, 138, 113, 0.1);
+          border: 1px solid rgba(40, 90, 72, 0.4);
           border-radius: var(--radius-full);
           font-size: 0.8125rem;
-          color: #D8D9DA;
+          color: #B0E4CC;
         }
 
         .chain-dot {
           width: 6px;
           height: 6px;
-          background: #22C55E;
+          background: #408A71;
           border-radius: 50%;
           animation: signal-pulse 2s ease-in-out infinite;
         }
 
         .chain-dot.offline {
-          background: #61677A;
+          background: #285A48;
           animation: none;
         }
 
         .chain-latency {
           font-family: var(--font-mono);
           font-size: 0.6875rem;
-          color: #61677A;
+          color: #408A71;
         }
 
         .hero-terminal {
           max-width: 640px;
           margin: var(--space-10) auto 0;
-          background: #1E1F20;
-          border: 1px solid rgba(97, 103, 122, 0.4);
+          background: #0d1f1d;
+          border: 1px solid rgba(40, 90, 72, 0.5);
           border-radius: var(--radius-xl);
           overflow: hidden;
           text-align: left;
@@ -360,8 +393,8 @@ export function HeroSection() {
           align-items: center;
           gap: var(--space-4);
           padding: var(--space-3) var(--space-4);
-          background: #2F3031;
-          border-bottom: 1px solid rgba(97, 103, 122, 0.3);
+          background: #0a1816;
+          border-bottom: 1px solid rgba(40, 90, 72, 0.4);
         }
 
         .terminal-dots {
@@ -377,12 +410,12 @@ export function HeroSection() {
 
         .terminal-dot.red { background: #EF4444; }
         .terminal-dot.yellow { background: #F59E0B; }
-        .terminal-dot.green { background: #22C55E; }
+        .terminal-dot.green { background: #408A71; }
 
         .terminal-title {
           font-family: var(--font-mono);
           font-size: 0.75rem;
-          color: #61677A;
+          color: #408A71;
         }
 
         .terminal-body {
@@ -398,16 +431,16 @@ export function HeroSection() {
         }
 
         .terminal-line.command {
-          color: #D8D9DA;
+          color: #B0E4CC;
         }
 
         .terminal-line.response {
-          color: #22C55E;
+          color: #408A71;
           margin-top: var(--space-2);
         }
 
         .terminal-cursor {
-          color: #FFF6E0;
+          color: #00D1FF;
           animation: blink 1s step-end infinite;
         }
 
@@ -416,7 +449,7 @@ export function HeroSection() {
           left: 0;
           right: 0;
           height: 2px;
-          background: linear-gradient(90deg, transparent, rgba(255, 246, 224, 0.3), transparent);
+          background: linear-gradient(90deg, transparent, rgba(0, 209, 255, 0.4), transparent);
           animation: scan-line 3s linear infinite;
         }
 

@@ -48,78 +48,82 @@
 }
 
 /* ══════════════════════════════════════════════════
-   SATELINK BRAND THEME
+   SATELINK BRAND THEME v2
    Brand Palette:
-   - Dark:   #272829 (backgrounds, headers)
-   - Mid:    #61677A (borders, subtext, muted)
-   - Light:  #D8D9DA (body text, icons)
-   - Cream:  #FFF6E0 (headings, highlights, CTAs)
+   - bg:      #091413 (background, dark sections)
+   - primary: #408A71 (primary green, CTAs, active states)
+   - sec:     #285A48 (secondary green, borders, hover)
+   - light:   #B0E4CC (headings, high contrast text)
+   - glow:    #00D1FF (accent, glow effects, highlights)
    ══════════════════════════════════════════════════ */
 
 :root, .dark {
   --radius: 0.625rem;
 
   /* Brand Colors */
-  --color-brand-dark: #272829;
-  --color-brand-mid: #61677A;
-  --color-brand-light: #D8D9DA;
-  --color-brand-cream: #FFF6E0;
+  --brand-bg: #091413;
+  --brand-primary: #408A71;
+  --brand-sec: #285A48;
+  --brand-light: #B0E4CC;
+  --brand-glow: #00D1FF;
+  --brand-glow-rgb: 0, 209, 255;
+  --brand-primary-rgb: 64, 138, 113;
 
   /* Deep Dark Backgrounds */
-  --background: #272829;
-  --foreground: #D8D9DA;
-  --surface: #1E1F20;
+  --background: #091413;
+  --foreground: #B0E4CC;
+  --surface: #0d1f1d;
 
   /* Elevated Surface Cards */
-  --card: #2F3031;
-  --card-foreground: #D8D9DA;
+  --card: #0d1f1d;
+  --card-foreground: #B0E4CC;
 
-  --popover: #2F3031;
-  --popover-foreground: #D8D9DA;
+  --popover: #0d1f1d;
+  --popover-foreground: #B0E4CC;
 
   /* Primary (CTA buttons, highlights) */
-  --primary: #FFF6E0;
-  --primary-foreground: #272829;
+  --primary: #408A71;
+  --primary-foreground: #091413;
 
   /* Secondary surfaces */
-  --secondary: #1E1F20;
-  --secondary-foreground: #D8D9DA;
+  --secondary: #0d1f1d;
+  --secondary-foreground: #B0E4CC;
 
-  --muted: #61677A;
-  --muted-foreground: #1E1F20;
+  --muted: #285A48;
+  --muted-foreground: #091413;
 
-  --accent: #FFF6E0;
-  --accent-foreground: #272829;
+  --accent: #00D1FF;
+  --accent-foreground: #091413;
 
-  --success: #22C55E;
-  --success-foreground: #272829;
+  --success: #408A71;
+  --success-foreground: #091413;
 
   --warning: #F59E0B;
-  --warning-foreground: #272829;
+  --warning-foreground: #091413;
 
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
 
-  --border: #61677A;
-  --input: #61677A;
-  --ring: #FFF6E0;
+  --border: #285A48;
+  --input: #285A48;
+  --ring: #00D1FF;
 
   /* Charts */
-  --chart-1: #FFF6E0;
-  --chart-2: #22C55E;
-  --chart-3: #F59E0B;
-  --chart-4: #EF4444;
-  --chart-5: #61677A;
+  --chart-1: #00D1FF;
+  --chart-2: #408A71;
+  --chart-3: #B0E4CC;
+  --chart-4: #285A48;
+  --chart-5: #F59E0B;
 
   /* Sidebar */
-  --sidebar: #272829;
-  --sidebar-foreground: #D8D9DA;
-  --sidebar-primary: #FFF6E0;
-  --sidebar-primary-foreground: #272829;
-  --sidebar-accent: #1E1F20;
-  --sidebar-accent-foreground: #D8D9DA;
-  --sidebar-border: #61677A;
-  --sidebar-ring: #FFF6E0;
+  --sidebar: #091413;
+  --sidebar-foreground: #B0E4CC;
+  --sidebar-primary: #408A71;
+  --sidebar-primary-foreground: #091413;
+  --sidebar-accent: #0d1f1d;
+  --sidebar-accent-foreground: #B0E4CC;
+  --sidebar-border: #285A48;
+  --sidebar-ring: #00D1FF;
 }
 
 @layer base {
@@ -132,28 +136,52 @@
   }
 }
 
+@layer base {
+  body {
+    background-color: #091413;
+    color: #B0E4CC;
+  }
+
+  a {
+    color: #408A71;
+  }
+
+  a:hover {
+    color: #00D1FF;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #B0E4CC;
+  }
+}
+
 @layer utilities {
   .glass-card {
     @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.06];
   }
 
   .glow-shadow {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 2px 8px -2px rgba(0, 0, 0, 0.5),
-      0 4px 20px -4px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 0 20px rgba(0, 209, 255, 0.3);
   }
 
-  .neon-glow-blue {
-    box-shadow: 0 0 20px -4px rgba(59, 130, 246, 0.3);
+  .glow-shadow-sm {
+    box-shadow: 0 0 10px rgba(0, 209, 255, 0.2);
   }
 
-  .neon-glow-emerald {
-    box-shadow: 0 0 20px -4px rgba(16, 185, 129, 0.3);
+  .neon-glow {
+    box-shadow: 0 0 20px -4px rgba(0, 209, 255, 0.4);
+  }
+
+  .neon-glow-green {
+    box-shadow: 0 0 20px -4px rgba(64, 138, 113, 0.4);
   }
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(0, 209, 255, 0.5);
   }
 }
 
@@ -216,12 +244,12 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: #285A48;
   border-radius: 2px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: #408A71;
 }
 
 /* ── Mobile Touch ── */

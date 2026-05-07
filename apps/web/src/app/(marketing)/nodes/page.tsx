@@ -53,29 +53,29 @@ const SETUP_STEPS = [
 
 const FAQ_ITEMS = [
   {
-    question: "How are rewards calculated?",
+    question: "What chains does Satelink support?",
     answer:
-      "You earn 50% of the billing revenue from each RPC request your node processes. The average cost per request is $0.00003 USDT, so you earn $0.000015 per request.",
+      "Polygon Mainnet (chain 137) is our primary network. Ethereum and Arbitrum support is coming in Stage S3.",
   },
   {
-    question: "When can I withdraw?",
+    question: "Is Satelink production ready?",
     answer:
-      "You can claim your USDT rewards once you reach the 1 USDT minimum threshold. Claims are settled on Polygon Network with minimal gas fees.",
+      "Satelink is currently in public beta. The RPC gateway, epoch settlement, and claim infrastructure are live. Use in production at your own discretion.",
   },
   {
-    question: "What happens if my node goes offline?",
+    question: "How does revenue settlement work?",
     answer:
-      "The circuit breaker will route traffic away from your node. Your reputation score decreases, which affects future request routing. Extended downtime may result in temporary deregistration.",
+      "Revenue from RPC calls is recorded per epoch (60s windows). Node operators earn 50% of epoch revenue, claimable as USDT on Polygon after the epoch closes.",
   },
   {
-    question: "Do I need to stake tokens?",
+    question: "How do I start as a node operator?",
     answer:
-      "No staking is required to run a node. You simply need to meet the hardware requirements and maintain good uptime.",
+      "Register at satelink.network/node/setup. The node agent connects your infrastructure to the Satelink network.",
   },
   {
-    question: "Which chains can my node serve?",
+    question: "Is there a free tier?",
     answer:
-      "You choose which chains to support based on the RPC endpoints you configure. Most operators run full nodes for Polygon and Ethereum.",
+      "Yes. The public RPC endpoint at rpc.satelink.network/rpc/polygon is free up to 1,000 requests/day with no API key required.",
   },
 ];
 
