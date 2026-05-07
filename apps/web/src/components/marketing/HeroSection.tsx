@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { NodeNetwork } from "./NodeNetwork";
+import { NodeNetworkBackground } from "@/components/effects/NodeNetworkBackground";
 
 interface ChainStatus {
   name: string;
@@ -142,11 +142,11 @@ export function HeroSection() {
   }, [fetchData]);
 
   return (
-    <section className="hero">
-      <NodeNetwork nodeCount={18} animated={true} />
-      <div className="hero-grid" />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#272829]">
+      <NodeNetworkBackground />
+      <div className="hero-grid absolute inset-0 pointer-events-none" />
 
-      <div className="hero-content">
+      <div className="hero-content relative z-10">
         <div className="hero-badge animate-fade-up">
           <span className="live-dot" />
           Mainnet Live &middot; 6 Chains &middot; USDT Settlement
@@ -230,45 +230,40 @@ export function HeroSection() {
       </div>
 
       <style jsx>{`
-        .hero {
-          background: var(--bg-deepest);
-          position: relative;
-        }
-
         .hero-grid {
           background-image:
-            linear-gradient(rgba(14, 131, 136, 0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(14, 131, 136, 0.05) 1px, transparent 1px);
+            linear-gradient(rgba(97, 103, 122, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(97, 103, 122, 0.08) 1px, transparent 1px);
           background-size: 50px 50px;
         }
 
         .gradient-text {
-          background: linear-gradient(135deg, #0E8388 0%, #CBE4DE 100%);
+          background: linear-gradient(135deg, #FFF6E0 0%, #D8D9DA 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
 
         .hero-badge {
-          background: rgba(14, 131, 136, 0.15);
-          border: 1px solid rgba(14, 131, 136, 0.3);
-          color: #CBE4DE;
+          background: rgba(255, 246, 224, 0.1);
+          border: 1px solid rgba(255, 246, 224, 0.2);
+          color: #FFF6E0;
         }
 
         .live-dot {
           width: 8px;
           height: 8px;
-          background: #4ADE80;
+          background: #22C55E;
           border-radius: 50%;
           animation: signal-pulse 2s ease-in-out infinite;
         }
 
         .hero-subtitle {
-          color: #8FB5B0;
+          color: #D8D9DA;
         }
 
         .emphasis {
-          color: #CBE4DE;
+          color: #FFF6E0;
           font-weight: 500;
         }
 
@@ -279,8 +274,8 @@ export function HeroSection() {
           gap: var(--space-8);
           margin-top: var(--space-10);
           padding: var(--space-6) var(--space-8);
-          background: rgba(14, 131, 136, 0.08);
-          border: 1px solid rgba(14, 131, 136, 0.2);
+          background: rgba(255, 246, 224, 0.05);
+          border: 1px solid rgba(97, 103, 122, 0.3);
           border-radius: var(--radius-xl);
         }
 
@@ -293,19 +288,19 @@ export function HeroSection() {
 
         .stat-icon {
           font-size: 1.25rem;
-          color: #0E8388;
+          color: #FFF6E0;
         }
 
         .stat-number {
           font-family: var(--font-mono);
           font-size: 1.75rem;
           font-weight: 700;
-          color: #CBE4DE;
+          color: #FFF6E0;
         }
 
         .stat-label {
           font-size: 0.75rem;
-          color: #8FB5B0;
+          color: #61677A;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -323,37 +318,37 @@ export function HeroSection() {
           align-items: center;
           gap: var(--space-2);
           padding: var(--space-2) var(--space-3);
-          background: rgba(14, 131, 136, 0.1);
-          border: 1px solid rgba(14, 131, 136, 0.2);
+          background: rgba(255, 246, 224, 0.05);
+          border: 1px solid rgba(97, 103, 122, 0.3);
           border-radius: var(--radius-full);
           font-size: 0.8125rem;
-          color: #CBE4DE;
+          color: #D8D9DA;
         }
 
         .chain-dot {
           width: 6px;
           height: 6px;
-          background: #4ADE80;
+          background: #22C55E;
           border-radius: 50%;
           animation: signal-pulse 2s ease-in-out infinite;
         }
 
         .chain-dot.offline {
-          background: #8FB5B0;
+          background: #61677A;
           animation: none;
         }
 
         .chain-latency {
           font-family: var(--font-mono);
           font-size: 0.6875rem;
-          color: #8FB5B0;
+          color: #61677A;
         }
 
         .hero-terminal {
           max-width: 640px;
           margin: var(--space-10) auto 0;
-          background: #1A3C3C;
-          border: 1px solid rgba(14, 131, 136, 0.3);
+          background: #1E1F20;
+          border: 1px solid rgba(97, 103, 122, 0.4);
           border-radius: var(--radius-xl);
           overflow: hidden;
           text-align: left;
@@ -365,8 +360,8 @@ export function HeroSection() {
           align-items: center;
           gap: var(--space-4);
           padding: var(--space-3) var(--space-4);
-          background: #2C3333;
-          border-bottom: 1px solid rgba(14, 131, 136, 0.2);
+          background: #2F3031;
+          border-bottom: 1px solid rgba(97, 103, 122, 0.3);
         }
 
         .terminal-dots {
@@ -387,7 +382,7 @@ export function HeroSection() {
         .terminal-title {
           font-family: var(--font-mono);
           font-size: 0.75rem;
-          color: #8FB5B0;
+          color: #61677A;
         }
 
         .terminal-body {
@@ -403,16 +398,16 @@ export function HeroSection() {
         }
 
         .terminal-line.command {
-          color: #8FB5B0;
+          color: #D8D9DA;
         }
 
         .terminal-line.response {
-          color: #4ADE80;
+          color: #22C55E;
           margin-top: var(--space-2);
         }
 
         .terminal-cursor {
-          color: #0E8388;
+          color: #FFF6E0;
           animation: blink 1s step-end infinite;
         }
 
@@ -421,7 +416,7 @@ export function HeroSection() {
           left: 0;
           right: 0;
           height: 2px;
-          background: linear-gradient(90deg, transparent, rgba(14, 131, 136, 0.3), transparent);
+          background: linear-gradient(90deg, transparent, rgba(255, 246, 224, 0.3), transparent);
           animation: scan-line 3s linear infinite;
         }
 
