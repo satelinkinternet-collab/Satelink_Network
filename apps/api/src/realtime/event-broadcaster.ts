@@ -1,10 +1,11 @@
 import { EventEmitter } from "node:events";
-import { DeploymentLifecycleEvent, NodeTelemetryEvent, QueueTelemetryEvent } from "./contracts";
+import { DeploymentLifecycleEvent, NodeTelemetryEvent, QueueTelemetryEvent, TopologyUpdateEvent } from "./contracts";
 
 export type RealtimeEventMap = {
   "deployment.lifecycle": DeploymentLifecycleEvent;
   "queue.telemetry": QueueTelemetryEvent;
   "node.telemetry": NodeTelemetryEvent;
+  "topology.updated": TopologyUpdateEvent;
 };
 
 export class RealtimeEventBroadcaster {

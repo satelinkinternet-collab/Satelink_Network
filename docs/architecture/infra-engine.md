@@ -1,7 +1,7 @@
 # Infrastructure Engine
 
 ## Engine Overview
-Satelink OS currently runs a mock realtime infrastructure engine that simulates deployment, node, queue, and metrics events.
+Satelink OS currently runs a mock realtime infrastructure engine that simulates deployment lifecycle, node telemetry, queue pressure, routing updates, and regional activation events.
 
 ## Core Files
 - `apps/web/src/lib/realtime/socket.ts`
@@ -11,12 +11,26 @@ Satelink OS currently runs a mock realtime infrastructure engine that simulates 
 
 ## Event Types
 - `deploy.started`
+- `deploy.provisioning`
 - `deploy.building`
+- `deploy.deploying`
+- `deploy.syncing`
+- `deploy.routing`
+- `deploy.healthcheck`
 - `deploy.completed`
 - `deploy.failed`
+- `deploy.retrying`
+- `deploy.rolled_back`
 - `node.connected`
+- `node.disconnected`
 - `node.degraded`
 - `queue.overloaded`
+- `queue.spike`
+- `routing.updated`
+- `scaling.triggered`
+- `telemetry.updated`
+- `region.activated`
+- `topology.updated`
 - `metrics.tick`
 
 ## Flow
@@ -25,10 +39,10 @@ Satelink OS currently runs a mock realtime infrastructure engine that simulates 
 3. Store updates drive UI components (topology, terminal, metrics, notifications).
 
 ## State Synchronization
-- Deployment events update deployment table + log stream.
-- Node events patch node health + topology active state.
+- Deployment events update deployment table + lifecycle progress + terminal stream.
+- Node events patch node health + topology active state + runtime overlays.
 - Queue events update queue model + warning notifications.
-- Metrics events append chart points.
+- Metrics/routing/region events append chart points and refresh runtime status bar.
 
 ## Known Issues
 - Current engine is in-browser and non-deterministic.
@@ -39,3 +53,4 @@ Satelink OS currently runs a mock realtime infrastructure engine that simulates 
 - Move mock engine behind feature switch.
 - Replace engine with backend websocket stream.
 - Introduce deterministic test mode for snapshots and E2E.
+- Add lifecycle replay mode for deployment incident timelines.

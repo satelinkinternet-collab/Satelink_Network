@@ -5,14 +5,23 @@ import {
   NodeEventPayload,
   QueueEventPayload,
 } from "@/lib/events/infrastructure-events";
+import { getNextLifecycleState } from "@/lib/deployments/lifecycle";
 import { RealtimeChannel } from "@/lib/realtime/socket";
 
-const deploymentStates: InfrastructureEventType[] = [
-  "deploy.started",
-  "deploy.building",
-  "deploy.completed",
-  "deploy.failed",
-];
+const deploymentLifecycleMap: Record<string, InfrastructureEventType> = {
+  queued: "deploy.started",
+  provisioning: "deploy.provisioning",
+  building: "deploy.building",
+  deploying: "deploy.deploying",
+  syncing: "deploy.syncing",
+  routing: "deploy.routing",
+  healthcheck: "deploy.healthcheck",
+  active: "deploy.completed",
+  degraded: "telemetry.updated",
+  retrying: "deploy.retrying",
+  failed: "deploy.failed",
+  rolled_back: "deploy.rolled_back",
+};
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -24,16 +33,20 @@ function mkEvent<TPayload>(type: InfrastructureEventType, payload: TPayload): In
 
 export function startInfrastructureMockEngine(channel: RealtimeChannel): () => void {
   channel.connect();
+  let deploymentState = "queued";
 
   const interval = window.setInterval(() => {
     const next = Math.random();
     if (next < 0.28) {
+      deploymentState = getNextLifecycleState(deploymentState as never, 0.12);
       const payload: DeployEventPayload = {
         deploymentId: `dep-${Math.floor(1000 + Math.random() * 9000)}`,
         name: pick(["Global Mesh Rollout", "Queue Expansion", "Edge Gateway Patch", "Inference Fleet Refresh"]),
         environment: pick(["dev", "staging", "production"]),
+        projectId: pick(["proj-core", "proj-labs", "proj-atlas"]),
+        state: deploymentState,
       };
-      channel.emit(mkEvent(pick(deploymentStates), payload));
+      channel.emit(mkEvent(deploymentLifecycleMap[deploymentState], payload));
       return;
     }
 
@@ -43,7 +56,16 @@ export function startInfrastructureMockEngine(channel: RealtimeChannel): () => v
         health: pick(["healthy", "degraded", "offline"]),
         latencyMs: Math.floor(14 + Math.random() * 90),
       };
-      channel.emit(mkEvent(payload.health === "healthy" ? "node.connected" : "node.degraded", payload));
+      channel.emit(
+        mkEvent(
+          payload.health === "healthy"
+            ? "node.connected"
+            : payload.health === "offline"
+              ? "node.disconnected"
+              : "node.degraded",
+          payload,
+        ),
+      );
       return;
     }
 
@@ -53,12 +75,12 @@ export function startInfrastructureMockEngine(channel: RealtimeChannel): () => v
         processing: Math.floor(200 + Math.random() * 700),
         failed: Math.floor(Math.random() * 20),
       };
-      channel.emit(mkEvent(payload.depth > 2000 ? "queue.overloaded" : "metrics.tick", payload));
+      channel.emit(mkEvent(payload.depth > 2000 ? "queue.overloaded" : "queue.spike", payload));
       return;
     }
 
     channel.emit(
-      mkEvent("metrics.tick", {
+      mkEvent(pick(["metrics.tick", "routing.updated", "scaling.triggered", "telemetry.updated", "region.activated"]), {
         latency: Math.round(25 + Math.random() * 45),
         throughput: Number((10 + Math.random() * 5).toFixed(2)),
         queueDepth: Math.floor(800 + Math.random() * 1800),

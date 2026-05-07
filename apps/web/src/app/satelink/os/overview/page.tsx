@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ActivityStream } from "@/components/satelink/activity-stream";
 import { InfrastructureEditor } from "@/components/satelink/infrastructure-editor";
 import { NetworkGlobe } from "@/components/satelink/network-globe";
 import { OsPageTemplate } from "@/components/satelink/os-page-template";
@@ -48,6 +49,7 @@ export default function SatelinkOverviewPage() {
           </div>
         </div>
       </div>
+      <ActivityStream />
     </OsPageTemplate>
   );
 }

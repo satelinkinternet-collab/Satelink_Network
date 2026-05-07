@@ -148,3 +148,15 @@ Optional vars (warn if missing):
 - `/docs/architecture/infra-engine.md`
 - `/docs/changelog.md`
 - `/docs/todos/next-phase.md`
+
+## SESSION CONTEXT UPDATE — 2026-05-08 (OPERATIONAL REALISM SPRINT)
+
+### Satelink OS Runtime Deepening
+- Added advanced lifecycle states and transitions (queued/provisioning/building/deploying/syncing/routing/healthcheck/active/degraded/retrying/failed/rolled_back).
+- Added persistent runtime status bar in OS shell with live operational metrics.
+- Added project/environment scoped deployment + log + activity behavior.
+- Added realtime infrastructure activity stream with severity filters.
+- Added topology intelligence overlays (queue pressure, GPU utilization, edge traffic highlighting).
+- Added globe synchronization with runtime pressure/health conditions.
+- Added design token source at `apps/web/src/lib/design-tokens.ts`.
+- Added event protocol spec at `/docs/architecture/event-specification.md`.

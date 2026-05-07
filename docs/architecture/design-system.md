@@ -17,6 +17,18 @@
 - `OsPageTemplate` for shared heading + metric cards.
 - `SatelinkOsShell` for stable route nav and keyboard hints.
 - `DeploymentTerminal` for infra-grade log viewing.
+- `RuntimeStatusBar` for persistent operational telemetry.
+- `ActivityStream` for realtime event awareness.
+- `DeploymentLifecycleTimeline` for phased deployment clarity.
+
+## Tokens
+- Source: `apps/web/src/lib/design-tokens.ts`
+- Centralized scales:
+  - spacing
+  - radius
+  - shadows + glow
+  - motion duration
+  - z-index layers
 
 ## Motion Guidance
 - Framer Motion pulses used for network/globe signaling.
@@ -29,5 +41,5 @@
 - Text contrast maintained on dark surfaces with desaturated accents.
 
 ## Known Design Gaps
-- Need unified motion duration tokens.
+- Token adoption is partial; more legacy components still use inline values.
 - Need formal empty state illustration set for OS routes.

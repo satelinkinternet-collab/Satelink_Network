@@ -24,12 +24,19 @@
 - `components/satelink/deployment-terminal.tsx` — streaming terminal-like panel
 - `components/satelink/infrastructure-editor.tsx` — store-driven topology view
 - `components/satelink/network-globe.tsx` — store-driven pulse intensity
+- `components/satelink/runtime-status-bar.tsx` — persistent runtime health layer
+- `components/satelink/activity-stream.tsx` — realtime infra feed with filters
+- `components/satelink/deployment-lifecycle-timeline.tsx` — deployment phase progress view
 
 ## State Architecture
 - Zustand store `useInfrastructureStore` is primary runtime state.
 - Selectors:
   - `selectActiveDeployments`
   - `selectHealthyNodeCount`
+  - `selectScopedActivity`
+- Scoped slices:
+  - active project + environment filtering for deployments/logs/activity
+  - runtime status model (`networkStable`, `relayLatencyMs`, `deploymentThroughput`, `activeRegions`)
 
 ## Keyboard UX
 - `Cmd/Ctrl + K` command palette.
@@ -42,7 +49,9 @@
 - Collapsible mobile sidebar in `os-shell`.
 - Card grids use responsive breakpoints and avoid fixed-width columns.
 - Deployment terminal supports constrained viewport height and vertical scroll.
+- Runtime bar remains compact and readable from mobile to desktop.
 
 ## Known Frontend Gaps
 - Command palette actions are currently static quick actions.
 - Cross-page transition motion can be further refined for Linear-grade feel.
+- Graph uses seeded layout; dynamic drag persistence is pending.

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-05-08 — Satelink OS Operational Realism Sprint
+
+### Added
+- Advanced deployment lifecycle engine contract with multi-step runtime states.
+- Runtime status bar in OS shell (network condition, nodes, queue pressure, relay latency, throughput, regions).
+- Activity stream component with severity filters and scoped event rendering.
+- Project/environment scoped deployment and terminal behavior.
+- Design token module in `apps/web/src/lib/design-tokens.ts`.
+- Event specification document in `docs/architecture/event-specification.md`.
+
+### Updated
+- Realtime simulation emits richer event set (deploy phases, queue spikes, routing/scaling/region events).
+- Topology graph now renders queue pressure, GPU utilization hints, and traffic-sensitive edge styling.
+- Globe pulse behavior synchronized with queue pressure and runtime condition.
+- Deployment pages include lifecycle timeline visualization and scoped filtering.
+- Backend realtime scaffolding expanded with advanced lifecycle states and topology event channel.
+
+### Quality Notes
+- Build and typecheck pass after sprint changes.
+- Existing route structure and Satelink branding preserved.
+- No production deployment actions performed.
+
 ## 2026-05-08 — Satelink OS Phase 2+ Deepening
 
 ### Added

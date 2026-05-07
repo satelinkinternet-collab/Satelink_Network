@@ -7,6 +7,7 @@ export default function SatelinkProjectsPage() {
   const projects = useInfrastructureStore((state) => state.projects);
   const activeProjectId = useInfrastructureStore((state) => state.activeProjectId);
   const setActiveProject = useInfrastructureStore((state) => state.setActiveProject);
+  const deployments = useInfrastructureStore((state) => state.deployments);
 
   return (
     <OsPageTemplate
@@ -28,6 +29,9 @@ export default function SatelinkProjectsPage() {
           >
             <p className="text-sm font-medium text-white">{project.name}</p>
             <p className="mt-1 text-xs text-[#B0E4CC]/65">{project.id}</p>
+            <p className="mt-2 text-xs text-[#408A71]">
+              {deployments.filter((deployment) => deployment.projectId === project.id).length} deployments
+            </p>
           </button>
         ))}
       </div>

@@ -6,7 +6,9 @@ import { Bell, ChartLine, Cpu, Database, FolderKanban, Globe2, LayoutDashboard, 
 import { useEffect, useState } from "react";
 import { CommandPalette } from "@/components/satelink/command-palette";
 import { SatelinkRealtimeProvider } from "@/components/satelink/realtime-provider";
+import { RuntimeStatusBar } from "@/components/satelink/runtime-status-bar";
 import { Button } from "@/components/ui/button";
+import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 
 const nav = [
   { href: "/satelink/os/overview", label: "Overview", icon: LayoutDashboard, keyHint: "G O" },
@@ -26,6 +28,11 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const activeEnvironment = useInfrastructureStore((s) => s.activeEnvironment);
+  const setActiveEnvironment = useInfrastructureStore((s) => s.setActiveEnvironment);
+  const activeProjectId = useInfrastructureStore((s) => s.activeProjectId);
+  const setActiveProject = useInfrastructureStore((s) => s.setActiveProject);
+  const projects = useInfrastructureStore((s) => s.projects);
 
   useEffect(() => {
     let awaitingSecond = false;
@@ -92,7 +99,37 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
           </aside>
-          <section className="p-4 md:p-6 lg:p-8">{children}</section>
+          <section className="p-4 md:p-6 lg:p-8">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex gap-2">
+                <select
+                  aria-label="Select project"
+                  className="rounded-md border border-white/10 bg-[#0b1716] px-2 py-1 text-xs"
+                  value={activeProjectId}
+                  onChange={(e) => setActiveProject(e.target.value)}
+                >
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Select environment"
+                  className="rounded-md border border-white/10 bg-[#0b1716] px-2 py-1 text-xs"
+                  value={activeEnvironment}
+                  onChange={(e) => setActiveEnvironment(e.target.value as "dev" | "staging" | "production")}
+                >
+                  <option value="dev">development</option>
+                  <option value="staging">staging</option>
+                  <option value="production">production</option>
+                </select>
+              </div>
+              <p className="text-[11px] text-[#B0E4CC]/55">Scoped to project + environment</p>
+            </div>
+            <RuntimeStatusBar />
+            {children}
+          </section>
         </div>
       </main>
     </SatelinkRealtimeProvider>

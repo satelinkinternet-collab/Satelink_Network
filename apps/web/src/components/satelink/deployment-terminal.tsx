@@ -14,9 +14,18 @@ const colors = {
 };
 
 export function DeploymentTerminal({ deploymentId }: { deploymentId?: string }) {
-  const logs = useInfrastructureStore((state) =>
-    state.terminalLogs.filter((log) => (deploymentId ? log.deploymentId === deploymentId : true)).slice(-120),
-  );
+  const logs = useInfrastructureStore((state) => {
+    if (deploymentId) return state.terminalLogs.filter((log) => log.deploymentId === deploymentId).slice(-120);
+    const scopedIds = new Set(
+      state.deployments
+        .filter(
+          (deployment) =>
+            deployment.projectId === state.activeProjectId && deployment.environment === state.activeEnvironment,
+        )
+        .map((deployment) => deployment.id),
+    );
+    return state.terminalLogs.filter((log) => scopedIds.has(log.deploymentId)).slice(-120);
+  });
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,7 +37,7 @@ export function DeploymentTerminal({ deploymentId }: { deploymentId?: string }) 
   return (
     <section className="rounded-2xl border border-white/10 bg-[#081110]">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2">
-        <p className="text-sm text-[#B0E4CC]/80">Deployment Terminal</p>
+        <p className="text-sm text-[#B0E4CC]/80">Deployment Terminal {deploymentId ? `(${deploymentId})` : ""}</p>
         <Button
           variant="ghost"
           size="sm"

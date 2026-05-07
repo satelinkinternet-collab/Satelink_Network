@@ -5,7 +5,10 @@ import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 
 export function NetworkGlobe() {
   const nodes = useInfrastructureStore((state) => state.nodes);
+  const queueDepth = useInfrastructureStore((state) => state.queueState.depth);
+  const runtime = useInfrastructureStore((state) => state.runtime);
   const healthy = nodes.filter((node) => node.health === "healthy").length;
+  const pulseScale = queueDepth > 1800 ? 1.7 : queueDepth > 1300 ? 1.35 : 1.15;
 
   return (
     <div className="relative h-[360px] w-full overflow-hidden rounded-3xl border border-white/10 bg-[#081211]">
@@ -20,14 +23,14 @@ export function NetworkGlobe() {
             left: `${20 + idx * 11}%`,
             top: `${30 + ((idx * 13) % 40)}%`,
           }}
-          animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.4, 1] }}
+          animate={{ opacity: [0.3, 1, 0.3], scale: [1, pulseScale, 1] }}
           transition={{ repeat: Number.POSITIVE_INFINITY, duration: 2 + idx * 0.2 }}
         />
       ))}
       <motion.div
         className="absolute left-1/2 top-1/2 h-[320px] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#00D1FF]/20"
         animate={{ rotate: 360 }}
-        transition={{ repeat: Number.POSITIVE_INFINITY, ease: "linear", duration: 20 }}
+        transition={{ repeat: Number.POSITIVE_INFINITY, ease: "linear", duration: runtime.networkStable ? 20 : 11 }}
       />
     </div>
   );

@@ -24,6 +24,16 @@
 - DONE: Added backend realtime scaffolding contracts/state machine/event broadcaster/websocket gateway
 - DONE: Added architecture memory docs in `/docs/architecture`, changelog, and next-phase todo plan
 
+## SESSION UPDATE — May 8, 2026 (SATELINK OS OPERATIONAL REALISM)
+- DONE: Expanded deployment lifecycle to infrastructure-grade states (provisioning, syncing, healthcheck, retrying, rollback)
+- DONE: Added runtime status bar with network stability, queue pressure, relay latency, throughput, and active regions
+- DONE: Added project/environment scoped deployment + terminal behavior
+- DONE: Added realtime activity stream with severity filters
+- DONE: Upgraded topology intelligence (edge traffic, queue pressure, GPU utilization overlays)
+- DONE: Synced globe pulse behavior with runtime pressure/health
+- DONE: Added design token source in frontend and runtime condition helpers
+- DONE: Added event specification protocol at `/docs/architecture/event-specification.md`
+
 ### Remaining Blockers
 - MATIC balance low (0.06) — needs top-up for on-chain claims
 - No organic revenue yet — need first real RPC customer

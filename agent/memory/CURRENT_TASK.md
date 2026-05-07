@@ -18,6 +18,15 @@
   - Deployment terminal + deployment detail inspector added
   - Backend realtime scaffolding added in `apps/api/src/realtime/*`
 
+### Parallel Track (May 8, 2026 — Sprint: Operational Realism)
+- In progress:
+  - Advanced deployment lifecycle engine states and transitions
+  - Runtime status layer in OS shell with live telemetry
+  - Multi-project/environment scoped deployments and terminal logs
+  - Realtime infrastructure activity stream component
+  - Topology + globe synchronization enhancements
+  - Design token system + event specification protocol doc
+
 ### Blocked On
 - MATIC top-up for gas fees (current balance: 0.06 MATIC)
 

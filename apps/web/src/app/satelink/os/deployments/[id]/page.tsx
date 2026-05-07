@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
+import { DeploymentLifecycleTimeline } from "@/components/satelink/deployment-lifecycle-timeline";
 import { DeploymentTerminal } from "@/components/satelink/deployment-terminal";
 import { OsPageTemplate } from "@/components/satelink/os-page-template";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
@@ -25,6 +26,7 @@ export default function DeploymentDetailsPage() {
         { label: "Log Lines", value: String(logs.length) },
       ]}
     >
+      <DeploymentLifecycleTimeline deploymentId={deploymentId} />
       <DeploymentTerminal deploymentId={deploymentId} />
     </OsPageTemplate>
   );

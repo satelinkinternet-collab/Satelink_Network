@@ -1,4 +1,16 @@
-export type DeploymentLifecycleState = "queued" | "building" | "routing" | "active" | "failed";
+export type DeploymentLifecycleState =
+  | "queued"
+  | "provisioning"
+  | "building"
+  | "deploying"
+  | "syncing"
+  | "routing"
+  | "healthcheck"
+  | "active"
+  | "degraded"
+  | "retrying"
+  | "failed"
+  | "rolled_back";
 
 export interface DeploymentLifecycleEvent {
   id: string;
@@ -21,5 +33,13 @@ export interface NodeTelemetryEvent {
   nodeId: string;
   health: "healthy" | "degraded" | "offline";
   latencyMs: number;
+  region: string;
+  timestamp: string;
+}
+
+export interface TopologyUpdateEvent {
+  edgeId: string;
+  trafficPct: number;
+  queuePressure: number;
   timestamp: string;
 }

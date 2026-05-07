@@ -24,6 +24,10 @@ export function createSatelinkRealtimeGateway(port = 8181) {
       const payload = JSON.stringify({ type: "queue.telemetry", data: event });
       wss.clients.forEach((client) => client.send(payload));
     }),
+    broadcaster.subscribe("topology.updated", (event) => {
+      const payload = JSON.stringify({ type: "topology.updated", data: event });
+      wss.clients.forEach((client) => client.send(payload));
+    }),
   ];
 
   return {
