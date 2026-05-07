@@ -36,17 +36,33 @@ export function attachBaseMiddleware(app) {
         .map(s => s.trim())
         .filter(Boolean);
 
+    // Public endpoints that must allow all origins (machine clients, Chainlist, etc.)
+    const PUBLIC_PATHS = ['/rpc', '/health', '/healthz', '/api/pricing', '/api/status'];
+
     const corsOptions = {
         origin: function (origin, callback) {
-            if (!origin) return callback(null, true);
-            if (CORS_ORIGINS.length === 0) return callback(null, true);
+            if (!origin) return callback(null, true); // Server-to-server: allowed
+            if (CORS_ORIGINS.length === 0) return callback(null, true); // If env empty: all origins
             return callback(null, CORS_ORIGINS.includes(origin));
         },
         credentials: true,
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Admin-Key"]
+        allowedHeaders: ["Content-Type", "Authorization", "X-Admin-Key", "X-API-Key"]
     };
 
+    // Public CORS for machine endpoints (always allow all origins)
+    const publicCorsOptions = {
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "X-API-Key"]
+    };
+
+    // Apply public CORS to machine endpoints
+    PUBLIC_PATHS.forEach(path => {
+        app.use(path, cors(publicCorsOptions));
+    });
+
+    // Apply standard CORS to all other routes
     app.use(cors(corsOptions));
     app.options(/.*$/, cors(corsOptions));
 

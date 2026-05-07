@@ -205,12 +205,19 @@ const PROVIDER_CONFIGS = {
 };
 
 const CHAIN_ALIASES = {
+  // Name aliases
   amoy: "polygon-amoy",
   matic: "polygon",
   eth: "ethereum",
   arb: "arbitrum",
   "base-mainnet": "base",
   sol: "solana",
+  // Chain ID aliases (for machine clients like Chainlist)
+  "80002": "polygon-amoy",
+  "137": "polygon",
+  "1": "ethereum",
+  "42161": "arbitrum",
+  "8453": "base",
 };
 
 export function getChainConfig(chainKey) {

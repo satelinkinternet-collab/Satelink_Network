@@ -93,4 +93,34 @@ Step-by-step checklist to bring the network from zero to first external payout.
 
 ---
 
-*Last updated: April 2026*
+## Machine Discovery Checklist
+
+Machines (DeFi bots, AI agents, indexers) find Satelink autonomously via these registries:
+
+### Registry Submissions (do once — autonomous forever)
+- [x] Chainlist PR: https://github.com/DefiLlama/chainlist — SUBMITTED April 19
+- [x] dRPC provider: https://drpc.org/partners — SUBMITTED April 19
+- [ ] Ankr community: https://www.ankr.com/rpc/
+- [ ] Blast API: https://blastapi.io/
+- [ ] awesome-rpc: https://github.com/arddluma/awesome-rpc
+
+### Endpoint Verification (machines must pass these)
+- [ ] `curl -X POST https://rpc.satelink.network/rpc/polygon` returns valid block number
+- [ ] `curl -X POST https://rpc.satelink.network/rpc/137` returns valid block number (chain ID alias)
+- [ ] `curl https://rpc.satelink.network/api/pricing` returns JSON (no auth)
+- [ ] `curl https://rpc.satelink.network/api/status` returns JSON (no auth)
+- [ ] `curl https://rpc.satelink.network/health` returns `{"status":"ok"}`
+
+### Chainlist PR Format (for /rpc/polygon submission)
+```json
+{
+  "name": "Satelink",
+  "url": "https://rpc.satelink.network/rpc/polygon",
+  "tracking": "none",
+  "trackingDetails": "Satelink does not log wallet addresses or IP addresses"
+}
+```
+
+---
+
+*Last updated: May 2026*
