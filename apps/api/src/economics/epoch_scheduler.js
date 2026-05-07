@@ -83,6 +83,7 @@ export async function runEpochCycle(dbOrPool) {
                 COALESCE(SUM(amount_usdt), 0)::numeric AS total_revenue_usdt
             FROM revenue_events_v2
             WHERE epoch_id = $1
+              AND (is_test_data = FALSE OR is_test_data IS NULL)
         `, [epoch.id]);
 
         const eventCount = Number(aggregate.rows[0]?.event_count || 0);
@@ -101,6 +102,7 @@ export async function runEpochCycle(dbOrPool) {
                 SELECT COALESCE(SUM(amount_usdt), 0)::numeric AS total_revenue_usdt
                 FROM revenue_events_v2
                 WHERE epoch_id = $1
+                  AND (is_test_data = FALSE OR is_test_data IS NULL)
             ) AS totals
             WHERE epochs.id = $1
               AND epochs.status = 'OPEN'

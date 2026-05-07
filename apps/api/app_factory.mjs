@@ -12,6 +12,7 @@ import { createSdkAnalyticsRouter } from "./src/workloads/rpc_gateway/sdk_analyt
 import { createSettlementAuditRouter } from "./src/services/settlement/audit.js";
 import { createWebhookRouter, ensureWebhookTable } from "./src/workloads/webhooks/index.js";
 import { createOracleRouter } from "./src/workloads/oracle/index.js";
+import { createClaimsRouter } from "./src/routes/claims_route.mjs";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -60,6 +61,9 @@ export function createApp(pool, redis) {
 
   // Node Registry (S2-001)
   app.use("/api/nodes", createNodeRegistryRouter(pool, redis));
+
+  // Claims API (pull model settlement)
+  app.use("/api/nodes", createClaimsRouter(pool));
 
   // SDK Analytics (S4-005)
   app.use("/api", createSdkAnalyticsRouter());

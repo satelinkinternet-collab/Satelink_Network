@@ -12,7 +12,8 @@ import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
-import { startEpochScheduler } from "./src/scheduler/jobs/epoch_close_job.js";import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
+import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
+import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -91,6 +92,22 @@ async function ensureBillingTables(pool) {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_revenue_events_v2_request_id
       ON revenue_events_v2 (request_id)
       WHERE request_id IS NOT NULL
+    `).catch(() => {});
+
+    // Add test/production segregation columns (034_revenue_source_validation)
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ADD COLUMN IF NOT EXISTS is_test_data BOOLEAN NOT NULL DEFAULT FALSE
+    `).catch(() => {});
+
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ADD COLUMN IF NOT EXISTS source_validated BOOLEAN NOT NULL DEFAULT FALSE
+    `).catch(() => {});
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_revenue_events_is_test
+      ON revenue_events_v2(is_test_data, epoch_id)
     `).catch(() => {});
 
     await pool.query(`
@@ -198,11 +215,12 @@ app.use("/", createPhase3Router());
 
     // Start offline detector (S2-009)
     startOfflineDetector(pool);
-    startEpochScheduler(pool);
+
     // Start epoch scheduler (60s interval)
     startEpochScheduler(pool);
 
     startSentinel(pool, redis);
+    startClaimExpiryJob(pool);
     const PORT = process.env.PORT || 8080;
 
     httpServer.listen(PORT, () => {
