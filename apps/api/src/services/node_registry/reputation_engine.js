@@ -249,9 +249,18 @@ export async function ensureReputationTable(pool) {
         score INTEGER NOT NULL,
         tier TEXT NOT NULL,
         delta INTEGER DEFAULT 0,
-        reason TEXT,
-        recorded_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
+        epoch_id INTEGER,
+        created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
       )
-    `)
+    `);
+    // Add epoch_id if table exists without it
+    await pool.query(`
+      ALTER TABLE reputation_history
+      ADD COLUMN IF NOT EXISTS epoch_id INTEGER
+    `);
+    await pool.query(`
+      ALTER TABLE reputation_history
+      ADD COLUMN IF NOT EXISTS created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
+    `);
   } catch(e) { console.error('[Reputation] Table init error:', e.message) }
 }
