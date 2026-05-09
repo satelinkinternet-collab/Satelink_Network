@@ -8,7 +8,6 @@ export function RuntimeStatusBar() {
   const runtime = useInfrastructureStore((s) => s.runtime);
   const nodes = useInfrastructureStore((s) => s.nodes);
   const queue = useInfrastructureStore((s) => s.queueState);
-  const deployments = useInfrastructureStore((s) => s.deployments);
   const condition = getRuntimeCondition(queue.depth, queue.failed);
   const dot = runtimeConditionColor(condition);
 

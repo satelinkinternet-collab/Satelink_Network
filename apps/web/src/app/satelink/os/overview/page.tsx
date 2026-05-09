@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useMemo } from "react";
 import { ActivityStream } from "@/components/satelink/activity-stream";
 import { InfrastructureEditor } from "@/components/satelink/infrastructure-editor";
 import { NetworkGlobe } from "@/components/satelink/network-globe";
@@ -11,7 +12,7 @@ export default function SatelinkOverviewPage() {
   const metrics = useInfrastructureStore((s) => s.metrics);
   const nodes = useInfrastructureStore((s) => s.nodes);
   const queue = useInfrastructureStore((s) => s.queueState);
-  const healthy = nodes.filter((n) => n.health === "healthy").length;
+  const healthy = useMemo(() => nodes.filter((n) => n.health === "healthy").length, [nodes]);
 
   return (
     <OsPageTemplate

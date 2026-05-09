@@ -14,18 +14,19 @@ const colors = {
 };
 
 export function DeploymentTerminal({ deploymentId }: { deploymentId?: string }) {
-  const logs = useInfrastructureStore((state) => {
-    if (deploymentId) return state.terminalLogs.filter((log) => log.deploymentId === deploymentId).slice(-120);
+  const terminalLogs = useInfrastructureStore((state) => state.terminalLogs);
+  const deployments = useInfrastructureStore((state) => state.deployments);
+  const activeProjectId = useInfrastructureStore((state) => state.activeProjectId);
+  const activeEnvironment = useInfrastructureStore((state) => state.activeEnvironment);
+  const logs = useMemo(() => {
+    if (deploymentId) return terminalLogs.filter((log) => log.deploymentId === deploymentId).slice(-120);
     const scopedIds = new Set(
-      state.deployments
-        .filter(
-          (deployment) =>
-            deployment.projectId === state.activeProjectId && deployment.environment === state.activeEnvironment,
-        )
+      deployments
+        .filter((deployment) => deployment.projectId === activeProjectId && deployment.environment === activeEnvironment)
         .map((deployment) => deployment.id),
     );
-    return state.terminalLogs.filter((log) => scopedIds.has(log.deploymentId)).slice(-120);
-  });
+    return terminalLogs.filter((log) => scopedIds.has(log.deploymentId)).slice(-120);
+  }, [terminalLogs, deployments, activeProjectId, activeEnvironment, deploymentId]);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

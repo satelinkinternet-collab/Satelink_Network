@@ -10,8 +10,16 @@ import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 export default function DeploymentDetailsPage() {
   const params = useParams<{ id: string }>();
   const deploymentId = params.id;
-  const deployment = useInfrastructureStore((state) => state.deployments.find((item) => item.id === deploymentId));
-  const logs = useInfrastructureStore((state) => state.terminalLogs.filter((log) => log.deploymentId === deploymentId));
+  const deployments = useInfrastructureStore((state) => state.deployments);
+  const terminalLogs = useInfrastructureStore((state) => state.terminalLogs);
+  const deployment = useMemo(
+    () => deployments.find((item) => item.id === deploymentId),
+    [deployments, deploymentId],
+  );
+  const logs = useMemo(
+    () => terminalLogs.filter((log) => log.deploymentId === deploymentId),
+    [terminalLogs, deploymentId],
+  );
 
   const title = useMemo(() => deployment?.name ?? "Deployment Not Found", [deployment?.name]);
 

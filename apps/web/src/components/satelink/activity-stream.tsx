@@ -7,16 +7,22 @@ const levels = ["all", "info", "warning", "critical", "success"] as const;
 
 export function ActivityStream() {
   const [filter, setFilter] = useState<(typeof levels)[number]>("all");
-  const events = useInfrastructureStore((state) =>
-    state.activityStream.filter(
-      (event) =>
-        event.projectId === state.activeProjectId &&
-        event.environment === state.activeEnvironment &&
-        (filter === "all" || event.severity === filter),
-    ),
-  );
+  const activityStream = useInfrastructureStore((state) => state.activityStream);
+  const activeProjectId = useInfrastructureStore((state) => state.activeProjectId);
+  const activeEnvironment = useInfrastructureStore((state) => state.activeEnvironment);
 
-  const rows = useMemo(() => events.slice(0, 24), [events]);
+  const rows = useMemo(
+    () =>
+      activityStream
+        .filter(
+          (event) =>
+            event.projectId === activeProjectId &&
+            event.environment === activeEnvironment &&
+            (filter === "all" || event.severity === filter),
+        )
+        .slice(0, 24),
+    [activityStream, activeProjectId, activeEnvironment, filter],
+  );
 
   return (
     <section className="rounded-2xl border border-white/10 bg-black/20 p-4">

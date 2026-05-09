@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { createMockRealtimeChannel } from "@/lib/realtime/socket";
 import { startInfrastructureMockEngine } from "@/lib/mock-engine/infrastructure-engine";
 import { InfrastructureEvent } from "@/lib/events/infrastructure-events";
@@ -14,23 +14,15 @@ function toClock(iso: string): string {
 }
 
 export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) {
-  const {
-    appendEvent,
-    appendLog,
-    appendMetric,
-    appendNotification,
-    appendActivity,
-    advanceDeploymentState,
-    patchNodeHealth,
-    patchNodeRuntime,
-    updateQueue,
-    updateRuntime,
-    upsertDeployment,
-  } = useInfrastructureStore();
+  const startedRef = useRef(false);
 
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
     const onEvent = (event: InfrastructureEvent<unknown>) => {
-      appendEvent(event.type);
+      const store = useInfrastructureStore.getState();
+      store.appendEvent(event.type);
 
       if (event.type.startsWith("deploy.")) {
         const payload = event.payload as {
@@ -53,27 +45,27 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
           "deploy.failed": "failed",
           "deploy.rolled_back": "rolled_back",
         };
-        const state = (payload.state ?? stateMap[event.type] ?? "queued") as never;
-        upsertDeployment({
+        const deploymentState = (payload.state ?? stateMap[event.type] ?? "queued") as never;
+        store.upsertDeployment({
           id: payload.deploymentId,
           name: payload.name,
           projectId: payload.projectId ?? "proj-core",
           environment: payload.environment,
-          state,
+          state: deploymentState,
           updatedAt: event.timestamp,
           progress: 0,
           region: "Global",
         });
-        advanceDeploymentState(payload.deploymentId, state);
-        appendLog({
+        store.advanceDeploymentState(payload.deploymentId, deploymentState);
+        store.appendLog({
           id: event.id,
           deploymentId: payload.deploymentId,
           timestamp: toClock(event.timestamp),
-          level: state === "failed" ? "error" : state === "active" ? "success" : "info",
-          line: `\u001b[2m[satelink]\u001b[0m ${payload.name} -> ${state}`,
+          level: deploymentState === "failed" ? "error" : deploymentState === "active" ? "success" : "info",
+          line: `\u001b[2m[satelink]\u001b[0m ${payload.name} -> ${deploymentState}`,
         });
-        if (state === "failed") {
-          appendLog({
+        if (deploymentState === "failed") {
+          store.appendLog({
             id: crypto.randomUUID(),
             deploymentId: payload.deploymentId,
             timestamp: toClock(event.timestamp),
@@ -81,8 +73,8 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
             line: "retry controller: scheduling retry attempt in 4.2s",
           });
         }
-        if (state === "provisioning") {
-          appendLog({
+        if (deploymentState === "provisioning") {
+          store.appendLog({
             id: crypto.randomUUID(),
             deploymentId: payload.deploymentId,
             timestamp: toClock(event.timestamp),
@@ -90,8 +82,8 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
             line: "allocator: reserving relay slots and GPU lanes",
           });
         }
-        if (state === "healthcheck") {
-          appendLog({
+        if (deploymentState === "healthcheck") {
+          store.appendLog({
             id: crypto.randomUUID(),
             deploymentId: payload.deploymentId,
             timestamp: toClock(event.timestamp),
@@ -99,23 +91,23 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
             line: "healthcheck: probing node heartbeat and queue drains",
           });
         }
-        appendActivity({
+        store.appendActivity({
           id: event.id,
           type: event.type,
-          severity: state === "failed" ? "critical" : state === "active" ? "success" : "info",
-          message: `${payload.name} moved to ${state}`,
+          severity: deploymentState === "failed" ? "critical" : deploymentState === "active" ? "success" : "info",
+          message: `${payload.name} moved to ${deploymentState}`,
           createdAt: event.timestamp,
           projectId: payload.projectId ?? "proj-core",
           environment: payload.environment,
         });
       } else if (event.type === "node.connected" || event.type === "node.degraded") {
         const payload = event.payload as { nodeId: string; health: "healthy" | "degraded" | "offline"; latencyMs: number };
-        patchNodeHealth(payload.nodeId, payload.health, payload.latencyMs);
-        patchNodeRuntime(payload.nodeId, Math.floor(20 + Math.random() * 70), Math.floor(30 + Math.random() * 92));
+        store.patchNodeHealth(payload.nodeId, payload.health, payload.latencyMs);
+        store.patchNodeRuntime(payload.nodeId, Math.floor(20 + Math.random() * 70), Math.floor(30 + Math.random() * 92));
       } else if (event.type === "node.disconnected") {
         const payload = event.payload as { nodeId: string; health: "healthy" | "degraded" | "offline"; latencyMs: number };
-        patchNodeHealth(payload.nodeId, "offline", payload.latencyMs);
-        appendNotification({
+        store.patchNodeHealth(payload.nodeId, "offline", payload.latencyMs);
+        store.appendNotification({
           id: event.id,
           title: "Node disconnected",
           description: `${payload.nodeId} has gone offline`,
@@ -124,15 +116,15 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
         });
       } else if (event.type === "queue.overloaded") {
         const payload = event.payload as { depth: number; processing: number; failed: number };
-        updateQueue(payload.depth, payload.processing, payload.failed);
-        appendNotification({
+        store.updateQueue(payload.depth, payload.processing, payload.failed);
+        store.appendNotification({
           id: event.id,
           title: "Queue overload detected",
           description: `Depth ${payload.depth}, processing ${payload.processing}`,
           level: "warning",
           createdAt: event.timestamp,
         });
-        appendLog({
+        store.appendLog({
           id: crypto.randomUUID(),
           deploymentId: "system",
           timestamp: toClock(event.timestamp),
@@ -141,7 +133,7 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
         });
       } else if (event.type === "queue.spike") {
         const payload = event.payload as { depth: number; processing: number; failed: number };
-        updateQueue(payload.depth, payload.processing, payload.failed);
+        store.updateQueue(payload.depth, payload.processing, payload.failed);
       } else if (
         event.type === "metrics.tick" ||
         event.type === "telemetry.updated" ||
@@ -150,7 +142,7 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
         event.type === "region.activated"
       ) {
         const payload = event.payload as { latency?: number; throughput?: number; queueDepth?: number; depth?: number };
-        appendMetric({
+        store.appendMetric({
           t: toClock(event.timestamp),
           latency: payload.latency ?? 35,
           throughput: payload.throughput ?? 12,
@@ -159,7 +151,7 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
 
         const queueDepth = payload.queueDepth ?? payload.depth ?? 1000;
         const condition = getRuntimeCondition(queueDepth, Math.floor(queueDepth / 310));
-        updateRuntime({
+        store.updateRuntime({
           networkStable: condition === "stable",
           relayLatencyMs: payload.latency ?? 35,
           deploymentThroughput: payload.throughput ?? 12,
@@ -174,20 +166,9 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
     return () => {
       unsubscribe();
       stop();
+      startedRef.current = false;
     };
-  }, [
-    appendActivity,
-    appendEvent,
-    appendLog,
-    appendMetric,
-    appendNotification,
-    advanceDeploymentState,
-    patchNodeHealth,
-    patchNodeRuntime,
-    updateQueue,
-    updateRuntime,
-    upsertDeployment,
-  ]);
+  }, []);
 
   return <>{children}</>;
 }

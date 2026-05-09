@@ -16,6 +16,10 @@
   - activity stream with severity filtering
   - project/environment scoped data handling for deployments and logs
   - design token source file for visual consistency
+- Added realtime/render safety hardening:
+  - provider bootstrap guard to prevent duplicate mock-engine/listener initialization
+  - stable Zustand subscriptions (no inline derived arrays in selectors)
+  - memoized scoped/derived deployment, activity, and log views to avoid recursive rerenders
 
 ## Routes Added
 - `/satelink/os/overview`

@@ -3,6 +3,14 @@
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
 
+## SESSION UPDATE — May 10, 2026 (SATELINK OS RENDER LOOP HOTFIX)
+- DONE: Fixed `/satelink/os/overview` infinite render loop (`Maximum update depth exceeded`)
+- DONE: Hardened realtime provider with single-init guard and clean listener/engine teardown
+- DONE: Removed recursive Zustand selector patterns (`filter/map/find` inside `useInfrastructureStore(...)`)
+- DONE: Memoized derived scoped views (activity stream, deployments, logs, topology editor nodes/edges)
+- DONE: `npm run build` successful after fix
+- NOTE: Runtime browser validation inside this environment is limited by local port access constraints
+
 ## SESSION UPDATE — May 7, 2026
 - DONE: Backend LIVE on Railway (port 8080)
 - DONE: Removed duplicate epoch scheduler import (server.js line 15)

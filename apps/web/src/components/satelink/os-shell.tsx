@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChartLine, Cpu, Database, FolderKanban, Globe2, LayoutDashboard, Menu, Receipt, Rocket, Settings, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { shallow } from "zustand/shallow";
 import { CommandPalette } from "@/components/satelink/command-palette";
 import { SatelinkRealtimeProvider } from "@/components/satelink/realtime-provider";
 import { RuntimeStatusBar } from "@/components/satelink/runtime-status-bar";
@@ -28,11 +29,10 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const activeEnvironment = useInfrastructureStore((s) => s.activeEnvironment);
-  const setActiveEnvironment = useInfrastructureStore((s) => s.setActiveEnvironment);
-  const activeProjectId = useInfrastructureStore((s) => s.activeProjectId);
-  const setActiveProject = useInfrastructureStore((s) => s.setActiveProject);
-  const projects = useInfrastructureStore((s) => s.projects);
+  const [activeEnvironment, setActiveEnvironment, activeProjectId, setActiveProject, projects] = useInfrastructureStore(
+    (s) => [s.activeEnvironment, s.setActiveEnvironment, s.activeProjectId, s.setActiveProject, s.projects],
+    shallow,
+  );
 
   useEffect(() => {
     let awaitingSecond = false;

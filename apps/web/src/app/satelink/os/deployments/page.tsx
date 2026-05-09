@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { BadgeCheck, Clock3, XCircle } from "lucide-react";
 import { DeploymentTerminal } from "@/components/satelink/deployment-terminal";
 import { DeploymentLifecycleTimeline } from "@/components/satelink/deployment-lifecycle-timeline";
@@ -8,15 +9,18 @@ import { OsPageTemplate } from "@/components/satelink/os-page-template";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 
 export default function SatelinkDeploymentsPage() {
-  const deployments = useInfrastructureStore((state) =>
-    state.deployments.filter(
-      (deployment) =>
-        deployment.projectId === state.activeProjectId && deployment.environment === state.activeEnvironment,
-    ),
-  );
+  const allDeployments = useInfrastructureStore((state) => state.deployments);
+  const activeProjectId = useInfrastructureStore((state) => state.activeProjectId);
   const setActiveEnvironment = useInfrastructureStore((state) => state.setActiveEnvironment);
   const activeEnvironment = useInfrastructureStore((state) => state.activeEnvironment);
   const environments = useInfrastructureStore((state) => state.environments);
+  const deployments = useMemo(
+    () =>
+      allDeployments.filter(
+        (deployment) => deployment.projectId === activeProjectId && deployment.environment === activeEnvironment,
+      ),
+    [allDeployments, activeProjectId, activeEnvironment],
+  );
 
   return (
     <OsPageTemplate

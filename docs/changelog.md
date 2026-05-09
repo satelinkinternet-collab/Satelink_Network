@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-10 — Satelink OS Overview Render Loop Hotfix
+
+### Fixed
+- Resolved React infinite render loop (`Maximum update depth exceeded`) on `/satelink/os/overview`.
+- Hardened realtime provider initialization to avoid duplicate listener registration and effect dependency recursion.
+- Stabilized Zustand usage by removing inline `filter/map/find` selectors from subscriptions across OS pages/components.
+- Moved scoped/derived collections to `useMemo` to prevent recursive snapshot churn during realtime updates.
+- Added one-shot realtime engine bootstrap guard via `useRef` and centralized store writes through `useInfrastructureStore.getState()`.
+
+### Verification
+- `npm run build` passes (web routes, including `/satelink/os/overview`, compile successfully).
+- No type/build regressions introduced in the modified Satelink OS components.
+
 ## 2026-05-08 — Satelink OS Operational Realism Sprint
 
 ### Added

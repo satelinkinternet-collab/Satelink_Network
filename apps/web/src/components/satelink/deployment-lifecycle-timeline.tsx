@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 import { lifecycleOrder } from "@/lib/deployments/lifecycle";
 
 export function DeploymentLifecycleTimeline({ deploymentId }: { deploymentId: string }) {
-  const deployment = useInfrastructureStore((s) => s.deployments.find((d) => d.id === deploymentId));
+  const deployments = useInfrastructureStore((s) => s.deployments);
+  const deployment = useMemo(() => deployments.find((d) => d.id === deploymentId), [deployments, deploymentId]);
   if (!deployment) return null;
 
   return (
