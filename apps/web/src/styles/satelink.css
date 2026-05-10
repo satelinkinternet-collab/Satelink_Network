@@ -1,119 +1,97 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SATELINK DESIGN SYSTEM — PREMIUM EDITION
-   Refined dark tech aesthetic inspired by Linear, Vercel, Stripe
+   SATELINK DESIGN SYSTEM — RAILWAY STYLE
+   Dense, tight typography with Inter + JetBrains Mono
+   Extended utilities and marketing page styles
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Fira+Code:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap');
-
 :root {
-  /* ═══ SATELINK BRAND PALETTE v2 ═══ */
-  --brand-bg: #091413;       /* background, dark sections */
-  --brand-primary: #408A71;  /* primary green, CTAs, active states */
-  --brand-sec: #285A48;      /* secondary green, borders, hover */
-  --brand-light: #B0E4CC;    /* headings, high contrast text */
-  --brand-glow: #00D1FF;     /* accent, glow effects, highlights */
+  /* ═══ Railway-style tokens (aligned with globals.css) ═══ */
+  --brand-bg: #0b0e0d;
+  --brand-primary: #408a71;
+  --brand-sec: #285a48;
+  --brand-light: #b0e4cc;
+  --brand-glow: #00d1ff;
 
-  /* ═══ Ink Scale (derived from brand) ═══ */
-  --ink-950: #091413;  /* deepest background */
-  --ink-900: #0a1816;  /* page background */
-  --ink-800: #0d1f1d;  /* surface background */
-  --ink-700: #285A48;  /* accent - muted elements */
-  --ink-600: #408A71;  /* hover states */
-  --ink-400: #B0E4CC;  /* light text */
-  --ink-200: #B0E4CC;  /* primary text */
-  --ink-50: #B0E4CC;   /* brightest */
+  /* ═══ Ink Scale ═══ */
+  --ink-950: #0b0e0d;
+  --ink-900: #0d1a14;
+  --ink-800: #0f1e17;
+  --ink-700: #285a48;
+  --ink-600: #408a71;
+  --ink-400: #b0e4cc;
 
-  /* ═══ Signal — Cyan glow accent ═══ */
-  --signal: #00D1FF;
-  --signal-rgb: 0, 209, 255;
+  /* ═══ Signal — Cyan accent ═══ */
+  --signal: #00d1ff;
   --signal-dim: rgba(0, 209, 255, 0.12);
   --signal-border: rgba(0, 209, 255, 0.35);
   --signal-glow: rgba(0, 209, 255, 0.25);
-  --signal-bright: #00D1FF;
 
   /* ═══ Semantic Colors ═══ */
-  --earn: #408A71;
-  --earn-rgb: 64, 138, 113;
-  --warn: #F59E0B;
-  --warn-rgb: 245, 158, 11;
-  --chain: #00D1FF;
-  --chain-rgb: 0, 209, 255;
-  --error: #EF4444;
-  --error-rgb: 239, 68, 68;
+  --earn: #408a71;
+  --warn: #f59e0b;
+  --chain: #00d1ff;
+  --error: #ef4444;
 
   /* ═══ Background Aliases ═══ */
-  --bg-deepest: #091413;
-  --bg-deep: #091413;
-  --bg-page: #091413;
-  --bg-card: #0d1f1d;
-  --bg-surface: #0a1816;
-  --bg-elevated: #0d1f1d;
-  --bg-hover: #285A48;
+  --bg-page: #0b0e0d;
+  --bg-card: #0d1a14;
+  --bg-surface: #0d1a14;
+  --bg-elevated: #0f1e17;
+  --bg-hover: #0f1e17;
 
   /* ═══ Text Colors ═══ */
-  --text-primary: #B0E4CC;
-  --text-secondary: #408A71;
-  --text-muted: #285A48;
+  --text-primary: #b0e4cc;
+  --text-secondary: #408a71;
+  --text-muted: #285a48;
 
   /* ═══ Border Colors ═══ */
-  --border-subtle: rgba(40, 90, 72, 0.25);
-  --border-default: rgba(40, 90, 72, 0.40);
-  --border-strong: rgba(40, 90, 72, 0.60);
-  --border-signal: var(--signal-border);
+  --border-subtle: #1a2e25;
+  --border-default: #1a2e25;
+  --border-strong: #285a48;
 
   /* ═══ Gradients ═══ */
-  --gradient-hero: linear-gradient(135deg, #091413 0%, #0d1f1d 50%, #0a1816 100%);
-  --gradient-card: linear-gradient(180deg, #0d1f1d 0%, rgba(40, 90, 72, 0.15) 100%);
-  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(0, 209, 255, 0.15) 0%, transparent 60%);
-  --gradient-signal: linear-gradient(135deg, #00D1FF 0%, #B0E4CC 100%);
+  --gradient-hero: linear-gradient(135deg, #0b0e0d 0%, #0d1a14 50%, #0b0e0d 100%);
+  --gradient-glow: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(0, 209, 255, 0.12) 0%, transparent 60%);
 
-  /* ═══ Typography ═══ */
-  --font-heading: 'Sora', -apple-system, sans-serif;
-  --font-body: 'DM Sans', -apple-system, sans-serif;
-  --font-mono: 'Fira Code', 'SF Mono', monospace;
+  /* ═══ Typography (Railway-style) ═══ */
+  --font-heading: 'Inter', -apple-system, sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* ═══ Spacing Scale ═══ */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
-  --space-32: 8rem;
+  /* ═══ Spacing (tight) ═══ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
 
-  /* ═══ Border Radius ═══ */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
+  /* ═══ Border Radius (minimal) ═══ */
+  --radius-sm: 4px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   --radius-full: 9999px;
 
   /* ═══ Shadows ═══ */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-glow: 0 0 30px var(--signal-glow);
-  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 12px var(--signal-glow);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4);
 
-  /* ═══ Timing Functions ═══ */
+  /* ═══ Timing ═══ */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* ═══ Z-Index Scale ═══ */
+  /* ═══ Z-Index ═══ */
   --z-base: 0;
   --z-raised: 10;
   --z-dropdown: 100;
   --z-sticky: 200;
   --z-modal: 300;
-  --z-tooltip: 400;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -286,50 +264,50 @@
 .delay-600 { animation-delay: 600ms; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TYPOGRAPHY
+   TYPOGRAPHY — Railway Style (tight, dense)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .heading-display {
   font-family: var(--font-heading);
-  font-size: clamp(2.75rem, 6vw, 4.5rem);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--text-primary);
 }
 
 .heading-xl {
   font-family: var(--font-heading);
-  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
 .heading-lg {
   font-family: var(--font-heading);
-  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
-}
-
-.heading-md {
-  font-family: var(--font-heading);
-  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  font-size: clamp(18px, 2.5vw, 22px);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.015em;
   color: var(--text-primary);
 }
 
+.heading-md {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
 .heading-sm {
   font-family: var(--font-heading);
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.35;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--text-primary);
 }
 
