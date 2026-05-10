@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 import { getRuntimeCondition, runtimeConditionColor } from "@/lib/runtime/status-layer";
@@ -10,6 +11,7 @@ export function RuntimeStatusBar() {
   const queue = useInfrastructureStore((s) => s.queueState);
   const condition = getRuntimeCondition(queue.depth, queue.failed);
   const dot = runtimeConditionColor(condition);
+  const healthyCount = useMemo(() => nodes.filter((n) => n.health === "healthy").length, [nodes]);
 
   return (
     <div className="sticky top-0 z-20 mb-4 rounded-xl border border-white/10 bg-black/25 px-3 py-2 backdrop-blur">
@@ -23,7 +25,7 @@ export function RuntimeStatusBar() {
           />
           <span>Network {condition === "stable" ? "Stable" : condition === "warning" ? "Warning" : "Critical"}</span>
         </div>
-        <span>Active Nodes {nodes.filter((n) => n.health === "healthy").length}</span>
+        <span>Active Nodes {healthyCount}</span>
         <span>Queue Pressure {queue.depth}</span>
         <span>Relay Latency {runtime.relayLatencyMs}ms</span>
         <span>Deploy Throughput {runtime.deploymentThroughput.toFixed(1)}/m</span>

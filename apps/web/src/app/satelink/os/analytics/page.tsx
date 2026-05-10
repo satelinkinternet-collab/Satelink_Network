@@ -108,7 +108,7 @@ export default function SatelinkAnalyticsPage() {
                 <YAxis type="category" dataKey="chain" stroke="#5b8073" fontSize={10} width={80} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#091413", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}
-                  formatter={(value: number) => [value.toLocaleString(), "Requests"]}
+                  formatter={(value) => [Number(value).toLocaleString(), "Requests"]}
                 />
                 <Bar dataKey="requests" radius={[0, 4, 4, 0]}>
                   {chainMetrics.map((entry, index) => (

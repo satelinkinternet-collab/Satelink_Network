@@ -20,7 +20,13 @@ export type InfrastructureEventType =
   | "telemetry.updated"
   | "region.activated"
   | "topology.updated"
-  | "metrics.tick";
+  | "metrics.tick"
+  | "revenue:event"
+  | "epoch:closed"
+  | "node:heartbeat"
+  | "claim:generated"
+  | "revenue.recorded"
+  | "epoch.closed";
 
 export interface InfrastructureEvent<TPayload = Record<string, unknown>> {
   id: string;

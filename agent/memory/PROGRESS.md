@@ -3,6 +3,16 @@
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
 
+## SESSION UPDATE — May 10, 2026 (ZUSTAND RENDER LOOP FIX + FOOTER)
+- DONE: Fixed Zustand selector infinite loop in os-shell.tsx (split array selectors to individual selectors)
+- DONE: Added useMemo for derived state in runtime-status-bar.tsx (healthyCount)
+- DONE: Added useMemo for derived state in network-globe.tsx (healthy count)
+- DONE: Added new event types to InfrastructureEventType (revenue:event, epoch:closed, node:heartbeat, claim:generated)
+- DONE: Fixed global-error.tsx for Next.js 16 prerendering compatibility
+- DONE: Added premium footer to /satelink landing page
+- DONE: Build passes with NODE_ENV=production
+- Commits: pending (zustand render loop fix)
+
 ## SESSION UPDATE — May 10, 2026 (REAL BACKEND WIRING + SATELINK OS DASHBOARDS)
 - DONE: Created RealtimeEventBroadcaster singleton for live events
 - DONE: Wired broadcaster into rpc_billing, epoch_scheduler, node_heartbeat, claims_route

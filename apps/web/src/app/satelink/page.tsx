@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Radar, Satellite, Server } from "lucide-react";
+import { ArrowRight, ExternalLink, Github, Radar, Satellite, Server, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NetworkGlobe } from "@/components/satelink/network-globe";
 import { InfrastructureEditor } from "@/components/satelink/infrastructure-editor";
@@ -62,6 +62,126 @@ export default function SatelinkLandingPage() {
           </article>
         ))}
       </section>
+
+      <footer className="border-t border-white/10 bg-[#070e0d]">
+        <div className="mx-auto max-w-7xl px-6 py-12">
+          <div className="grid gap-8 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-2">
+                <Satellite className="h-6 w-6 text-[#00D1FF]" />
+                <span className="text-lg font-semibold text-white">Satelink</span>
+              </div>
+              <p className="mt-3 text-sm text-[#B0E4CC]/60">
+                Decentralized infrastructure for autonomous machine economies.
+              </p>
+              <div className="mt-4 flex gap-3">
+                <a
+                  href="https://github.com/Satelink-Protocol/Satelink_Network"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-white/10 p-2 text-[#B0E4CC]/60 transition hover:border-[#408A71] hover:text-white"
+                  aria-label="GitHub"
+                >
+                  <Github className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://twitter.com/satelinknetwork"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-white/10 p-2 text-[#B0E4CC]/60 transition hover:border-[#408A71] hover:text-white"
+                  aria-label="Twitter"
+                >
+                  <Twitter className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.15em] text-[#408A71]">Product</p>
+              <nav className="mt-4 space-y-2">
+                <Link href="/satelink/os" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Infrastructure OS
+                </Link>
+                <Link href="/dashboard" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Dashboard
+                </Link>
+                <Link href="/pricing" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Pricing
+                </Link>
+                <Link href="/nodes" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Run a Node
+                </Link>
+              </nav>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.15em] text-[#408A71]">Developers</p>
+              <nav className="mt-4 space-y-2">
+                <a
+                  href="https://docs.satelink.network"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-[#B0E4CC]/70 hover:text-white"
+                >
+                  Documentation <ExternalLink className="h-3 w-3" />
+                </a>
+                <a
+                  href="https://rpc.satelink.network/api/status"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-[#B0E4CC]/70 hover:text-white"
+                >
+                  API Status <ExternalLink className="h-3 w-3" />
+                </a>
+                <Link href="/developers" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Developer Guide
+                </Link>
+                <a
+                  href="https://github.com/Satelink-Protocol/Satelink_Network"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-[#B0E4CC]/70 hover:text-white"
+                >
+                  GitHub <ExternalLink className="h-3 w-3" />
+                </a>
+              </nav>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.15em] text-[#408A71]">Network</p>
+              <nav className="mt-4 space-y-2">
+                <Link href="/status" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  System Status
+                </Link>
+                <Link href="/network" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Network Map
+                </Link>
+                <a
+                  href="https://polygonscan.com/address/0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-sm text-[#B0E4CC]/70 hover:text-white"
+                >
+                  Smart Contracts <ExternalLink className="h-3 w-3" />
+                </a>
+                <Link href="/legal/terms" className="block text-sm text-[#B0E4CC]/70 hover:text-white">
+                  Terms of Service
+                </Link>
+              </nav>
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 md:flex-row">
+            <p className="text-xs text-[#B0E4CC]/50">
+              © {new Date().getFullYear()} Satelink Network. All rights reserved.
+            </p>
+            <div className="flex items-center gap-1 text-xs text-[#B0E4CC]/50">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <span>All systems operational</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

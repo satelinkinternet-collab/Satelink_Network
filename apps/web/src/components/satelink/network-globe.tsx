@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 
@@ -7,7 +8,7 @@ export function NetworkGlobe() {
   const nodes = useInfrastructureStore((state) => state.nodes);
   const queueDepth = useInfrastructureStore((state) => state.queueState.depth);
   const runtime = useInfrastructureStore((state) => state.runtime);
-  const healthy = nodes.filter((node) => node.health === "healthy").length;
+  const healthy = useMemo(() => nodes.filter((node) => node.health === "healthy").length, [nodes]);
   const pulseScale = queueDepth > 1800 ? 1.7 : queueDepth > 1300 ? 1.35 : 1.15;
 
   return (
