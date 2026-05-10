@@ -65,7 +65,7 @@ const FAQ_ITEMS = [
   {
     question: "How does revenue settlement work?",
     answer:
-      "Revenue from RPC calls is recorded per epoch (60s windows). Node operators earn 50% of epoch revenue, claimable as USDT on Polygon after the epoch closes.",
+      "Revenue from RPC calls is recorded per epoch (60s windows). Node operators earn 50% of epoch revenue, claimable as USDT on Polygon after the epoch closes. Claims are processed via ClaimsContract at 0xE475c53B88190FD2130dB1E37504991EFe283fb0.",
   },
   {
     question: "How do I start as a node operator?",
@@ -272,8 +272,41 @@ export default function NodesPage() {
           </div>
         </section>
 
-        {/* FAQ */}
+        {/* Smart Contracts */}
         <section className="py-16 bg-[var(--bg-card)]/30">
+          <div className="container-marketing">
+            <h2 className="heading-lg mb-8 text-center">Smart Contracts</h2>
+            <p className="text-body text-center mb-8 max-w-2xl mx-auto">
+              All Satelink contracts are deployed on Polygon Mainnet (Chain ID: 137).
+            </p>
+
+            <div className="max-w-3xl mx-auto space-y-4">
+              <ContractCard
+                name="ClaimsContract"
+                address="0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+                description="Node operators claim USDT earnings from this contract. Minimum claim: 1 USDT."
+              />
+              <ContractCard
+                name="NodeRegistryV2"
+                address="0x27D7320d5786D5B4B4dE8aAAC6cf62338ADeC037"
+                description="Stores registered node metadata, reputation scores, and status."
+              />
+              <ContractCard
+                name="RevenueDistributor"
+                address="0x8a9CefBD801574806a634aF179f538ABB5926F5a"
+                description="Handles 50/30/20 split distribution at epoch close."
+              />
+              <ContractCard
+                name="RevenueVault"
+                address="0xa77512B9255D504B3fD450037f1448D4df6A1b6d"
+                description="Holds accumulated USDT revenue before distribution."
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="py-16">
           <div className="container-marketing">
             <h2 className="heading-lg mb-8 text-center">Frequently Asked Questions</h2>
 
@@ -300,6 +333,27 @@ export default function NodesPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+function ContractCard({ name, address, description }: { name: string; address: string; description: string }) {
+  return (
+    <div className="glass-card p-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-[var(--text-primary)] mb-1">{name}</h3>
+          <p className="text-sm text-[var(--text-secondary)]">{description}</p>
+        </div>
+        <a
+          href={`https://polygonscan.com/address/${address}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-xs text-[var(--brand-primary)] hover:underline shrink-0"
+        >
+          {address.slice(0, 10)}...{address.slice(-8)}
+        </a>
+      </div>
+    </div>
   );
 }
 

@@ -1,0 +1,41 @@
+# Satelink Network
+> Decentralized Physical Infrastructure (DePIN) for RPC, AI, and machine APIs.
+
+Satelink is an autonomous economic protocol. Machines and protocols
+consume infrastructure services and pay in USDT automatically.
+No human sales or approval required.
+
+## RPC Gateway
+Public Polygon Mainnet RPC: https://rpc.satelink.network/rpc/polygon
+Chain ID: 137 | Free: 1000 req/day | No API key required
+
+Supported chains:
+- Polygon Mainnet (137): /rpc/polygon
+- Polygon Amoy Testnet (80002): /rpc/amoy
+- Ethereum Mainnet (1): /rpc/ethereum
+- Arbitrum One (42161): /rpc/arbitrum
+- Base (8453): /rpc/base
+
+## Settlement
+Revenue settles as USDT on Polygon every 60 seconds automatically.
+Node operators earn 50% of epoch revenue.
+
+## APIs
+- Status: https://rpc.satelink.network/api/status
+- Pricing: https://rpc.satelink.network/api/pricing
+- Provider info: https://rpc.satelink.network/provider.json
+
+## Integration
+Standard JSON-RPC 2.0 interface. EIP-1193 compliant.
+Works with: ethers.js, web3.js, viem, wagmi, web3.py
+
+## Example
+```bash
+curl -X POST https://rpc.satelink.network/rpc/polygon \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+```
+
+## Contact
+Website: https://satelink.network
+GitHub: https://github.com/satelinkinternet-collab/Satelink_Network

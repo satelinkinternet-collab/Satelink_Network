@@ -448,6 +448,55 @@ ws.onmessage = (event) => {
           </div>
         </section>
 
+        {/* Architecture */}
+        <section id="architecture" className="py-16">
+          <div className="container-marketing">
+            <h2 className="heading-lg mb-8 text-center">Request Architecture</h2>
+            <p className="text-body text-center mb-12 max-w-2xl mx-auto">
+              Understanding how requests flow through the Satelink network from your
+              application to settlement.
+            </p>
+
+            <div className="max-w-4xl mx-auto space-y-4">
+              <ArchStep
+                step={1}
+                title="Request Ingestion"
+                description="Your application sends a JSON-RPC request to rpc.satelink.network/rpc/{chain}. No signup required for free tier (100 req/day)."
+              />
+              <ArchStep
+                step={2}
+                title="Authentication & Rate Limiting"
+                description="If you include an X-API-Key header, we validate your tier and apply appropriate rate limits. Free tier uses IP-based tracking."
+              />
+              <ArchStep
+                step={3}
+                title="Intelligent Routing"
+                description="Our router selects the optimal provider using latency EMA tracking, circuit breaker state, and load balancing weights across 18 providers."
+              />
+              <ArchStep
+                step={4}
+                title="Redis Cache Check"
+                description="For read methods (eth_blockNumber, eth_getBalance), we check Redis cache first. Cache hit rate averages 78%+."
+              />
+              <ArchStep
+                step={5}
+                title="Provider Execution"
+                description="Request is proxied to the selected provider. Circuit breaker monitors for failures and auto-fails over to healthy providers."
+              />
+              <ArchStep
+                step={6}
+                title="Revenue Recording"
+                description="Each successful request is logged to revenue_events_v2 with method, cost, and timestamp. Billing is per-call based on method pricing."
+              />
+              <ArchStep
+                step={7}
+                title="Epoch Settlement"
+                description="Every 60 seconds, epochs close. Revenue splits 50/30/20 between node operators, platform, and distribution pool. Claim as USDT on Polygon."
+              />
+            </div>
+          </div>
+        </section>
+
         {/* SDK Coming Soon */}
         <section className="py-16 bg-[var(--bg-card)]/30">
           <div className="container-marketing">
@@ -460,6 +509,11 @@ ws.onmessage = (event) => {
                 Native SDKs for JavaScript, Python, and Rust with built-in retry logic,
                 connection pooling, and type safety.
               </p>
+              <div className="code-block text-left mb-6">
+                <pre className="p-4 overflow-x-auto text-sm">
+                  <code className="text-[var(--text-muted)]"># Coming soon{"\n"}npm install @satelink/sdk</code>
+                </pre>
+              </div>
               <a
                 href="https://github.com/satelinkinternet-collab"
                 target="_blank"
@@ -488,6 +542,20 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
     </svg>
+  );
+}
+
+function ArchStep({ step, title, description }: { step: number; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-4 glass-card p-6">
+      <div className="w-10 h-10 rounded-full bg-[var(--brand-primary)] flex items-center justify-center shrink-0">
+        <span className="text-[var(--bg-deep)] font-bold">{step}</span>
+      </div>
+      <div>
+        <h3 className="font-semibold text-[var(--text-primary)] mb-1">{title}</h3>
+        <p className="text-sm text-[var(--text-secondary)]">{description}</p>
+      </div>
+    </div>
   );
 }
 

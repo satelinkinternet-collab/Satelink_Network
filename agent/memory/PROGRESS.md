@@ -1,7 +1,35 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 7, 2026 (BACKEND LIVE ON RAILWAY)
+# Updated: May 10, 2026 (AUTONOMOUS REVENUE ACCELERATORS)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 10, 2026 (AUTONOMOUS REVENUE + HOMEPAGE REBUILD)
+- DONE: Full homepage rebuild per master guide (7 semantic sections)
+- DONE: Added /provider.json endpoint for machine discovery
+- DONE: Updated robots.txt to explicitly allow AI crawlers (GPTBot, ClaudeBot, etc.)
+- DONE: Created llms.txt for AI agent discovery
+- DONE: Updated sitemap.xml with current date and all pages
+- DONE: Developers page: added request architecture section (7 steps)
+- DONE: Nodes page: added Smart Contracts section with 4 deployed addresses
+- DONE: Fixed global-error.tsx for Next.js 16 + React 19 compatibility
+- DONE: Verified EIP-1193 compliance (net_version, eth_chainId, eth_gasPrice all valid)
+- NOTE: Chainlist Mainnet PR #2721 still OPEN — awaiting 2 reviews
+- NOTE: RealtimeEventBroadcaster still uses mock engine — wiring to live events is next priority
+- NOTE: /api/pricing returns internal_error — needs Railway redeploy with pool fix
+- Commits this session: 5dc4795 (homepage rebuild)
+
+### AEP Layer Status Update
+| Layer | Status | Notes |
+|-------|--------|-------|
+| L1 Discovery | 80% | Chainlist Amoy MERGED, Mainnet #2721 OPEN, provider.json added |
+| L2 Ingestion | 100% | RPC gateway live, EIP-1193 compliant |
+| L3 Billing | 95% | Production billing, /api/pricing needs pool fix |
+| L4 Settlement | 75% | Claim route wired, MATIC needed |
+| L5 Node Supply | PARTIAL | 5 nodes registered, external onboarding TODO |
+| L6 Protocol Registry | 75% | Chainlist done, ethereum-lists/Ankr/Blast TODO |
+| L7 Autonomous Ops | 90% | All schedulers running, mock→live websocket TODO |
+| L8 DeFi/DApp | NOT STARTED | Revenue ceiling |
+| L9 AI Agent | NOT STARTED | Revenue ceiling |
 
 ## SESSION UPDATE — May 10, 2026 (SATELINK OS RENDER LOOP HOTFIX)
 - DONE: Fixed `/satelink/os/overview` infinite render loop (`Maximum update depth exceeded`)
