@@ -1,7 +1,41 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 10, 2026 (REAL BACKEND WIRING + SATELINK OS)
+# Updated: May 10, 2026 (MEV RELAY PRODUCTION HARDENING)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 10, 2026 (MEV RELAY PRODUCTION)
+- DONE: Added Redis rate limiting (sliding window, per-key limits by tier)
+- DONE: Added Redis API key caching (5 min TTL, avoids DB hit per request)
+- DONE: Added realtime revenue broadcast to SSE channel (revenue:event)
+- DONE: Added Flashbots signature support (X-Flashbots-Signature header)
+- DONE: Set FLASHBOTS_SIGNER_KEY in Railway (dedicated key, not treasury)
+- DONE: Fixed global-error.tsx for Next.js 16 prerendering
+- DONE: Updated AEP L8 status to IN PROGRESS (60%)
+- File: apps/api/src/workloads/mev_relay/index.js
+
+### AEP Layer Status Update
+| Layer | Status | Notes |
+|-------|--------|-------|
+| L1 Discovery | 85% | Chainlist Amoy MERGED, Mainnet #2721 OPEN, provider.json live |
+| L2 Ingestion | 100% | RPC gateway live, EIP-1193 compliant |
+| L3 Billing | 95% | Production billing active |
+| L4 Settlement | 75% | Claim route wired, MATIC needed |
+| L5 Node Supply | PARTIAL | 5 nodes registered |
+| L6 Protocol Registry | 90% | Chainlist done, ethereum-lists PR #8314 OPEN |
+| L7 Autonomous Ops | 95% | SSE + WebSocket realtime live |
+| L8 DeFi/DApp | **60%** | MEV relay hardened, rate limiting, Flashbots signing |
+| L9 AI Agent | NOT STARTED | Revenue ceiling |
+
+## SESSION UPDATE — May 10, 2026 (ETHEREUM-LISTS/CHAINS PR)
+- DONE: Forked ethereum-lists/chains to Satelink-Protocol/chains
+- DONE: Added Satelink RPC endpoints to 5 chain files:
+  - eip155-137.json (Polygon Mainnet) — HTTPS + WSS
+  - eip155-80002.json (Polygon Amoy) — HTTPS
+  - eip155-1.json (Ethereum Mainnet) — HTTPS
+  - eip155-42161.json (Arbitrum One) — HTTPS
+  - eip155-8453.json (Base) — HTTPS
+- DONE: Submitted PR #8314 to ethereum-lists/chains
+- URL: https://github.com/ethereum-lists/chains/pull/8314
 
 ## SESSION UPDATE — May 10, 2026 (ZUSTAND RENDER LOOP FIX + FOOTER)
 - DONE: Fixed Zustand selector infinite loop in os-shell.tsx (split array selectors to individual selectors)
@@ -28,19 +62,6 @@
 - DONE: Merged homepage-rebuild into develop
 - DONE: Fixed Railway Dockerfile (already correct)
 - Commits: 55822dc (merge), 34bfaf8 (real backend wiring)
-
-### AEP Layer Status Update
-| Layer | Status | Notes |
-|-------|--------|-------|
-| L1 Discovery | 80% | Chainlist Amoy MERGED, Mainnet #2721 OPEN, provider.json added |
-| L2 Ingestion | 100% | RPC gateway live, EIP-1193 compliant |
-| L3 Billing | 95% | Production billing active |
-| L4 Settlement | 75% | Claim route wired, MATIC needed |
-| L5 Node Supply | PARTIAL | 5 nodes registered |
-| L6 Protocol Registry | 75% | Chainlist done, ethereum-lists TODO |
-| L7 Autonomous Ops | 95% | Websocket wiring DONE, SSE endpoint deployed |
-| L8 DeFi/DApp | NOT STARTED | Revenue ceiling |
-| L9 AI Agent | NOT STARTED | Revenue ceiling |
 
 ## SESSION UPDATE — May 10, 2026 (AUTONOMOUS REVENUE + HOMEPAGE REBUILD)
 - DONE: Full homepage rebuild per master guide (7 semantic sections)

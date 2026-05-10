@@ -2,27 +2,30 @@
 
 **Status:** COMPLETED
 
-## Completed (May 10, 2026)
-- ✅ Wired RealtimeEventBroadcaster to live revenue/epoch/node/claim events
-- ✅ Created /os/events SSE endpoint for real-time streaming
-- ✅ Rebuilt Satelink OS Command Center with live API data
-- ✅ Wired /satelink/os/nodes to /api/nodes
-- ✅ Wired /satelink/os/analytics with chain metrics
-- ✅ Wired /satelink/os/billing with epoch earnings
-- ✅ Added /satelink/os/docs redirect
-- ✅ Expanded docs app with comprehensive documentation
-- ✅ Merged homepage-rebuild into develop
-- ✅ Committed and pushed all changes
+## Completed (May 10, 2026 — MEV Relay Production)
+- ✅ Added Redis rate limiting (sliding window, per-tier limits)
+- ✅ Added Redis API key caching (5 min TTL)
+- ✅ Added realtime revenue broadcast to SSE channel
+- ✅ Added Flashbots signature support for Ethereum mainnet
+- ✅ Set FLASHBOTS_SIGNER_KEY in Railway environment
+- ✅ Fixed global-error.tsx for Next.js 16
+- ✅ Updated AEP Layer 8 to IN PROGRESS (60%)
+- ✅ Submitted ethereum-lists/chains PR #8314
+
+## Open PRs
+- Chainlist Mainnet #2721: OPEN, awaiting reviews
+- ethereum-lists/chains #8314: OPEN, just submitted
+
+## AEP Layer Status
+| Layer | Status |
+|-------|--------|
+| L8 DeFi/DApp | **60%** (up from 0%) |
 
 ## Next Priority
-1. Submit ethereum-lists/chains PR for Polygon mainnet
-2. Top up MATIC on treasury wallet for on-chain claims
-3. Trigger first real RPC revenue via Chainlist traffic
+1. Top up MATIC on treasury wallet for on-chain claims
+2. Monitor PR reviews (Chainlist + ethereum-lists)
+3. Add eth_callBundle simulation endpoint
+4. WebSocket RPC support (eth_subscribe)
 
 ## Blocked On
-- Chainlist Mainnet PR #2721: OPEN, awaiting 2 reviews
 - MATIC balance: 0.06 — needs top-up for on-chain claims test
-
-## Deploys Pending
-- Railway: Auto-deploying /provider.json, /os/events endpoints
-- Vercel: Auto-deploying llms.txt, updated Satelink OS dashboards

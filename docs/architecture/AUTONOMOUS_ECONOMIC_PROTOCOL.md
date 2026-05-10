@@ -149,16 +149,25 @@ Required:
 - [ ] Autonomous pricing adjustment (TODO: Stage S6)
 Files: apps/api/src/sentinel/, apps/api/src/scheduler/
 
-### LAYER 8 — DeFi/DApp Integration Layer [STATUS: NOT STARTED]
+### LAYER 8 — DeFi/DApp Integration Layer [STATUS: IN PROGRESS — 60%]
 How DeFi protocols use Satelink as infrastructure.
-Required:
-- [ ] EIP-1193 compliant provider interface
+
+Completed:
+- [x] EIP-1193 compliant provider interface
+- [x] MEV private relay endpoint (POST /rpc/mev)
+- [x] Flashbots-compatible bundle endpoint (/rpc/mev/bundle)
+- [x] Redis rate limiting + API key caching
+- [x] Realtime revenue broadcast integration
+- [x] Flashbots signing for Ethereum mainnet
+
+Remaining:
 - [ ] WebSocket RPC support (eth_subscribe)
-- [ ] MEV private relay endpoint (POST /rpc/mev)
-- [ ] Flashbots-compatible bundle endpoint
+- [ ] eth_callBundle simulation endpoint
+- [ ] Bundle auction pricing (dynamic fees)
 - [ ] DApp SDK (@satelink/sdk npm package)
 - [ ] Wagmi/ethers.js provider adapter
-Files: (new) apps/api/src/workloads/defi_gateway/
+
+Files: apps/api/src/workloads/mev_relay/, apps/api/src/workloads/rpc_gateway/
 
 ### LAYER 9 — AI Agent Integration Layer [STATUS: NOT STARTED]
 How AI agents use Satelink as autonomous infrastructure.

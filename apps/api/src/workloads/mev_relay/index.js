@@ -11,21 +11,28 @@
  * - POST /rpc/mev — Submit private transaction
  * - POST /rpc/mev/bundle — Submit MEV bundle (Flashbots-compatible)
  * - GET /rpc/mev/status — Relay health and stats
+ *
+ * Features:
+ * - Redis-based API key caching (5 min TTL)
+ * - Per-key rate limiting (sliding window)
+ * - Flashbots signature for Ethereum mainnet
+ * - Realtime revenue broadcast
  */
 
 import { Router } from 'express';
 import crypto from 'crypto';
+import { broadcaster } from '../realtime/broadcaster-instance.js';
 
 const MEV_PROVIDERS = {
   ethereum: [
-    { name: 'flashbots', url: 'https://rpc.flashbots.net', priority: 1 },
-    { name: 'mev-blocker', url: 'https://rpc.mevblocker.io', priority: 2 }
+    { name: 'flashbots', url: 'https://rpc.flashbots.net', priority: 1, requiresSignature: true },
+    { name: 'mev-blocker', url: 'https://rpc.mevblocker.io', priority: 2, requiresSignature: false }
   ],
   polygon: [
-    { name: 'llama-mev', url: 'https://polygon.llamarpc.com', priority: 1 }
+    { name: 'llama-mev', url: 'https://polygon.llamarpc.com', priority: 1, requiresSignature: false }
   ],
   arbitrum: [
-    { name: 'llama-mev', url: 'https://arbitrum.llamarpc.com', priority: 1 }
+    { name: 'llama-mev', url: 'https://arbitrum.llamarpc.com', priority: 1, requiresSignature: false }
   ]
 };
 
@@ -37,16 +44,77 @@ const MEV_PRICING_USDT = {
 
 const DEFAULT_MEV_PRICE = 0.001;
 
+const RATE_LIMITS = {
+  free: 10,
+  basic: 100,
+  pro: 1000,
+  enterprise: 5000
+};
+
 const mevStats = {
   totalSubmissions: 0,
   successfulSubmissions: 0,
   failedSubmissions: 0,
   bundlesSubmitted: 0,
   revenueUsdt: 0,
-  lastSubmissionAt: null
+  lastSubmissionAt: null,
+  rateLimitHits: 0
 };
 
-async function submitToMevProvider(chain, method, params, timeout = 10000) {
+/**
+ * CHANGE 3: Flashbots signature generation
+ * Signs request body for Flashbots Protect API
+ */
+async function signFlashbotsRequest(body) {
+  const signerKey = process.env.FLASHBOTS_SIGNER_KEY;
+  if (!signerKey) return null;
+
+  try {
+    const { Wallet, hashMessage } = await import('ethers');
+    const wallet = new Wallet(signerKey);
+    const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+    const messageHash = hashMessage(bodyStr);
+    const signature = await wallet.signMessage(bodyStr);
+    return `${wallet.address}:${signature}`;
+  } catch (e) {
+    console.warn('[MEV] Flashbots signing failed:', e.message);
+    return null;
+  }
+}
+
+/**
+ * CHANGE 1: Redis-based rate limiting (sliding window)
+ */
+async function checkMevRateLimit(redis, apiKey, tier) {
+  if (!redis) return { allowed: true, count: 0, limit: RATE_LIMITS[tier] || 10 };
+
+  const limit = RATE_LIMITS[tier] || RATE_LIMITS.free;
+  const window = 60; // seconds
+  const key = `mev:ratelimit:${apiKey}`;
+  const now = Date.now();
+  const windowStart = now - window * 1000;
+
+  try {
+    const pipe = redis.pipeline();
+    pipe.zremrangebyscore(key, 0, windowStart);
+    pipe.zadd(key, now, `${now}-${Math.random()}`);
+    pipe.zcard(key);
+    pipe.expire(key, window);
+    const results = await pipe.exec();
+    const count = results[2][1];
+
+    if (count > limit) {
+      mevStats.rateLimitHits++;
+      return { allowed: false, count, limit };
+    }
+    return { allowed: true, count, limit };
+  } catch (e) {
+    console.warn('[MEV] Rate limit check failed:', e.message);
+    return { allowed: true, count: 0, limit };
+  }
+}
+
+async function submitToMevProvider(chain, method, params, requestBody, timeout = 10000) {
   const providers = MEV_PROVIDERS[chain];
   if (!providers || providers.length === 0) {
     throw new Error(`No MEV providers available for chain: ${chain}`);
@@ -60,15 +128,27 @@ async function submitToMevProvider(chain, method, params, timeout = 10000) {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const rpcBody = {
+        jsonrpc: '2.0',
+        method,
+        params,
+        id: Date.now()
+      };
+
+      const headers = { 'Content-Type': 'application/json' };
+
+      // CHANGE 3: Add Flashbots signature for providers that require it
+      if (provider.requiresSignature && chain === 'ethereum') {
+        const fbSignature = await signFlashbotsRequest(rpcBody);
+        if (fbSignature) {
+          headers['X-Flashbots-Signature'] = fbSignature;
+        }
+      }
+
       const response = await fetch(provider.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method,
-          params,
-          id: Date.now()
-        }),
+        headers,
+        body: JSON.stringify(rpcBody),
         signal: controller.signal
       });
 
@@ -103,28 +183,67 @@ async function submitToMevProvider(chain, method, params, timeout = 10000) {
 }
 
 async function recordMevRevenue(db, method, clientId, requestId, chain) {
-  if (!db || !db.query) return;
+  if (!db || !db.query) return null;
 
   const amount = MEV_PRICING_USDT[method] || DEFAULT_MEV_PRICE;
 
   try {
     const now = Math.floor(Date.now() / 1000);
-    await db.query(
+    const result = await db.query(
       `INSERT INTO revenue_events_v2 (op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
-       VALUES ('mev_relay', $1, $2, $3, 'success', $4, $5)`,
+       VALUES ('mev_relay', $1, $2, $3, 'success', $4, $5)
+       RETURNING id, epoch_id`,
       ['mev_private', clientId, amount, requestId, now]
     );
 
     mevStats.revenueUsdt += amount;
     console.log(`[MEV] Revenue: ${chain}/${method} → $${amount}`);
+
+    // CHANGE 2: Broadcast revenue event to realtime channel
+    try {
+      broadcaster.publish('revenue:event', {
+        source: 'mev_relay',
+        amount_usdt: amount,
+        method,
+        chain,
+        request_id: requestId,
+        epoch_id: result.rows[0]?.epoch_id || null,
+        ts: Date.now()
+      });
+    } catch (broadcastErr) {
+      console.warn('[MEV] Broadcast failed:', broadcastErr.message);
+    }
+
+    return { amount, epochId: result.rows[0]?.epoch_id };
   } catch (e) {
     console.error('[MEV] Failed to record revenue:', e.message);
+    return null;
   }
 }
 
-async function validateApiKey(apiKey, db) {
+/**
+ * CHANGE 1: Redis-cached API key validation
+ */
+async function validateApiKey(apiKey, db, redis) {
   if (!apiKey || !apiKey.startsWith('sk_')) {
     return { valid: false, error: 'MEV relay requires a valid API key (sk_live_*)' };
+  }
+
+  // Check Redis cache first
+  if (redis) {
+    try {
+      const cacheKey = `mev:apikey:${apiKey}`;
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const keyRecord = JSON.parse(cached);
+        if (keyRecord.tier === 'public') {
+          return { valid: false, error: 'MEV relay not available on public tier. Upgrade to basic or above.' };
+        }
+        return { valid: true, tier: keyRecord.tier, cached: true };
+      }
+    } catch (e) {
+      console.warn('[MEV] Redis cache read failed:', e.message);
+    }
   }
 
   if (!db || !db.query) {
@@ -143,6 +262,17 @@ async function validateApiKey(apiKey, db) {
     }
 
     const tier = result.rows[0].tier;
+
+    // Cache the result in Redis (5 minute TTL)
+    if (redis) {
+      try {
+        const cacheKey = `mev:apikey:${apiKey}`;
+        await redis.setex(cacheKey, 300, JSON.stringify({ tier, status: 'active' }));
+      } catch (e) {
+        console.warn('[MEV] Redis cache write failed:', e.message);
+      }
+    }
+
     if (tier === 'public') {
       return { valid: false, error: 'MEV relay not available on public tier. Upgrade to basic or above.' };
     }
@@ -174,18 +304,38 @@ export function createMevRelayRouter(db, redis) {
           : 'N/A',
         bundlesSubmitted: mevStats.bundlesSubmitted,
         revenueUsdt: mevStats.revenueUsdt.toFixed(6),
+        rateLimitHits: mevStats.rateLimitHits,
         lastSubmissionAt: mevStats.lastSubmissionAt
       },
-      pricing: MEV_PRICING_USDT
+      pricing: MEV_PRICING_USDT,
+      rateLimits: RATE_LIMITS,
+      features: {
+        flashbotsSignature: !!process.env.FLASHBOTS_SIGNER_KEY,
+        redisCaching: !!redis,
+        realtimeBroadcast: true
+      }
     });
   });
 
   router.post('/', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
-    const keyCheck = await validateApiKey(apiKey, db);
+    const keyCheck = await validateApiKey(apiKey, db, redis);
 
     if (!keyCheck.valid) {
       return res.status(403).json({ ok: false, error: keyCheck.error });
+    }
+
+    // CHANGE 1: Rate limit check
+    const rateCheck = await checkMevRateLimit(redis, apiKey, keyCheck.tier);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        ok: false,
+        error: 'rate_limit_exceeded',
+        message: `MEV relay limit: ${rateCheck.limit} requests/minute for ${keyCheck.tier} tier`,
+        current: rateCheck.count,
+        limit: rateCheck.limit,
+        retry_after: 60
+      });
     }
 
     const { chain = 'ethereum' } = req.query;
@@ -210,7 +360,7 @@ export function createMevRelayRouter(db, redis) {
     mevStats.totalSubmissions++;
 
     try {
-      const result = await submitToMevProvider(chain, method, params);
+      const result = await submitToMevProvider(chain, method, params, body);
 
       mevStats.successfulSubmissions++;
       mevStats.lastSubmissionAt = new Date().toISOString();
@@ -228,7 +378,11 @@ export function createMevRelayRouter(db, redis) {
           bundleId: result.bundleId,
           provider: result.provider,
           requestId,
-          priceUsdt: MEV_PRICING_USDT[method] || DEFAULT_MEV_PRICE
+          priceUsdt: MEV_PRICING_USDT[method] || DEFAULT_MEV_PRICE,
+          rateLimit: {
+            remaining: rateCheck.limit - rateCheck.count,
+            limit: rateCheck.limit
+          }
         }
       });
     } catch (err) {
@@ -249,10 +403,23 @@ export function createMevRelayRouter(db, redis) {
 
   router.post('/bundle', async (req, res) => {
     const apiKey = req.headers['x-api-key'];
-    const keyCheck = await validateApiKey(apiKey, db);
+    const keyCheck = await validateApiKey(apiKey, db, redis);
 
     if (!keyCheck.valid) {
       return res.status(403).json({ ok: false, error: keyCheck.error });
+    }
+
+    // CHANGE 1: Rate limit check
+    const rateCheck = await checkMevRateLimit(redis, apiKey, keyCheck.tier);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        ok: false,
+        error: 'rate_limit_exceeded',
+        message: `MEV relay limit: ${rateCheck.limit} requests/minute for ${keyCheck.tier} tier`,
+        current: rateCheck.count,
+        limit: rateCheck.limit,
+        retry_after: 60
+      });
     }
 
     const { chain = 'ethereum' } = req.query;
@@ -274,7 +441,7 @@ export function createMevRelayRouter(db, redis) {
         maxTimestamp
       }];
 
-      const result = await submitToMevProvider(chain, 'eth_sendBundle', bundleParams);
+      const result = await submitToMevProvider(chain, 'eth_sendBundle', bundleParams, req.body);
 
       mevStats.successfulSubmissions++;
       mevStats.lastSubmissionAt = new Date().toISOString();
@@ -286,7 +453,11 @@ export function createMevRelayRouter(db, redis) {
         bundleHash: result.bundleId,
         provider: result.provider,
         requestId,
-        priceUsdt: MEV_PRICING_USDT.eth_sendBundle
+        priceUsdt: MEV_PRICING_USDT.eth_sendBundle,
+        rateLimit: {
+          remaining: rateCheck.limit - rateCheck.count,
+          limit: rateCheck.limit
+        }
       });
     } catch (err) {
       mevStats.failedSubmissions++;
