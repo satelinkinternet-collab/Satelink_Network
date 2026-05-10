@@ -75,3 +75,4 @@ satelink-env/
 *.pem
 forge-cache/
 .foundry/
+.satelink-backups/

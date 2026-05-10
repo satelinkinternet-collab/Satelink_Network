@@ -110,6 +110,60 @@ export function createApp(pool, redis) {
     }
   });
 
+  // GET /provider.json — Machine-readable provider metadata (Chainlist, DeFi bots, AI agents)
+  app.get("/provider.json", (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.json({
+      name: "Satelink Network",
+      description: "Decentralized Physical Infrastructure RPC Gateway",
+      version: "1.0.0",
+      website: "https://satelink.network",
+      contact: "satelinknetwork@gmail.com",
+      tracking: "none",
+      trackingDetails: "Satelink does not log wallet addresses or IP addresses",
+      chains: [
+        {
+          name: "Polygon Mainnet",
+          chainId: 137,
+          endpoint: "https://rpc.satelink.network/rpc/polygon",
+          wss: "wss://rpc.satelink.network/rpc/ws/polygon"
+        },
+        {
+          name: "Polygon Amoy Testnet",
+          chainId: 80002,
+          endpoint: "https://rpc.satelink.network/rpc/amoy"
+        },
+        {
+          name: "Ethereum Mainnet",
+          chainId: 1,
+          endpoint: "https://rpc.satelink.network/rpc/ethereum"
+        },
+        {
+          name: "Arbitrum One",
+          chainId: 42161,
+          endpoint: "https://rpc.satelink.network/rpc/arbitrum"
+        },
+        {
+          name: "Base",
+          chainId: 8453,
+          endpoint: "https://rpc.satelink.network/rpc/base"
+        }
+      ],
+      settlement: {
+        token: "USDT",
+        chain: "Polygon",
+        contract: "0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+      },
+      freeTier: {
+        requestsPerDay: 1000,
+        apiKeyRequired: false
+      },
+      status: "https://rpc.satelink.network/api/status",
+      pricing: "https://rpc.satelink.network/api/pricing"
+    });
+  });
+
   // RPC Gateway with latency-based routing
   app.use("/rpc", createRpcGateway(pool));
 

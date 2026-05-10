@@ -5,27 +5,41 @@
 
 ---
 
-## 🟢 CURRENT STATUS (May 7, 2026)
+## 🟢 CURRENT STATUS (May 10, 2026)
 
 ### Overall Status
 - **Backend:** LIVE on Railway · develop branch · auto-deploy enabled
+- **Frontend:** LIVE on Vercel · https://satelink.network
 - **Settlement flow:** 75% complete (claim route wired, expiry job running)
 - **Revenue integrity:** is_test_data filter active
 - **Chain:** Polygon PoS (137) · MATIC needs top-up (0.06 balance)
+- **Chainlist Mainnet:** PR #2721 OPEN, awaiting reviews
 
 ### Progress Bars
-System Build     ████████░░ 85% (orphan files identified)
+System Build     █████████░ 90% (homepage rebuilt, accelerators added)
 Security         ████████░░ 80% (auth middleware applied)
 RPC Gateway      ██████████ 100% (live and billing)
 Settlement       ███████░░░ 75% (claim route wired, gas needed)
-Website          ██████████ 100% (all pages live)
+Website          ██████████ 100% (all pages live, 7-section homepage)
 Node Onboarding  ██████████ 100% (S2 complete)
-Demand/Traffic   ████████░░ 80% (Chainlist MERGED)
+Demand/Traffic   █████████░ 90% (Chainlist Amoy MERGED, Mainnet OPEN)
 Revenue          ████████░░ 80% (recording + validation active)
 
 ---
 
 ## 🎉 MILESTONES
+
+### Homepage Rebuild (May 10, 2026)
+- 7 semantic sections per master guide
+- Live metrics wired to /api/status
+- CTAs to /dashboard, /node/setup, docs
+- 50/30/20 economics section with contract address
+
+### Autonomous Revenue Accelerators (May 10, 2026)
+- /provider.json for machine discovery
+- llms.txt for AI agent discovery
+- robots.txt updated for AI crawlers
+- EIP-1193 compliance verified
 
 ### Backend Live (May 7, 2026)
 - Railway deployment stable
@@ -36,12 +50,6 @@ Revenue          ████████░░ 80% (recording + validation acti
   - Health monitor (2min)
   - Offline detector (2min)
   - Sentinel (30-60s intervals)
-
-### Billing Pipeline (April 27, 2026)
-- Revenue events recorded: 664+
-- USDT earned: $0.019920+
-- Every RPC call now records real revenue
-- Chainlist PR #2665 MERGED — external traffic incoming
 
 ### Mainnet Contracts (May 4, 2026)
 | Contract | Address |
@@ -60,58 +68,34 @@ Revenue          ████████░░ 80% (recording + validation acti
 ## WHAT IS WORKING (VERIFIED LIVE)
 
 ### RPC Endpoints
-- https://rpc.satelink.network/health → ok
-- https://rpc.satelink.network/rpc/amoy → real Polygon blocks
-- https://rpc.satelink.network/rpc/ethereum → real ETH blocks
-- https://rpc.satelink.network/rpc/polygon → real Polygon mainnet
-- https://rpc.satelink.network/rpc/arbitrum → real Arbitrum blocks
+- https://rpc.satelink.network/health → ok ✅
+- https://rpc.satelink.network/api/status → operational ✅
+- https://rpc.satelink.network/rpc/polygon → real Polygon blocks ✅
+- https://rpc.satelink.network/rpc/ethereum → real ETH blocks ✅
+- https://rpc.satelink.network/rpc/arbitrum → real Arbitrum blocks ✅
 - https://rpc.satelink.network/rpc/metrics → revenue metrics
 - https://rpc.satelink.network/rpc/chains → 5 chains
+- https://rpc.satelink.network/provider.json → NEW machine metadata
+
+### Satelink OS (Mock Data)
+- /satelink/os/overview → overview dashboard
+- /satelink/os/nodes → node management
+- /satelink/os/deployments → deployment list
+- /satelink/os/deployments/[id] → deployment detail
+- NOTE: Uses mock websocket engine, live wiring TODO
 
 ### Node APIs
 - https://rpc.satelink.network/api/nodes → node list
-- https://rpc.satelink.network/api/nodes/register → registration
-- https://rpc.satelink.network/api/nodes/:nodeId/heartbeat → heartbeat
-- https://rpc.satelink.network/api/nodes/:nodeId/reputation → reputation
-- https://rpc.satelink.network/api/nodes/:nodeId/claim → claim signature (NEW)
-
-### Workloads
-- https://rpc.satelink.network/rpc/mev/status → MEV relay
-- https://rpc.satelink.network/v1/models → AI models
-- https://rpc.satelink.network/v1/ai/status → AI gateway
-
-### System Endpoints
-- https://rpc.satelink.network/system/epoch-scheduler → scheduler status
-- https://rpc.satelink.network/system/health-monitor → health stats
-- https://rpc.satelink.network/system/offline-detector → offline stats
+- https://rpc.satelink.network/api/nodes/:nodeId/claim → claim signature
 
 ---
 
 ## BLOCKERS
 
 1. **MATIC balance low (0.06)** — needs top-up for on-chain claims
-2. **No organic revenue yet** — need first real RPC customer
-
----
-
-## COMMITS THIS SESSION (May 7, 2026)
-
-- 9fcfabd: fix: wire settlement claim route, start claim expiry job, remove duplicate imports, add revenue source validation
-- 07336de: fix: add health endpoint, remove root railway.json conflict
-- 964488f: fix: add granular boot diagnostics to isolate 502 crash
-
----
-
-## STAGES COMPLETE
-
-| Stage | Status | Notes |
-|-------|--------|-------|
-| S0 | 90% | Security foundation, 2 items pending |
-| S1-RPC | 100% | Multi-provider gateway live |
-| S2 | 100% | Node onboarding complete |
-| S3 | 100% | MEV + AI workloads |
-| S4 | 100% | SDK + CLI |
-| S5 | 75% | Settlement (claim route wired) |
+2. **Chainlist Mainnet PR #2721 OPEN** — blocking machine discovery
+3. **/api/pricing returns error** — pool query failing, needs deploy fix
+4. **Satelink OS mock data** — RealtimeEventBroadcaster not wired to live events
 
 ---
 
@@ -125,4 +109,4 @@ Revenue          ████████░░ 80% (recording + validation acti
 ---
 
 ## LAST UPDATED
-2026-05-07T08:10:00+05:30
+2026-05-10T14:00:00+05:30
