@@ -19,8 +19,9 @@ export function Navigation() {
     { href: "/network", label: "Network" },
     { href: "/developers", label: "Developers" },
     { href: "/nodes", label: "Nodes" },
+    { href: "/economics", label: "Economics" },
     { href: "/pricing", label: "Pricing" },
-    { href: "/dashboard", label: "Dashboard" },
+    { href: "/satelink/os", label: "Dashboard" },
   ];
 
   return (

@@ -1,11 +1,39 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ExternalLink, Github, Radar, Satellite, Server, Twitter } from "lucide-react";
+import { ArrowRight, ExternalLink, Github, Radar, Satellite, Server, Twitter, Wallet, Activity, Clock, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NetworkGlobe } from "@/components/satelink/network-globe";
 import { InfrastructureEditor } from "@/components/satelink/infrastructure-editor";
 import { landingMetrics } from "@/lib/satelink-data";
 
+interface LiveStatus {
+  nodes_online: number;
+  current_epoch: number;
+  total_requests_24h: number;
+  status: string;
+}
+
 export default function SatelinkLandingPage() {
+  const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(null);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch("https://rpc.satelink.network/api/status");
+        if (res.ok) {
+          const data = await res.json();
+          setLiveStatus(data);
+        }
+      } catch {
+        // Use defaults
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <main className="min-h-screen bg-[#091413] text-[#B0E4CC]">
       <section className="mx-auto max-w-7xl px-6 pb-16 pt-12">
@@ -62,6 +90,44 @@ export default function SatelinkLandingPage() {
           </article>
         ))}
       </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-12">
+        <h2 className="mb-8 text-center text-2xl font-semibold text-white md:text-3xl">Core Capabilities</h2>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: Wallet, title: "Revenue Intelligence", desc: "Real-time USDT earnings per epoch with transparent settlement" },
+            { icon: Activity, title: "Node Operations", desc: "Health monitoring, reputation scoring, and workload routing" },
+            { icon: Clock, title: "Settlement Protocol", desc: "On-chain USDT claims via ClaimsContract on Polygon" },
+            { icon: Cpu, title: "Autonomous Ops", desc: "Epoch scheduler, health monitor, and revenue sentinel" },
+          ].map((cap) => (
+            <article key={cap.title} className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <cap.icon className="h-6 w-6 text-[#00D1FF]" />
+              <h3 className="mt-3 font-medium text-white">{cap.title}</h3>
+              <p className="mt-1 text-sm text-[#B0E4CC]/70">{cap.desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {liveStatus && (
+        <section className="border-y border-white/10 bg-black/30 py-4">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-6 px-6 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="text-[#B0E4CC]/70">{liveStatus.nodes_online} nodes online</span>
+            </div>
+            <div className="text-[#B0E4CC]/50">·</div>
+            <div className="text-[#B0E4CC]/70">Epoch #{liveStatus.current_epoch}</div>
+            <div className="text-[#B0E4CC]/50">·</div>
+            <div className="text-[#B0E4CC]/70">{liveStatus.total_requests_24h.toLocaleString()} req/24h</div>
+            <div className="text-[#B0E4CC]/50">·</div>
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              {liveStatus.status === "operational" ? "Operational" : liveStatus.status}
+            </div>
+          </div>
+        </section>
+      )}
 
       <footer className="border-t border-white/10 bg-[#070e0d]">
         <div className="mx-auto max-w-7xl px-6 py-12">

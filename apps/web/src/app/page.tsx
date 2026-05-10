@@ -50,8 +50,37 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [fetchMetrics]);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Satelink Network",
+    "description": "Decentralized Physical Infrastructure Network for RPC, AI inference, and machine APIs. Revenue settles as USDT on Polygon automatically.",
+    "url": "https://satelink.network",
+    "applicationCategory": "Infrastructure",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "Free tier: 1000 RPC requests/day"
+    },
+    "provider": {
+      "@type": "Organization",
+      "name": "Satelink Network",
+      "url": "https://satelink.network",
+      "sameAs": [
+        "https://github.com/Satelink-Protocol/Satelink_Network",
+        "https://twitter.com/satelinknetwork"
+      ]
+    }
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navigation />
       <main>
         <HeroSection />
