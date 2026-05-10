@@ -1,11 +1,24 @@
 import { EventEmitter } from "node:events";
-import { DeploymentLifecycleEvent, NodeTelemetryEvent, QueueTelemetryEvent, TopologyUpdateEvent } from "./contracts";
+import {
+  DeploymentLifecycleEvent,
+  NodeTelemetryEvent,
+  QueueTelemetryEvent,
+  TopologyUpdateEvent,
+  RevenueEvent,
+  EpochClosedEvent,
+  NodeHeartbeatEvent,
+  ClaimGeneratedEvent,
+} from "./contracts";
 
 export type RealtimeEventMap = {
   "deployment.lifecycle": DeploymentLifecycleEvent;
   "queue.telemetry": QueueTelemetryEvent;
   "node.telemetry": NodeTelemetryEvent;
   "topology.updated": TopologyUpdateEvent;
+  "revenue:event": RevenueEvent;
+  "epoch:closed": EpochClosedEvent;
+  "node:heartbeat": NodeHeartbeatEvent;
+  "claim:generated": ClaimGeneratedEvent;
 };
 
 export class RealtimeEventBroadcaster {

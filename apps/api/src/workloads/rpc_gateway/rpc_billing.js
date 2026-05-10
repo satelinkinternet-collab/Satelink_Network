@@ -8,6 +8,7 @@
  */
 
 import Redis from 'ioredis';
+import { broadcaster } from '../../realtime/broadcaster-instance.js';
 
 const CHAIN_PRICING_USDT = {
   'ethereum': 0.00005,
@@ -93,6 +94,15 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
       ['rpc_call', apiKey || 'public', costUsdt, 'completed', requestId || String(Date.now()), Math.floor(Date.now() / 1000)]
     );
     console.log(`[Billing] ✓ $${costUsdt}`);
+
+    broadcaster.publish('revenue:event', {
+      amount_usdt: costUsdt,
+      method: method || 'rpc_call',
+      chain: chain || 'unknown',
+      epoch_id: null,
+      client_id: clientId,
+      timestamp: new Date().toISOString()
+    });
   } catch (err) {
     console.error('[Billing] INSERT failed:', err.message);
   }

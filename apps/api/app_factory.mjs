@@ -13,6 +13,7 @@ import { createSettlementAuditRouter } from "./src/services/settlement/audit.js"
 import { createWebhookRouter, ensureWebhookTable } from "./src/workloads/webhooks/index.js";
 import { createOracleRouter } from "./src/workloads/oracle/index.js";
 import { createClaimsRouter } from "./src/routes/claims_route.mjs";
+import { createOsEventsRouter } from "./src/realtime/os-events-route.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -204,6 +205,9 @@ export function createApp(pool, redis) {
 
   // Oracle Price Feed (S8-004)
   app.use("/api/oracle", createOracleRouter(pool, redis));
+
+  // Satelink OS Real-time Events (SSE)
+  app.use("/os", createOsEventsRouter());
 
   return app;
 }

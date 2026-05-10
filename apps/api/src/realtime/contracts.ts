@@ -43,3 +43,38 @@ export interface TopologyUpdateEvent {
   queuePressure: number;
   timestamp: string;
 }
+
+export interface RevenueEvent {
+  amount_usdt: number;
+  method: string;
+  chain: string;
+  epoch_id: number | null;
+  client_id: string;
+  timestamp: string;
+}
+
+export interface EpochClosedEvent {
+  epoch_id: number;
+  total_revenue: number;
+  node_pool: number;
+  platform_fee: number;
+  distribution_pool: number;
+  event_count: number;
+  timestamp: string;
+}
+
+export interface NodeHeartbeatEvent {
+  node_id: string;
+  status: "ACTIVE" | "INACTIVE" | "DEGRADED";
+  region: string;
+  uptime_pct: number;
+  latency_ms: number;
+  timestamp: string;
+}
+
+export interface ClaimGeneratedEvent {
+  node_id: string;
+  amount_usdt: number;
+  wallet: string;
+  timestamp: string;
+}

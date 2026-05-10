@@ -1,4 +1,5 @@
 import { finalizeClosedEpochEarningsInTransaction } from './epoch_finalizer.js';
+import { broadcaster } from '../realtime/broadcaster-instance.js';
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const EPOCH_LOCK_ID = 738_291;
@@ -146,6 +147,16 @@ export async function runEpochCycle(dbOrPool) {
         console.log(
             `[EpochScheduler] Closed epoch ${closedEpoch.id}: ${eventCount} events, ${totalRevenue} USDT; opened epoch ${openEpoch.id}`
         );
+
+        broadcaster.publish('epoch:closed', {
+            epoch_id: closedEpoch.id,
+            total_revenue: Number(closedEpoch.total_revenue_usdt),
+            node_pool: Number(closedEpoch.node_pool_usdt),
+            platform_fee: Number(closedEpoch.platform_share_usdt),
+            distribution_pool: Number(closedEpoch.distributor_share_usdt),
+            event_count: eventCount,
+            timestamp: new Date().toISOString()
+        });
 
         return {
             ok: true,

@@ -1,13 +1,14 @@
 "use client";
 
 import { ReactNode, useEffect, useRef } from "react";
-import { createMockRealtimeChannel } from "@/lib/realtime/socket";
+import { createHybridRealtimeChannel, createMockRealtimeChannel } from "@/lib/realtime/socket";
 import { startInfrastructureMockEngine } from "@/lib/mock-engine/infrastructure-engine";
 import { InfrastructureEvent } from "@/lib/events/infrastructure-events";
 import { getRuntimeCondition } from "@/lib/runtime/status-layer";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 
-const channel = createMockRealtimeChannel();
+const channel = createHybridRealtimeChannel();
+const mockChannel = createMockRealtimeChannel();
 
 function toClock(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", { hour12: false });
@@ -157,15 +158,71 @@ export function SatelinkRealtimeProvider({ children }: { children: ReactNode }) 
           deploymentThroughput: payload.throughput ?? 12,
           activeRegions: Math.min(12, Math.max(4, Math.floor((payload.throughput ?? 12) / 1.2))),
         });
+      } else if (event.type === "revenue:event") {
+        const payload = event.payload as { amount_usdt: number; method: string; chain: string; client_id: string };
+        store.appendActivity({
+          id: event.id,
+          type: "revenue.recorded",
+          severity: "success",
+          message: `Revenue: $${payload.amount_usdt.toFixed(6)} from ${payload.method} on ${payload.chain}`,
+          createdAt: event.timestamp,
+          projectId: "proj-core",
+          environment: "production",
+        });
+        store.appendMetric({
+          t: toClock(event.timestamp),
+          latency: 35,
+          throughput: 1,
+          queueDepth: 100,
+        });
+      } else if (event.type === "epoch:closed") {
+        const payload = event.payload as { epoch_id: number; total_revenue: number; node_pool: number; event_count: number };
+        store.appendNotification({
+          id: event.id,
+          title: `Epoch ${payload.epoch_id} Closed`,
+          description: `Revenue: $${payload.total_revenue.toFixed(4)} | Node Pool: $${payload.node_pool.toFixed(4)} | ${payload.event_count} events`,
+          level: "success",
+          createdAt: event.timestamp,
+        });
+        store.appendActivity({
+          id: event.id,
+          type: "epoch.closed",
+          severity: "success",
+          message: `Epoch ${payload.epoch_id} closed with $${payload.total_revenue.toFixed(4)} revenue`,
+          createdAt: event.timestamp,
+          projectId: "proj-core",
+          environment: "production",
+        });
+      } else if (event.type === "node:heartbeat") {
+        const payload = event.payload as { node_id: string; status: string; region: string; latency_ms: number };
+        store.patchNodeHealth(
+          payload.node_id,
+          payload.status === "ACTIVE" ? "healthy" : payload.status === "DEGRADED" ? "degraded" : "offline",
+          payload.latency_ms
+        );
+      } else if (event.type === "claim:generated") {
+        const payload = event.payload as { node_id: string; amount_usdt: number; wallet: string };
+        store.appendNotification({
+          id: event.id,
+          title: "Claim Generated",
+          description: `Node ${payload.node_id}: $${payload.amount_usdt?.toFixed(4) || "0"} USDT ready for ${payload.wallet.slice(0, 8)}...`,
+          level: "success",
+          createdAt: event.timestamp,
+        });
       }
     };
 
     const unsubscribe = channel.subscribe(onEvent);
-    const stop = startInfrastructureMockEngine(channel);
+    channel.connect();
+
+    const unsubscribeMock = mockChannel.subscribe(onEvent);
+    const stopMock = startInfrastructureMockEngine(mockChannel);
 
     return () => {
       unsubscribe();
-      stop();
+      unsubscribeMock();
+      stopMock();
+      channel.disconnect();
       startedRef.current = false;
     };
   }, []);
