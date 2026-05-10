@@ -1,7 +1,36 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 10, 2026 (AUTONOMOUS REVENUE ACCELERATORS)
+# Updated: May 10, 2026 (REAL BACKEND WIRING + SATELINK OS)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 10, 2026 (REAL BACKEND WIRING + SATELINK OS DASHBOARDS)
+- DONE: Created RealtimeEventBroadcaster singleton for live events
+- DONE: Wired broadcaster into rpc_billing, epoch_scheduler, node_heartbeat, claims_route
+- DONE: Added /os/events SSE endpoint for real-time streaming
+- DONE: Added new event types: revenue:event, epoch:closed, node:heartbeat, claim:generated
+- DONE: Created hybrid SSE/mock realtime channel with auto-fallback
+- DONE: Rebuilt /satelink/os/overview as Command Center with live API data
+- DONE: Wired /satelink/os/nodes to fetch from /api/nodes
+- DONE: Wired /satelink/os/analytics with chain metrics and cache charts
+- DONE: Wired /satelink/os/billing with epoch earnings history
+- DONE: Added /satelink/os/docs redirect
+- DONE: Expanded docs app with Quick Start, Chains, Auth, Settlement, Contracts
+- DONE: Merged homepage-rebuild into develop
+- DONE: Fixed Railway Dockerfile (already correct)
+- Commits: 55822dc (merge), 34bfaf8 (real backend wiring)
+
+### AEP Layer Status Update
+| Layer | Status | Notes |
+|-------|--------|-------|
+| L1 Discovery | 80% | Chainlist Amoy MERGED, Mainnet #2721 OPEN, provider.json added |
+| L2 Ingestion | 100% | RPC gateway live, EIP-1193 compliant |
+| L3 Billing | 95% | Production billing active |
+| L4 Settlement | 75% | Claim route wired, MATIC needed |
+| L5 Node Supply | PARTIAL | 5 nodes registered |
+| L6 Protocol Registry | 75% | Chainlist done, ethereum-lists TODO |
+| L7 Autonomous Ops | 95% | Websocket wiring DONE, SSE endpoint deployed |
+| L8 DeFi/DApp | NOT STARTED | Revenue ceiling |
+| L9 AI Agent | NOT STARTED | Revenue ceiling |
 
 ## SESSION UPDATE — May 10, 2026 (AUTONOMOUS REVENUE + HOMEPAGE REBUILD)
 - DONE: Full homepage rebuild per master guide (7 semantic sections)
@@ -14,7 +43,7 @@
 - DONE: Fixed global-error.tsx for Next.js 16 + React 19 compatibility
 - DONE: Verified EIP-1193 compliance (net_version, eth_chainId, eth_gasPrice all valid)
 - NOTE: Chainlist Mainnet PR #2721 still OPEN — awaiting 2 reviews
-- NOTE: RealtimeEventBroadcaster still uses mock engine — wiring to live events is next priority
+- DONE: RealtimeEventBroadcaster wired to live events (revenue, epoch, node, claim)
 - NOTE: /api/pricing returns internal_error — needs Railway redeploy with pool fix
 - Commits this session: 5dc4795 (homepage rebuild)
 
