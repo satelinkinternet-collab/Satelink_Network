@@ -1,4 +1,3 @@
-import { SelfTestRunner } from '../../monitoring/self_test_runner.js';
 import { getValidatedDB } from '../../core/db/index.js';
 
 async function run() {

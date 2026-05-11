@@ -1,196 +1,222 @@
-import { JobQueue } from '../queue/job_queue.js';
-import { JobProducer } from '../queue/job_producer.js';
+import { finalizeClosedEpochEarningsInTransaction } from './epoch_finalizer.js';
+import { broadcaster } from '../realtime/broadcaster-instance.js';
 
-const INTERVAL_MS = parseInt(process.env.EPOCH_INTERVAL_MS || '60000', 10);
-const LOCK_ID = 738291; // Arbitrary unique lock ID for epoch aggregation
-
-let running = false;
-
-// Exported status tracker — read by /system/status
-export const schedulerStatus = {
-    last_run_time: null,
-    last_status: null,
-    last_error: null
-};
-
-/**
- * Attempt to acquire a distributed lock via PostgreSQL advisory locks.
- */
-async function tryAcquireLock(db) {
-    // Access the pool directly from PgDatabase to run raw SQL
-    const pool = db.pool;
-    if (!pool) return true; // SQLite fallback
-    try {
-        const result = await pool.query(`SELECT pg_try_advisory_lock(${LOCK_ID}) as locked`);
-        return result.rows?.[0]?.locked || false;
-    } catch (e) {
-        // Pool might not support advisory locks (e.g. if it's not actually a PG pool in some test envs)
-        return true;
-    }
-}
-
-/**
- * Release the distributed lock.
- */
-async function releaseLock(db) {
-    const pool = db.pool;
-    if (!pool) return;
-    try {
-        await pool.query(`SELECT pg_advisory_unlock(${LOCK_ID})`);
-    } catch (e) {}
-}
-
-async function runEpochCycle(db) {
-    try {
-        console.log("[AUTO-EPOCH] Processing epoch cycle...");
-        
-        // Phase 3: Real Execution Check (Synthetic Disabled for Phase 9)
-        const queueLength = await JobQueue.getLength();
-        console.log(`[AUTO-EPOCH] Queue length: ${queueLength}`);
-
-        console.log("[AUTO-EPOCH] Checking epoch");
-        const now = Math.floor(Date.now() / 1000);
-
-        // 1. Find oldest OPEN epoch with revenue first; fall back to any OPEN epoch
-        let epoch = await db.prepare(`
-            SELECT e.id, COUNT(r.id) as rev_count, COALESCE(SUM(r.amount_usdt), 0) as rev_total
-            FROM epochs e
-            LEFT JOIN revenue_events_v2 r ON r.epoch_id = e.id
-            WHERE e.status = 'OPEN'
-            GROUP BY e.id
-            ORDER BY COUNT(r.id) DESC, e.id ASC
-            LIMIT 1
-        `).get([]);
-        if (!epoch) {
-            const r = await db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-            epoch = { id: r.lastInsertRowid, rev_count: 0, rev_total: 0 };
-        }
-        const epochId = epoch.id;
-
-        // 2. Check revenue (use pre-fetched counts if available, otherwise query)
-        const revCount = Number(epoch.rev_count || 0);
-        const revTotal = Number(epoch.rev_total || 0);
-        const rev = { count: revCount, total: revTotal };
-
-        if (revCount === 0) {
-            console.log("[AUTO-EPOCH] No revenue, skipping aggregation");
-            schedulerStatus.last_run_time = Date.now();
-            schedulerStatus.last_status = "skipped";
-            schedulerStatus.last_error = null;
-            return;
-        }
-
-        // 3. Idempotency: skip if already has earnings
-        const existing = await db.prepare("SELECT COUNT(*) as count FROM epoch_earnings WHERE epoch_id = ?").get([epochId]);
-        if (Number(existing.count) > 0) {
-            console.log("[AUTO-EPOCH] Epoch", epochId, "already finalized, skipping");
-            schedulerStatus.last_run_time = Date.now();
-            schedulerStatus.last_status = "skipped";
-            schedulerStatus.last_error = null;
-            return;
-        }
-
-        console.log("[AUTO-EPOCH] Closing epoch", epochId, "| revenue:", rev.count, "events,", rev.total, "USDT");
-
-        // 4. 50/30/20 split
-        const totalRevenue = Number(rev.total);
-        const nodePool = totalRevenue * 0.50;
-        const platformFee = totalRevenue * 0.30;
-        const distroPool = totalRevenue * 0.20;
-
-        // 5. Node contributions
-        const nodeContributions = await db.prepare(`
-            SELECT node_id, COUNT(*) as ops, COALESCE(SUM(amount_usdt), 0) as revenue
-            FROM revenue_events_v2
-            WHERE epoch_id = ? AND node_id IS NOT NULL
-            GROUP BY node_id
-        `).all([epochId]);
-
-        const totalNodeRevenue = nodeContributions.reduce((s, n) => s + Number(n.revenue), 0);
-
-        // 6. Atomic aggregation — C-01 fix: invoke returned function with ()
-        const txFn = db.transaction(async () => {
-            await db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'platform', 'PLATFORM_TREASURY', ?, 'UNPAID', ?)").run([epochId, platformFee, now]);
-            await db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'distribution_pool', 'DIST_POOL', ?, 'UNPAID', ?)").run([epochId, distroPool, now]);
-
-            for (const node of nodeContributions) {
-                const share = totalNodeRevenue > 0
-                    ? (Number(node.revenue) / totalNodeRevenue) * nodePool
-                    : 0;
-                if (share > 0) {
-                    await db.prepare("INSERT OR IGNORE INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at) VALUES (?, 'node_operator', ?, ?, 'UNPAID', ?)").run([epochId, node.node_id, share, now]);
-                }
-            }
-
-            // C-02 fix: use 'CLOSED' (matches economics_stats.js queries)
-            await db.prepare("UPDATE epochs SET status = 'CLOSED', ends_at = ?, total_revenue_usdt = ?, node_pool_usdt = ?, platform_share_usdt = ?, distributor_share_usdt = ? WHERE id = ?").run([now, totalRevenue, nodePool, platformFee, distroPool, epochId]);
-        });
-        await txFn();
-        
-        console.log('[REVENUE_TRACE] revenue_recorded');
-
-        // 7. Update balances
-        const earningsRows = await db.prepare("SELECT wallet_or_node_id, SUM(amount_usdt) as total FROM epoch_earnings WHERE epoch_id = ? AND role = 'node_operator' GROUP BY wallet_or_node_id").all([epochId]);
-        for (const row of earningsRows) {
-            const exists = await db.prepare("SELECT 1 FROM balances WHERE wallet = ?").get([row.wallet_or_node_id]);
-            if (exists) {
-                await db.prepare("UPDATE balances SET amount_usdt = amount_usdt + ?, updated_at = ? WHERE wallet = ?").run([row.total, now, row.wallet_or_node_id]);
-            } else {
-                await db.prepare("INSERT INTO balances (wallet, amount_usdt, updated_at) VALUES (?, ?, ?)").run([row.wallet_or_node_id, row.total, now]);
-            }
-        }
-
-        // 8. Open new epoch
-        await db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN')").run([now]);
-
-        console.log('[REVENUE_TRACE] epoch_updated');
-        console.log("[AUTO-EPOCH] SUCCESS | Epoch", epochId, "closed | earnings:", earningsRows.length, "nodes | revenue:", totalRevenue, "USDT");
-        
-        schedulerStatus.last_run_time = Date.now();
-        schedulerStatus.last_status = "success";
-        schedulerStatus.last_error = null;
-
-    } catch (e) {
-        console.error("[AUTO-EPOCH] ERROR:", e.message);
-        schedulerStatus.last_run_time = Date.now();
-        schedulerStatus.last_status = "error";
-        schedulerStatus.last_error = e.message;
-    }
-}
+const DEFAULT_INTERVAL_MS = 60_000;
+const EPOCH_LOCK_ID = 738_291;
 
 let isRunning = false;
+let schedulerHandle = null;
 
-export function startEpochScheduler(db) {
-    if (global.__EPOCH_SCHEDULER_STARTED__) return;
-    global.__EPOCH_SCHEDULER_STARTED__ = true;
+export const schedulerStatus = {
+    running: false,
+    interval_ms: DEFAULT_INTERVAL_MS,
+    last_run_time: null,
+    last_status: null,
+    last_error: null,
+    last_closed_epoch_id: null,
+    last_open_epoch_id: null,
+    last_total_revenue_usdt: null,
+    last_event_count: null
+};
 
-    console.log(`[AUTO-EPOCH] Scheduler started (interval: 60000ms)`);
+function getPool(dbOrPool) {
+    if (dbOrPool?.connect && dbOrPool?.query) return dbOrPool;
+    if (dbOrPool?.pool?.connect && dbOrPool?.pool?.query) return dbOrPool.pool;
+    throw new Error('[EpochScheduler] A PostgreSQL pool or PgDatabase instance is required');
+}
 
-    const handle = setInterval(async () => {
+async function ensureOpenEpoch(client, nowSeconds) {
+    const result = await client.query(`
+        INSERT INTO epochs (starts_at, status, total_revenue_usdt, node_pool_usdt, platform_share_usdt, distributor_share_usdt)
+        SELECT $1, 'OPEN', 0, 0, 0, 0
+        WHERE NOT EXISTS (SELECT 1 FROM epochs WHERE status = 'OPEN')
+        RETURNING id
+    `, [nowSeconds]);
+
+    return result.rows[0] || null;
+}
+
+export async function runEpochCycle(dbOrPool) {
+    const pool = getPool(dbOrPool);
+    const client = await pool.connect();
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    try {
+        await client.query('BEGIN');
+
+        const lock = await client.query(
+            'SELECT pg_try_advisory_xact_lock($1) AS locked',
+            [EPOCH_LOCK_ID]
+        );
+
+        if (!lock.rows[0]?.locked) {
+            await client.query('ROLLBACK');
+            schedulerStatus.last_run_time = Date.now();
+            schedulerStatus.last_status = 'skipped_lock_held';
+            schedulerStatus.last_error = null;
+            return { ok: true, status: 'skipped_lock_held' };
+        }
+
+        const epochResult = await client.query(`
+            SELECT id
+            FROM epochs
+            WHERE status = 'OPEN'
+            ORDER BY id ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        `);
+
+        let epoch = epochResult.rows[0];
+        if (!epoch) {
+            epoch = await ensureOpenEpoch(client, nowSeconds);
+            await client.query('COMMIT');
+
+            schedulerStatus.last_run_time = Date.now();
+            schedulerStatus.last_status = 'created_open_epoch';
+            schedulerStatus.last_error = null;
+            schedulerStatus.last_open_epoch_id = epoch?.id || null;
+            return { ok: true, status: 'created_open_epoch', open_epoch_id: epoch?.id || null };
+        }
+
+        const aggregate = await client.query(`
+            SELECT
+                COUNT(*)::integer AS event_count,
+                COALESCE(SUM(amount_usdt), 0)::numeric AS total_revenue_usdt
+            FROM revenue_events_v2
+            WHERE epoch_id = $1
+              AND (is_test_data = FALSE OR is_test_data IS NULL)
+        `, [epoch.id]);
+
+        const eventCount = Number(aggregate.rows[0]?.event_count || 0);
+        const totalRevenue = aggregate.rows[0]?.total_revenue_usdt || '0';
+
+        const closed = await client.query(`
+            UPDATE epochs
+            SET
+                status = 'CLOSED',
+                ends_at = $2,
+                total_revenue_usdt = totals.total_revenue_usdt,
+                node_pool_usdt = totals.total_revenue_usdt * 0.50,
+                platform_share_usdt = totals.total_revenue_usdt * 0.30,
+                distributor_share_usdt = totals.total_revenue_usdt * 0.20
+            FROM (
+                SELECT COALESCE(SUM(amount_usdt), 0)::numeric AS total_revenue_usdt
+                FROM revenue_events_v2
+                WHERE epoch_id = $1
+                  AND (is_test_data = FALSE OR is_test_data IS NULL)
+            ) AS totals
+            WHERE epochs.id = $1
+              AND epochs.status = 'OPEN'
+            RETURNING
+                epochs.id,
+                epochs.total_revenue_usdt,
+                epochs.node_pool_usdt,
+                epochs.platform_share_usdt,
+                epochs.distributor_share_usdt
+        `, [epoch.id, nowSeconds]);
+
+        if (closed.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            schedulerStatus.last_run_time = Date.now();
+            schedulerStatus.last_status = 'skipped_already_closed';
+            schedulerStatus.last_error = null;
+            return { ok: true, status: 'skipped_already_closed', epoch_id: epoch.id };
+        }
+
+        const earnings = await finalizeClosedEpochEarningsInTransaction(client, Number(epoch.id), nowSeconds);
+
+        const nextOpen = await client.query(`
+            INSERT INTO epochs (starts_at, status, total_revenue_usdt, node_pool_usdt, platform_share_usdt, distributor_share_usdt)
+            VALUES ($1, 'OPEN', 0, 0, 0, 0)
+            RETURNING id
+        `, [nowSeconds]);
+
+        await client.query('COMMIT');
+
+        const closedEpoch = closed.rows[0];
+        const openEpoch = nextOpen.rows[0];
+
+        schedulerStatus.last_run_time = Date.now();
+        schedulerStatus.last_status = 'success';
+        schedulerStatus.last_error = null;
+        schedulerStatus.last_closed_epoch_id = closedEpoch.id;
+        schedulerStatus.last_open_epoch_id = openEpoch.id;
+        schedulerStatus.last_total_revenue_usdt = Number(totalRevenue);
+        schedulerStatus.last_event_count = eventCount;
+
+        console.log(
+            `[EpochScheduler] Closed epoch ${closedEpoch.id}: ${eventCount} events, ${totalRevenue} USDT; opened epoch ${openEpoch.id}`
+        );
+
+        broadcaster.publish('epoch:closed', {
+            epoch_id: closedEpoch.id,
+            total_revenue: Number(closedEpoch.total_revenue_usdt),
+            node_pool: Number(closedEpoch.node_pool_usdt),
+            platform_fee: Number(closedEpoch.platform_share_usdt),
+            distribution_pool: Number(closedEpoch.distributor_share_usdt),
+            event_count: eventCount,
+            timestamp: new Date().toISOString()
+        });
+
+        return {
+            ok: true,
+            status: 'success',
+            closed_epoch_id: closedEpoch.id,
+            open_epoch_id: openEpoch.id,
+            event_count: eventCount,
+            total_revenue_usdt: Number(closedEpoch.total_revenue_usdt),
+            node_pool_usdt: Number(closedEpoch.node_pool_usdt),
+            platform_share_usdt: Number(closedEpoch.platform_share_usdt),
+            distributor_share_usdt: Number(closedEpoch.distributor_share_usdt),
+            earnings
+        };
+    } catch (error) {
+        try {
+            await client.query('ROLLBACK');
+        } catch (_) {}
+
+        schedulerStatus.last_run_time = Date.now();
+        schedulerStatus.last_status = 'error';
+        schedulerStatus.last_error = error.message;
+        console.error('[EpochScheduler] ERROR:', error.message);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+export function startEpochScheduler(dbOrPool, options = {}) {
+    if (global.__SATELINK_EPOCH_SCHEDULER_STARTED__) return schedulerHandle;
+
+    const intervalMs = Number(options.intervalMs || process.env.EPOCH_INTERVAL_MS || DEFAULT_INTERVAL_MS);
+    schedulerStatus.interval_ms = intervalMs;
+    schedulerStatus.running = true;
+    global.__SATELINK_EPOCH_SCHEDULER_STARTED__ = true;
+
+    console.log(`[EpochScheduler] Started (interval: ${intervalMs}ms)`);
+
+    schedulerHandle = setInterval(async () => {
         if (isRunning) return;
         isRunning = true;
 
         try {
-            console.log('[AUTO-EPOCH] Tick');
-            
-            const lockAcquired = await tryAcquireLock(db);
-            if (!lockAcquired) {
-                isRunning = false;
-                return;
-            }
-
-            try {
-                await runEpochCycle(db);
-            } finally {
-                await releaseLock(db);
-            }
-        } catch (err) {
-            console.error('[AUTO-EPOCH ERROR]', err.message);
+            await runEpochCycle(dbOrPool);
+        } catch (error) {
+            console.error('[EpochScheduler] Tick failed:', error.message);
         } finally {
             isRunning = false;
         }
-    }, 60000);
+    }, intervalMs);
 
-    handle.unref();
-    return handle;
+    schedulerHandle.unref?.();
+    return schedulerHandle;
+}
+
+export function stopEpochScheduler() {
+    if (schedulerHandle) {
+        clearInterval(schedulerHandle);
+        schedulerHandle = null;
+    }
+    schedulerStatus.running = false;
+    global.__SATELINK_EPOCH_SCHEDULER_STARTED__ = false;
 }

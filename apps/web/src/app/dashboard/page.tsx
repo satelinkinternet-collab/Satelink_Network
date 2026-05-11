@@ -1,56 +1,108 @@
-'use client';
+"use client";
 
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { RefreshCw, AlertCircle } from 'lucide-react';
-import SystemOverview from '@/components/dashboard/SystemOverview';
-import EconomicEngine from '@/components/dashboard/EconomicEngine';
-import QueueExecution from '@/components/dashboard/QueueExecution';
-import NodeOperator from '@/components/dashboard/NodeOperator';
-import HealthPanel from '@/components/dashboard/HealthPanel';
+import Link from "next/link";
 
-export default function DashboardPage() {
-  const { systemStatus, economics, queueHealth, systemHealth, isLoading, error } = useDashboardData(3000);
-
-  if (isLoading && !systemStatus) {
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 gap-4">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
-        <p className="animate-pulse font-medium">Initializing Real-time Telemetry...</p>
-      </div>
-    );
-  }
-
+export default function DashboardLanding() {
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
-      {/* Header section with active status */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Control Panel</h1>
-          <p className="text-slate-400 text-sm">Real-time system monitoring and operations</p>
+    <div className="min-h-screen bg-[#2C3333] text-[#CBE4DE] p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold mb-4">Satelink Dashboard</h1>
+          <p className="text-[#8FB5B0]">Select a dashboard to continue</p>
         </div>
-        
-        {error && (
-          <div className="flex items-center gap-2 bg-red-950/50 text-red-400 px-4 py-2 rounded-lg border border-red-900/50">
-            <AlertCircle className="w-4 h-4" />
-            <span className="text-sm font-medium">Degraded connectivity</span>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <DashboardCard
+            href="/dashboard/operator"
+            title="Node Operator"
+            description="View earnings, claim USDT rewards, check reputation score"
+            icon="⚡"
+            color="#0E8388"
+          />
+          <DashboardCard
+            href="/dashboard/admin"
+            title="Admin"
+            description="Revenue overview, network health, settlement history"
+            icon="🔐"
+            color="#0E8388"
+            badge="Protected"
+          />
+          <DashboardCard
+            href="/dashboard/network"
+            title="Network Status"
+            description="Live provider status, chain health, uptime metrics"
+            icon="🌐"
+            color="#4ADE80"
+            badge="Public"
+          />
+        </div>
+
+        <div className="mt-12 text-center">
+          <p className="text-[#8FB5B0] text-sm">
+            Mainnet Contracts on Polygon
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 mt-3">
+            <ContractLink name="Registry" address="0x27D7320d5786D5B4B4dE8aAAC6cf62338ADeC037" />
+            <ContractLink name="Distributor" address="0x8a9CefBD801574806a634aF179f538ABB5926F5a" />
+            <ContractLink name="Claims" address="0xE475c53B88190FD2130dB1E37504991EFe283fb0" />
           </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column (Wider for main charts/overview) */}
-        <div className="xl:col-span-2 space-y-6">
-          <SystemOverview data={systemStatus} isLoading={isLoading} />
-          <EconomicEngine data={economics} isLoading={isLoading} />
-          <QueueExecution data={queueHealth} isLoading={isLoading} />
-        </div>
-
-        {/* Right Column (Control logic & health) */}
-        <div className="space-y-6">
-          <NodeOperator isLoading={isLoading} />
-          <HealthPanel data={systemHealth} isLoading={isLoading} />
         </div>
       </div>
     </div>
+  );
+}
+
+function DashboardCard({
+  href,
+  title,
+  description,
+  icon,
+  color,
+  badge,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  badge?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block bg-[#1A3C3C] border border-[#0E838840] rounded-xl p-6 hover:border-[#0E8388] transition-all group"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <span className="text-3xl">{icon}</span>
+        {badge && (
+          <span
+            className="text-xs px-2 py-1 rounded"
+            style={{ background: `${color}20`, color }}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
+      <h2 className="text-xl font-semibold mb-2 group-hover:text-[#0E8388] transition-colors">
+        {title}
+      </h2>
+      <p className="text-[#8FB5B0] text-sm">{description}</p>
+      <div className="mt-4 text-sm" style={{ color }}>
+        Open dashboard →
+      </div>
+    </Link>
+  );
+}
+
+function ContractLink({ name, address }: { name: string; address: string }) {
+  return (
+    <a
+      href={`https://polygonscan.com/address/${address}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs font-mono text-[#8FB5B0] hover:text-[#0E8388] transition-colors"
+    >
+      {name}: {address.slice(0, 6)}...{address.slice(-4)}
+    </a>
   );
 }

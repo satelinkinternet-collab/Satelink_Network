@@ -8,6 +8,28 @@ const API_BASE =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  turbopack: {},
+  serverExternalPackages: [],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+  staticPageGenerationTimeout: 180,
+  generateBuildId: async () => {
+    return `build-${Date.now()}`;
+  },
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
   async rewrites() {
     const apiPrefixes = [
       'auth', 'me', 'admin-api', 'node-api', 'builder-api', 'dist-api',

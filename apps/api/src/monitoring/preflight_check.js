@@ -25,7 +25,6 @@ export class PreflightCheckService {
 
         // 2. Economic Integrity (Last Self Test)
         const lastEcoTest = await this.db.prepare(`
-            SELECT * FROM self_test_runs 
             WHERE kind = 'economic_integrity' 
             ORDER BY created_at DESC LIMIT 1
         `).get();
@@ -46,7 +45,6 @@ export class PreflightCheckService {
         // 5. Safe Mode Drill (Last 7 days)
         const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
         const safeModeDrill = await this.db.prepare(`
-            SELECT * FROM self_test_runs 
             WHERE kind = 'safe_mode_toggle' AND created_at > ? 
             ORDER BY created_at DESC LIMIT 1
         `).get([sevenDaysAgo]);
@@ -56,7 +54,6 @@ export class PreflightCheckService {
 
         // 6. Full Restore Drill (Last 7 days)
         const restoreDrill = await this.db.prepare(`
-            SELECT * FROM self_test_runs 
             WHERE kind = 'full_restore_drill' AND created_at > ?
             ORDER BY created_at DESC LIMIT 1
         `).get([sevenDaysAgo]);
@@ -88,7 +85,7 @@ export class PreflightCheckService {
         const recentShadowFailures = await this.db.prepare(`
             SELECT COUNT(*) as c FROM settlement_shadow_log 
             WHERE created_at > ?
-        `).get([Date.now() - 86400000]);
+        `).get([Math.floor(Date.now() / 1000) - 86400]);
         const shadowOk = recentShadowFailures.c === 0;
         checks.push({ name: 'Shadow Settlement (24h)', status: shadowOk ? 'PASS' : 'WARN', details: `${recentShadowFailures.c} mismatches` });
         if (!shadowOk) warnings.push("Settlement Shadow Mode detected mismatches in last 24h.");

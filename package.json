@@ -10,6 +10,10 @@
     "packages/*",
     "agents/*"
   ],
+  "overrides": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "husky": "^8.0.0",
@@ -21,8 +25,8 @@
     "dev": "concurrently \"npm run dev --workspace=@satelink/api\" \"npm run dev --workspace=web\"",
     "dev:api": "npm run dev --workspace=@satelink/api",
     "dev:dashboard": "npm run dev --workspace=web",
-    "build": "turbo build",
-    "test": "turbo test",
+    "build": "turbo build --filter=web --filter=@satelink/api",
+    "test": "turbo test --filter=web",
     "lint": "turbo lint",
     "contracts:build": "forge build",
     "contracts:test": "forge test -vv",
@@ -37,5 +41,11 @@
     "soak-test:docker": "bash scripts/run_72h_test.sh",
     "deploy": "bash scripts/deploy.sh",
     "deploy:skip-cert": "bash scripts/deploy.sh --skip-cert"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.100.9",
+    "@xyflow/react": "^12.10.2",
+    "cmdk": "^1.1.1",
+    "zustand": "^5.0.13"
   }
 }

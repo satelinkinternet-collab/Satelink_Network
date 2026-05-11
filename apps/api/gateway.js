@@ -69,7 +69,24 @@ const DATABASE_URL = process.env.DATABASE_URL;
         logger.info("[BOOT] App initialized");
     const PORT = process.env.PORT || 8081;
 
-    app.listen(PORT, () => {
+    
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "satelink-api"
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "satelink-api"
+  });
+});
+
+
+app.listen(PORT, () => {
         logger.info(`Satelink Gateway Running`, { port: PORT, mode: process.env.NODE_ENV, db: "postgres" });
     });
 } catch (e) {

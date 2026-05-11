@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ethers } from 'ethers';
 import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+import { generateClaimSignature, getPendingClaims } from '../../services/claims/claim_processor.js';
 
 export function createNodeApiRouter(opsEngine) {
     const router = Router();
@@ -198,18 +199,60 @@ export function createNodeApiRouter(opsEngine) {
         }
     });
 
-    // POST /node/claim
+    // POST /node/claim - Pull Model: Generate EIP-712 signature for node operator
     router.post('/claim', async (req, res) => {
         try {
             const wallet = req.user.wallet;
-            const { signature } = req.body;
+            const { wallet_address } = req.body;
 
-            if (!signature) {
-                return res.status(400).json({ ok: false, error: "Signature required for claiming" });
+            // Use provided wallet or authenticated user's wallet
+            const targetWallet = wallet_address || wallet;
+
+            if (!targetWallet || !ethers.isAddress(targetWallet)) {
+                return res.status(400).json({
+                    ok: false,
+                    error: 'Valid wallet address required'
+                });
             }
 
-            const result = await opsEngine.claim(wallet, signature);
-            res.json({ ok: true, ...result });
+            // Get node ID for this wallet
+            const node = await opsEngine.db.get(
+                "SELECT node_id FROM nodes WHERE wallet = ?",
+                [wallet]
+            );
+
+            if (!node?.node_id) {
+                return res.status(404).json({
+                    ok: false,
+                    error: 'No node found for this wallet'
+                });
+            }
+
+            // Generate EIP-712 signed claim (pull model)
+            const result = await generateClaimSignature(
+                node.node_id,
+                ethers.getAddress(targetWallet),
+                opsEngine.pool
+            );
+
+            res.json(result);
+        } catch (e) {
+            const statusCode = e.message.includes('Minimum') ? 400 : 500;
+            res.status(statusCode).json({ ok: false, error: e.message });
+        }
+    });
+
+    // GET /node/claims - Get pending claims for authenticated user
+    router.get('/claims', async (req, res) => {
+        try {
+            const wallet = req.user.wallet;
+            const claims = await getPendingClaims(wallet, opsEngine.pool);
+
+            res.json({
+                ok: true,
+                claims,
+                count: claims.length
+            });
         } catch (e) {
             res.status(500).json({ ok: false, error: e.message });
         }

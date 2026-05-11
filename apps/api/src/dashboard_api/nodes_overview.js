@@ -24,43 +24,47 @@ export async function getNodeSummary(db, wallet, cache) {
     }
 
     // ── Node registration status ──
-    const node = db.prepare?.(
+    const node = await db.prepare(
         "SELECT wallet, node_type, active, is_flagged, last_heartbeat, latency, bandwidth FROM registered_nodes WHERE wallet = ?"
-    )?.get(wallet) || null;
+    ).get(wallet) || null;
 
     if (!node) {
         return { found: false, wallet };
     }
 
     // ── Total earnings (aggregated) ──
-    const totalEarned = db.prepare?.(
+    const totalEarnedRow = await db.prepare(
         "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND role = 'node_operator'"
-    )?.get(wallet)?.total || 0;
+    ).get(wallet);
+    const totalEarned = totalEarnedRow?.total || 0;
 
     // ── Claimable earnings ──
-    const claimable = db.prepare?.(
+    const claimableRow = await db.prepare(
         "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND role = 'node_operator' AND status = 'UNPAID'"
-    )?.get(wallet)?.total || 0;
+    ).get(wallet);
+    const claimable = claimableRow?.total || 0;
 
     // ── Withdrawn earnings ──
-    const withdrawn = db.prepare?.(
+    const withdrawnRow = await db.prepare(
         "SELECT COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE wallet_or_node_id = ? AND role = 'node_operator' AND status = 'PAID'"
-    )?.get(wallet)?.total || 0;
+    ).get(wallet);
+    const withdrawn = withdrawnRow?.total || 0;
 
     // ── Recent uptime (last 10 epochs) ──
-    const uptime = db.prepare?.(
+    const uptime = await db.prepare(
         "SELECT epoch_id, uptime_seconds, score FROM node_uptime WHERE node_wallet = ? ORDER BY epoch_id DESC LIMIT 10"
-    )?.all(wallet) || [];
+    ).all(wallet) || [];
 
     // ── Recent earnings by epoch (last 10) ──
-    const earnings = db.prepare?.(
+    const earnings = await db.prepare(
         "SELECT epoch_id, amount_usdt, status FROM epoch_earnings WHERE wallet_or_node_id = ? AND role = 'node_operator' ORDER BY epoch_id DESC LIMIT 10"
-    )?.all(wallet) || [];
+    ).all(wallet) || [];
 
     // ── Ops count for this node ──
-    const opsCount = db.prepare?.(
+    const opsCountRow = await db.prepare(
         "SELECT COUNT(*) as count FROM revenue_events_v2 WHERE node_id = ?"
-    )?.get(wallet)?.count || 0;
+    ).get(wallet);
+    const opsCount = opsCountRow?.count || 0;
 
     const result = {
         found: true,

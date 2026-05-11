@@ -1,8 +1,6 @@
 #!/bin/bash
 echo ""
-echo "=============================="
 echo "  Satelink Dev Launcher"
-echo "=============================="
 echo ""
 
 # Kill existing processes on our ports
@@ -87,15 +85,12 @@ cd ..
 
 sleep 3
 echo ""
-echo "=============================="
 echo "  ✅ Satelink Running!"
-echo "=============================="
 echo "  Frontend: http://localhost:3000"
 echo "  Backend:  http://localhost:8080"
 echo "  Login:    http://localhost:3000/login"
 echo "  Admin:    http://localhost:3000/admin"
 echo "  Swagger:  http://localhost:8080/api-docs"
-echo "=============================="
 echo ""
 echo "Press Ctrl+C to stop"
 echo ""

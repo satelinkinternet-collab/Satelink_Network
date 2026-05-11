@@ -1,161 +1,335 @@
-import "./src/core/config/dotenv_boot.js";
-import path from "path";
-import { fileURLToPath } from "url";
-import { validateEnv } from "./src/utils/validateEnv.js";
-import { logger } from "./src/monitoring/logger.js";
+import express from "express";
+import { createPhase3Router } from "./src/gateway/routes/api_phase3.js";
+import { createServer } from 'http';
+import { pathToFileURL } from 'url';
+import { startSentinel } from "./src/autonomous/sentinel.js";
+import { getScalingStats } from "./src/autonomous/auto_scaler.js";
+import { getHealerStats } from "./src/autonomous/rpc_healer.js";
+import { getAnomalyStats } from "./src/autonomous/revenue_anomaly.js";
+import { checkTreasury, getTreasuryStatus } from "./src/autonomous/treasury_monitor.js";
+import { getCapacityStats } from "./src/autonomous/capacity_alerter.js";
 import { createApp } from "./app_factory.mjs";
-import { PgDatabase } from "./src/database/pg_adapter.js";
-import { DepositDetector } from "./src/settlement/deposit_detector.js";
-import { startEpochScheduler } from "./src/economics/epoch_scheduler.js";
-import { attachSchema } from "./src/core/schema.js";
-import { RevenueOracle } from "./src/economics/revenue_oracle.js";
-import { NodeLeaderboard } from "./src/monitoring/node_leaderboard.js";
-import { TreasuryMonitor } from "./src/monitoring/treasury_monitor.js";
-import { BackupService } from "./src/utils/backup_service.js";
-import { NodeopsWaterfallService } from "./src/ops-agent/nodeops_waterfall.js";
-import { WithdrawalProcessor } from "./src/settlement/withdrawal_processor.js";
-import { createWithdrawalRouter } from "./src/gateway/routes/withdrawal_api.js";
+import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
+import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
+import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
+import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
+import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
+import pkg from "pg";
+import Redis from "ioredis";
 
-import { runSatelinkSelfTest } from "./src/utils/self_test.js";
+const { Pool } = pkg;
 
-// Global error handlers
-process.on("unhandledRejection", (reason) => {
-    console.error("Unhandled Rejection:", reason?.stack || reason);
-    logger.error("Unhandled Rejection", { reason: reason?.stack || reason });
-});
-process.on("uncaughtException", (err) => {
-    console.error("Uncaught Exception:", err.stack);
-    logger.error("Uncaught Exception", { error: err.stack });
+function createRedisClient() {
+  const url = process.env.REDIS_URL;
+  if (!url || url === 'redis://') {
+    console.log('[Redis] No REDIS_URL configured, running without Redis');
+    return null;
+  }
+
+  try {
+    const redis = new Redis(url, {
+      maxRetriesPerRequest: 3,
+      tls: url.startsWith('rediss://') ? {} : undefined
+    });
+    redis.on('error', (err) => console.error('[Redis] Error:', err.message));
+    redis.on('connect', () => console.log('[Redis] Connected'));
+    return redis;
+  } catch (err) {
+    console.error('[Redis] Failed to create client:', err.message);
+    return null;
+  }
+}
+
+async function ensureBillingTables(pool) {
+  // CRITICAL: Drop NOT NULL on node_id FIRST (runs independently)
+  try {
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ALTER COLUMN node_id DROP NOT NULL
+    `);
+    console.log('[STARTUP] node_id constraint dropped');
+  } catch (e) {
+    // Ignore - constraint may not exist or table may not exist yet
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS epoch_ledger (
+        id SERIAL PRIMARY KEY,
+        epoch_id TEXT UNIQUE,
+        status TEXT NOT NULL DEFAULT 'OPEN',
+        started_at BIGINT NOT NULL,
+        closed_at BIGINT,
+        total_revenue NUMERIC(18,8) DEFAULT 0,
+        node_pool NUMERIC(18,8) DEFAULT 0,
+        platform_fee NUMERIC(18,8) DEFAULT 0,
+        distribution_pool NUMERIC(18,8) DEFAULT 0,
+        merkle_root TEXT,
+        tx_hash TEXT,
+        created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS revenue_events_v2 (
+        id SERIAL PRIMARY KEY,
+        op_type TEXT,
+        node_id TEXT,
+        client_id TEXT,
+        amount_usdt NUMERIC(18,8) NOT NULL DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        request_id TEXT UNIQUE,
+        created_at BIGINT,
+        chain TEXT,
+        method TEXT,
+        source TEXT,
+        epoch_id INTEGER
+      )
+    `);
+
+    // Add UNIQUE constraint if table already exists without it
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_revenue_events_v2_request_id
+      ON revenue_events_v2 (request_id)
+      WHERE request_id IS NOT NULL
+    `).catch(() => {});
+
+    // Add test/production segregation columns (034_revenue_source_validation)
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ADD COLUMN IF NOT EXISTS is_test_data BOOLEAN NOT NULL DEFAULT FALSE
+    `).catch(() => {});
+
+    await pool.query(`
+      ALTER TABLE revenue_events_v2
+      ADD COLUMN IF NOT EXISTS source_validated BOOLEAN NOT NULL DEFAULT FALSE
+    `).catch(() => {});
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_revenue_events_is_test
+      ON revenue_events_v2(is_test_data, epoch_id)
+    `).catch(() => {});
+
+    await pool.query(`
+      INSERT INTO epoch_ledger (epoch_id, status, started_at, total_revenue)
+      SELECT 'epoch-auto-1', 'OPEN', EXTRACT(EPOCH FROM NOW()) * 1000, 0
+      WHERE NOT EXISTS (SELECT 1 FROM epoch_ledger WHERE status = 'OPEN')
+    `).catch(() => {}); // Ignore if epoch_ledger schema differs
+
+    console.log('[STARTUP] Billing tables ensured');
+  } catch (err) {
+    console.error('[STARTUP] Billing migration failed:', err.message);
+  }
+}
+
+async function start() {
+  console.log("🚀 SERVER STARTED - BOOT SEQUENCE BEGINNING");
+
+  // Step 1: Create PostgreSQL pool
+  let pool;
+  try {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : false,
+    });
+    console.log('[BOOT] ✅ PostgreSQL pool created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at Pool creation:', err.message);
     process.exit(1);
-});
+  }
 
-// Graceful shutdown handler — drain in-flight work before exit
-let _shutdownInProgress = false;
-function gracefulShutdown(signal) {
-    if (_shutdownInProgress) return;
-    _shutdownInProgress = true;
-    logger.info(`[SHUTDOWN] Received ${signal}, starting graceful shutdown...`);
-    console.log(`[SHUTDOWN] Received ${signal}, draining connections...`);
+  // Step 2: Run billing table migrations
+  try {
+    await ensureBillingTables(pool);
+    console.log('[BOOT] ✅ Billing tables ensured');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
+    process.exit(1);
+  }
 
-    // Give in-flight requests 10 seconds to complete
-    setTimeout(() => {
-        logger.warn("[SHUTDOWN] Forced exit after timeout");
-        process.exit(1);
-    }, 10000).unref();
+  // Step 3: Create Redis client
+  let redis;
+  try {
+    redis = createRedisClient();
+    console.log('[BOOT] ✅ Redis client created (or skipped)');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createRedisClient:', err.message);
+    process.exit(1);
+  }
 
-    // The actual cleanup happens in the app.listen block where we have access to server/db
-    process.emit('app:shutdown');
-}
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  // Step 4: Create Express app
+  let app;
+  try {
+    app = createApp(pool, redis);
+    console.log('[BOOT] ✅ Express app created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createApp:', err.message);
+    process.exit(1);
+  }
 
-// --- Enforce Directory Root Priority ---
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+  // Step 5: Mount additional middleware and routes
+  try {
+    app.use(express.json());
+    app.use("/", createPhase3Router());
 
-if (process.cwd() !== __dirname) {
-    logger.warn(`Not running from project root. Adjusting from ${process.cwd()} ...`);
-    process.chdir(__dirname);
-}
+    app.get('/ws/stats', (req, res) => {
+      res.json({ ok: true, ...getWsStats() });
+    });
 
-// Start server.js with validateEnv directly
-validateEnv();
+    app.get('/system/health-monitor', (req, res) => {
+      res.json({ ok: true, ...healthMonitorStatus });
+    });
 
-export { createApp };
-export default createApp;
+    app.get('/system/offline-detector', (req, res) => {
+      res.json({ ok: true, ...offlineDetectorStatus });
+    });
 
-// If we are not running under Mocha (tests), boot the server
-if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
-    const DATABASE_URL = process.env.DATABASE_URL;
-    console.log('[BOOT] Starting database connection...');
-    try {
-        const db = await PgDatabase.create(DATABASE_URL);
+    app.get('/system/epoch-scheduler', (req, res) => {
+      res.json({ ok: true, ...schedulerStatus });
+    });
 
-        let dbReady = false;
-        while (!dbReady) {
-            try {
-                await db.prepare('SELECT 1').get();
-                dbReady = true;
-                logger.info("[BOOT] DB connected");
-            } catch (e) {
-                logger.warn("[BOOT] Waiting for Postgres healthy...");
-                await new Promise(r => setTimeout(r, 2000));
-            }
+    app.get('/system/scaling-stats', async (req, res) => {
+      try {
+        const stats = await getScalingStats(pool, redis);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    app.get('/system/rpc-healer{/:chain}', async (req, res) => {
+      try {
+        const chain = req.params.chain || 'polygon-amoy';
+        const stats = await getHealerStats(chain);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    app.get('/system/revenue-anomalies', async (req, res) => {
+      try {
+        const stats = await getAnomalyStats(pool, redis);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    app.get('/system/treasury', async (req, res) => {
+      try {
+        let status = await getTreasuryStatus(redis);
+        if (!status) {
+          status = await checkTreasury(redis);
         }
+        res.json({ ok: true, ...status });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
 
-        await attachSchema(db);
+    app.get('/system/capacity', async (req, res) => {
+      try {
+        const stats = await getCapacityStats(pool, redis);
+        res.json({ ok: true, ...stats });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+    console.log('[BOOT] ✅ Additional routes mounted');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
+    process.exit(1);
+  }
 
-        // Initialize modules
-        const oracle = new RevenueOracle(null, db);
-        await oracle.init();
-        const leaderboard = new NodeLeaderboard(db);
-        await leaderboard.init();
-        const treasury = new TreasuryMonitor(null, db);
-        await treasury.init();
-        const backup = new BackupService(db);
-        await backup.init();
-        const opsWaterfall = new NodeopsWaterfallService(db);
-        await opsWaterfall.init();
+  // Step 6: Create HTTP server
+  let httpServer;
+  try {
+    httpServer = createServer(app);
+    console.log('[BOOT] ✅ HTTP server created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createServer:', err.message);
+    process.exit(1);
+  }
 
-        logger.info("[BOOT] Modules initialized");
+  // Step 7: Create WebSocket gateway
+  try {
+    createWsGateway(httpServer, pool);
+    console.log('[BOOT] ✅ WebSocket gateway created');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at createWsGateway:', err.message);
+    process.exit(1);
+  }
 
-        const app = await createApp(db);
-        logger.info("[BOOT] App initialized");
-        const PORT = process.env.PORT || 8080;
+  // Step 8: Start health monitor
+  try {
+    startHealthMonitor(pool);
+    console.log('[BOOT] ✅ Health monitor started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startHealthMonitor:', err.message);
+    process.exit(1);
+  }
 
-        const server = app.listen(PORT, async () => {
-            logger.info(`Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: "postgres" });
+  // Step 9: Start offline detector
+  try {
+    startOfflineDetector(pool);
+    console.log('[BOOT] ✅ Offline detector started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startOfflineDetector:', err.message);
+    process.exit(1);
+  }
 
-            // Wire graceful shutdown to this server + DB instance
-            process.on('app:shutdown', async () => {
-                try {
-                    server.close(() => logger.info("[SHUTDOWN] HTTP server closed"));
-                    await db.close();
-                    logger.info("[SHUTDOWN] DB pool closed");
-                    process.exit(0);
-                } catch (e) {
-                    logger.error("[SHUTDOWN] Error during cleanup", { error: e.message });
-                    process.exit(1);
-                }
-            });
+  // Step 10: Start epoch scheduler
+  try {
+    startEpochScheduler(pool);
+    console.log('[BOOT] ✅ Epoch scheduler started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startEpochScheduler:', err.message);
+    process.exit(1);
+  }
 
-            // Hardened: Mandatory REAL mode for payouts
-            if (process.env.FEATURE_REAL_SETTLEMENT !== "true") {
-                console.log('REAL SETTLEMENT: INACTIVE');
-            } else {
-                console.log('REAL SETTLEMENT: ACTIVE');
-            }
+  // Step 11: Start sentinel (auto-scaler, healer, anomaly, treasury, capacity)
+  try {
+    startSentinel(pool, redis);
+    console.log('[BOOT] ✅ Sentinel started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startSentinel:', err.message);
+    process.exit(1);
+  }
 
-            // Withdrawal API Route is now mounted in routes.js (before catch-all 404)
+  // Step 12: Start claim expiry job
+  try {
+    startClaimExpiryJob(pool);
+    console.log('[BOOT] ✅ Claim expiry job started');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at startClaimExpiryJob:', err.message);
+    process.exit(1);
+  }
 
-            try {
-                const detector = new DepositDetector(db);
-                await detector.start();
-                logger.info("Deposit Detector activated natively on-chain");
+  // Step 13: Bind to port
+  const PORT = process.env.PORT || 8080;
+  try {
+    httpServer.listen(PORT, () => {
+      console.log('[BOOT] ✅ Server listening on port ' + PORT);
+      console.log(`✅ Satelink Backend Running on port ${PORT}`);
+      console.log(`📡 WebSocket available at /rpc/ws/:chain`);
+      console.log(`🏥 Health monitor started (2min interval)`);
+      console.log(`🔍 Offline detector started (2min interval)`);
+      console.log(`⏱️ Epoch scheduler started (60s interval)`);
+      console.log(`⚖️ Auto-scaler started (30s interval)`);
+      console.log(`🔧 RPC-healer started (60s interval)`);
+      console.log(`💰 Revenue-monitor started (5min interval)`);
+      console.log(`🏦 Treasury-monitor started (10min interval)`);
+      console.log(`📊 Capacity-alerter started (2min interval)`);
+    });
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
+    process.exit(1);
+  }
+}
 
-                const processor = new WithdrawalProcessor(db);
-                await processor.start();
-                logger.info("Withdrawal Processor activated natively on-chain");
-            } catch (e) {
-                console.error("❌ SETTLEMENT SERVICE FAILURE:", e);
-                logger.error("Settlement Services failed to start", { error: e.stack });
-            }
-
-            // Phase 7: Run internal test on startup
-            try {
-                await runSatelinkSelfTest(db);
-            } catch (testErr) {
-                console.error("❌ SATELINK SELF TEST FAILED DURING BOOT:", testErr.message);
-            }
-
-            console.log('REAL DEMAND STATUS: ACTIVE');
-
-            // Start automatic epoch aggregation scheduler
-            startEpochScheduler(db);
-        });
-    } catch (e) {
-        console.error("BOOT FAILURE IN SERVER:", e);
-        logger.error("Fatal: Could not start server", { error: e.message });
-        process.exit(1);
-    }
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  start();
 }

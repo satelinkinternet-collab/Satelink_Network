@@ -278,7 +278,7 @@ export class GrowthEngine {
      * Get Distributor Performance (for /admin/distributors/performance)
      */
     async getDistributorPerformance() {
-        const dayAgo = Date.now() - 86400000;
+        const dayAgo = Math.floor(Date.now() / 1000) - 86400;
 
         const distributors = await this.db.prepare(`
             SELECT 

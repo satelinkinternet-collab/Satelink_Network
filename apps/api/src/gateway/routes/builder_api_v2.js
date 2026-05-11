@@ -72,8 +72,8 @@ export function createBuilderApiV2Router(opsEngine) {
             // Note: In a real app, keys would be linked to a project, which is linked to a builder
             // For MVP, we'll just list keys for this builder if projects exist, or mock for now
             const keys = [
-                { id: 1, name: 'Main API Key', prefix: 'sl_live_...', status: 'active', created_at: Date.now() - 86400000 * 2 },
-                { id: 2, name: 'Test Key', prefix: 'sl_test_...', status: 'revoked', created_at: Date.now() - 86400000 * 10 }
+                { id: 1, name: 'Main API Key', prefix: 'sl_live_...', status: 'active', created_at: Math.floor(Date.now() / 1000) - 86400 * 2 },
+                { id: 2, name: 'Test Key', prefix: 'sl_test_...', status: 'revoked', created_at: Math.floor(Date.now() / 1000) - 86400 * 10 }
             ];
             res.json({ ok: true, keys });
         } catch (e) {

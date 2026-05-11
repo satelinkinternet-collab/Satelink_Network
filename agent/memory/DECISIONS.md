@@ -25,3 +25,26 @@
 ### D-005: ESM project — scripts use `node --input-type=module` where needed
 **Decision**: Agent scripts stay as bash; any Node snippets inside them use explicit flags.
 **Reason**: Project is `"type": "module"` which affects `.js` file execution context.
+
+## ADR-005: Satelink is an Autonomous Economic Protocol, not just DePIN
+* Date: April 2026
+* Status: Accepted — foundational architectural decision
+* Decision: Primary revenue source is machine-to-machine autonomous calls.
+  Human usage is welcome but never required or targeted.
+* Layers: 9 protocol layers must all reach STATUS:DONE for full product
+* Implication: Every feature built must serve at least one of L1-L9
+* Anti-pattern: Any feature that requires human sales to generate revenue
+  is deprioritized until all 9 layers are operational
+
+## ADR-006: S1-RPC architecture — 7 components built April 2026
+* Date: April 2026
+* Status: Accepted — production RPC gateway architecture
+* Decision: Multi-provider RPC gateway with 7 core components
+* Components:
+  - Latency routing with EMA (0.8/0.2 weighting)
+  - Circuit breaker: 5 failures → OPEN, 30s → HALF_OPEN
+  - Cache TTLs: eth_blockNumber=5s, eth_chainId=3600s, writes=never
+  - Rate limits: free=100/day, basic=10K, pro=100K, enterprise=1M
+  - WebSocket: /rpc/ws/:chain for eth_subscribe
+* Files: apps/api/src/workloads/rpc_gateway/
+* Implication: 5000 RPS target with automatic failover and billing

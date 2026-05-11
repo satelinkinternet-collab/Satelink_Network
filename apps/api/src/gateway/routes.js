@@ -1,3 +1,5 @@
+import { GlobalGatewayRouter } from "./global/global_gateway_router.js";
+const globalGatewayRouter = new GlobalGatewayRouter({}, pool);
 import { createUserSettingsRouter } from './routes/user_settings.js';
 import { createUnifiedAuthRouter } from './routes/auth_v2.js';
 import { createAuthController } from '../auth/auth_controller.js';
@@ -64,12 +66,19 @@ import { createDevAuthRouter } from './routes/dev_auth_tokens.js';
 import { createBetaRouter } from './routes/beta_api.js';
 import { createAdminEconomicsRouter } from './routes/admin_economics.js';
 import { createAdminForensicsRouter } from './routes/admin_forensics.js';
+import { ForensicsSnapshotService } from '../monitoring/snapshot_service.js';
+import { ReplayEngine } from '../monitoring/replay_engine.js';
+import { AuditService } from '../monitoring/audit_service.js';
+import { LedgerIntegrityJob } from '../scheduler/jobs/ledger_integrity_job.js';
 import { createAdminGrowthRouter } from './routes/admin_growth.js';
 import { createAdminSLARouter } from './routes/admin_sla.js';
 import { createDistApiRouter } from './routes/dist_api_v2.js';
 import { createEntApiRouter } from './routes/ent_api_v2.js';
 import { createPublicPartnersRouter } from './routes/public_partners.js';
 import { createAdminAutonomousRouter } from './routes/admin_autonomous.js';
+import { createAdminControlRouter } from './routes/admin_control_api.js';
+import { createAdminSystemRouter } from './routes/admin_system.js';
+import { createAdminDistributorsRouter } from './routes/admin_distributors.js';
 import { createDashboardApiRouter } from '../dashboard_api/index.js';
 import { createWithdrawalRouter } from './routes/withdrawal_api.js';
 
@@ -119,7 +128,7 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.get("/metrics", async (req, res) => { res.set('Content-Type', client.register.contentType); res.end(await client.register.metrics()); });
 
     app.use('/v1/jobs', createJobSubmitRouter(db));
-    app.use('/v1/workload/rpc', createRpcGateway(db));
+    app.use('/v1/workload/rpc', createRpcGateway(db), pool, pool);
     app.use('/v1/webhook', createWebhookRouter(db));
     app.use('/v1/ai', createAiRouter(db));
 
@@ -150,12 +159,38 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.use('/api/admin/genesis', requireAdmin, createGenesisAdminRouter(genesisEngine));
     app.use('/api/admin/flywheel', requireAdmin, createFlywheelAdminRouter(flywheelEngine));
 
+    // ── Admin Routes (protected by requireAdmin middleware) ──
+    app.use('/api/admin/revenue', requireAdmin, createAdminRevenueRouter(db));
+    app.use('/api/admin/reputation', requireAdmin, createAdminReputationRouter(db));
+    app.use('/api/admin/lifecycle', requireAdmin, createAdminLifecycleRouter(db));
+    app.use('/api/admin/network', requireAdmin, createAdminNetworkRouter(db));
+    app.use('/api/admin/partners', requireAdmin, createAdminPartnersRouter(db));
+    app.use('/api/admin/launch', requireAdmin, createAdminLaunchRouter(db));
+    app.use('/api/admin/economics', requireAdmin, createAdminEconomicsRouter(db));
+
+    const forensicsServices = {
+        snapshotService: new ForensicsSnapshotService(db),
+        replayEngine: new ReplayEngine(db),
+        auditService: new AuditService(db),
+        integrityJob: new LedgerIntegrityJob(db)
+    };
+    app.use('/api/admin/forensics', requireAdmin, createAdminForensicsRouter(db, forensicsServices));
+
+    app.use('/api/admin/growth', requireAdmin, createAdminGrowthRouter(db));
+    app.use('/api/admin/sla', requireAdmin, createAdminSLARouter(db));
+    app.use('/api/admin/control', requireAdmin, createAdminControlRoomRouter(db));
+    app.use('/api/admin/autonomous', requireAdmin, createAdminAutonomousRouter(db));
+    app.use('/api/admin/control-ops', requireAdmin, createAdminControlRouter(opsEngine));
+    app.use('/api/admin/system', requireAdmin, createAdminSystemRouter(opsEngine, null, null, null));
+    app.use('/api/admin/distributors', requireAdmin, createAdminDistributorsRouter(db));
+
     app.get('/health/queue', async (req, res) => {
         try { const length = await JobQueue.getLength(); res.status(200).json({ ok: true, queue_depth: length }); }
         catch (error) { res.status(500).json({ ok: false, error: error.message }); }
     });
 
     app.use("/rpc", createRpcRouter(db));
+app.use("/gateway/rpc", createRpcGateway(db));
     app.use('/me', createUserSettingsRouter(db));
     app.use(createUnifiedAuthRouter({ db }));
 
@@ -203,6 +238,40 @@ export function attachRoutes(app, db, { jobEscrow, futuresEscrow, opsAdapter, op
     app.use('/api/marketplace', createPublicMarketplaceRouter(db));
     app.use('/api/status', createPublicStatusRouter(db));
     app.use('/api/partners', createPublicPartnersRouter(db));
+
+    // ── Public RPC Pricing (machine-readable, no auth) ──
+    app.get('/api/pricing', async (req, res) => {
+        try {
+            const methods = await db.query(`
+                SELECT method, category, base_cost_usdt, cacheable, cache_ttl_sec
+                FROM rpc_method_pricing WHERE enabled = 1 ORDER BY category, method
+            `);
+            const rpcPricing = {};
+            for (const m of methods) {
+                rpcPricing[m.method] = parseFloat(m.base_cost_usdt);
+            }
+            res.json({
+                ok: true,
+                provider: 'Satelink',
+                version: '1.0',
+                chains: {
+                    '137': { name: 'Polygon', status: 'active' },
+                    '80002': { name: 'Polygon Amoy', status: 'active' },
+                    '1': { name: 'Ethereum', status: 'coming_soon' }
+                },
+                pricing: {
+                    rpc: rpcPricing,
+                    model: 'pay_per_use',
+                    minimum_deposit_usdt: 1.0,
+                    settlement: 'USDT on Polygon'
+                },
+                sla: { uptime_target: '99.5%', p99_latency_target_ms: 200 },
+                updated_at: Date.now()
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
 
     // ── Economics summary (used by RevenueSplitChart) ──
     app.get('/api/economics/summary', async (req, res) => {

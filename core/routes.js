@@ -45,6 +45,8 @@ import { getNetworkStats } from './network_stats.js';
 import { getEconomicsSummary } from './economics_stats.js';
 
 export function attachRoutes(app, db) {
+  const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');
+  app.use('/rpc', createRpcGateway(db));
     const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
     const requireEnterprise = [requireJWT, requireRole('enterprise')];
     const requireNode = [requireJWT, requireRole('node_operator')];
@@ -68,7 +70,7 @@ export function attachRoutes(app, db) {
         res.status(200).json({ ok: true, flags: { FLAG_DISABLE_RPC: false, FLAG_DISABLE_ADMIN_DIAGNOSTICS: false, FLAG_DISABLE_SIMULATION_ROUTES: false, FLAG_READONLY_MODE: false } });
     });
 
-    app.all("/rpc", (req, res) => res.status(200).json({ ok: true, gateway: "stub" }));
+    const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');app.use('/rpc', createRpcGateway(db));
 
     app.get("/simulation/status", (req, res) => res.status(200).json({ ok: true, mode: "simulation", active: true }));
 
@@ -113,6 +115,8 @@ function safeMountRouter(app, path, routerFn, label) {
 }
 
 export function attachRoutes(app, rawDb) {
+  const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');
+  app.use('/rpc', createRpcGateway(db));
     // ─── 1. Create opsEngine with async db wrapper ───────────────
     const opsEngine = createOpsEngine(rawDb);
     const stubs = createServiceStubs(rawDb, opsEngine);

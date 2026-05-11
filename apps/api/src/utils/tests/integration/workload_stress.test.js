@@ -125,7 +125,7 @@ describe('Stage 7: Workload Stress Tests', () => {
         db = createTestDb();
         app = express();
         app.use(express.json());
-        app.use('/rpc', createRpcGateway(db));
+        app.use('/rpc', createRpcGateway(db), pool, pool);
         app.use('/webhook', createWebhookRouter(db));
         app.use('/ai', createAiRouter(db));
         const scheduler = new AutomationScheduler(db);

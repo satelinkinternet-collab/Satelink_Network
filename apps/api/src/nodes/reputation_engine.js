@@ -217,7 +217,7 @@ export class ReputationEngine {
         const M = ReputationEngine.MULTIPLIERS;
 
         // Get total daily rewards
-        const dayAgo = Date.now() - 86400000;
+        const dayAgo = Math.floor(Date.now() / 1000) - 86400;
         const dailyRewards = (await this.db.prepare(
             "SELECT SUM(amount_usdt) as t FROM distributor_commissions WHERE created_at > ?"
         ).get([dayAgo]))?.t || 0;

@@ -5,12 +5,13 @@ import { PolygonAdapter } from '../../providers/adapters/polygon.js';
 import { SolanaAdapter } from '../../providers/adapters/solana.js';
 import { FuseAdapter } from '../../providers/adapters/fuse.js';
 import { ArbitrumAdapter } from '../../providers/adapters/arbitrum.js';
+import { AmoyAdapter } from '../../providers/adapters/amoy.js';
 import { OperationsEngine } from '../../core/operations_engine.js';
 import { SLAEngine } from '../../monitoring/sla_engine.js';
 import { NodeCapacityRegistry } from '../../execution/bootstrap/node_capacity_registry.js';
 import { ProviderFallbackAdapter } from '../../execution/bootstrap/provider_fallback_adapter.js';
 import { ExecutionAssuranceRouter } from '../../execution/bootstrap/execution_assurance_router.js';
-import { validateApiKey } from '../../security/auth_middleware.js';
+import { optionalApiKey } from '../../security/auth_middleware.js';
 
 export function createRpcRouter(db, ledger) {
     const router = express.Router();
@@ -26,12 +27,13 @@ export function createRpcRouter(db, ledger) {
     const adapters = {
         ethereum: new EthereumAdapter(),
         polygon: new PolygonAdapter(),
+        amoy: new AmoyAdapter(),
         solana: new SolanaAdapter(),
         fuse: new FuseAdapter(),
         arbitrum: new ArbitrumAdapter()
     };
 
-    router.post('/:chain', validateApiKey(db), async (req, res) => {
+    router.post('/:chain', optionalApiKey(db), async (req, res) => {
         await initPromise; // Ensure pricing and system config are loaded
         console.log('[REAL_DEMAND] request_received');
         console.log('[REAL_DEMAND] api_key_valid');
@@ -87,19 +89,20 @@ export function createRpcRouter(db, ledger) {
             const payloadHash = crypto.createHash('sha256').update(payloadString).digest('hex');
             const reqId = `rpc_${crypto.randomUUID()}`;
 
-            await opsEngine.executeOp({
-                op_type: 'api_relay_execution',
-                node_id: targetNodeId,
-                client_id: req.clientId || 'anonymous_client',
-                request_id: reqId,
-                timestamp: Date.now(),
-                payload_hash: payloadHash,
-                amount_usdt: pricingAmount
-            }).then(() => {
+            try {
+                await opsEngine.executeOp({
+                    op_type: 'api_relay_execution',
+                    node_id: targetNodeId,
+                    client_id: req.clientId || 'anonymous_client',
+                    request_id: reqId,
+                    timestamp: Date.now(),
+                    payload_hash: payloadHash,
+                    amount_usdt: pricingAmount
+                });
                 console.log('[REAL_DEMAND] revenue_recorded');
-            }).catch(e => {
+            } catch (e) {
                 console.error('[RPC] Failed to record op revenue:', e.message);
-            });
+            }
 
             res.status(200).json(finalResultData.result || finalResultData);
         } catch (error) {

@@ -9,7 +9,6 @@ export function verifyFuseWebhook(req) {
         "35.191.24.103"
     ];
 
-    const override = process.env.FUSE_WEBHOOK_IP_ALLOWLIST;
     const allowlist = override ? override.split(",").map(val => val.trim()) : defaultAllowlist;
 
     // Use req.ip which is set if 'trust proxy' is enabled

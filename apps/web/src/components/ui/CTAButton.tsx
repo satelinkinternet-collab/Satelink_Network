@@ -9,11 +9,11 @@ interface CTAButtonProps {
 }
 
 export function CTAButton({ href, variant = "primary", className = "", children }: CTAButtonProps) {
-    const base = "inline-flex items-center justify-center font-medium rounded-lg transition-all text-sm px-6 py-3";
+    const base = "inline-flex items-center justify-center font-bold rounded-lg transition-all text-sm px-6 py-3";
     const variants: Record<string, string> = {
-        primary: "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20",
-        secondary: "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700",
-        outline: "bg-transparent hover:bg-zinc-800 text-zinc-300 border border-zinc-700",
+        primary: "bg-[#408A71] hover:bg-[#285A48] text-[#091413] border-none shadow-lg hover:shadow-[0_0_20px_rgba(0,209,255,0.3)]",
+        secondary: "bg-transparent border border-[#408A71] text-[#B0E4CC] hover:border-[#00D1FF] hover:text-[#00D1FF]",
+        outline: "bg-transparent border border-[#285A48] text-[#B0E4CC] hover:bg-[#0d1f1d] hover:border-[#408A71]",
     };
 
     return (

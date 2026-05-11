@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { ethers } from 'ethers';
 import { Wallet, ShieldCheck, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, login } = useAuth();
@@ -214,5 +214,17 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }

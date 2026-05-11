@@ -31,11 +31,12 @@ contract DeployAll is Script {
         console.log("1. MockUSDT:", address(usdt));
 
         // ── 2. SplitEngine (governance-controlled revenue splits) ──
-        SplitEngine splitEngine = new SplitEngine(deployer);
+        SplitEngine splitEngine = new SplitEngine();
         console.log("2. SplitEngine:", address(splitEngine));
 
         // ── 3. EligibilityPolicy (role-based eligibility) ──
-        EligibilityPolicy eligibility = new EligibilityPolicy(deployer);
+        // Default thresholds: 10 ops, 95% uptime, 80% score, 300s heartbeat drift
+        EligibilityPolicy eligibility = new EligibilityPolicy(10, 9500, 8000, 300);
         console.log("3. EligibilityPolicy:", address(eligibility));
 
         // ── 4. NodeRegistryV2 (node registration + staking) ──
@@ -63,12 +64,9 @@ contract DeployAll is Script {
         // For testnet, deployer address acts as all pool wallets
         RevenueDistributor distributor = new RevenueDistributor(
             address(usdt),
-            deployer, // nodeOperatorPool
+            deployer, // nodeOpPool
             deployer, // coreTreasury
-            deployer, // builderRewardsPool
-            deployer, // distributionPool
-            deployer, // infraReserve
-            deployer // admin
+            deployer // builderPool
         );
         console.log("9. RevenueDistributor:", address(distributor));
 

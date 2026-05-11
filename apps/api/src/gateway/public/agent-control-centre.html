@@ -454,12 +454,11 @@ const AGENTS = [
   { id:'operations_engine',  name:'Operations Engine',   icon:'⚙️',  priority:'P0', desc:'Processes paid ops, enforces rate limits, spike detection & throttling.' },
   { id:'runtime_monitor',    name:'Runtime Monitor',      icon:'📡',  priority:'P0', desc:'Tracks system health, fires alerts on error rate & latency spikes.' },
   { id:'safe_mode_autopilot',name:'Safe Mode Autopilot',  icon:'🛡️',  priority:'P0', desc:'Auto-freezes withdrawals on solvency failure or monitor loss.' },
-  { id:'settlement_engine',  name:'Settlement Engine',    icon:'💸',  priority:'P0', desc:'Batches USDT payouts via Fuse adapter with retry on failure.' },
+  { id:'settlement_engine',  name:'Settlement Engine',    icon:'💸',  priority:'P0', desc:'Batches USDT payouts via Polygon adapter with retry on failure.' },
   { id:'economic_ledger',    name:'Economic Ledger',      icon:'📒',  priority:'P1', desc:'Immutable epoch finalization, hash-locked earnings records.' },
   { id:'auto_ops_engine',    name:'Auto Ops Engine',      icon:'🤖',  priority:'P1', desc:'Autonomous reward multipliers, surge pricing, node bonuses.' },
   { id:'sla_engine',         name:'SLA Engine',           icon:'📊',  priority:'P1', desc:'Partner SLA monitoring, uptime tracking, breach detection.' },
   { id:'scheduler',          name:'Scheduler',            icon:'⏱️',  priority:'P1', desc:'Cron jobs: heartbeat checks, epoch finalization, backups.' },
-  { id:'self_test_runner',   name:'Self-Test Runner',     icon:'🧪',  priority:'P2', desc:'29 automated tests, self-heal triage on failures.' },
   { id:'drills_service',     name:'Drills Service',       icon:'🔥',  priority:'P2', desc:'Chaos drills, abuse firewall stress tests, recovery checks.' },
 ];
 
@@ -531,7 +530,6 @@ function deriveAgentStatuses(data) {
     auto_ops_engine: ['autoOpsEngine', 'autoOps'],
     sla_engine: ['slaEngine', 'sla'],
     scheduler: ['scheduler'],
-    self_test_runner: ['selfTestRunner', 'selfTest'],
     drills_service: ['drills'],
   };
   AGENTS.forEach(a => {
@@ -656,7 +654,6 @@ function getAgentActions(agent) {
     actions.push(`<button class="btn btn-danger" onclick="pauseWithdrawals()">⏸ Pause Withdrawals</button>`);
   if (agent.id === 'settlement_engine')
     actions.push(`<button class="btn btn-danger" onclick="securityFreeze()">🔒 Freeze</button>`);
-  if (agent.id === 'self_test_runner')
     actions.push(`<button class="btn btn-green" onclick="runSelfTest()">▶ Run Tests</button>`);
   if (actions.length === 0) return '';
   return `<div class="agent-actions">${actions.join('')}</div>`;

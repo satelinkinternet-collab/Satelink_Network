@@ -41,9 +41,17 @@ test.db
 # Editor
 .vscode/
 .continue/
-.claude/
+.cursor/
+.claude/*
+!.claude/skills/
+!.claude/commands/
+!.claude/CLAUDE.md
+!.claude/settings.json
 *.swp
 *.bak
+
+# AI tools
+.aider*
 
 # Secrets and Tokens
 token.txt
@@ -59,3 +67,12 @@ share_bundle/
 share_bundle.zip
 *.db-shm
 *.db-wal
+satelink-keys/
+satelink-env/
+.env.local
+.env.production
+*.key
+*.pem
+forge-cache/
+.foundry/
+.satelink-backups/

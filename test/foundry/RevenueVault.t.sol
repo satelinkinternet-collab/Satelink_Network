@@ -15,8 +15,9 @@ contract RevenueVaultTest is Test {
         usdt = new MockUSDT();
         vault = new RevenueVault(address(usdt));
 
-        // Grant withdrawer role to testing address (admin)
+        // Grant roles for testing
         vault.grantRole(vault.WITHDRAWER_ROLE(), admin);
+        vault.grantRole(vault.DEPOSITOR_ROLE(), user1);
 
         // Give user1 some USDT
         usdt.transfer(user1, 10000e18);

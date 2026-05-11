@@ -22,6 +22,7 @@
  * Its main value is region selection, cache, and metrics enrichment.
  */
 
+import crypto from 'crypto';
 import { LatencyRouter } from './latency_router.js';
 import { TrafficBalancer } from './traffic_balancer.js';
 import { GatewayClusterManager } from './gateway_cluster_manager.js';
@@ -34,19 +35,56 @@ const CACHEABLE_RPC_METHODS = new Set([
     'net_version', 'web3_clientVersion', 'eth_getBalance'
 ]);
 
+const RPC_REWARD_USDT = 0.0003;
+
 export class GlobalGatewayRouter {
     /**
      * @param {Object}                  db
      * @param {Object}                  demandPipeline    — exposes push_job(job)
      * @param {GatewayClusterManager}   [clusterManager]  — optional, creates default if omitted
      */
-    constructor(db, demandPipeline, clusterManager) {
+    constructor(db, demandPipeline, clusterManager, db) {
+    this.db = db;
+        this.db = db;
         this.pipeline = demandPipeline;
         this.cluster = clusterManager ?? new GatewayClusterManager();
         this.cache = new EdgeCache();
         this.metrics = new GatewayMetrics(db);
         this.latency = new LatencyRouter(this.cluster);
         this.balancer = new TrafficBalancer(this.cluster, 'latency_weighted');
+    }
+
+    async _recordRevenue(clientId, isCacheHit = false) {
+        if (!this.db) { console.error("DB NOT ATTACHED"); return; }
+            console.warn('[Gateway] _recordRevenue called but db is null');
+            return;
+        }
+        const request_id = `rpc_${crypto.randomUUID()}`;
+        try {
+            let epochId = null;
+            try {
+                const epochRow = await this.db.prepare("SELECT id FROM epochs WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1").get([]);
+                epochId = epochRow?.id || null;
+                if (!epochId) {
+                    console.log('[Gateway] No OPEN epoch found, creating one...');
+                    const now = Math.floor(Date.now() / 1000);
+                    const insertResult = await this.db.prepare("INSERT INTO epochs (starts_at, status) VALUES (?, 'OPEN') RETURNING id").get([now]);
+                    epochId = insertResult?.id || null;
+                    console.log('[Gateway] Created epoch:', epochId);
+                }
+            } catch (epochErr) {
+                console.error('[Gateway] Epoch query failed:', epochErr.message);
+            }
+
+            const now = Math.floor(Date.now() / 1000);
+            const result = await this.db.prepare(`
+                INSERT INTO revenue_events_v2 (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at)
+                VALUES (?, 'rpc_call', ?, ?, ?, 'success', ?, ?)
+            `).run([epochId, isCacheHit ? 'edge_cache' : 'external_provider', clientId, RPC_REWARD_USDT, request_id, now]);
+            console.log('[Gateway] Revenue recorded:', { epochId, clientId, amount: RPC_REWARD_USDT, isCacheHit, changes: result?.changes });
+        } catch (e) {
+            console.error('[Gateway] Revenue recording failed:', e.message);
+        }
     }
 
     /**
@@ -81,6 +119,8 @@ export class GlobalGatewayRouter {
             this.metrics.incRegionalTraffic(route?.region ?? 'unknown');
 
             // ── 4. Cache check for GET-style RPC calls ────────────────────────
+            const clientId = req.headers['x-api-key'] || 'rpc_gateway';
+
             if (req.method === 'POST' && this._isCacheablePath(req.path) && req.body?.method) {
                 const cacheKey = this._cacheKey(req);
                 const cached = this.cache.get(cacheKey);
@@ -89,19 +129,22 @@ export class GlobalGatewayRouter {
                     this.metrics.incCacheHits();
                     const elapsed = Date.now() - start;
                     this.metrics.recordLatency(elapsed);
+                    this._recordRevenue(clientId, true);
                     return res.status(200).json(cached);
                 }
 
-                // Wrap res.json to populate cache on the way out
+                // Wrap res.json to populate cache on the way out AND record revenue
                 const _json = res.json.bind(res);
                 res.json = (body) => {
                     if (res.statusCode === 200 && body) {
                         this.cache.set(cacheKey, body);
+                        this._recordRevenue(clientId, false);
                     }
                     const elapsed2 = Date.now() - start;
                     this.metrics.recordLatency(elapsed2);
                     return _json(body);
                 };
+                req._billingHandledByGateway = true;
             } else {
                 // Non-cacheable — still record latency on response
                 const _json = res.json.bind(res);

@@ -7,26 +7,48 @@ export class ProviderFallbackAdapter {
     }
 
     /**
-     * Executes raw rpc_call directly against external infrastructure
-     * Mock implementation simulating HTTP overhead for the network tests.
+     * Executes raw rpc_call directly against external infrastructure.
+     * Uses real HTTP for chains with valid RPC URLs.
      */
-    async executeMockHttp(providerName, chain, payload) {
-        return new Promise((resolve, reject) => {
-            const url = externalEndpoints[providerName];
-            if (!url) return reject(new Error(`Unknown external provider endpoint for ${providerName}`));
+    async executeRpc(providerName, chain, payload) {
+        const url = externalEndpoints[providerName];
+        if (!url) throw new Error(`Unknown external provider endpoint for ${providerName}`);
 
-            // Simulating ~150ms HTTP transit to infura/alchemy 
-            setTimeout(() => {
-                resolve({
-                    status: 'success',
-                    provider: providerName,
-                    chain: chain,
-                    jsonrpc: '2.0',
-                    id: payload.id || 1,
-                    result: '0xMockProviderPayloadExecution'
-                });
-            }, 100);
+        // Skip mock for SATELINK_INTERNAL placeholder URLs
+        if (url.includes('SATELINK_INTERNAL')) {
+            return {
+                status: 'success',
+                provider: providerName,
+                chain: chain,
+                jsonrpc: '2.0',
+                id: payload.id || 1,
+                result: '0xMockProviderPayloadExecution'
+            };
+        }
+
+        // Real RPC call
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: payload.method,
+                params: payload.params || [],
+                id: payload.id || 1
+            })
         });
+
+        if (!response.ok) {
+            throw new Error(`RPC request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+            status: 'success',
+            provider: providerName,
+            chain: chain,
+            ...data
+        };
     }
 
     async dispatch(providerName, chain, payload) {
@@ -34,8 +56,8 @@ export class ProviderFallbackAdapter {
 
         while (attempts < this.maxRetries) {
             try {
-                console.log(`[ProviderFallbackAdapter] Transmitting abstract RPC to external provider ${providerName}... (Attempt ${attempts + 1})`);
-                return await this.executeMockHttp(providerName, chain, payload);
+                console.log(`[ProviderFallbackAdapter] Transmitting RPC to external provider ${providerName}... (Attempt ${attempts + 1})`);
+                return await this.executeRpc(providerName, chain, payload);
             } catch (e) {
                 attempts++;
                 console.error(`[ProviderFallbackAdapter] ${providerName} connection failed:`, e.message);

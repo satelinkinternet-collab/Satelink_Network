@@ -19,6 +19,7 @@
  */
 
 import { NodeCapacity } from './node_capacity.js';
+import { broadcaster } from '../realtime/broadcaster-instance.js';
 
 export class NodeHeartbeat {
     /**
@@ -75,7 +76,7 @@ export class NodeHeartbeat {
             });
         }
 
-        return {
+        const result = {
             node_id,
             status: 'ACTIVE',
             capacity_available,
@@ -84,6 +85,17 @@ export class NodeHeartbeat {
             reputation: reputationResult ? reputationResult.score : null,
             timestamp: Date.now()
         };
+
+        broadcaster.publish('node:heartbeat', {
+            node_id,
+            status: 'ACTIVE',
+            region: existing?.region || 'Global',
+            uptime_pct: this._stats[node_id]?.uptime_pct || 100,
+            latency_ms: latency_ms,
+            timestamp: new Date().toISOString()
+        });
+
+        return result;
     }
 
     /**

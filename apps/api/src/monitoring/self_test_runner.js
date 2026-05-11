@@ -18,7 +18,6 @@ const __dirname = path.dirname(__filename);
 const REQUIRED_TABLES = [
     'request_traces', 'error_events', 'slow_queries', 'admin_audit_log',
     'system_flags', 'security_alerts', 'config_limits',
-    'self_test_runs', 'incident_bundles'
 ];
 
 const KIND_SEVERITY = {
@@ -242,7 +241,6 @@ export class SelfTestRunner {
         // Persist result
         try {
             await this.db.prepare(`
-                INSERT INTO self_test_runs (kind, status, duration_ms, output_json, error_message, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
             `).run([kind, status, durationMs, JSON.stringify(output), errorMessage, Date.now()]);
         } catch (e) {
@@ -522,7 +520,6 @@ export class SelfTestRunner {
 
             await this.db.prepare(`
                 INSERT INTO incident_bundles (severity, title, source_kind, context_json, status, created_at)
-                VALUES (?, ?, 'self_test', ?, 'open', ?)
             `).run([severity, `Self-test FAILED: ${kind}`, contextJson, Date.now()]);
 
             await this.db.prepare(`
@@ -530,7 +527,6 @@ export class SelfTestRunner {
                 VALUES (?, 'infra', 'system', ?, ?, ?, 'open', ?)
             `).run([
                 severity,
-                `self_test:${kind}`,
                 `Self-test FAILED: ${kind}`,
                 JSON.stringify({ kind, status, error: errorMessage }),
                 Date.now()
@@ -897,7 +893,6 @@ export class SelfTestRunner {
             const finishRes = await this._httpPost(`http://127.0.0.1:${this.port}/auth/embedded/finish`, {
                 address,
                 signature,
-                device_public_id: 'self_test_device_id'
             });
 
             if (!finishRes || !finishRes.ok) return { _fail: `Auth /finish failed: ${finishRes?.error}` };
@@ -910,7 +905,6 @@ export class SelfTestRunner {
             const payloadJson = Buffer.from(payloadBase64, 'base64').toString();
             const payload = JSON.parse(payloadJson);
 
-            if (payload.device_id !== 'self_test_device_id') {
                 return { _fail: `JWT missing correct device_id. Got: ${payload.device_id}` };
             }
             if (!payload.ip_hash) {

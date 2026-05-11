@@ -2,42 +2,89 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Agent: Delta",
+      "label": "🚀 dev:backend",
       "type": "shell",
-      "command": "bash scripts/agent-delta.sh",
-      "group": "none",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared",
-        "clear": true
-      },
+      "command": "node --env-file=.env src/server.js",
+      "group": "build",
+      "presentation": { "panel": "dedicated", "reveal": "always" },
       "problemMatcher": []
     },
     {
-      "label": "Agent: Check",
+      "label": "🌐 dev:frontend",
       "type": "shell",
-      "command": "bash scripts/agent-check.sh",
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared",
-        "clear": true
-      },
+      "command": "cd web && npm run dev",
+      "group": "build",
+      "presentation": { "panel": "dedicated", "reveal": "always" },
       "problemMatcher": []
     },
     {
-      "label": "Agent: Report",
+      "label": "⚡ dev:all",
+      "dependsOn": ["🚀 dev:backend", "🌐 dev:frontend"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🐳 docker:up",
       "type": "shell",
-      "command": "bash scripts/agent-report.sh",
-      "group": "none",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared",
-        "clear": true
-      },
+      "command": "docker-compose up -d postgres redis",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "🐳 docker:down",
+      "type": "shell",
+      "command": "docker-compose down",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "⚗️  forge:test",
+      "type": "shell",
+      "command": "forge test -vvv",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "🔒 satelink:audit",
+      "type": "shell",
+      "command": "bash scripts/security/check-secrets.sh && bash scripts/security/check-test-endpoints.sh && bash scripts/security/check-sqlite.sh && bash scripts/security/check-auth-middleware.sh && bash scripts/security/check-hardcoded-keys.sh && bash scripts/security/check-jwt-fallback.sh && echo '✅ ALL SECURITY GATES PASSED'",
+      "group": "test",
+      "presentation": { "panel": "dedicated", "reveal": "always" },
+      "problemMatcher": []
+    },
+    {
+      "label": "📊 satelink:status",
+      "type": "shell",
+      "command": "cat agent/memory/PROGRESS.md | head -50",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "🧪 test:backend",
+      "type": "shell",
+      "command": "npm test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "🏗️  build:frontend",
+      "type": "shell",
+      "command": "cd web && npm run build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "💨 smoke:test",
+      "type": "shell",
+      "command": "bash scripts/smoke_test.sh",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "📡 rpc:check",
+      "type": "shell",
+      "command": "curl -s -X POST https://rpc-amoy.polygon.technology -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}' | jq .result",
+      "group": "test",
       "problemMatcher": []
     }
   ]

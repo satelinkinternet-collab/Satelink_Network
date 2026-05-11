@@ -1,3 +1,6 @@
+// CONVENTION: every `this.db.prepare(...).run/get/all(...)` chain in this file
+// MUST be awaited. `prepare()` is synchronous but its terminal methods return
+// Promises via PgDatabase — a missing await silently discards writes.
 import { ethers } from "ethers";
 import crypto from "crypto";
 
@@ -274,8 +277,8 @@ export class OperationsEngine {
     const res = await this.db.prepare(`
         INSERT INTO revenue_events_v2
         (epoch_id, op_type, node_id, client_id, amount_usdt, status, request_id, created_at, metadata_hash,
-         price_version, surge_multiplier, unit_cost, unit_count)
-        VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1)
+         price_version, surge_multiplier, unit_cost, unit_count, is_test_data)
+        VALUES (?, ?, ?, ?, ?, 'success', ?, ?, ?, ?, ?, ?, 1, TRUE)
     `).run([epochId, op_type, node_id, client_id, billingAmount, request_id, now, payload_hash,
       priceVersion, surgeMultiplier, unitCost]);
 

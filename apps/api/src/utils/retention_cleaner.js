@@ -8,7 +8,6 @@
  * - request_traces: 7 days
  * - error_events: 30 days
  * - slow_queries: 30 days
- * - self_test_runs: 30 days
  * - incident_bundles: 90 days (resolved)
  * - security_alerts: 90 days
  */
@@ -38,7 +37,6 @@ export class RetentionCleaner {
             ).all([traceCutoff]);
             stats.traces_removed = traceRes.length || 0;
 
-            // Refined approach for SQLite compatibility
             await this._prune('request_traces', 'created_at', traceCutoff, 'traces_removed', stats);
 
             // 2. Errors - 30 days
@@ -49,7 +47,6 @@ export class RetentionCleaner {
             await this._prune('slow_queries', 'last_seen_at', errorCutoff, 'slow_queries_removed', stats);
 
             // 4. Self Tests - 30 days
-            await this._prune('self_test_runs', 'created_at', errorCutoff, 'test_runs_removed', stats);
 
             // 4b. Runtime Metrics - 7 days
             await this._prune('runtime_metrics', 'created_at', traceCutoff, 'runtime_metrics_removed', stats);

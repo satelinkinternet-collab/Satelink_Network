@@ -1,29 +1,39 @@
 import express from 'express';
 import crypto from 'crypto';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
+
+// Canonical wallet field on the JWT payload. Some routes sign `wallet`,
+// others `walletAddress` — fall through so we never accept undefined.
+function callerWallet(req) {
+    const u = req.user || {};
+    return (u.wallet || u.walletAddress || '').toLowerCase();
+}
 
 export function createFuturesRouter(db, futuresEscrow) {
     const router = express.Router();
 
-    // Mock auth middleware determining if caller is a node or investor
-    const authenticate = (req, res, next) => {
-        const apiKey = req.headers['x-api-key'];
-        if (!apiKey) return res.status(401).json({ error: 'Unauthorized: missing X-API-Key' });
-
-        req.userWallet = `wallet_${crypto.createHash('sha256').update(apiKey).digest('hex').substring(0, 8)}`;
-        next();
-    };
+    const isAdmin = (role) => role === 'admin_super' || role === 'admin_ops';
 
     /**
      * PART 3: POST /v1/futures
-     * Node operators list a forward contract
+     * Node operators list a forward contract against their own node.
+     * P0-15: JWT + node_operator role; node_id ownership enforced unless admin.
      */
-    router.post('/', authenticate, async (req, res) => {
+    router.post('/', requireJWT, requireRole(['node_operator', 'admin_super', 'admin_ops']), async (req, res) => {
         try {
             const { node_id, revenue_share, epoch_range, price } = req.body;
 
             // PART 7: RISK CONTROLS Validate the inputs strongly
             if (!node_id || !revenue_share || !epoch_range || epoch_range.length !== 2 || !price) {
                 return res.status(400).json({ error: 'Missing required parameters' });
+            }
+
+            // P0-15: Ownership check — a node operator may only list contracts
+            // against their own node. Admins may act on any node for ops
+            // recovery scenarios. Without this, any authenticated operator
+            // could pledge someone else's future revenue.
+            if (!isAdmin(req.user.role) && callerWallet(req) !== String(node_id).toLowerCase()) {
+                return res.status(403).json({ error: 'Cannot list a contract for a node you do not own' });
             }
 
             if (revenue_share > 0.40) {
@@ -72,22 +82,29 @@ export function createFuturesRouter(db, futuresEscrow) {
 
     /**
      * PART 4: POST /v1/futures/buy
-     * Investors purchase a listed contract
+     * Any authenticated user may act as an investor; no specific role required,
+     * but buyer_wallet is taken from the JWT, not the request body, so a
+     * caller cannot purchase on behalf of another wallet.
      */
-    router.post('/buy', authenticate, async (req, res) => {
+    router.post('/buy', requireJWT, async (req, res) => {
         try {
             const { contract_id, price } = req.body;
             if (!contract_id || price === undefined) {
                 return res.status(400).json({ error: 'Missing contract_id or price' });
             }
 
+            const buyerWallet = callerWallet(req);
+            if (!buyerWallet) {
+                return res.status(401).json({ error: 'JWT is missing a wallet claim' });
+            }
+
             // Pass execution to the Escrow system to manage atomicity
-            await futuresEscrow.purchaseContract(req.userWallet, contract_id, price);
+            await futuresEscrow.purchaseContract(buyerWallet, contract_id, price);
 
             res.status(200).json({
                 message: 'Contract purchased successfully and funds escrowed',
                 contract_id,
-                buyer: req.userWallet
+                buyer: buyerWallet
             });
 
         } catch (error) {

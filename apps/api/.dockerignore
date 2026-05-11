@@ -1,0 +1,16 @@
+# Ignore local env files — Railway injects vars directly
+.env
+.env.*
+!.env.example
+
+# Ignore local node_modules — container does npm install
+node_modules/
+
+# Ignore logs and temp files
+logs/
+*.log
+.DS_Store
+
+# Ignore test files
+test/
+*.test.js

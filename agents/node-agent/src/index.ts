@@ -1,191 +1,188 @@
 #!/usr/bin/env node
+
 import { Command } from 'commander';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 import axios from 'axios';
-import * as http from 'http';
-import { NodeAuth } from './auth';
-import { WorkloadExecutor } from './executor';
-import { NodeState } from './state';
 
-const CONTROL_PLANE_URL = process.env.CONTROL_PLANE_URL || 'http://localhost:8080';
-const NODE_PORT = parseInt(process.env.NODE_PORT || '9090', 10);
-const HEARTBEAT_INTERVAL_MS = parseInt(process.env.HEARTBEAT_INTERVAL_MS || '30000', 10);
+const CONFIG_DIR = join(homedir(), '.satelink');
+const CONFIG_FILE = join(CONFIG_DIR, 'node.json');
+const API_BASE = process.env.SATELINK_API || 'https://rpc.satelink.network';
 
-const auth = new NodeAuth();
-const executor = new WorkloadExecutor();
-const state = new NodeState();
+interface NodeConfig {
+  nodeId: string;
+  wallet: string;
+  region: string;
+  capabilities: string[];
+  registeredAt: string;
+}
 
 const program = new Command();
 
 program
-    .name('satelink-node')
-    .description('CLI daemon for Satelink Node Operators')
-    .version('1.0.0');
+  .name('satelink-node')
+  .description('Satelink node operator CLI')
+  .version('1.0.0');
 
-program.command('start')
-    .description('Start the Satelink node daemon')
-    .action(async () => {
-        console.log('[NodeAgent] Initializing...');
+function loadConfig(): NodeConfig | null {
+  if (!existsSync(CONFIG_FILE)) return null;
+  try {
+    return JSON.parse(readFileSync(CONFIG_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+}
 
-        // 1. Initialize persistent state
-        state.initialize();
+function saveConfig(config: NodeConfig): void {
+  if (!existsSync(CONFIG_DIR)) {
+    mkdirSync(CONFIG_DIR, { recursive: true });
+  }
+  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
 
-        // 2. Initialize identity (generates Ed25519 keypair on first run)
-        const identity = await auth.initialize();
-        console.log(`[NodeAgent] Node ID: ${identity.nodeId}`);
-
-        // 3. Check if already registered (skip re-registration on restart)
-        if (state.isRegistered()) {
-            console.log('[NodeAgent] Identity preserved from previous session');
-        } else {
-            await registerNode();
-            state.saveIdentity(identity.nodeId, CONTROL_PLANE_URL);
-        }
-
-        // 4. Recover any pending jobs from previous crash
-        const pending = state.getPendingJobs();
-        if (pending.length > 0) {
-            console.log(`[NodeAgent] Recovering ${pending.length} pending jobs from crash`);
-            for (const pj of pending) {
-                try {
-                    const job = JSON.parse(pj.payload);
-                    state.markJobAttempted(pj.job_id);
-                    const result = await executor.execute(job);
-                    if (result.success) {
-                        state.removePendingJob(pj.job_id);
-                    }
-                } catch (err: any) {
-                    console.error(`[Recovery] Failed to recover job ${pj.job_id}: ${err.message}`);
-                }
-            }
-        }
-
-        // 5. Start the /execute HTTP server
-        startExecuteServer();
-
-        // 6. Start heartbeat loop
-        startHeartbeat();
-
-        console.log(`[NodeAgent] Running on port ${NODE_PORT}`);
+async function apiCall(endpoint: string, method = 'GET', body: any = null) {
+  try {
+    const res = await axios({
+      method,
+      url: `${API_BASE}${endpoint}`,
+      data: body,
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
     });
+    return res.data;
+  } catch (err: any) {
+    if (err.response) return err.response.data;
+    throw err;
+  }
+}
 
-program.command('register')
-    .description('Register the node with the API')
-    .action(async () => {
-        await auth.initialize();
-        await registerNode();
-        console.log('[NodeAgent] Registration complete.');
-    });
+program
+  .command('register')
+  .description('Register this node with the Satelink network')
+  .requiredOption('-w, --wallet <address>', 'Operator wallet address (0x...)')
+  .option('-r, --region <region>', 'Node region', 'us-east-1')
+  .option('-c, --capabilities <caps>', 'Comma-separated capabilities', 'rpc,bandwidth')
+  .action(async (opts) => {
+    console.log('Registering node...');
 
-program.command('status')
-    .description('Check the status of the node')
-    .action(async () => {
-        const identity = await auth.initialize();
-        console.log(`Node ID: ${identity.nodeId}`);
-        console.log(`Public Key:\n${identity.publicKey}`);
-        console.log(`Control Plane: ${CONTROL_PLANE_URL}`);
-    });
-
-program.parse();
-
-// --- Core Functions ---
-
-async function registerNode(): Promise<void> {
-    const payload = {
-        node_id: auth.getNodeId(),
-        public_key: auth.getPublicKey(),
-        api_endpoint: `http://0.0.0.0:${NODE_PORT}`,
-        capabilities: ['rpc_call', 'ai_inference', 'webhook_delivery', 'automation_job'],
-        timestamp: Date.now()
-    };
-    const signature = auth.signRequest(payload);
+    const nodeId = `node_${opts.wallet.slice(2, 10)}_${Date.now().toString(36)}`;
 
     try {
-        await axios.post(`${CONTROL_PLANE_URL}/api/nodes/register`, payload, {
-            headers: { 'X-Node-Signature': signature }
-        });
-        console.log('[NodeAgent] Registered with control plane');
+      const result = await apiCall('/nodes/register', 'POST', {
+        node_id: nodeId,
+        wallet: opts.wallet,
+        region: opts.region,
+        capabilities: opts.capabilities.split(','),
+        registered_at: Date.now()
+      });
+
+      if (result.error) {
+        console.error('Registration failed:', result.error);
+        process.exit(1);
+      }
+
+      const config: NodeConfig = {
+        nodeId,
+        wallet: opts.wallet,
+        region: opts.region,
+        capabilities: opts.capabilities.split(','),
+        registeredAt: new Date().toISOString()
+      };
+
+      saveConfig(config);
+
+      console.log('Node registered successfully!');
+      console.log(`  Node ID: ${nodeId}`);
+      console.log(`  Wallet:  ${opts.wallet}`);
+      console.log(`  Region:  ${opts.region}`);
+      console.log(`\nConfig saved to: ${CONFIG_FILE}`);
+      console.log('Run "satelink-node start" to begin sending heartbeats.');
     } catch (err: any) {
-        console.error(`[NodeAgent] Registration failed: ${err.message}`);
+      console.error('Registration failed:', err.message);
+      process.exit(1);
     }
-}
+  });
 
-function startExecuteServer(): void {
-    const server = http.createServer(async (req, res) => {
-        if (req.method === 'POST' && req.url === '/execute') {
-            let body = '';
-            req.on('data', (chunk) => { body += chunk; });
-            req.on('end', async () => {
-                try {
-                    const job = JSON.parse(body);
+program
+  .command('start')
+  .description('Start the node agent (sends heartbeat every 2 minutes)')
+  .action(async () => {
+    const config = loadConfig();
+    if (!config) {
+      console.error('Node not registered. Run "satelink-node register --wallet 0x..." first.');
+      process.exit(1);
+    }
 
-                    // Verify HMAC signature from dispatcher
-                    const hmacHeader = req.headers['x-job-signature'] as string;
-                    if (!hmacHeader) {
-                        res.writeHead(401, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ status: 'rejected', error: 'Missing signature' }));
-                        return;
-                    }
+    console.log('Starting Satelink node agent...');
+    console.log(`  Node ID: ${config.nodeId}`);
+    console.log(`  Region:  ${config.region}`);
+    console.log(`  API:     ${API_BASE}`);
+    console.log('');
 
-                    // Track pending job for crash recovery
-                    state.savePendingJob(job.job_id, job);
+    async function sendHeartbeat() {
+      const timestamp = new Date().toISOString();
+      try {
+        const result = await apiCall('/nodes/heartbeat', 'POST', {
+          node_id: config!.nodeId,
+          wallet: config!.wallet,
+          timestamp: Date.now(),
+          status: 'online',
+          metrics: {
+            uptime: process.uptime(),
+            memory: process.memoryUsage().heapUsed,
+            load: 0.1
+          }
+        });
 
-                    // Execute the workload
-                    const result = await executor.execute(job);
-
-                    // Remove from pending on completion
-                    state.removePendingJob(job.job_id);
-
-                    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-
-                    res.writeHead(result.success ? 200 : 500, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        status: result.success ? 'accepted' : 'rejected',
-                        execution_id: executionId,
-                        result: result.result,
-                        error: result.error,
-                        duration_ms: result.duration_ms
-                    }));
-                } catch (err: any) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ status: 'rejected', error: err.message }));
-                }
-            });
-        } else if (req.method === 'GET' && req.url === '/health') {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'healthy', node_id: auth.getNodeId() }));
+        if (result.ok) {
+          console.log(`[${timestamp}] Heartbeat sent`);
         } else {
-            res.writeHead(404);
-            res.end();
+          console.log(`[${timestamp}] Heartbeat warning: ${result.error || 'unknown'}`);
         }
-    });
+      } catch (err: any) {
+        console.error(`[${timestamp}] Heartbeat failed: ${err.message}`);
+      }
+    }
 
-    server.listen(NODE_PORT, '0.0.0.0');
-}
+    await sendHeartbeat();
 
-function startHeartbeat(): void {
-    setInterval(async () => {
-        const payload = {
-            node_id: auth.getNodeId(),
-            timestamp: Date.now(),
-            stats: {
-                cpu: Math.round(Math.random() * 100),
-                memory: Math.round(Math.random() * 100),
-                uptime: process.uptime()
-            }
-        };
-        const signature = auth.signRequest(payload);
+    const INTERVAL_MS = 2 * 60 * 1000;
+    setInterval(sendHeartbeat, INTERVAL_MS);
 
-        try {
-            await axios.post(`${CONTROL_PLANE_URL}/heartbeat`, {
-                nodeWallet: auth.getNodeId(),
-                ...payload,
-                nonce: Date.now(),
-                signature
-            }, {
-                headers: { 'X-Node-Signature': signature }
-            });
-        } catch (err: any) {
-            console.error(`[Heartbeat] Failed: ${err.message}`);
-        }
-    }, HEARTBEAT_INTERVAL_MS);
-}
+    console.log('Node agent running. Press Ctrl+C to stop.\n');
+  });
+
+program
+  .command('status')
+  .description('Show current node status')
+  .action(async () => {
+    const config = loadConfig();
+    if (!config) {
+      console.log('Status: NOT REGISTERED');
+      console.log('Run "satelink-node register --wallet 0x..." to register.');
+      return;
+    }
+
+    console.log('Satelink Node Status');
+    console.log('--------------------');
+    console.log(`Node ID:      ${config.nodeId}`);
+    console.log(`Wallet:       ${config.wallet}`);
+    console.log(`Region:       ${config.region}`);
+    console.log(`Capabilities: ${config.capabilities.join(', ')}`);
+    console.log(`Registered:   ${config.registeredAt}`);
+    console.log(`API:          ${API_BASE}`);
+
+    try {
+      const result = await apiCall(`/nodes/${config.nodeId}/status`);
+      if (result.ok) {
+        console.log(`\nNetwork Status: ${result.status || 'online'}`);
+        console.log(`Last Heartbeat: ${result.lastHeartbeat || 'unknown'}`);
+        console.log(`Reputation:     ${result.reputation || 'pending'}`);
+      }
+    } catch {
+      console.log('\nNetwork Status: Unable to reach API');
+    }
+  });
+
+program.parse();

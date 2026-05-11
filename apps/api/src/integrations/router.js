@@ -33,7 +33,6 @@ export function createIntegrationRouter(opsEngine, adminAuth) {
             env: {
                 MOONPAY: !!process.env.MOONPAY_WEBHOOK_SECRET,
                 NODEOPS: !!process.env.NODEOPS_API_KEY,
-                FUSE: !!process.env.FUSE_WEBHOOK_IP_ALLOWLIST || "DEFAULT_IPS_ACTIVE"
             }
         });
     });

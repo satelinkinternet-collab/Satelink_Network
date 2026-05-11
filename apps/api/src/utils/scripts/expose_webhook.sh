@@ -17,7 +17,6 @@ if command_exists cloudflared; then
   if [ -n "$URL" ]; then
     echo "WEBHOOK_BASE_URL=$URL"
     echo "MOONPAY_WEBHOOK_URL=$URL/webhooks/moonpay"
-    echo "FUSE_WEBHOOK_URL=$URL/webhooks/fuse"
     # Keep it running
     wait $PID
     exit 0
@@ -36,7 +35,6 @@ if command_exists ngrok; then
   if [ -n "$URL" ]; then
     echo "WEBHOOK_BASE_URL=$URL"
     echo "MOONPAY_WEBHOOK_URL=$URL/webhooks/moonpay"
-    echo "FUSE_WEBHOOK_URL=$URL/webhooks/fuse"
     wait
     exit 0
   fi

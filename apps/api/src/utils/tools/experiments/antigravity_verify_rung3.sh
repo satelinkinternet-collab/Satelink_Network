@@ -35,7 +35,6 @@ sqlite3 $DB_PATH "SELECT id, provider, source_type, payer_wallet, amount_usdt, t
 echo ""
 echo "[6] Deduplication Verification (Should be empty)"
 MOONPAY_DUPE=$(sqlite3 $DB_PATH "SELECT provider, event_id, count(*) FROM payments_inbox WHERE provider='moonpay' GROUP BY provider, event_id HAVING count(*) > 1;")
-FUSE_DUPE=$(sqlite3 $DB_PATH "SELECT provider, event_id, count(*) FROM payments_inbox WHERE provider='fuse' GROUP BY provider, event_id HAVING count(*) > 1;")
 
 if [ -n "$MOONPAY_DUPE" ]; then
     echo "FAIL: Duplicate MoonPay events found!"
@@ -44,9 +43,7 @@ else
     echo "PASS: No MoonPay duplicates."
 fi
 
-if [ -n "$FUSE_DUPE" ]; then
     echo "FAIL: Duplicate Fuse events found!"
-    echo "$FUSE_DUPE"
 else
     echo "PASS: No Fuse duplicates."
 fi

@@ -26,12 +26,13 @@ export async function attachSchema(db) {
   if (needsInit) {
       console.log("[Schema] system_config missing, executing init.sql...");
       try {
-          const initSqlPath = path.resolve(__dirname, '../../../../docker/init/init.sql');
+          const initSqlPath = path.resolve(__dirname, '../../sql/init.sql');
+          console.log("[Schema] init.sql path:", initSqlPath);
           const sql = fs.readFileSync(initSqlPath, 'utf8');
           await db.exec(sql);
           console.log("[Schema] init.sql executed successfully.");
       } catch (err) {
-          console.error("[Schema] Failed to execute init.sql:", err.message);
+          console.error("[Schema] Failed to execute init.sql:", err.message, "path tried:", path.resolve(__dirname, '../../sql/init.sql'));
       }
   }
 
@@ -90,7 +91,8 @@ export async function attachSchema(db) {
       "ALTER TABLE daily_ops_reports ALTER COLUMN start_ts TYPE BIGINT;",
       "ALTER TABLE daily_ops_reports ALTER COLUMN end_ts TYPE BIGINT;",
       "ALTER TABLE daily_ops_reports ALTER COLUMN created_at TYPE BIGINT;",
-      "ALTER TABLE node_registry ALTER COLUMN created_at TYPE BIGINT;"
+      "ALTER TABLE node_registry ALTER COLUMN created_at TYPE BIGINT;",
+      "ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS retry_count INTEGER DEFAULT 0;"
     ];
 
     for (const sql of migrations) {
@@ -133,6 +135,26 @@ export async function attachSchema(db) {
     // Auth nonces — unique address for ON CONFLICT upsert
     "DROP INDEX IF EXISTS idx_auth_nonces_address;",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_nonces_address ON auth_nonces (address);",
+
+    // Settlement batches — for on-chain settlement anchoring
+    `CREATE TABLE IF NOT EXISTS settlement_batches (
+        id SERIAL PRIMARY KEY,
+        batch_id TEXT UNIQUE NOT NULL,
+        epoch_id INTEGER,
+        chain_id INTEGER,
+        adapter_type TEXT,
+        total_amount_usdt NUMERIC,
+        item_count INTEGER,
+        status TEXT DEFAULT 'pending',
+        tx_hash TEXT,
+        submitted_at BIGINT,
+        confirmed_at BIGINT,
+        error_message TEXT,
+        created_at BIGINT NOT NULL
+    );`,
+    "CREATE INDEX IF NOT EXISTS idx_settlement_batches_epoch ON settlement_batches(epoch_id);",
+    "CREATE INDEX IF NOT EXISTS idx_settlement_batches_status ON settlement_batches(status);",
+    "CREATE INDEX IF NOT EXISTS idx_settlement_batches_chain ON settlement_batches(chain_id);",
   ];
 
   for (const sql of hardeningMigrations) {

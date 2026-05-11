@@ -12,8 +12,6 @@ async function main() {
 
   const network = process.env.NETWORK || "localhost";
   let rpcUrl = "http://127.0.0.1:8545";
-  if (network === "sparknet") rpcUrl = process.env.FUSE_SPARKNET_RPC_URL || "https://rpc.fusespark.io";
-  if (network === "fuse") rpcUrl = process.env.FUSE_RPC_URL || "https://rpc.fuse.io";
 
   console.log(`Connecting to network [${network}] at:`, rpcUrl);
   const provider = new ethers.JsonRpcProvider(rpcUrl);

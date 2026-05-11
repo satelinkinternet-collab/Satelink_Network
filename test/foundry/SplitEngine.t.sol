@@ -21,13 +21,8 @@ contract SplitEngineTest is Test {
     }
 
     function testCalculateFullSplit() public {
-        (
-            uint256 nodePool,
-            uint256 opsPool,
-            uint256 treasury,
-            uint256 infraReserve,
-            uint256 netNodeAmount
-        ) = engine.calculateFullSplit(10000);
+        (uint256 nodePool, uint256 opsPool, uint256 treasury, uint256 infraReserve, uint256 netNodeAmount) =
+            engine.calculateFullSplit(10000);
 
         assertEq(nodePool, 5000);
         assertEq(opsPool, 3000);
