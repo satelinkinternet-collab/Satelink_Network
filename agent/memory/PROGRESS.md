@@ -1,7 +1,33 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 10, 2026 (MEV RELAY PRODUCTION HARDENING)
+# Updated: May 11, 2026 (LIVE DASHBOARD WIRING)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 11, 2026 (LIVE DASHBOARD WIRING)
+- DONE: Tested all backend endpoints at rpc.satelink.network
+- DONE: Created lib/api/satelink-api.ts with typed API client
+- DONE: Wired admin overview (overview/page.tsx) to real APIs:
+  - /api/status — network status, epoch, nodes
+  - /api/epochs — **REAL REVENUE DATA** ($0.78+ tracked)
+  - /api/nodes — node registry with pagination
+  - /rpc/metrics — chain performance, provider health
+  - /os/events — SSE live event stream
+- DONE: Wired node operator billing (billing/page.tsx) to real APIs:
+  - /api/nodes/:nodeId/earnings — per-node earnings
+  - POST /api/nodes/:nodeId/claim — claim button
+- DONE: Both dashboards poll every 15s, SSE for live events
+- DONE: Premium UI with shadcn + Tremor committed (previous session)
+- NOTE: /api/settlement/history and /api/pricing return errors
+
+### Working Endpoints (May 11, 2026)
+| Endpoint | Response |
+|----------|----------|
+| /health | `{"status":"ok"}` |
+| /api/status | epoch, nodes, chains, latency |
+| /api/epochs | **REAL REVENUE**: 1029 req, $0.78+ |
+| /api/nodes | 1 node registered |
+| /api/nodes/:id/earnings | per-node breakdown |
+| /rpc/metrics | 6 chains, all providers healthy |
 
 ## SESSION UPDATE — May 10, 2026 (MEV RELAY PRODUCTION)
 - DONE: Added Redis rate limiting (sliding window, per-key limits by tier)
