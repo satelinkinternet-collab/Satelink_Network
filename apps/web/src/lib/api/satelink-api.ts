@@ -64,23 +64,46 @@ export interface RpcMetrics {
 }
 
 export async function getStatus(): Promise<NetworkStatus> {
-  const r = await fetch(`${BASE}/api/status`, { cache: "no-store" });
-  if (!r.ok) throw new Error("Failed to fetch status");
-  return r.json();
+  try {
+    const r = await fetch(`${BASE}/api/status`, { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  } catch (err) {
+    console.error("[API] /api/status failed:", err);
+    throw err;
+  }
 }
 
 export async function getEpochs(): Promise<EpochData[]> {
-  const r = await fetch(`${BASE}/api/epochs`, { cache: "no-store" });
-  if (!r.ok) return [];
-  const data = await r.json();
-  return data.ok ? data.epochs : [];
+  try {
+    const r = await fetch(`${BASE}/api/epochs`, { cache: "no-store" });
+    if (!r.ok) {
+      console.error("[API] /api/epochs HTTP", r.status);
+      return [];
+    }
+    const data = await r.json();
+    console.log("[API] /api/epochs:", data.epochs?.length, "epochs");
+    return data.ok ? data.epochs : [];
+  } catch (err) {
+    console.error("[API] /api/epochs failed:", err);
+    return [];
+  }
 }
 
 export async function getNodes(): Promise<NodeData[]> {
-  const r = await fetch(`${BASE}/api/nodes`, { cache: "no-store" });
-  if (!r.ok) return [];
-  const data = await r.json();
-  return data.ok ? data.nodes : [];
+  try {
+    const r = await fetch(`${BASE}/api/nodes`, { cache: "no-store" });
+    if (!r.ok) {
+      console.error("[API] /api/nodes HTTP", r.status);
+      return [];
+    }
+    const data = await r.json();
+    console.log("[API] /api/nodes:", data.nodes?.length, "nodes");
+    return data.ok ? data.nodes : [];
+  } catch (err) {
+    console.error("[API] /api/nodes failed:", err);
+    return [];
+  }
 }
 
 export async function getNodeEarnings(nodeId: string): Promise<NodeEarnings> {

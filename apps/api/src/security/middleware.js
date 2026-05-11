@@ -37,7 +37,18 @@ export function attachBaseMiddleware(app) {
         .filter(Boolean);
 
     // Public endpoints that must allow all origins (machine clients, Chainlist, etc.)
-    const PUBLIC_PATHS = ['/rpc', '/health', '/healthz', '/api/pricing', '/api/status'];
+    const PUBLIC_PATHS = [
+        '/rpc',
+        '/health',
+        '/healthz',
+        '/api/pricing',
+        '/api/status',
+        '/api/epochs',
+        '/api/nodes',
+        '/api/settlement',
+        '/os',
+        '/provider.json'
+    ];
 
     const corsOptions = {
         origin: function (origin, callback) {
