@@ -21,7 +21,7 @@
 
 import { Router } from 'express';
 import crypto from 'crypto';
-import { broadcaster } from '../realtime/broadcaster-instance.js';
+import { broadcaster } from '../../realtime/broadcaster-instance.js';
 
 const MEV_PROVIDERS = {
   ethereum: [
