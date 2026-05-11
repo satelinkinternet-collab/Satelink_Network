@@ -68,7 +68,7 @@ export function createApp(pool, redis) {
           eth_getLogs: { usdt_per_call: 0.000050 },
           eth_getTransactionReceipt: { usdt_per_call: 0.000020 }
         },
-        free_tier: { requests_per_day: 1000, api_key_required: false },
+        free_tier: { requests_per_day: 100, api_key_required: false },
         status_url: "https://rpc.satelink.network/api/status"
       });
     } catch (e) {
@@ -159,7 +159,7 @@ export function createApp(pool, redis) {
         contract: "0xE475c53B88190FD2130dB1E37504991EFe283fb0"
       },
       freeTier: {
-        requestsPerDay: 1000,
+        requestsPerDay: 100,
         apiKeyRequired: false
       },
       status: "https://rpc.satelink.network/api/status",
