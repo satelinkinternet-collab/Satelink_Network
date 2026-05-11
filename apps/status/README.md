@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Satelink Network Status
 
-## Getting Started
+Public status page for the Satelink DePIN RPC Gateway infrastructure.
 
-First, run the development server:
+## Supported Chains
+
+| Chain | Chain ID | Endpoint |
+|-------|----------|----------|
+| Polygon PoS | 137 | `https://rpc.satelink.network/rpc/polygon` |
+| Ethereum | 1 | `https://rpc.satelink.network/rpc/ethereum` |
+| Arbitrum One | 42161 | `https://rpc.satelink.network/rpc/arbitrum` |
+| Base | 8453 | `https://rpc.satelink.network/rpc/base` |
+| Polygon Amoy | 80002 | `https://rpc.satelink.network/rpc/amoy` |
+
+## Public Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/health` | System health check with database status |
+| `/api/status` | Live network metrics (nodes, requests, epochs) |
+| `/api/pricing` | RPC method pricing catalog |
+| `/provider.json` | Machine-readable provider metadata |
+| `/rpc/health` | Provider-level health monitoring |
+| `/rpc/chains` | Supported chains with configuration |
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Check chain info
+curl https://rpc.satelink.network/rpc/polygon
+
+# Send JSON-RPC request
+curl -X POST https://rpc.satelink.network/rpc/polygon \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+
+# Check health
+curl https://rpc.satelink.network/health
+
+# Get pricing
+curl https://rpc.satelink.network/api/pricing
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Infrastructure Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Multi-provider failover**: Automatic routing across 3-5 providers per chain
+- **Latency-based routing**: Requests routed to fastest healthy provider
+- **Edge caching**: Sub-millisecond responses for cacheable methods
+- **Rate limiting**: Free tier (100 req/day), paid tiers available
+- **Health monitoring**: 60-second provider health checks with Discord alerts
+- **Revenue settlement**: USDT on Polygon with 50% node operator share
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Uptime & Failover
 
-## Learn More
+The Satelink RPC Gateway maintains 99.5%+ uptime through:
 
-To learn more about Next.js, take a look at the following resources:
+1. **Provider redundancy**: Multiple RPC providers per chain
+2. **Circuit breakers**: Automatic provider isolation on failures
+3. **Health monitoring**: Continuous provider health verification
+4. **Automatic recovery**: Failed providers re-enabled after recovery
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dev    # Start status page locally
+npm run build  # Build for production
+```
 
-## Deploy on Vercel
+## Links
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Website: https://satelink.network
+- RPC Gateway: https://rpc.satelink.network
+- Documentation: https://rpc.satelink.network/provider.json

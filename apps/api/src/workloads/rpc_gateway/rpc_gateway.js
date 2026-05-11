@@ -116,6 +116,46 @@ export function createRpcGateway(db) {
         }
     });
 
+    // GET /rpc/:chain — Public informational endpoint (does NOT interfere with POST)
+    router.get('/:chain', (req, res) => {
+        const { chain } = req.params;
+        const normalizedChain = CHAIN_ALIASES[chain] || chain;
+
+        // Check if it's a valid chain
+        if (!SUPPORTED_CHAINS.has(chain)) {
+            return res.status(404).json({
+                ok: false,
+                error: `Unknown chain: ${chain}`,
+                supported: [...getSupportedChains()]
+            });
+        }
+
+        const config = getChainConfig(normalizedChain);
+        const pricing = CHAIN_PRICING_USDT[normalizedChain] || CHAIN_PRICING_USDT[chain] || DEFAULT_RPC_REWARD_USDT;
+
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        res.json({
+            service: 'Satelink RPC Gateway',
+            chain: normalizedChain,
+            chainId: config?.chainId || null,
+            name: config?.name || normalizedChain,
+            status: 'online',
+            usage: 'Send JSON-RPC POST requests to this endpoint',
+            endpoint: `https://rpc.satelink.network/rpc/${chain}`,
+            pricing: {
+                model: 'pay_per_use',
+                base_cost_usdt: pricing,
+                settlement: 'USDT on Polygon'
+            },
+            providers: config?.providers?.length || 0,
+            health: 'https://rpc.satelink.network/rpc/health',
+            documentation: 'https://rpc.satelink.network/provider.json',
+            example: {
+                curl: `curl -X POST https://rpc.satelink.network/rpc/${chain} -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'`
+            }
+        });
+    });
+
     router.post('/:chain', async (req, res) => {
         const { chain } = req.params;
         const apiKey = req.headers['x-api-key'];
