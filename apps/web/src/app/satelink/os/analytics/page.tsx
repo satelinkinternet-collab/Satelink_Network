@@ -26,27 +26,27 @@ export default function SatelinkAnalyticsPage() {
   useEffect(() => {
     const fetchRevenue = async () => {
       try {
-        const res = await fetch("https://rpc.satelink.network/api/settlement/history");
+        const res = await fetch("https://rpc.satelink.network/api/epochs");
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) {
-            const history = data.slice(0, 12).reverse().map((e: { epoch_id: number; total_revenue_usdt: number }) => ({
-              epoch: `#${e.epoch_id}`,
-              revenue: e.total_revenue_usdt || 0,
-            }));
+          const epochs = data.epochs || [];
+          if (Array.isArray(epochs) && epochs.length > 0) {
+            const history = epochs
+              .filter((e: { epoch_id: number | null }) => e.epoch_id !== null)
+              .slice(0, 12)
+              .reverse()
+              .map((e: { epoch_id: number; total: number }) => ({
+                epoch: `#${e.epoch_id}`,
+                revenue: parseFloat(String(e.total)) || 0,
+              }));
             setRevenueHistory(history);
-            setTotalRevenue(history.reduce((sum: number, e: EpochRevenue) => sum + e.revenue, 0));
+            const total = epochs.reduce((sum: number, e: { total: number }) =>
+              sum + (parseFloat(String(e.total)) || 0), 0);
+            setTotalRevenue(total);
           }
         }
-      } catch {
-        setRevenueHistory([
-          { epoch: "#1", revenue: 0.0012 },
-          { epoch: "#2", revenue: 0.0018 },
-          { epoch: "#3", revenue: 0.0025 },
-          { epoch: "#4", revenue: 0.0031 },
-          { epoch: "#5", revenue: 0.0028 },
-        ]);
-        setTotalRevenue(0.0114);
+      } catch (err) {
+        console.error("[Analytics] Failed to fetch epochs:", err);
       }
     };
     fetchRevenue();
