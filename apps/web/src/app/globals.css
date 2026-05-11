@@ -7,57 +7,65 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ══════════════════════════════════════════════════
-   SATELINK DESIGN SYSTEM — RAILWAY STYLE
-   Dense, tight typography with Inter + JetBrains Mono
+   SATELINK DESIGN SYSTEM — PREMIUM EDITION
+   shadcn/ui + Tremor + Framer Motion
+   Brand: #091413 bg · #408A71 primary · #285A48 secondary
+          #B0E4CC light · #00D1FF glow accent
    ══════════════════════════════════════════════════ */
 
 :root {
-  --bg:           #0b0e0d;
-  --surface:      #0d1a14;
-  --surface-hover:#0f1e17;
-  --border:       #1a2e25;
-  --border-mid:   #285a48;
-  --primary:      #408a71;
-  --light:        #b0e4cc;
-  --muted:        #408a71;
-  --dim:          #285a48;
-  --glow:         #00d1ff;
+  /* Satelink brand tokens */
+  --sat-bg:       #091413;
+  --sat-surface:  #0c1a17;
+  --sat-surface2: #0f2219;
+  --sat-border:   #1a3028;
+  --sat-border2:  #285A48;
+  --sat-primary:  #408A71;
+  --sat-light:    #B0E4CC;
+  --sat-muted:    #408A71;
+  --sat-dim:      #285A48;
+  --sat-glow:     #00D1FF;
+
+  /* Layout */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --nav-h: 48px;
   --sidebar-w: 200px;
+  --status-bar-h: 36px;
   --radius: 5px;
 
-  /* shadcn compatibility */
-  --background: var(--bg);
-  --foreground: var(--light);
-  --card: var(--surface);
-  --card-foreground: var(--light);
-  --popover: var(--surface);
-  --popover-foreground: var(--light);
-  --primary-color: var(--primary);
-  --primary-foreground: var(--bg);
-  --secondary: var(--surface);
-  --secondary-foreground: var(--light);
-  --muted-color: var(--dim);
-  --muted-foreground: var(--muted);
-  --accent: var(--glow);
-  --accent-foreground: var(--bg);
-  --destructive: #c04040;
-  --destructive-foreground: #ffffff;
-  --border-color: var(--border);
-  --input: var(--border);
-  --ring: var(--glow);
-  --chart-1: var(--glow);
-  --chart-2: var(--primary);
-  --chart-3: var(--light);
-  --chart-4: var(--dim);
-  --chart-5: #f59e0b;
-  --sidebar: var(--bg);
-  --sidebar-foreground: var(--light);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--bg);
-  --sidebar-accent: var(--surface);
+  /* shadcn/ui color system (HSL format required) */
+  --background: 168 30% 5%;
+  --foreground: 152 47% 78%;
+  --card: 162 24% 7%;
+  --card-foreground: 152 47% 78%;
+  --popover: 162 24% 7%;
+  --popover-foreground: 152 47% 78%;
+  --primary: 156 36% 40%;
+  --primary-foreground: 168 30% 5%;
+  --secondary: 156 38% 25%;
+  --secondary-foreground: 152 47% 78%;
+  --muted: 160 30% 15%;
+  --muted-foreground: 156 36% 40%;
+  --accent: 192 100% 50%;
+  --accent-foreground: 168 30% 5%;
+  --destructive: 0 60% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 160 30% 13%;
+  --input: 160 30% 13%;
+  --ring: 156 36% 40%;
+  --chart-1: 192 100% 50%;
+  --chart-2: 156 36% 40%;
+  --chart-3: 152 47% 78%;
+  --chart-4: 156 38% 25%;
+  --chart-5: 38 92% 50%;
+
+  /* Sidebar */
+  --sidebar: 168 30% 5%;
+  --sidebar-foreground: 152 47% 78%;
+  --sidebar-primary: 156 36% 40%;
+  --sidebar-primary-foreground: 168 30% 5%;
+  --sidebar-accent: 162 24% 7%;
   --sidebar-accent-foreground: var(--light);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--glow);
@@ -109,19 +117,28 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
-  background: var(--bg);
-  color: var(--light);
-  font-family: var(--font-sans);
+  background: #091413;
+  color: #B0E4CC;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-size: 13px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.025em; color: var(--light); }
-h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--light); }
-h3 { font-size: 13px; font-weight: 500; color: var(--light); }
-h4, h5, h6 { font-size: 12px; font-weight: 500; color: var(--muted); }
+h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.025em; color: #B0E4CC; }
+h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: #B0E4CC; }
+h3 { font-size: 13px; font-weight: 500; color: #B0E4CC; }
+h4, h5, h6 { font-size: 12px; font-weight: 500; color: #408A71; }
+
+/* Tremor overrides for Satelink brand */
+.tremor-Card-root { background: #0c1a17 !important; border-color: #1a3028 !important; }
+.tremor-base { color: #408A71 !important; }
+[data-tremor-chart] { --tremor-brand: #408A71; }
+.recharts-cartesian-axis-tick-value { fill: #285A48 !important; font-size: 10px !important; }
+.recharts-tooltip-wrapper { background: #0c1a17 !important; border-color: #1a3028 !important; }
+.tremor-Legend-legendItem { color: #408A71 !important; }
+.tremor-DonutChart-label { fill: #B0E4CC !important; }
 
 p { color: var(--muted); font-size: 13px; line-height: 1.6; }
 a { color: var(--primary); text-decoration: none; transition: color 0.15s; }

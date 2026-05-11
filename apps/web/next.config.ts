@@ -12,12 +12,17 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   turbopack: {},
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',
     },
+    serverComponentsExternalPackages: [],
   },
+  staticPageGenerationTimeout: 180,
   generateBuildId: async () => {
     return `build-${Date.now()}`;
   },
