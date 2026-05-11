@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "@/styles/satelink.css";
+import { Providers } from "@/components/providers";
 
 export const dynamic = "force-dynamic";
 
@@ -108,7 +109,7 @@ export default function RootLayout({
           fontFamily: "var(--font-body)",
         }}
       >
-        {children}
+        <Providers>{children}</Providers>
 
         {/* Google Analytics */}
         <Script
