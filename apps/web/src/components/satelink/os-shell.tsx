@@ -33,7 +33,7 @@ const navGroups = [
     items: [
       { href: "/satelink/os/analytics", label: "Analytics", icon: ChartLine },
       { href: "/satelink/os/billing", label: "Billing", icon: Receipt },
-      { href: "/satelink/os/settlement", label: "Settlement", icon: Wallet },
+      { href: "/satelink/os/withdraw", label: "Withdraw", icon: Wallet },
     ],
   },
   {

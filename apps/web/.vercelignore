@@ -1,0 +1,11 @@
+node_modules
+.next
+*.log
+.env
+.env.local
+../../node_modules
+../../packages
+../../apps/api
+../../services
+../../agents
+../../contracts
