@@ -1,4 +1,5 @@
 import express from "express";
+import { attachBaseMiddleware } from "./src/security/middleware.js";
 import revenueRoutes from "./src/routes/revenue.js";
 import { createRpcGateway } from "./src/workloads/rpc_gateway/rpc_gateway.js";
 import { createMevRelayRouter } from "./src/workloads/mev_relay/index.js";
@@ -18,7 +19,8 @@ import { createOsEventsRouter } from "./src/realtime/os-events-route.js";
 export function createApp(pool, redis) {
   const app = express();
 
-  app.use(express.json());
+  // Attach base middleware (CORS, helmet, security headers)
+  attachBaseMiddleware(app);
 
   // Core endpoints
   app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
