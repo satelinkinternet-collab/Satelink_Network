@@ -1,8 +1,16 @@
 "use client";
 
-export default function GlobalError() {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  console.error(error);
+
   return (
-    <html>
+    <html lang="en">
       <body
         style={{
           background: "#0b0e0d",
@@ -26,11 +34,13 @@ export default function GlobalError() {
         >
           SATELINK · SYSTEM ERROR
         </div>
+
         <div style={{ fontSize: "13px", color: "#b0e4cc" }}>
-          Something went wrong
+          {error?.message || "Something went wrong"}
         </div>
-        <a
-          href="/"
+
+        <button
+          onClick={() => reset()}
           style={{
             padding: "6px 16px",
             background: "#408a71",
@@ -40,11 +50,10 @@ export default function GlobalError() {
             cursor: "pointer",
             fontSize: "12px",
             fontWeight: "600",
-            textDecoration: "none",
           }}
         >
-          Go home
-        </a>
+          Retry
+        </button>
       </body>
     </html>
   );

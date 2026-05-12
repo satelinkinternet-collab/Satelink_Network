@@ -4,7 +4,7 @@ import "./globals.css";
 import "@/styles/satelink.css";
 import { Providers } from "@/components/providers";
 
-export const dynamic = "force-dynamic";
+
 
 export const metadata: Metadata = {
   title: "Satelink Network | Decentralized RPC Infrastructure for Machine Economies",
