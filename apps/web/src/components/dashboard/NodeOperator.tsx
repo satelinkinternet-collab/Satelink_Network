@@ -1,3 +1,5 @@
+"use client";
+
 'use client';
 
 import { Database, Coins, ArrowRightFromLine, Award } from 'lucide-react';

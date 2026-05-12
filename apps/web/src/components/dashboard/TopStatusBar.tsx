@@ -1,3 +1,5 @@
+"use client";
+
 'use client';
 
 import { Bell, Search, Settings } from 'lucide-react';

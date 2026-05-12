@@ -1,3 +1,7 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 import { Navigation } from "@/components/marketing/Navigation";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { HowItWorks } from "@/components/marketing/HowItWorks";

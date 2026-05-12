@@ -7,7 +7,7 @@ const API_BASE =
   "http://localhost:8080";
 
 const nextConfig: NextConfig = {
-  outputFileTracing: false,
+  output: "undefined",
 
   outputFileTracingRoot: path.join(__dirname, "../../"),
 

@@ -1,3 +1,7 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 import { ReactNode } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import TopStatusBar from '@/components/dashboard/TopStatusBar';
