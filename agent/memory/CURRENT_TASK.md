@@ -2,4 +2,4 @@
 
 No active task.
 
-Last completed: May 13, 2026 — fixed `apps/web` Vercel tracing instability by removing the custom `outputFileTracingRoot` override and eliminating a duplicate `/` App Router page at `src/app/(marketing)/page.tsx`, then revalidated a clean production build and manifest output.
+Last completed: May 13, 2026 — audited `apps/web` for invalid `next/document` usage after a reported `/404` prerender failure, confirmed the only import is the valid `src/pages/_document.tsx`, and revalidated a clean cold build from `apps/web`.

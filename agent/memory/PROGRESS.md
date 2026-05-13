@@ -1,7 +1,16 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 13, 2026 (VERCEL TRACE FIX)
+# Updated: May 13, 2026 (DOCUMENT IMPORT AUDIT)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 13, 2026 (DOCUMENT IMPORT AUDIT)
+- DONE: Searched entire `apps/web` tree for `next/document`, `<Html>`, `<Head>`, `<Main />`, and `<NextScript />`
+- DONE: Confirmed the only source import is `apps/web/src/pages/_document.tsx`
+- DONE: Verified `apps/web/src/app/403/page.tsx` and `apps/web/src/app/not-found.tsx` do not import `next/document`
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Rebuilt `apps/web` successfully with `npm run build`
+- DONE: Verified current workspace does not reproduce the reported `/404` prerender failure
+- NOTE: `apps/web/.next/trace` shows `next/document` only in the Pages Router build layer via `src/pages/_document.tsx`
 
 ## SESSION UPDATE — May 13, 2026 (VERCEL TRACE FIX)
 - DONE: Removed `outputFileTracingRoot` override from `apps/web/next.config.ts`
