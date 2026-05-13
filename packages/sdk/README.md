@@ -1,6 +1,6 @@
 # @satelink/sdk
 
-Official SDK for the Satelink DePIN network — blockchain RPC, AI inference, and more.
+Official SDK for the Satelink DePIN network — blockchain RPC, MEV relay, AI inference, and more.
 
 ## Install
 
@@ -15,19 +15,23 @@ yarn add @satelink/sdk
 ## Quick Start
 
 ```typescript
-import { SatelinkRPC, SatelinkAI } from '@satelink/sdk';
+import { SatelinkRPC, SatelinkMEV, getEthersProvider } from '@satelink/sdk';
 
 // RPC calls (no API key needed for public tier)
 const rpc = new SatelinkRPC({ chain: 'polygon' });
 const blockNumber = await rpc.getBlockNumber();
 console.log('Current block:', blockNumber);
 
-// AI inference (API key required)
-const ai = new SatelinkAI({ apiKey: 'sk_live_...' });
-const response = await ai.chat([
-  { role: 'user', content: 'Hello!' }
-]);
-console.log(response.choices[0].message.content);
+// ethers.js provider (drop-in Alchemy replacement)
+const provider = getEthersProvider('polygon');
+const balance = await provider.getBalance('0x...');
+
+// MEV relay (API key required)
+const mev = new SatelinkMEV({ apiKey: 'sk_live_...' });
+const simulation = await mev.simulateBundle([signedTx1, signedTx2]);
+if (simulation.profitable) {
+  const result = await mev.submitBundle([signedTx1, signedTx2]);
+}
 ```
 
 ## RPC Usage
@@ -63,6 +67,106 @@ const logs = await rpc.request('eth_getLogs', [{
 }]);
 ```
 
+## MEV Relay
+
+Private mempool for MEV searchers. Transactions bypass public mempool.
+
+```typescript
+import { createMevClient } from '@satelink/sdk';
+
+const mev = createMevClient({ apiKey: 'sk_live_...' });
+
+// 1. Simulate bundle first (cheap - $0.0001)
+const simulation = await mev.simulateBundle([
+  '0x02f8...', // signed tx 1
+  '0x02f8...'  // signed tx 2
+]);
+
+console.log('Profitable:', simulation.profitable);
+console.log('Coinbase diff:', simulation.simulation?.coinbaseDiff);
+
+// 2. Submit if profitable ($0.005 per bundle)
+if (simulation.profitable) {
+  const result = await mev.submitBundle(
+    ['0x02f8...', '0x02f8...'],
+    { blockNumber: 'latest' }
+  );
+  console.log('Bundle hash:', result.bundleHash);
+
+  // 3. Track inclusion status
+  const status = await mev.getBundleStatus(result.bundleHash);
+  console.log('Status:', status.status);
+}
+
+// Submit single private tx ($0.001)
+const tx = await mev.submitPrivateTransaction('0x02f8...');
+```
+
+### MEV Pricing
+
+| Method | Price |
+|--------|-------|
+| eth_callBundle (simulation) | $0.0001 |
+| eth_sendRawTransaction | $0.001 |
+| eth_sendBundle | $0.005 |
+| flashbots_getBundleStats | $0.00005 |
+
+## Framework Adapters
+
+Drop-in replacements for Alchemy/Infura with zero config changes.
+
+### ethers.js
+
+```typescript
+import { getEthersProvider } from '@satelink/sdk';
+
+// ethers v5 or v6 - auto-detected
+const provider = getEthersProvider('polygon');
+const block = await provider.getBlockNumber();
+const balance = await provider.getBalance('0x...');
+```
+
+### viem
+
+```typescript
+import { createPublicClient } from 'viem';
+import { polygon } from 'viem/chains';
+import { getViemTransport } from '@satelink/sdk';
+
+const client = createPublicClient({
+  chain: polygon,
+  transport: getViemTransport('polygon'),
+});
+
+const block = await client.getBlockNumber();
+```
+
+### wagmi
+
+```typescript
+import { createConfig, http } from 'wagmi';
+import { polygon, arbitrum, base } from 'wagmi/chains';
+import { getSatelinkRpcUrl } from '@satelink/sdk';
+
+const config = createConfig({
+  chains: [polygon, arbitrum, base],
+  transports: {
+    [polygon.id]: http(getSatelinkRpcUrl('polygon')),
+    [arbitrum.id]: http(getSatelinkRpcUrl('arbitrum')),
+    [base.id]: http(getSatelinkRpcUrl('base')),
+  },
+});
+```
+
+### Raw JSON-RPC (no dependencies)
+
+```typescript
+import { rpc } from '@satelink/sdk';
+
+const blockNumber = await rpc('eth_blockNumber', [], 'polygon');
+const balance = await rpc('eth_getBalance', ['0x...', 'latest'], 'ethereum');
+```
+
 ## AI Usage
 
 ```typescript
@@ -75,17 +179,11 @@ const chatResponse = await ai.chat([
   { role: 'system', content: 'You are a helpful assistant.' },
   { role: 'user', content: 'What is DePIN?' }
 ], {
-  model: 'gpt-4o', // or satelink-default, gpt-3.5-turbo
+  model: 'gpt-4o',
   max_tokens: 500
 });
 
 console.log(chatResponse.choices[0].message.content);
-
-// Legacy completion
-const text = await ai.complete('Explain blockchain in one sentence:');
-
-// List available models
-const models = await ai.models;
 ```
 
 ## EIP-1193 Provider
@@ -115,87 +213,27 @@ await provider.request({
 });
 ```
 
-### wagmi Integration
-
-```typescript
-import { createConfig, http } from 'wagmi';
-import { polygon, arbitrum, base } from 'wagmi/chains';
-
-const config = createConfig({
-  chains: [polygon, arbitrum, base],
-  transports: {
-    [polygon.id]: http('https://rpc.satelink.network/rpc/polygon'),
-    [arbitrum.id]: http('https://rpc.satelink.network/rpc/arbitrum'),
-    [base.id]: http('https://rpc.satelink.network/rpc/base'),
-  },
-});
-```
-
-### viem / ethers.js
-
-```typescript
-// viem
-import { createPublicClient, http } from 'viem';
-import { polygon } from 'viem/chains';
-
-const client = createPublicClient({
-  chain: polygon,
-  transport: http('https://rpc.satelink.network/rpc/polygon'),
-});
-
-// ethers.js
-import { BrowserProvider } from 'ethers';
-import { SatelinkProvider } from '@satelink/sdk';
-
-const provider = new SatelinkProvider({ chainId: 137 });
-const ethersProvider = new BrowserProvider(provider);
-```
-
 ## Supported Chains
 
-| Chain | ID | Slug |
-|-------|-----|------|
-| Ethereum | 1 | `ethereum` |
-| Polygon | 137 | `polygon` |
-| Arbitrum | 42161 | `arbitrum` |
-| Base | 8453 | `base` |
-| Polygon Amoy | 80002 | `polygon-amoy` |
+| Chain | ID | Slug | MEV Support |
+|-------|-----|------|-------------|
+| Ethereum | 1 | `ethereum` | Yes (Flashbots) |
+| Polygon | 137 | `polygon` | Yes |
+| Arbitrum | 42161 | `arbitrum` | Yes |
+| Base | 8453 | `base` | No |
+| Polygon Amoy | 80002 | `amoy` | No (testnet) |
 
 ## Pricing
 
-- **RPC calls**: $0.00003 USDT per call (varies by chain)
-- **AI inference**: $0.000001 per input token, $0.000003 per output token
-- **MEV relay**: $0.001 per transaction (10x standard)
-
-## Node Operator CLI
-
-Run your own Satelink node to earn USDT:
-
-```bash
-# Install globally
-npm install -g @satelink/node-agent
-
-# Register your node
-satelink-node register --wallet 0xYourWallet --region ap-south-1
-
-# Start sending heartbeats (every 2 min)
-satelink-node start
-
-# Check status
-satelink-node status
-```
-
-| Command | Description |
-|---------|-------------|
-| `register -w <wallet> -r <region>` | Register node |
-| `start` | Start heartbeat daemon |
-| `status` | Show node status |
+- **RPC calls**: $0.00003 USDT per call
+- **MEV relay**: $0.001-$0.005 per tx/bundle
+- **AI inference**: $0.000001 per input token
 
 ## Links
 
 - Website: https://satelink.network
-- Documentation: https://rpc.satelink.network/openapi.json
-- GitHub: https://github.com/satelinkinternet-collab/Satelink_Network
+- RPC Endpoint: https://rpc.satelink.network
+- GitHub: https://github.com/Satelink-Protocol/Satelink_Network
 
 ## License
 

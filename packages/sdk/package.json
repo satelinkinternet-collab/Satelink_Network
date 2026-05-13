@@ -1,7 +1,7 @@
 {
   "name": "@satelink/sdk",
-  "version": "0.1.0",
-  "description": "Official SDK for the Satelink DePIN network — RPC, AI inference, and blockchain tools",
+  "version": "0.2.0",
+  "description": "Official SDK for the Satelink DePIN network — RPC, MEV relay, AI inference, and blockchain tools",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -13,6 +13,14 @@
     "./rpc": {
       "import": "./dist/rpc.js",
       "types": "./dist/rpc.d.ts"
+    },
+    "./mev": {
+      "import": "./dist/mev.js",
+      "types": "./dist/mev.d.ts"
+    },
+    "./adapters": {
+      "import": "./dist/adapters.js",
+      "types": "./dist/adapters.d.ts"
     },
     "./ai": {
       "import": "./dist/ai.js",
@@ -31,26 +39,32 @@
     "rpc",
     "ethereum",
     "polygon",
+    "mev",
+    "flashbots",
     "blockchain",
     "ai",
     "openai",
-    "langchain"
+    "ethers",
+    "viem",
+    "wagmi"
   ],
   "author": "Satelink Network",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/satelinkinternet-collab/Satelink_Network.git"
+    "url": "https://github.com/Satelink-Protocol/Satelink_Network.git"
   },
   "homepage": "https://satelink.network",
   "devDependencies": {
     "typescript": "^5.4.0"
   },
   "peerDependencies": {
-    "viem": ">=2.0.0",
+    "ethers": ">=5.0.0",
+    "viem": ">=1.0.0",
     "wagmi": ">=2.0.0"
   },
   "peerDependenciesMeta": {
+    "ethers": { "optional": true },
     "viem": { "optional": true },
     "wagmi": { "optional": true }
   }

@@ -1,9 +1,21 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 14, 2026 (BRANCH CLEANUP + S0-008)
+# Updated: May 14, 2026 (L8 DEFI INTEGRATION)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL ONLY (all SQLite refs removed)
 # GitHub: Satelink-Protocol/Satelink_Network
 # Branches: main + develop ONLY
+
+## SESSION UPDATE — May 14, 2026 (L8 DEFI/DAPP INTEGRATION)
+- DONE: L8 Item 1 — eth_callBundle simulation endpoint (POST /rpc/mev/bundle/simulate)
+- DONE: L8 Item 1 — Bundle status tracking endpoint (GET /rpc/mev/bundle/:bundleHash)
+- DONE: L8 Item 2 — @satelink/sdk MEV client (packages/sdk/src/mev.ts)
+- DONE: L8 Item 2 — Framework adapters for ethers.js/viem/wagmi (packages/sdk/src/adapters.ts)
+- DONE: Updated SDK exports, package.json v0.2.0, README with MEV + adapter docs
+- DONE: Tested SDK against live RPC — Polygon block 86,841,199 verified
+- DONE: MEV relay status confirmed live with Flashbots signing enabled
+- NOTE: New simulation endpoints deploy after Railway redeploy
+- NOTE: SDK ready for npm publish (@satelink/sdk v0.2.0)
+- NEXT: npm publish @satelink/sdk, then start L9 AI Agent layer
 
 ## SESSION UPDATE — May 14, 2026 (BRANCH CLEANUP + S0-008 SQLITE REMOVAL)
 - DONE: Branch audit — found 7 local, 13 remote dependabot, 2 remote tracked

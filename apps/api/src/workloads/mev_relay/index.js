@@ -1,15 +1,22 @@
 /**
- * MEV Private Relay (S3-001)
+ * MEV Private Relay (L8-001)
  *
  * Private mempool relay for MEV searchers.
  * Transactions are NOT broadcast to public mempool — submitted directly to validators.
  *
- * Pricing: 10x standard RPC rate ($0.001 per tx vs $0.0001)
+ * Pricing:
+ * - eth_sendRawTransaction: $0.001 (10x standard RPC)
+ * - eth_sendBundle: $0.005
+ * - eth_callBundle (simulation): $0.0001
+ * - flashbots_getBundleStats: $0.00005
+ *
  * Auth: Requires API key (no free tier)
  *
  * Endpoints:
  * - POST /rpc/mev — Submit private transaction
  * - POST /rpc/mev/bundle — Submit MEV bundle (Flashbots-compatible)
+ * - POST /rpc/mev/bundle/simulate — Dry-run bundle simulation (eth_callBundle)
+ * - GET /rpc/mev/bundle/:hash — Check bundle inclusion status
  * - GET /rpc/mev/status — Relay health and stats
  *
  * Features:
@@ -17,6 +24,8 @@
  * - Per-key rate limiting (sliding window)
  * - Flashbots signature for Ethereum mainnet
  * - Realtime revenue broadcast
+ * - Bundle simulation before payment
+ * - Bundle status tracking
  */
 
 import { Router } from 'express';
@@ -39,7 +48,9 @@ const MEV_PROVIDERS = {
 const MEV_PRICING_USDT = {
   eth_sendRawTransaction: 0.001,
   eth_sendBundle: 0.005,
-  eth_sendPrivateTransaction: 0.001
+  eth_sendPrivateTransaction: 0.001,
+  eth_callBundle: 0.0001,
+  flashbots_getBundleStats: 0.00005
 };
 
 const DEFAULT_MEV_PRICE = 0.001;
@@ -56,6 +67,8 @@ const mevStats = {
   successfulSubmissions: 0,
   failedSubmissions: 0,
   bundlesSubmitted: 0,
+  bundleSimulations: 0,
+  bundleStatusChecks: 0,
   revenueUsdt: 0,
   lastSubmissionAt: null,
   rateLimitHits: 0
@@ -303,16 +316,27 @@ export function createMevRelayRouter(db, redis) {
           ? ((mevStats.successfulSubmissions / mevStats.totalSubmissions) * 100).toFixed(1) + '%'
           : 'N/A',
         bundlesSubmitted: mevStats.bundlesSubmitted,
+        bundleSimulations: mevStats.bundleSimulations,
+        bundleStatusChecks: mevStats.bundleStatusChecks,
         revenueUsdt: mevStats.revenueUsdt.toFixed(6),
         rateLimitHits: mevStats.rateLimitHits,
         lastSubmissionAt: mevStats.lastSubmissionAt
+      },
+      endpoints: {
+        submit: 'POST /rpc/mev',
+        bundle: 'POST /rpc/mev/bundle',
+        simulate: 'POST /rpc/mev/bundle/simulate',
+        bundleStatus: 'GET /rpc/mev/bundle/:bundleHash',
+        status: 'GET /rpc/mev/status'
       },
       pricing: MEV_PRICING_USDT,
       rateLimits: RATE_LIMITS,
       features: {
         flashbotsSignature: !!process.env.FLASHBOTS_SIGNER_KEY,
         redisCaching: !!redis,
-        realtimeBroadcast: true
+        realtimeBroadcast: true,
+        bundleSimulation: true,
+        bundleStatusTracking: true
       }
     });
   });
@@ -467,6 +491,221 @@ export function createMevRelayRouter(db, redis) {
         ok: false,
         error: 'Bundle submission failed',
         message: err.message
+      });
+    }
+  });
+
+  /**
+   * POST /bundle/simulate — eth_callBundle dry-run simulation
+   * MEV searchers use this to test bundle profitability before paying for submission
+   */
+  router.post('/bundle/simulate', async (req, res) => {
+    const startTime = Date.now();
+    const apiKey = req.headers['x-api-key'];
+    const keyCheck = await validateApiKey(apiKey, db, redis);
+
+    if (!keyCheck.valid) {
+      return res.status(403).json({ ok: false, error: keyCheck.error });
+    }
+
+    const rateCheck = await checkMevRateLimit(redis, apiKey, keyCheck.tier);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        ok: false,
+        error: 'rate_limit_exceeded',
+        message: `MEV relay limit: ${rateCheck.limit} requests/minute`,
+        retry_after: 60
+      });
+    }
+
+    const { txs, blockNumber, stateBlockNumber } = req.body || {};
+
+    if (!txs || !Array.isArray(txs) || txs.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'invalid_request',
+        message: 'txs must be a non-empty array of hex-encoded signed transactions'
+      });
+    }
+
+    if (txs.length > 25) {
+      return res.status(400).json({
+        ok: false,
+        error: 'bundle_too_large',
+        message: 'Maximum 25 transactions per bundle simulation'
+      });
+    }
+
+    const requestId = `mev_sim_${crypto.randomUUID()}`;
+    mevStats.bundleSimulations++;
+
+    try {
+      const flashbotsPayload = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'eth_callBundle',
+        params: [{
+          txs,
+          blockNumber: blockNumber || 'latest',
+          stateBlockNumber: stateBlockNumber || 'latest',
+          timestamp: Math.floor(Date.now() / 1000)
+        }]
+      };
+
+      const headers = { 'Content-Type': 'application/json' };
+      const fbSignature = await signFlashbotsRequest(flashbotsPayload);
+      if (fbSignature) {
+        headers['X-Flashbots-Signature'] = fbSignature;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch('https://relay.flashbots.net', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(flashbotsPayload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      const result = await response.json();
+      const latency = Date.now() - startTime;
+
+      const simulationFee = MEV_PRICING_USDT.eth_callBundle;
+      await recordMevRevenue(db, 'eth_callBundle', apiKey || 'anonymous', requestId, 'ethereum');
+
+      if (result.error) {
+        return res.json({
+          ok: false,
+          simulation: null,
+          error: result.error.message || 'Simulation failed',
+          latency_ms: latency,
+          fee_usdt: simulationFee,
+          requestId
+        });
+      }
+
+      const simResult = result.result;
+      return res.json({
+        ok: true,
+        simulation: {
+          bundleHash: simResult?.bundleHash,
+          coinbaseDiff: simResult?.coinbaseDiff,
+          ethSentToCoinbase: simResult?.ethSentToCoinbase,
+          gasFees: simResult?.gasFees,
+          results: simResult?.results,
+          stateBlockNumber: simResult?.stateBlockNumber,
+          totalGasUsed: simResult?.totalGasUsed
+        },
+        profitable: simResult?.coinbaseDiff && BigInt(simResult.coinbaseDiff) > 0n,
+        latency_ms: latency,
+        fee_usdt: simulationFee,
+        requestId
+      });
+
+    } catch (err) {
+      console.error('[MEV] eth_callBundle simulation failed:', err.message);
+      return res.status(502).json({
+        ok: false,
+        error: 'simulation_failed',
+        message: err.name === 'AbortError' ? 'Simulation timeout (15s)' : err.message,
+        requestId
+      });
+    }
+  });
+
+  /**
+   * GET /bundle/:bundleHash — Check if bundle was included on-chain
+   * Uses flashbots_getBundleStats to check inclusion status
+   */
+  router.get('/bundle/:bundleHash', async (req, res) => {
+    const { bundleHash } = req.params;
+    const { blockNumber } = req.query;
+    const apiKey = req.headers['x-api-key'];
+
+    if (!bundleHash || !bundleHash.startsWith('0x')) {
+      return res.status(400).json({
+        ok: false,
+        error: 'invalid_bundle_hash',
+        message: 'bundleHash must be a 0x-prefixed hex string'
+      });
+    }
+
+    const keyCheck = await validateApiKey(apiKey, db, redis);
+    if (!keyCheck.valid) {
+      return res.status(403).json({ ok: false, error: keyCheck.error });
+    }
+
+    const requestId = `mev_status_${crypto.randomUUID()}`;
+    mevStats.bundleStatusChecks++;
+
+    try {
+      const payload = {
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method: 'flashbots_getBundleStats',
+        params: [{ bundleHash, blockNumber: blockNumber || 'latest' }]
+      };
+
+      const headers = { 'Content-Type': 'application/json' };
+      const fbSignature = await signFlashbotsRequest(payload);
+      if (fbSignature) {
+        headers['X-Flashbots-Signature'] = fbSignature;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch('https://relay.flashbots.net', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      const result = await response.json();
+
+      const statusFee = MEV_PRICING_USDT.flashbots_getBundleStats;
+      await recordMevRevenue(db, 'flashbots_getBundleStats', apiKey || 'anonymous', requestId, 'ethereum');
+
+      if (result.error) {
+        return res.json({
+          ok: false,
+          bundleHash,
+          status: 'unknown',
+          error: result.error.message,
+          fee_usdt: statusFee,
+          requestId
+        });
+      }
+
+      const stats = result.result;
+      return res.json({
+        ok: true,
+        bundleHash,
+        status: stats?.isSimulated ? (stats?.isHighPriority ? 'pending_high_priority' : 'pending') : 'not_found',
+        stats: {
+          isSimulated: stats?.isSimulated,
+          isSentToMiners: stats?.isSentToMiners,
+          isHighPriority: stats?.isHighPriority,
+          simulatedAt: stats?.simulatedAt,
+          submittedAt: stats?.submittedAt,
+          sentToMinersAt: stats?.sentToMinersAt
+        },
+        fee_usdt: statusFee,
+        requestId
+      });
+
+    } catch (err) {
+      console.error('[MEV] Bundle status check failed:', err.message);
+      return res.status(502).json({
+        ok: false,
+        error: 'status_check_failed',
+        message: err.name === 'AbortError' ? 'Status check timeout (10s)' : err.message,
+        bundleHash,
+        requestId
       });
     }
   });
