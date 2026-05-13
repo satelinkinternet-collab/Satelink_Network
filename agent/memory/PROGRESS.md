@@ -1,7 +1,15 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 11, 2026 (LIVE DASHBOARD WIRING)
+# Updated: May 13, 2026 (APP ROUTER BUILD VERIFICATION)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 13, 2026 (APP ROUTER BUILD VERIFICATION)
+- DONE: Searched `apps/web` for invalid App Router `next/document` usage
+- DONE: Confirmed the only `next/document` import is `apps/web/src/pages/_document.tsx`, which is valid Pages Router usage
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Refreshed frontend dependencies with `npm install`
+- DONE: Verified `apps/web` production build succeeds with `npm run build`
+- NOTE: No `src/app` layouts required code changes for this task
 
 ## SESSION UPDATE — May 11, 2026 (LIVE DASHBOARD WIRING)
 - DONE: Tested all backend endpoints at rpc.satelink.network
