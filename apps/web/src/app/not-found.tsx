@@ -1,10 +1,10 @@
-export const dynamic = 'force-dynamic';
-
 export default function NotFound() {
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h2>Page Not Found</h2>
-      <p>The page you are looking for does not exist.</p>
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="text-center">
+        <h1 className="text-5xl font-bold mb-4">404</h1>
+        <p className="text-zinc-400">Page not found</p>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,16 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "@/styles/satelink.css";
 import { Providers } from "@/components/providers";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "Satelink Network | Decentralized RPC Infrastructure for Machine Economies",
+  title:
+    "Satelink Network | Decentralized RPC Infrastructure for Machine Economies",
   description:
     "The infrastructure layer for autonomous machine economies. Decentralized RPC gateway with USDT settlement, multi-chain support, and 50% revenue share for node operators.",
   keywords: [
@@ -79,7 +82,12 @@ const jsonLd = {
     { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
     { "@type": "Offer", name: "Basic", price: "10", priceCurrency: "USD" },
     { "@type": "Offer", name: "Pro", price: "50", priceCurrency: "USD" },
-    { "@type": "Offer", name: "Enterprise", price: "200", priceCurrency: "USD" },
+    {
+      "@type": "Offer",
+      name: "Enterprise",
+      price: "200",
+      priceCurrency: "USD",
+    },
   ],
 };
 
@@ -93,7 +101,11 @@ export default function RootLayout({
       <head>
         <link rel="dns-prefetch" href="https://rpc.satelink.network" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <meta name="application-name" content="Satelink Network" />
         <meta name="theme-color" content="#2C3333" />
         <script

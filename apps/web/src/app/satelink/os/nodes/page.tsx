@@ -1,5 +1,8 @@
 "use client";
 
+
+
+
 import { useEffect, useState } from "react";
 import { OsPageTemplate } from "@/components/satelink/os-page-template";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";

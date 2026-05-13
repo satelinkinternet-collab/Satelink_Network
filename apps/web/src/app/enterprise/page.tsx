@@ -1,3 +1,7 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { SectionContainer } from "@/components/ui/SectionContainer";
 import { CTAButton } from "@/components/ui/CTAButton";

@@ -1,4 +1,7 @@
 "use client";
+
+
+
 import { useState, useEffect } from "react";
 
 const API = "https://rpc.satelink.network";

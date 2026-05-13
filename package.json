@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.9",
+    "@vercel/analytics": "^2.0.1",
     "@xyflow/react": "^12.10.2",
     "cmdk": "^1.1.1",
     "zustand": "^5.0.13"

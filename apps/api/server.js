@@ -14,6 +14,7 @@ import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_he
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
 import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
 import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
+import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -146,6 +147,15 @@ async function start() {
     console.log('[BOOT] ✅ Billing tables ensured');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
+    process.exit(1);
+  }
+
+  // Step 2b: Initialize machine access control-plane tables
+  try {
+    await ensureMachineAccessTables(pool);
+    console.log('[BOOT] ✅ Machine access tables ensured');
+  } catch (err) {
+    console.error('[BOOT] ❌ FAILED at ensureMachineAccessTables:', err.message);
     process.exit(1);
   }
 

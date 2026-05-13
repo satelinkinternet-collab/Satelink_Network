@@ -1,7 +1,60 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 11, 2026 (LIVE DASHBOARD WIRING)
+# Updated: May 14, 2026 (MACHINE ACCESS FOUNDATION)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 14, 2026 (MACHINE ACCESS FOUNDATION)
+- DONE: Defined Satelink Machine Access as the internal machine identity and infrastructure authorization layer for Satelink OS
+- DONE: Added backend control-plane scaffold under `apps/api/src/machine-access/*`
+- DONE: Added hashed token issuance/authentication, scope validation, environment/project guards, replay protection, and audit-log chaining
+- DONE: Added readonly observability endpoints and scaffolded preview-action request endpoints under `/machine-access/v1/*`
+- DONE: Added internal admin UX routes under `/internal/access`, `/internal/access/tokens`, `/internal/access/audit`, and `/internal/access/agents`
+- DONE: Added executive, architecture, security, and API documentation for the Machine Access system
+- DONE: Added backend tests for token hashing, AI scope safety, and token issue/authenticate observability flow
+- NOTE: Action requests are scaffolded and queued for future executor wiring; no destructive production execution was enabled
+
+## SESSION UPDATE — May 14, 2026 (REVALIDATE RUNTIME FIX)
+- DONE: Searched the entire repo for `revalidate`, `next/cache`, `unstable_cache`, and route-segment config exports
+- DONE: Deterministically traced the Vercel/runtime failure to 113 App Router client modules exporting `dynamic`, `fetchCache`, and/or `revalidate`
+- DONE: Verified the bad server bundle pattern in `apps/web/.next/server/app/page.js` and `apps/web/.next/server/app/403/page.js`, where `revalidate` had been compiled into a `registerClientReference(...)` function
+- DONE: Removed route-segment config exports from all affected `"use client"` `page.tsx` and `layout.tsx` files under `apps/web/src/app`
+- DONE: Preserved route-segment config on server modules such as `apps/web/src/app/layout.tsx`, `apps/web/src/app/dashboard/layout.tsx`, and `apps/web/src/app/satelink/os/layout.tsx`
+- DONE: Cleared `apps/web/.next` and rebuilt `apps/web` successfully with `npm run build`
+- DONE: Verified the rebuilt `/` and `/403` server bundles no longer contain a client-reference export for `revalidate`
+- NOTE: Root cause was source-level App Router misuse, not Vercel infrastructure or cache state
+
+## SESSION UPDATE — May 13, 2026 (DOCUMENT IMPORT AUDIT)
+- DONE: Searched entire `apps/web` tree for `next/document`, `<Html>`, `<Head>`, `<Main />`, and `<NextScript />`
+- DONE: Confirmed the only source import is `apps/web/src/pages/_document.tsx`
+- DONE: Verified `apps/web/src/app/403/page.tsx` and `apps/web/src/app/not-found.tsx` do not import `next/document`
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Rebuilt `apps/web` successfully with `npm run build`
+- DONE: Verified current workspace does not reproduce the reported `/404` prerender failure
+- NOTE: `apps/web/.next/trace` shows `next/document` only in the Pages Router build layer via `src/pages/_document.tsx`
+
+## SESSION UPDATE — May 13, 2026 (VERCEL TRACE FIX)
+- DONE: Removed `outputFileTracingRoot` override from `apps/web/next.config.ts`
+- DONE: Identified duplicate `/` App Router pages at `apps/web/src/app/page.tsx` and `apps/web/src/app/(marketing)/page.tsx`
+- DONE: Removed duplicate route-group homepage causing stray `(marketing)/page.js.nft.json` trace output
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Rebuilt `apps/web` successfully with `npm run build`
+- DONE: Verified `apps/web/.next/server/app/(marketing)` contains only valid nested `page_client-reference-manifest.js` files and no missing group-root manifest reference
+
+## SESSION UPDATE — May 13, 2026 (USE CLIENT AUDIT + BUILD VERIFICATION)
+- DONE: Audited all `apps/web/src/app/**/*.tsx` files for App Router `"use client"` directive placement
+- DONE: Verified 120 client components/routes have a single top-of-file `"use client"` directive
+- DONE: Verified no files in `apps/web/src/app` contain `next/document`, `<Html>`, `<Head>`, `<Main />`, or `<NextScript />`
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Revalidated `apps/web` production build succeeds with `npm run build`
+- NOTE: No source-file directive fixes were required in this pass because the tree was already compliant
+
+## SESSION UPDATE — May 13, 2026 (APP ROUTER BUILD VERIFICATION)
+- DONE: Searched `apps/web` for invalid App Router `next/document` usage
+- DONE: Confirmed the only `next/document` import is `apps/web/src/pages/_document.tsx`, which is valid Pages Router usage
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Refreshed frontend dependencies with `npm install`
+- DONE: Verified `apps/web` production build succeeds with `npm run build`
+- NOTE: No `src/app` layouts required code changes for this task
 
 ## SESSION UPDATE — May 11, 2026 (LIVE DASHBOARD WIRING)
 - DONE: Tested all backend endpoints at rpc.satelink.network

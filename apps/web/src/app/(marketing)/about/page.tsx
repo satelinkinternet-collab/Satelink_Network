@@ -1,3 +1,7 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 import Link from "next/link";
 import { Navigation } from "@/components/marketing/Navigation";
 import { Footer } from "@/components/marketing/Footer";

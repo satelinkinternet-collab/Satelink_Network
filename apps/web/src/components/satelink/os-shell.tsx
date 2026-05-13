@@ -2,7 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChartLine, Cpu, Database, Globe2, LayoutDashboard, Menu, Receipt, Rocket, Settings, Key, X, Wallet, Command } from "lucide-react";
+import {
+  Bell,
+  ChartLine,
+  Cpu,
+  Database,
+  Globe2,
+  LayoutDashboard,
+  Menu,
+  Receipt,
+  Rocket,
+  Settings,
+  Key,
+  X,
+  Wallet,
+  Command,
+} from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CommandPalette } from "@/components/satelink/command-palette";
@@ -21,7 +36,11 @@ const navGroups = [
   {
     label: "Infrastructure",
     items: [
-      { href: "/satelink/os/overview", label: "Overview", icon: LayoutDashboard },
+      {
+        href: "/satelink/os/overview",
+        label: "Overview",
+        icon: LayoutDashboard,
+      },
       { href: "/satelink/os/nodes", label: "Nodes", icon: Cpu },
       { href: "/satelink/os/deployments", label: "Deployments", icon: Rocket },
       { href: "/satelink/os/queue", label: "Queue", icon: Database },
@@ -41,7 +60,11 @@ const navGroups = [
     items: [
       { href: "/satelink/os/api-keys", label: "API Keys", icon: Key },
       { href: "/satelink/os/settings", label: "Settings", icon: Settings },
-      { href: "/satelink/os/notifications", label: "Notifications", icon: Bell },
+      {
+        href: "/satelink/os/notifications",
+        label: "Notifications",
+        icon: Bell,
+      },
     ],
   },
 ];
@@ -61,7 +84,13 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       setStatus(data);
     } catch {
-      setStatus({ status: "operational", nodes_online: 1, current_epoch: 0, total_requests_24h: 0, avg_latency_ms: 85 });
+      setStatus({
+        status: "operational",
+        nodes_online: 1,
+        current_epoch: 0,
+        total_requests_24h: 0,
+        avg_latency_ms: 85,
+      });
     }
   }, []);
 
@@ -94,7 +123,9 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
       if (!awaitingSecond && key === "g") {
         awaitingSecond = true;
         if (timeout) clearTimeout(timeout);
-        timeout = setTimeout(() => { awaitingSecond = false; }, 1200);
+        timeout = setTimeout(() => {
+          awaitingSecond = false;
+        }, 1200);
         return;
       }
 
@@ -103,9 +134,12 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
       if (timeout) clearTimeout(timeout);
 
       const routes: Record<string, string> = {
-        o: "/satelink/os/overview", n: "/satelink/os/nodes",
-        d: "/satelink/os/deployments", a: "/satelink/os/analytics",
-        s: "/satelink/os/settings", q: "/satelink/os/queue",
+        o: "/satelink/os/overview",
+        n: "/satelink/os/nodes",
+        d: "/satelink/os/deployments",
+        a: "/satelink/os/analytics",
+        s: "/satelink/os/settings",
+        q: "/satelink/os/queue",
       };
       if (routes[key]) router.push(routes[key]);
     };
@@ -117,15 +151,22 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const NavItem = ({ href, label }: { href: string; label: string; icon: React.ElementType }) => {
+  const NavItem = ({
+    href,
+    label,
+  }: {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+  }) => {
     const isActive = pathname === href;
     return (
       <Link
         href={href}
         className={`flex items-center gap-2.5 px-4 py-1.5 text-[11px] font-medium transition-all duration-100 border-r-2 ${
           isActive
-            ? 'bg-[#0f2219] text-[#B0E4CC] border-[#408A71]'
-            : 'text-[#408A71] border-transparent hover:bg-[#0c1a17] hover:text-[#B0E4CC]'
+            ? "bg-[#0f2219] text-[#B0E4CC] border-[#408A71]"
+            : "text-[#408A71] border-transparent hover:bg-[#0c1a17] hover:text-[#B0E4CC]"
         }`}
       >
         <StatusDot status={isActive ? "online" : "offline"} />
@@ -135,8 +176,7 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SatelinkRealtimeProvider>
-      <CommandPalette />
+    <>
       <div className="min-h-screen bg-[#091413] text-[#B0E4CC]">
         {/* Top Nav Bar - 48px */}
         <header className="h-12 border-b border-[#1a3028] bg-[#091413] flex items-center justify-between px-4">
@@ -144,7 +184,13 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
             <Link href="/satelink" className="flex items-center gap-2 group">
               <motion.div
                 className="w-2.5 h-2.5 rounded-full bg-[#408A71]"
-                animate={{ boxShadow: ["0 0 0 0 rgba(64,138,113,0.4)", "0 0 0 6px rgba(64,138,113,0)", "0 0 0 0 rgba(64,138,113,0.4)"] }}
+                animate={{
+                  boxShadow: [
+                    "0 0 0 0 rgba(64,138,113,0.4)",
+                    "0 0 0 6px rgba(64,138,113,0)",
+                    "0 0 0 0 rgba(64,138,113,0.4)",
+                  ],
+                }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
               <span className="text-[13px] font-semibold text-[#B0E4CC] tracking-tight group-hover:text-white transition-colors">
@@ -177,7 +223,11 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label="Toggle menu"
             >
-              {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              {mobileOpen ? (
+                <X className="w-4 h-4" />
+              ) : (
+                <Menu className="w-4 h-4" />
+              )}
             </button>
           </div>
         </header>
@@ -186,14 +236,26 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
         <div className="h-9 border-b border-[#1a3028] bg-[#0c1a17] flex items-center px-4 text-[10px] overflow-x-auto">
           <div className="flex items-center gap-4 min-w-max">
             <div className="flex items-center gap-1.5 pr-4 border-r border-[#1a3028]">
-              <StatusDot status={status?.status === "operational" ? "online" : "pending"} />
+              <StatusDot
+                status={status?.status === "operational" ? "online" : "pending"}
+              />
               <span className="text-[#B0E4CC] font-medium">
-                {status ? (status.status === "operational" ? "Operational" : status.status) : <InfraSkeleton className="w-16 h-3" />}
+                {status ? (
+                  status.status === "operational" ? (
+                    "Operational"
+                  ) : (
+                    status.status
+                  )
+                ) : (
+                  <InfraSkeleton className="w-16 h-3" />
+                )}
               </span>
             </div>
             <div className="flex items-center gap-1.5 pr-4 border-r border-[#1a3028]">
               <span className="text-[#285A48]">Epoch</span>
-              <span className="font-mono text-[#00D1FF]">#{status?.current_epoch ?? "—"}</span>
+              <span className="font-mono text-[#00D1FF]">
+                #{status?.current_epoch ?? "—"}
+              </span>
               <motion.span
                 key={epochCountdown}
                 initial={{ opacity: 0.5 }}
@@ -205,15 +267,21 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-1.5 pr-4 border-r border-[#1a3028]">
               <span className="text-[#285A48]">Nodes</span>
-              <span className="font-mono text-[#B0E4CC]">{status?.nodes_online ?? "—"}</span>
+              <span className="font-mono text-[#B0E4CC]">
+                {status?.nodes_online ?? "—"}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 pr-4 border-r border-[#1a3028]">
               <span className="text-[#285A48]">Latency</span>
-              <span className="font-mono text-[#408A71]">{status?.avg_latency_ms ?? "—"}ms</span>
+              <span className="font-mono text-[#408A71]">
+                {status?.avg_latency_ms ?? "—"}ms
+              </span>
             </div>
             <div className="flex items-center gap-1.5 pr-4 border-r border-[#1a3028]">
               <span className="text-[#285A48]">24h</span>
-              <span className="font-mono text-[#B0E4CC]">{status?.total_requests_24h?.toLocaleString() ?? "—"}</span>
+              <span className="font-mono text-[#B0E4CC]">
+                {status?.total_requests_24h?.toLocaleString() ?? "—"}
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[#285A48]">Chain</span>
@@ -222,7 +290,7 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="flex" style={{ height: 'calc(100vh - 84px)' }}>
+        <div className="flex" style={{ height: "calc(100vh - 84px)" }}>
           {/* Sidebar - 200px */}
           <AnimatePresence>
             {(mobileOpen || true) && (
@@ -232,7 +300,7 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
                 exit={{ x: -200, opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 className={`
-                  ${mobileOpen ? 'block' : 'hidden'} lg:block
+                  ${mobileOpen ? "block" : "hidden"} lg:block
                   w-[200px] flex-shrink-0 border-r border-[#1a3028] bg-[#091413] pt-4 overflow-y-auto
                   flex flex-col
                 `}
@@ -258,14 +326,22 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
                     <>
                       <div className="flex items-center gap-1.5 mb-1">
                         <StatusDot status="online" />
-                        <span className="text-[9px] text-[#408A71] uppercase tracking-wider font-medium">Your Node</span>
+                        <span className="text-[9px] text-[#408A71] uppercase tracking-wider font-medium">
+                          Your Node
+                        </span>
                       </div>
-                      <div className="text-[10px] font-mono text-[#B0E4CC] break-all">{nodeId}</div>
+                      <div className="text-[10px] font-mono text-[#B0E4CC] break-all">
+                        {nodeId}
+                      </div>
                     </>
                   ) : (
                     <>
-                      <div className="text-[9px] text-[#285A48] uppercase tracking-wider mb-1">RPC Endpoint</div>
-                      <div className="text-[10px] font-mono text-[#408A71] break-all">rpc.satelink.network</div>
+                      <div className="text-[9px] text-[#285A48] uppercase tracking-wider mb-1">
+                        RPC Endpoint
+                      </div>
+                      <div className="text-[10px] font-mono text-[#408A71] break-all">
+                        rpc.satelink.network
+                      </div>
                     </>
                   )}
                 </div>
@@ -279,6 +355,6 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-    </SatelinkRealtimeProvider>
+    </>
   );
 }

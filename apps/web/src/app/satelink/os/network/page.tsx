@@ -1,5 +1,7 @@
 "use client";
 
+
+
 import { NetworkGlobe } from "@/components/satelink/network-globe";
 import { OsPageTemplate } from "@/components/satelink/os-page-template";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
