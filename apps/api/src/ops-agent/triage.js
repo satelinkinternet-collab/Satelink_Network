@@ -6,7 +6,7 @@ export class TriageEngine {
         this.rules = [
             {
                 id: 'DB_CONNECTION_FAIL',
-                regex: /Condition 'process\.env\.DB_TYPE'|Connection refused|SQLite error|PostgresClient not fully implemented/i,
+                regex: /Condition 'process\.env\.DB_TYPE'|Connection refused|PostgreSQL error|pool connection timeout/i,
                 severity: 'HIGH',
                 action: 'restart_db',
                 reason: "Database connectivity issue detected."

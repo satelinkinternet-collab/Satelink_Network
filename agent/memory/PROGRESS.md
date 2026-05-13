@@ -1,7 +1,26 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 14, 2026 (MACHINE ACCESS FOUNDATION)
+# Updated: May 14, 2026 (BRANCH CLEANUP + S0-008)
 # Network: Polygon (migrated from Fuse)
-# DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+# DB: PostgreSQL ONLY (all SQLite refs removed)
+# GitHub: Satelink-Protocol/Satelink_Network
+# Branches: main + develop ONLY
+
+## SESSION UPDATE — May 14, 2026 (BRANCH CLEANUP + S0-008 SQLITE REMOVAL)
+- DONE: Branch audit — found 7 local, 13 remote dependabot, 2 remote tracked
+- DONE: Merged feature/satelink-machine-access-layer into develop (188 files)
+- DONE: Merged develop into main (38 files — Machine Access layer)
+- DONE: Pushed both branches to Satelink-Protocol/Satelink_Network
+- DONE: Deleted 6 local feature branches
+- DONE: Deleted 2 remote feature branches + pruned 4 stale dependabot refs
+- DONE: S0-008 — Removed all SQLite references:
+  - Deleted sqlite.js.removed
+  - Deleted 11 experiment scripts (apps/api/src/utils/tools/experiments/)
+  - Deleted 16 legacy SQLite test files (apps/api/src/utils/tests/unit/)
+  - Deleted 11 legacy smoke/migration scripts
+  - Updated triage.js regex to PostgreSQL-only
+- NOTE: Final branch state: main + develop local, main + develop + 9 dependabot remote
+- NOTE: Backend operational at https://rpc.satelink.network (1 node, 5 chains)
+- NEXT: L8 DeFi/DApp Integration (revenue ceiling breaker)
 
 ## SESSION UPDATE — May 14, 2026 (MACHINE ACCESS FOUNDATION)
 - DONE: Defined Satelink Machine Access as the internal machine identity and infrastructure authorization layer for Satelink OS
@@ -218,7 +237,7 @@
 - Test POST /api/nodes/:nodeId/claim end to end
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 58 | In Progress: 1 | Pending: 62
+Total Tasks: 121 | Complete: 59 | In Progress: 0 | Pending: 62
 Revenue Readiness: 92% | Production: 85% | Launch: 75%
 Active URL: https://rpc.satelink.network
 Backend: LIVE on Railway (develop branch, auto-deploy)
@@ -235,17 +254,17 @@ Website: DEPLOYED ✅ (all pages verified 200 OK)
 | P0-BILLING | Wire billing into RPC gateway | DONE | 24b458d — recordRpcRevenue + Redis counters |
 | P0-502 | Railway boot crash | DONE | 964488f — granular diagnostics |
 
-## STAGE S0 — Production Blockers & Security Foundation (10/15)
+## STAGE S0 — Production Blockers & Security Foundation (11/15)
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
 | S0-001 | NodeRegistryV2 contract | DONE | VERIFIED: contracts/NodeRegistryV2.sol |
 | S0-002 | RevenueDistributor contract | DONE | VERIFIED: contracts/RevenueDistributor.sol |
 | S0-003 | ClaimsContract | DONE | VERIFIED: contracts/ClaimsContract.sol |
 | S0-004 | SplitEngine | DONE | VERIFIED: contracts/SplitEngine.sol, 10000 basis points |
-| S0-005 | Branch consolidation (35 branches) | DONE | VERIFIED: 8 branches now (down from 35) |
+| S0-005 | Branch consolidation (35 branches) | DONE | VERIFIED: 2 branches now (main + develop) |
 | S0-006 | env.js hard-fail on missing JWT_SECRET | DONE | VERIFIED: auth_v2.js:148,201 throws |
 | S0-007 | Fix billing middleware async bugs | DONE | VERIFIED: 385 await calls in gateway routes |
-| S0-008 | Remove SQLite references | PENDING | FOUND: env_v2.js:11,35 + db/index.js:17 |
+| S0-008 | Remove SQLite references | DONE | Removed 39 files, triage.js updated |
 | S0-009 | Remove 733 duplicate OZ files in utils/lib/ | DONE | VERIFIED: no contracts/lib/ dir exists |
 | S0-010 | Remove 4 fake stub services | DONE | VERIFIED: no stub matches in services |
 | S0-011 | Remove real JWT from token.txt | PARTIAL | FOUND: 1 ref still in git history |
