@@ -1,5 +1,5 @@
 {
-  "name": "satelink-mvp",
+  "name": "satelink-provider",
   "version": "1.0.0",
   "private": true,
   "packageManager": "npm@11.6.2",
