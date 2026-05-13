@@ -2,4 +2,4 @@
 
 No active task.
 
-Last completed: May 14, 2026 — fixed Next.js App Router runtime corruption in `apps/web` by removing route-segment config exports (`dynamic`, `fetchCache`, `revalidate`) from 113 `"use client"` modules so the server bundle no longer serializes `revalidate` as a client-reference function.
+Last completed: May 14, 2026 — scaffolded Satelink Machine Access with hashed internal machine tokens, scoped observability/action routes, replay-protected mutation requests, chained audit logging, internal admin UX routes, and architecture/security/API documentation.

@@ -1,6 +1,11 @@
 # Current System State
 
 ## What Was Built
+- Added Machine Access control-plane backend under `apps/api/src/machine-access/*`.
+- Added internal admin UX scaffold under `apps/web/src/app/internal/access/*`.
+- Added machine identity tables for tokens, identities, audit logs, and action requests.
+- Added readonly observability endpoints plus preview action request scaffolding at `/machine-access/v1/*`.
+- Added safe AI agent sandbox policy with preview-only mutation capability and explicit denial of secrets/admin/runtime destructive access.
 - Added stateful Satelink OS core with Zustand store in `apps/web/src/store/useInfrastructureStore.ts`.
 - Added realtime simulation system via:
   - `apps/web/src/lib/events/infrastructure-events.ts`
@@ -22,6 +27,10 @@
   - memoized scoped/derived deployment, activity, and log views to avoid recursive rerenders
 
 ## Routes Added
+- `/internal/access`
+- `/internal/access/tokens`
+- `/internal/access/audit`
+- `/internal/access/agents`
 - `/satelink/os/overview`
 - `/satelink/os/nodes`
 - `/satelink/os/deployments`
@@ -55,11 +64,13 @@
 - Preserve Satelink palette and dark infrastructure style.
 - Keep premium spacing and low-noise visuals.
 - Use shared `SatelinkOsShell` + `OsPageTemplate` for consistency and maintainability.
+- Evolve the Express monolith by adding a Nest-compatible module shape for Machine Access instead of rewriting the runtime.
 
 ## Backend Contracts
 - Typed event contracts for deployment/node/queue telemetry.
 - Stateful deployment transition helpers and broadcaster scaffold.
 - Non-invasive: no production runtime wiring changed yet.
+- Machine Access contracts now define token classes, scopes, replay protection, audit chaining, and preview-only safe action lanes.
 
 ## Known Issues
 - Realtime feed currently mock-only (no backend websocket bridge enabled in runtime).
@@ -71,3 +82,4 @@
 - Add persistence for deployment logs and activity stream.
 - Add E2E tests for route keyboard navigation and deployment detail flow.
 - Add deterministic replay mode for incident forensics and postmortem views.
+- Connect Machine Access action requests to real Vercel/Railway/Cloudflare executors behind approval gates.
