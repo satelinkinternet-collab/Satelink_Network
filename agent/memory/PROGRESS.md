@@ -1,7 +1,17 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 13, 2026 (DOCUMENT IMPORT AUDIT)
+# Updated: May 14, 2026 (REVALIDATE RUNTIME FIX)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 14, 2026 (REVALIDATE RUNTIME FIX)
+- DONE: Searched the entire repo for `revalidate`, `next/cache`, `unstable_cache`, and route-segment config exports
+- DONE: Deterministically traced the Vercel/runtime failure to 113 App Router client modules exporting `dynamic`, `fetchCache`, and/or `revalidate`
+- DONE: Verified the bad server bundle pattern in `apps/web/.next/server/app/page.js` and `apps/web/.next/server/app/403/page.js`, where `revalidate` had been compiled into a `registerClientReference(...)` function
+- DONE: Removed route-segment config exports from all affected `"use client"` `page.tsx` and `layout.tsx` files under `apps/web/src/app`
+- DONE: Preserved route-segment config on server modules such as `apps/web/src/app/layout.tsx`, `apps/web/src/app/dashboard/layout.tsx`, and `apps/web/src/app/satelink/os/layout.tsx`
+- DONE: Cleared `apps/web/.next` and rebuilt `apps/web` successfully with `npm run build`
+- DONE: Verified the rebuilt `/` and `/403` server bundles no longer contain a client-reference export for `revalidate`
+- NOTE: Root cause was source-level App Router misuse, not Vercel infrastructure or cache state
 
 ## SESSION UPDATE — May 13, 2026 (DOCUMENT IMPORT AUDIT)
 - DONE: Searched entire `apps/web` tree for `next/document`, `<Html>`, `<Head>`, `<Main />`, and `<NextScript />`

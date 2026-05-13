@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 
 import { RoleGuard } from '@/components/auth/RoleGuard';
 
