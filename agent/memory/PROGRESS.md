@@ -1,7 +1,15 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 13, 2026 (USE CLIENT AUDIT + BUILD VERIFICATION)
+# Updated: May 13, 2026 (VERCEL TRACE FIX)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 13, 2026 (VERCEL TRACE FIX)
+- DONE: Removed `outputFileTracingRoot` override from `apps/web/next.config.ts`
+- DONE: Identified duplicate `/` App Router pages at `apps/web/src/app/page.tsx` and `apps/web/src/app/(marketing)/page.tsx`
+- DONE: Removed duplicate route-group homepage causing stray `(marketing)/page.js.nft.json` trace output
+- DONE: Cleared frontend build cache with `rm -rf .next`
+- DONE: Rebuilt `apps/web` successfully with `npm run build`
+- DONE: Verified `apps/web/.next/server/app/(marketing)` contains only valid nested `page_client-reference-manifest.js` files and no missing group-root manifest reference
 
 ## SESSION UPDATE — May 13, 2026 (USE CLIENT AUDIT + BUILD VERIFICATION)
 - DONE: Audited all `apps/web/src/app/**/*.tsx` files for App Router `"use client"` directive placement

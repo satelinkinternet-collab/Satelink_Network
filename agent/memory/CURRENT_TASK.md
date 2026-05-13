@@ -2,4 +2,4 @@
 
 No active task.
 
-Last completed: May 13, 2026 — audited `apps/web/src/app/**/*.tsx` for `"use client"` placement, confirmed no misplaced or duplicate directives, verified no `next/document` usage inside `src/app`, and revalidated a successful production build.
+Last completed: May 13, 2026 — fixed `apps/web` Vercel tracing instability by removing the custom `outputFileTracingRoot` override and eliminating a duplicate `/` App Router page at `src/app/(marketing)/page.tsx`, then revalidated a clean production build and manifest output.

@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const API_BASE =
   process.env.INTERNAL_API_URL ||
@@ -7,10 +6,6 @@ const API_BASE =
   "http://localhost:8080";
 
 const nextConfig: NextConfig = {
-
-
-  outputFileTracingRoot: path.join(__dirname, "../../"),
-
   typescript: {
     ignoreBuildErrors: true,
   },
