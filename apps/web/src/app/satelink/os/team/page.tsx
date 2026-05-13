@@ -1,10 +1,9 @@
+"use client";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
-"use client";
-
-"use client";
 
 import { OsPageTemplate } from "@/components/satelink/os-page-template";
 

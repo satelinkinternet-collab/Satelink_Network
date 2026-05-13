@@ -1,10 +1,10 @@
+"use client";
+
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
-"use client";
-
-"use client";
 
 import { useState, useEffect } from "react";
 import { Key, Server, Bell, Globe, Eye, EyeOff, Copy, Check, Plus, Trash2 } from "lucide-react";

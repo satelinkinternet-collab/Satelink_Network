@@ -1,10 +1,10 @@
+"use client";
+
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
-"use client";
-
-"use client";
 
 import { useMemo, useState } from "react";
 import { Bell, CheckCircle, AlertTriangle, Info, XCircle, Check, RefreshCw } from "lucide-react";

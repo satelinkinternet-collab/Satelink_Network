@@ -1,8 +1,9 @@
+"use client";
+
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 export const revalidate = 0;
-
-'use client';
 
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, ShieldCheck, Activity, Lock, Database } from 'lucide-react';
