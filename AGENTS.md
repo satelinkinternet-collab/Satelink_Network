@@ -160,3 +160,16 @@ Optional vars (warn if missing):
 - Added globe synchronization with runtime pressure/health conditions.
 - Added design token source at `apps/web/src/lib/design-tokens.ts`.
 - Added event protocol spec at `/docs/architecture/event-specification.md`.
+
+## SESSION CONTEXT UPDATE — 2026-05-14 (MACHINE ACCESS FOUNDATION)
+
+### Satelink Machine Access
+- Added internal machine identity and infrastructure authorization scaffold under `apps/api/src/machine-access/*`.
+- Added hashed token storage, token issuance/authentication services, scope validator, environment guard, replay protection, audit chaining, and readonly observability gateway.
+- Added scaffolded machine action request queue for preview deploy/build, diagnostics, and approval-gated restart flows.
+- Added internal admin UX routes under `/internal/access`, `/internal/access/tokens`, `/internal/access/audit`, and `/internal/access/agents`.
+- Added Machine Access documentation in:
+  - `/docs/executive/MACHINE_ACCESS_SYSTEM.md`
+  - `/docs/security/token-security-model.md`
+  - `/docs/architecture/machine-access-architecture.md`
+  - `/docs/api/machine-access-api.md`

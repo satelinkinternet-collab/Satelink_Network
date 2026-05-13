@@ -1,7 +1,17 @@
 # SATELINK PROGRESS TRACKER
-# Updated: May 14, 2026 (REVALIDATE RUNTIME FIX)
+# Updated: May 14, 2026 (MACHINE ACCESS FOUNDATION)
 # Network: Polygon (migrated from Fuse)
 # DB: PostgreSQL (SQLite refs still in code — needs cleanup)
+
+## SESSION UPDATE — May 14, 2026 (MACHINE ACCESS FOUNDATION)
+- DONE: Defined Satelink Machine Access as the internal machine identity and infrastructure authorization layer for Satelink OS
+- DONE: Added backend control-plane scaffold under `apps/api/src/machine-access/*`
+- DONE: Added hashed token issuance/authentication, scope validation, environment/project guards, replay protection, and audit-log chaining
+- DONE: Added readonly observability endpoints and scaffolded preview-action request endpoints under `/machine-access/v1/*`
+- DONE: Added internal admin UX routes under `/internal/access`, `/internal/access/tokens`, `/internal/access/audit`, and `/internal/access/agents`
+- DONE: Added executive, architecture, security, and API documentation for the Machine Access system
+- DONE: Added backend tests for token hashing, AI scope safety, and token issue/authenticate observability flow
+- NOTE: Action requests are scaffolded and queued for future executor wiring; no destructive production execution was enabled
 
 ## SESSION UPDATE — May 14, 2026 (REVALIDATE RUNTIME FIX)
 - DONE: Searched the entire repo for `revalidate`, `next/cache`, `unstable_cache`, and route-segment config exports

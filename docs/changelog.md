@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-05-14 — Satelink Machine Access Foundation
+
+### Added
+- Internal Machine Access backend scaffold under `apps/api/src/machine-access` for hashed token storage, scoped auth, audit chaining, replay protection, environment guards, and preview-action request queuing.
+- New control-plane tables for machine identities, tokens, audit entries, and action requests.
+- Internal admin UX scaffold under `/internal/access`, `/internal/access/tokens`, `/internal/access/audit`, and `/internal/access/agents`.
+- New architecture, security, executive, and API documentation for the Machine Access layer.
+
+### Updated
+- Mounted `/machine-access/v1` into the existing Express app without migrating frameworks.
+- Added startup table initialization in `apps/api/server.js`.
+- Extended project memory docs and backend map to include Machine Access as a first-class control-plane subsystem.
+
+### Verification
+- `npx mocha test/machine_access.test.js` passes in `apps/api`.
+- Security-critical tests cover token hashing, unsafe scope rejection for AI tokens, and token issue/authenticate observability flow.
+
 ## 2026-05-10 — Satelink OS Overview Render Loop Hotfix
 
 ### Fixed
