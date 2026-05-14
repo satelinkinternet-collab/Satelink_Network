@@ -76,3 +76,4 @@ satelink-env/
 forge-cache/
 .foundry/
 .satelink-backups/
+package-lock.json
