@@ -55,7 +55,7 @@ export function createClaimsRouter(pool) {
         success: true,
         backfilled: backfillResult.rowCount,
         orphanedTotal: parseFloat(orphanCount.rows[0]?.total || 0),
-        nodeDbId: nodeDbId
+        targetNodeId: targetNodeId
       });
 
     } catch (err) {
