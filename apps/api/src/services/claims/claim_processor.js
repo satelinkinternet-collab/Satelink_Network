@@ -87,6 +87,24 @@ export async function generateClaimSignature(nodeId, walletAddress, pool) {
         const claimId = `claim_${nodeId}_${nonce}`;
         const now = Math.floor(Date.now() / 1000);
 
+        // Ensure claims table exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS claims (
+                claim_id TEXT PRIMARY KEY,
+                node_id TEXT NOT NULL,
+                wallet TEXT NOT NULL,
+                amount_usdt NUMERIC(18,8) NOT NULL,
+                signature TEXT NOT NULL,
+                nonce BIGINT NOT NULL,
+                expiry BIGINT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                tx_hash TEXT,
+                created_at BIGINT NOT NULL,
+                updated_at BIGINT,
+                claimed_at BIGINT
+            )
+        `);
+
         await client.query(
             `INSERT INTO claims (claim_id, node_id, wallet, amount_usdt, signature, nonce, expiry, status, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8)
