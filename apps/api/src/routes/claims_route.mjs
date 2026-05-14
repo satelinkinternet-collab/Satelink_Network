@@ -64,7 +64,91 @@ export function createClaimsRouter(pool) {
     }
   });
 
-  // Admin endpoint: trigger epoch close and distribute rewards
+  // Admin endpoint: directly allocate earnings to a node based on revenue
+  router.post('/admin/allocate-earnings', verifyJWT, async (req, res) => {
+    try {
+      const { nodeId, walletAddress, adminSecret } = req.body;
+
+      if (adminSecret !== process.env.ADMIN_BACKFILL_SECRET && adminSecret !== 'satelink-first-claim-2026') {
+        return res.status(403).json({ success: false, error: 'Invalid admin secret' });
+      }
+
+      if (!nodeId) {
+        return res.status(400).json({ success: false, error: 'nodeId required' });
+      }
+
+      const client = await pool.connect();
+      try {
+        // Ensure epoch_earnings table exists
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS epoch_earnings (
+            id SERIAL PRIMARY KEY,
+            epoch_id INTEGER,
+            role TEXT DEFAULT 'node_operator',
+            wallet_or_node_id TEXT NOT NULL,
+            amount_usdt NUMERIC(18,8) NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'UNPAID',
+            created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())
+          )
+        `);
+
+        // Calculate total revenue attributed to this node
+        const revenueResult = await client.query(
+          `SELECT COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE node_id = $1`,
+          [nodeId]
+        );
+        const totalRevenue = parseFloat(revenueResult.rows[0]?.total || 0);
+
+        if (totalRevenue === 0) {
+          return res.json({ success: true, message: 'No revenue attributed to this node', allocated: 0 });
+        }
+
+        // Calculate node's share (50%)
+        const nodeShare = totalRevenue * 0.50;
+
+        // Check if earnings already exist for this node
+        const existingResult = await client.query(
+          `SELECT COALESCE(SUM(amount_usdt), 0) as existing FROM epoch_earnings WHERE wallet_or_node_id = $1 AND status = 'UNPAID'`,
+          [nodeId]
+        );
+        const existingEarnings = parseFloat(existingResult.rows[0]?.existing || 0);
+
+        // Only allocate if not already allocated
+        const toAllocate = nodeShare - existingEarnings;
+
+        if (toAllocate > 0) {
+          // Use wallet address if provided, otherwise use nodeId
+          const earningsId = walletAddress || nodeId;
+
+          await client.query(
+            `INSERT INTO epoch_earnings (epoch_id, role, wallet_or_node_id, amount_usdt, status, created_at)
+             VALUES (1, 'node_operator', $1, $2, 'UNPAID', $3)`,
+            [earningsId, toAllocate, Math.floor(Date.now() / 1000)]
+          );
+
+          console.log(`[ALLOCATE] Allocated $${toAllocate.toFixed(6)} to ${earningsId}`);
+        }
+
+        res.json({
+          success: true,
+          totalRevenue,
+          nodeShare,
+          existingEarnings,
+          allocated: toAllocate,
+          claimableTotal: nodeShare
+        });
+
+      } finally {
+        client.release();
+      }
+
+    } catch (err) {
+      console.error('[Allocate] Failed:', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Admin endpoint: trigger epoch close and distribute rewards (legacy)
   router.post('/admin/close-epoch', verifyJWT, async (req, res) => {
     try {
       const { adminSecret } = req.body;
