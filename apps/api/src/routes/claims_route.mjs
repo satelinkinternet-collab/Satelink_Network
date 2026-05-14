@@ -22,7 +22,7 @@ export function createClaimsRouter(pool) {
 
       // Verify node exists
       const nodeResult = await pool.query(
-        'SELECT node_id, wallet_address FROM nodes WHERE node_id = $1',
+        'SELECT node_id, wallet FROM nodes WHERE node_id = $1',
         [nodeId]
       );
 
@@ -109,7 +109,7 @@ export function createClaimsRouter(pool) {
 
         // Get active nodes and their request counts
         const nodesResult = await client.query(
-          `SELECT wallet_address, node_id,
+          `SELECT wallet, node_id,
                   (SELECT COUNT(*) FROM revenue_events_v2 WHERE node_id = nodes.node_id AND epoch_id IS NULL) as request_count
            FROM nodes WHERE status = 'active'`
         );
@@ -123,11 +123,11 @@ export function createClaimsRouter(pool) {
           const requestCount = parseInt(node.request_count || 0);
           const nodeShare = totalRequests > 0 ? (requestCount / totalRequests) * nodePool : nodePool / Math.max(activeNodes.length, 1);
 
-          if (nodeShare > 0 && node.wallet_address) {
+          if (nodeShare > 0 && node.wallet) {
             await client.query(
               `INSERT INTO epoch_earnings (epoch_id, wallet_or_node_id, amount_usdt, status, role, created_at)
                VALUES ($1, $2, $3, 'UNPAID', 'node_operator', $4)`,
-              [epochId, node.wallet_address, nodeShare, Math.floor(Date.now() / 1000)]
+              [epochId, node.wallet, nodeShare, Math.floor(Date.now() / 1000)]
             );
             distributed += nodeShare;
             console.log(`[EPOCH_CLOSE] Allocated $${nodeShare.toFixed(6)} to ${node.node_id}`);
