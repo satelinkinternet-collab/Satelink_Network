@@ -77,6 +77,19 @@ export function createClaimsRouter(pool) {
       try {
         await client.query('BEGIN');
 
+        // Ensure epoch_earnings table exists
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS epoch_earnings (
+            epoch_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'node_operator',
+            wallet_or_node_id TEXT NOT NULL,
+            amount_usdt NUMERIC(18,8) NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'UNPAID',
+            created_at BIGINT NOT NULL DEFAULT EXTRACT(EPOCH FROM NOW()),
+            PRIMARY KEY (epoch_id, wallet_or_node_id)
+          )
+        `);
+
         // Get current epoch
         const epochResult = await client.query(
           `SELECT id, epoch_id FROM epoch_ledger WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1`
