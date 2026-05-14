@@ -1,0 +1,6 @@
+src/
+tsconfig.json
+node_modules/
+*.test.*
+eslint.config.js
+package.json.scoped

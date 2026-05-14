@@ -1,5 +1,11 @@
 # @satelink/sdk
 
+[![npm version](https://img.shields.io/npm/v/@satelink/sdk)](https://npmjs.com/package/@satelink/sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@satelink/sdk)](https://npmjs.com/package/@satelink/sdk)
+
+> **Published:** [npmjs.com/package/@satelink/sdk](https://npmjs.com/package/@satelink/sdk) (scoped)  
+> **Fallback:** [npmjs.com/package/satelink-sdk](https://npmjs.com/package/satelink-sdk) (unscoped)
+
 Official SDK for the Satelink DePIN network — blockchain RPC, MEV relay, AI inference, and more.
 
 ## Install

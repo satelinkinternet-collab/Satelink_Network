@@ -64,8 +64,14 @@
     "wagmi": ">=2.0.0"
   },
   "peerDependenciesMeta": {
-    "ethers": { "optional": true },
-    "viem": { "optional": true },
-    "wagmi": { "optional": true }
+    "ethers": {
+      "optional": true
+    },
+    "viem": {
+      "optional": true
+    },
+    "wagmi": {
+      "optional": true
+    }
   }
 }
