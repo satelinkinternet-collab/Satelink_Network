@@ -77,6 +77,24 @@ export function createClaimsRouter(pool) {
       try {
         await client.query('BEGIN');
 
+        // Ensure epoch_ledger table exists
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS epoch_ledger (
+            id SERIAL PRIMARY KEY,
+            epoch_id TEXT UNIQUE,
+            status TEXT NOT NULL DEFAULT 'OPEN',
+            started_at BIGINT NOT NULL,
+            closed_at BIGINT,
+            total_revenue NUMERIC(18,8) DEFAULT 0,
+            node_pool NUMERIC(18,8) DEFAULT 0,
+            platform_fee NUMERIC(18,8) DEFAULT 0,
+            distribution_pool NUMERIC(18,8) DEFAULT 0,
+            merkle_root TEXT,
+            tx_hash TEXT,
+            created_at BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000
+          )
+        `);
+
         // Ensure epoch_earnings table exists
         await client.query(`
           CREATE TABLE IF NOT EXISTS epoch_earnings (
