@@ -20,11 +20,17 @@ export function createClaimsRouter(pool) {
         return res.status(400).json({ success: false, error: 'nodeId required' });
       }
 
-      // Verify node exists
-      const nodeResult = await pool.query(
-        'SELECT node_id, wallet FROM nodes WHERE node_id = $1',
+      // Verify node exists (check both tables for compatibility)
+      let nodeResult = await pool.query(
+        'SELECT node_id, wallet FROM registered_nodes WHERE node_id = $1',
         [nodeId]
       );
+      if (nodeResult.rows.length === 0) {
+        nodeResult = await pool.query(
+          'SELECT node_id, wallet FROM nodes WHERE node_id = $1',
+          [nodeId]
+        );
+      }
 
       if (nodeResult.rows.length === 0) {
         return res.status(404).json({ success: false, error: 'Node not found' });
@@ -107,12 +113,19 @@ export function createClaimsRouter(pool) {
         const platformFee = totalRevenue * 0.30;
         const distributionPool = totalRevenue * 0.20;
 
-        // Get active nodes and their request counts
-        const nodesResult = await client.query(
+        // Get active nodes and their request counts (check registered_nodes first)
+        let nodesResult = await client.query(
           `SELECT wallet, node_id,
-                  (SELECT COUNT(*) FROM revenue_events_v2 WHERE node_id = nodes.node_id AND epoch_id IS NULL) as request_count
-           FROM nodes WHERE status = 'active'`
+                  (SELECT COUNT(*) FROM revenue_events_v2 WHERE node_id = registered_nodes.node_id AND epoch_id IS NULL) as request_count
+           FROM registered_nodes WHERE status = 'active'`
         );
+        if (nodesResult.rows.length === 0) {
+          nodesResult = await client.query(
+            `SELECT wallet, node_id,
+                    (SELECT COUNT(*) FROM revenue_events_v2 WHERE node_id = nodes.node_id AND epoch_id IS NULL) as request_count
+             FROM nodes WHERE status = 'active'`
+          );
+        }
 
         const activeNodes = nodesResult.rows;
         const totalRequests = activeNodes.reduce((sum, n) => sum + parseInt(n.request_count || 0), 0);
