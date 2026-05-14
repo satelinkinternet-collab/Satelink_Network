@@ -79,22 +79,22 @@ export function createClaimsRouter(pool) {
 
         // Get current epoch
         const epochResult = await client.query(
-          `SELECT id, epoch_number FROM epoch_ledger WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1`
+          `SELECT id, epoch_id FROM epoch_ledger WHERE status = 'OPEN' ORDER BY id DESC LIMIT 1`
         );
 
-        let epochId, epochNumber;
+        let epochDbId, epochTextId;
         if (epochResult.rows.length === 0) {
           // Create first epoch
           const newEpoch = await client.query(
             `INSERT INTO epoch_ledger (epoch_id, status, started_at)
-             VALUES ('epoch-1', 'OPEN', $1) RETURNING id`,
+             VALUES ('epoch-1', 'OPEN', $1) RETURNING id, epoch_id`,
             [Date.now()]
           );
-          epochId = newEpoch.rows[0].id;
-          epochNumber = 1;
+          epochDbId = newEpoch.rows[0].id;
+          epochTextId = newEpoch.rows[0].epoch_id;
         } else {
-          epochId = epochResult.rows[0].id;
-          epochNumber = epochResult.rows[0].epoch_number || epochResult.rows[0].id;
+          epochDbId = epochResult.rows[0].id;
+          epochTextId = epochResult.rows[0].epoch_id || `epoch-${epochResult.rows[0].id}`;
         }
 
         // Calculate total unallocated revenue
@@ -140,17 +140,17 @@ export function createClaimsRouter(pool) {
             await client.query(
               `INSERT INTO epoch_earnings (epoch_id, wallet_or_node_id, amount_usdt, status, role, created_at)
                VALUES ($1, $2, $3, 'UNPAID', 'node_operator', $4)`,
-              [epochId, node.wallet, nodeShare, Math.floor(Date.now() / 1000)]
+              [epochDbId, node.wallet, nodeShare, Math.floor(Date.now() / 1000)]
             );
             distributed += nodeShare;
             console.log(`[EPOCH_CLOSE] Allocated $${nodeShare.toFixed(6)} to ${node.node_id}`);
           }
         }
 
-        // Assign epoch_id to revenue events
+        // Assign epoch_id to revenue events (use numeric db id)
         await client.query(
           `UPDATE revenue_events_v2 SET epoch_id = $1 WHERE epoch_id IS NULL`,
-          [epochId]
+          [epochDbId]
         );
 
         // Close epoch
@@ -158,21 +158,22 @@ export function createClaimsRouter(pool) {
           `UPDATE epoch_ledger SET status = 'CLOSED', closed_at = $1,
            total_revenue = $2, node_pool = $3, platform_fee = $4, distribution_pool = $5
            WHERE id = $6`,
-          [Date.now(), totalRevenue, nodePool, platformFee, distributionPool, epochId]
+          [Date.now(), totalRevenue, nodePool, platformFee, distributionPool, epochDbId]
         );
 
         // Create new open epoch
+        const nextEpochNum = parseInt((epochTextId || '').replace('epoch-', '')) + 1 || epochDbId + 1;
         await client.query(
           `INSERT INTO epoch_ledger (epoch_id, status, started_at)
            VALUES ($1, 'OPEN', $2)`,
-          [`epoch-${epochNumber + 1}`, Date.now()]
+          [`epoch-${nextEpochNum}`, Date.now()]
         );
 
         await client.query('COMMIT');
 
         res.json({
           success: true,
-          epochClosed: epochId,
+          epochClosed: epochTextId,
           totalRevenue,
           nodePool,
           platformFee,
