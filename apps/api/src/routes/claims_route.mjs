@@ -20,9 +20,9 @@ export function createClaimsRouter(pool) {
         return res.status(400).json({ success: false, error: 'nodeId required' });
       }
 
-      // Get node database ID
+      // Verify node exists
       const nodeResult = await pool.query(
-        'SELECT id FROM nodes WHERE node_id = $1',
+        'SELECT node_id, wallet_address FROM nodes WHERE node_id = $1',
         [nodeId]
       );
 
@@ -30,17 +30,17 @@ export function createClaimsRouter(pool) {
         return res.status(404).json({ success: false, error: 'Node not found' });
       }
 
-      const nodeDbId = nodeResult.rows[0].id;
+      const targetNodeId = nodeResult.rows[0].node_id;
 
       // Count orphaned revenue events
       const orphanCount = await pool.query(
         'SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE node_id IS NULL'
       );
 
-      // Backfill orphaned revenue events
+      // Backfill orphaned revenue events with the node_id string
       const backfillResult = await pool.query(
         'UPDATE revenue_events_v2 SET node_id = $1 WHERE node_id IS NULL RETURNING id',
-        [nodeDbId.toString()]
+        [targetNodeId]
       );
 
       console.log(`[BACKFILL] Backfilled ${backfillResult.rowCount} orphaned revenue events to node ${nodeId}`);
@@ -109,8 +109,8 @@ export function createClaimsRouter(pool) {
 
         // Get active nodes and their request counts
         const nodesResult = await client.query(
-          `SELECT id, wallet_address, node_id,
-                  (SELECT COUNT(*) FROM revenue_events_v2 WHERE node_id = nodes.id::text AND epoch_id IS NULL) as request_count
+          `SELECT wallet_address, node_id,
+                  (SELECT COUNT(*) FROM revenue_events_v2 WHERE node_id = nodes.node_id AND epoch_id IS NULL) as request_count
            FROM nodes WHERE status = 'active'`
         );
 
