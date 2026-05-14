@@ -536,8 +536,18 @@ function DeveloperExperience() {
             </div>
 
             <div className="text-[#408A71] mb-4"># View pricing</div>
-            <div className="text-[#B0E4CC]">
+            <div className="text-[#B0E4CC] mb-6">
               curl https://rpc.satelink.network/api/pricing
+            </div>
+
+            <div className="text-[#408A71] mb-4"># Install SDK</div>
+            <div className="text-[#B0E4CC] mb-6">
+              npm install @satelink/sdk
+            </div>
+
+            <div className="text-[#408A71] mb-4"># Use in your app</div>
+            <div className="text-[#B0E4CC]">
+              node -e &quot;require(&#39;@satelink/sdk&#39;).rpc(&#39;eth_blockNumber&#39;,[]).then(b=&gt;console.log(parseInt(b,16)))&quot;
             </div>
           </div>
         </div>

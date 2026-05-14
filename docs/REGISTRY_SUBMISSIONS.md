@@ -1,6 +1,17 @@
 # Registry Submissions
 
-Last updated: 2026-05-11
+Last updated: 2026-05-14
+
+## npm Registry (passive discovery)
+
+| Package | URL | Status |
+|---------|-----|--------|
+| @satelink/sdk | npmjs.com/package/@satelink/sdk | LIVE v0.2.0 |
+| satelink-sdk | npmjs.com/package/satelink-sdk | LIVE v0.2.0 (fallback) |
+
+### Next SDK versions
+- v0.3.0: Add @satelink/react hooks
+- v0.4.0: Add @satelink/cli (npx satelink)
 
 ## Submitted
 

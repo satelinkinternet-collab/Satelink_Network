@@ -205,6 +205,16 @@ export default function DevelopersPage() {
           <div className="container-marketing">
             <h2 className="heading-lg mb-8 text-center">Quick Start</h2>
 
+            {/* SDK Install */}
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="bg-[#060e0b] border border-[#1a3028] rounded-lg p-4 font-mono text-sm">
+                <p className="text-[#285A48] text-xs mb-2 uppercase tracking-wider">
+                  Install SDK
+                </p>
+                <p className="text-[#408A71]">$ npm install @satelink/sdk</p>
+              </div>
+            </div>
+
             {/* Language tabs */}
             <div className="flex flex-wrap justify-center gap-2 mb-8">
               {(Object.keys(CODE_EXAMPLES) as CodeLang[]).map((lang) => (
@@ -499,31 +509,71 @@ ws.onmessage = (event) => {
           </div>
         </section>
 
-        {/* SDK Coming Soon */}
+        {/* Official SDK */}
         <section className="py-16 bg-[var(--bg-card)]/30">
           <div className="container-marketing">
-            <div className="glass-card p-12 text-center max-w-2xl mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-[var(--brand-secondary)]/10 border border-[var(--brand-secondary)]/20 flex items-center justify-center mx-auto mb-6">
-                <PackageIcon />
+            <div className="glass-card p-12 max-w-3xl mx-auto">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-[var(--brand-accent)]/10 border border-[var(--brand-accent)]/20 flex items-center justify-center">
+                  <PackageIcon />
+                </div>
+                <div>
+                  <h3 className="heading-md">@satelink/sdk</h3>
+                  <p className="text-sm text-[var(--text-muted)]">v0.2.0 — TypeScript SDK with ethers, viem, wagmi adapters</p>
+                </div>
               </div>
-              <h3 className="heading-md mb-4">Official SDKs Coming Soon</h3>
-              <p className="text-body mb-6">
-                Native SDKs for JavaScript, Python, and Rust with built-in retry logic,
-                connection pooling, and type safety.
-              </p>
+
               <div className="code-block text-left mb-6">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/50">
+                  <span className="text-xs text-[var(--text-muted)]">Install</span>
+                </div>
                 <pre className="p-4 overflow-x-auto text-sm">
-                  <code className="text-[var(--text-muted)]"># Coming soon{"\n"}npm install @satelink/sdk</code>
+                  <code className="text-[var(--text-primary)]">npm install @satelink/sdk</code>
                 </pre>
               </div>
-              <a
-                href="https://github.com/satelinkinternet-collab"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-outline inline-flex"
-              >
-                Watch on GitHub
-              </a>
+
+              <div className="code-block text-left mb-6">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/50">
+                  <span className="text-xs text-[var(--text-muted)]">Usage</span>
+                </div>
+                <pre className="p-4 overflow-x-auto text-sm leading-relaxed">
+                  <code className="text-[var(--text-primary)]">{`import { getEthersProvider, SatelinkRPC, SatelinkMEV } from '@satelink/sdk';
+
+// ethers.js provider (drop-in Alchemy replacement)
+const provider = getEthersProvider('polygon');
+const block = await provider.getBlockNumber();
+
+// Direct RPC client
+const rpc = new SatelinkRPC({ chain: 'polygon' });
+const balance = await rpc.getBalance('0x...');
+
+// MEV relay — simulate before submitting
+const mev = new SatelinkMEV({ apiKey: 'sk_live_...' });
+const sim = await mev.simulateBundle([signedTx1, signedTx2]);
+if (sim.profitable) {
+  await mev.submitBundle([signedTx1, signedTx2]);
+}`}</code>
+                </pre>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="https://npmjs.com/package/@satelink/sdk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-glow inline-flex items-center gap-2"
+                >
+                  View on npm
+                </a>
+                <a
+                  href="https://github.com/Satelink-Protocol/Satelink_Network/tree/main/packages/sdk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-outline inline-flex items-center gap-2"
+                >
+                  GitHub
+                </a>
+              </div>
             </div>
           </div>
         </section>

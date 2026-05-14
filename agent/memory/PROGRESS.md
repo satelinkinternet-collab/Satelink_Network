@@ -5,6 +5,16 @@
 # GitHub: Satelink-Protocol/Satelink_Network
 # Branches: main + develop ONLY
 
+## SESSION UPDATE — May 14, 2026 (SDK PUBLISHED + DOCS UPDATED)
+- DONE: Published @satelink/sdk v0.2.0 to npm (scoped)
+- DONE: Published satelink-sdk v0.2.0 to npm (unscoped fallback)
+- DONE: Updated developers page with SDK install block and live SDK section
+- DONE: Updated homepage terminal block with SDK install commands
+- DONE: Updated docs/REGISTRY_SUBMISSIONS.md with npm packages
+- DONE: L8 95% complete (MEV + simulation + bundle status + SDK)
+- NOTE: Passive discovery now includes: Chainlist (2 PRs), eth-lists (MERGED), publicnode (submitted), npm (LIVE)
+- NEXT: L9 AI Agent layer OR wait for Chainlist #2721 merge + monitor traffic
+
 ## SESSION UPDATE — May 14, 2026 (L8 DEFI/DAPP INTEGRATION)
 - DONE: L8 Item 1 — eth_callBundle simulation endpoint (POST /rpc/mev/bundle/simulate)
 - DONE: L8 Item 1 — Bundle status tracking endpoint (GET /rpc/mev/bundle/:bundleHash)
@@ -13,9 +23,7 @@
 - DONE: Updated SDK exports, package.json v0.2.0, README with MEV + adapter docs
 - DONE: Tested SDK against live RPC — Polygon block 86,841,199 verified
 - DONE: MEV relay status confirmed live with Flashbots signing enabled
-- NOTE: New simulation endpoints deploy after Railway redeploy
-- NOTE: SDK ready for npm publish (@satelink/sdk v0.2.0)
-- NEXT: npm publish @satelink/sdk, then start L9 AI Agent layer
+- DONE: Published SDK to npm (@satelink/sdk + satelink-sdk)
 
 ## SESSION UPDATE — May 14, 2026 (BRANCH CLEANUP + S0-008 SQLITE REMOVAL)
 - DONE: Branch audit — found 7 local, 13 remote dependabot, 2 remote tracked
@@ -376,14 +384,14 @@ Website: DEPLOYED ✅ (all pages verified 200 OK)
 ## AUTONOMOUS ECONOMIC PROTOCOL LAYERS
 | Layer | Name | Status | Blocks Revenue |
 |-------|------|--------|----------------|
-| L1 | Discovery | DONE | Chainlist MERGED |
+| L1 | Discovery | DONE | Chainlist MERGED, npm LIVE |
 | L2 | Ingestion | DONE | Multi-provider RPC gateway live |
 | L3 | Billing | DONE | Production billing on Railway |
 | L4 | Settlement | 75% | Claim route wired, MATIC needed |
 | L5 | Node Supply | PARTIAL | Limits scale |
-| L6 | Protocol Registry | DONE | Chainlist + dRPC merged |
+| L6 | Protocol Registry | DONE | Chainlist + dRPC + npm merged |
 | L7 | Autonomous Ops | DONE | Health monitoring + offline detector |
-| L8 | DeFi/DApp | NOT STARTED | Revenue ceiling without this |
+| L8 | DeFi/DApp | 95% | MEV relay + SDK published (@satelink/sdk v0.2.0) |
 | L9 | AI Agent | NOT STARTED | Revenue ceiling without this |
 
 ---
