@@ -503,5 +503,59 @@ export function createAdminApiRouter(opsEngine) {
         }
     });
 
+    // POST /admin-api/revenue/backfill-node-id - Backfill orphaned revenue events with node_id
+    router.post('/revenue/backfill-node-id', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+            const { nodeId, nodeDbId } = req.body;
+            if (!nodeId && !nodeDbId) {
+                return res.status(400).json({ ok: false, error: 'Missing nodeId or nodeDbId' });
+            }
+
+            // Get target node ID
+            let targetNodeDbId = nodeDbId;
+            if (nodeId && !nodeDbId) {
+                const node = await opsEngine.db.prepare("SELECT id FROM nodes WHERE node_id = ?").get([nodeId]);
+                if (!node) return res.status(404).json({ ok: false, error: 'Node not found' });
+                targetNodeDbId = node.id;
+            }
+
+            // Count orphaned revenue events
+            const orphanCount = await opsEngine.db.prepare(
+                "SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM revenue_events_v2 WHERE node_id IS NULL"
+            ).get([]);
+
+            // Backfill orphaned revenue events
+            const result = await opsEngine.db.prepare(
+                "UPDATE revenue_events_v2 SET node_id = ? WHERE node_id IS NULL"
+            ).run([targetNodeDbId]);
+
+            res.json({
+                ok: true,
+                backfilled: result.changes || 0,
+                orphanedTotal: orphanCount?.total || 0,
+                nodeDbId: targetNodeDbId
+            });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
+    // POST /admin-api/epoch/close-current - Trigger epoch close and distribute rewards
+    router.post('/epoch/close-current', async (req, res) => {
+        try {
+            if (req.user?.role !== 'admin_super') {
+                return res.status(403).json({ ok: false, error: 'Super Admin only' });
+            }
+
+            const result = await opsEngine.finalizeEpoch();
+            res.json({ ok: true, ...result });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     return router;
 }
