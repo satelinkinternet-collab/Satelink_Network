@@ -33,6 +33,18 @@ const nextConfig: NextConfig = {
     pagesBufferLength: 2,
   },
 
+  async headers() {
+    return [
+      {
+        source: '/satelink/os/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Vary', value: '*' },
+        ],
+      },
+    ];
+  },
+
   async rewrites() {
     const apiPrefixes = [
       "auth",
