@@ -1,3 +1,4 @@
+'use client';
 // SATELINK-WITHDRAW-V4 — dynamic import, no SSR, eliminates RSC chunk issues
 import dynamic from 'next/dynamic';
 
