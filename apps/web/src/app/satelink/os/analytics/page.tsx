@@ -181,6 +181,35 @@ export default function SatelinkAnalyticsPage() {
         </InfraCard>
       </div>
 
+      {/* Revenue Distribution Detail */}
+      <InfraCard>
+        <InfraCardHeader title="Revenue Distribution" sub="Real-time split allocation" />
+        <div className="p-5 space-y-4">
+          {[
+            { role: 'Node Operators', pct: 50, desc: 'Infrastructure contributors', color: '#408A71', amount: totalRevenue * 0.5 },
+            { role: 'Platform Fee', pct: 30, desc: 'Protocol treasury', color: '#00D1FF', amount: totalRevenue * 0.3 },
+            { role: 'Distribution Pool', pct: 20, desc: 'Ecosystem growth fund', color: '#285A48', amount: totalRevenue * 0.2 },
+          ].map((r) => (
+            <div key={r.role} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.color }} />
+                  <span className="text-[12px] text-[#B0E4CC]">{r.role}</span>
+                  <span className="text-[10px] text-[#285A48]">· {r.desc}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono text-[#408A71]">${r.amount.toFixed(4)}</span>
+                  <span className="text-[13px] font-semibold font-mono" style={{ color: r.color }}>{r.pct}%</span>
+                </div>
+              </div>
+              <div className="h-1.5 bg-[#091413] rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${r.pct}%`, background: r.color }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </InfraCard>
+
       {/* RPC Methods */}
       <InfraCard>
         <InfraCardHeader title="RPC Method Distribution" sub={`${totalCalls.toLocaleString()} calls tracked`} />
