@@ -1,11 +1,17 @@
-node_modules
-.next
-*.log
-.env
-.env.local
+# Monorepo - exclude everything except this app
 ../../node_modules
+../../.git
 ../../packages
 ../../apps/api
 ../../services
 ../../agents
 ../../contracts
+../../.turbo
+../../.cache
+
+# Local files
+.env.local
+.env.development
+node_modules/.cache
+.next/cache
+*.log
