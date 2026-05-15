@@ -15,6 +15,7 @@ import { createWebhookRouter, ensureWebhookTable } from "./src/workloads/webhook
 import { createOracleRouter } from "./src/workloads/oracle/index.js";
 import { createClaimsRouter } from "./src/routes/claims_route.mjs";
 import { createOsEventsRouter } from "./src/realtime/os-events-route.js";
+import nodeAuthRouter from "./src/routes/node_auth_route.mjs";
 import { createMachineAccessRouter } from "./src/machine-access/index.js";
 
 export function createApp(pool, redis) {
@@ -202,6 +203,9 @@ export function createApp(pool, redis) {
       pricing: "https://rpc.satelink.network/api/pricing"
     });
   });
+
+  // Node operator auth endpoint (public, rate-limited)
+  app.use("/api/auth", nodeAuthRouter);
 
   // RPC Gateway with latency-based routing
   app.use("/rpc", createRpcGateway(pool));
