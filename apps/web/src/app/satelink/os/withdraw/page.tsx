@@ -1,4 +1,5 @@
 'use client';
+// v2 - Auto-fetch JWT, no localStorage dependency
 import { useState, useEffect } from 'react';
 import { ClaimButton } from '@/components/payout/ClaimButton';
 
