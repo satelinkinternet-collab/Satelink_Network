@@ -20,6 +20,42 @@ export default function WithdrawClient() {
     }).catch(console.error);
   },[]);
 
+  // Fetch claimable from claim endpoint (more accurate)
+  useEffect(() => {
+    const TOKEN_ENDPOINT = `${API}/api/auth/node-token`;
+    const NODE = 'NODE-ap-south-1-a09becbb';
+    const WALLET = '0x966E1Ae22996545015b1414B35234b10719d7Ad4';
+
+    fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nodeId: NODE, walletAddress: WALLET }),
+    })
+    .then(r => r.json())
+    .then(auth => {
+      if (!auth.token) return;
+      return fetch(`${API}/api/nodes/${NODE}/claim`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ walletAddress: WALLET }),
+      });
+    })
+    .then(r => r?.json())
+    .then(data => {
+      if (data?.success || data?.signature) {
+        const sig = data.signature || data;
+        const claimable = parseFloat(sig.amount || '0');
+        if (claimable > 0) {
+          setRev((prev: any) => prev ? {...prev, nodePool: claimable, canClaim: claimable >= 0.01} : null);
+        }
+      }
+    })
+    .catch(console.error);
+  }, []);
+
   const f = (n:number) => `$${n.toFixed(6)}`;
 
   return (
