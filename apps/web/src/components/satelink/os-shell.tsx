@@ -210,14 +210,16 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
               <Command className="w-3 h-3" />
               <span>K</span>
             </button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#408A71] text-[#091413] text-[10px] font-semibold hover:bg-[#4fa07f] transition-colors"
-            >
-              <Wallet className="w-3 h-3" />
-              Claim USDT
-            </motion.button>
+            <Link href="/satelink/os/withdraw">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#408A71] text-[#091413] text-[10px] font-semibold hover:bg-[#4fa07f] transition-colors"
+              >
+                <Wallet className="w-3 h-3" />
+                Claim USDT
+              </motion.button>
+            </Link>
             <button
               className="lg:hidden p-1.5 text-[#408A71] hover:text-[#B0E4CC] transition-colors"
               onClick={() => setMobileOpen(!mobileOpen)}

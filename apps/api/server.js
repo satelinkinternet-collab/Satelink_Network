@@ -338,6 +338,24 @@ async function start() {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
     process.exit(1);
   }
+
+  // Step 14: Self-heartbeat — the API server IS the node
+  const SELF_NODE_ID = 'NODE-ap-south-1-a09becbb';
+  setInterval(async () => {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      await pool.query(
+        `UPDATE registered_nodes
+         SET status = 'active', last_heartbeat_at = $1, updated_at = $1
+         WHERE node_id = $2`,
+        [now, SELF_NODE_ID]
+      );
+      console.log(`[Self-Heartbeat] ✅ ${SELF_NODE_ID} heartbeat sent`);
+    } catch (err) {
+      console.error('[Self-Heartbeat] ❌ Failed:', err.message);
+    }
+  }, 300000); // Every 5 minutes
+  console.log(`[BOOT] ✅ Self-heartbeat started for ${SELF_NODE_ID} (5min interval)`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

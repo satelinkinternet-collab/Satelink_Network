@@ -28,10 +28,11 @@ export async function startSentinel(pool, redis) {
 
   setInterval(async () => {
     try {
-      const offline = await pool.query("SELECT node_id, region FROM registered_nodes WHERE status='active' AND last_heartbeat_at < $1", [Math.floor(Date.now()/1000) - 360])
+      // Only mark offline after 24 hours without heartbeat (was 6 min)
+      const offline = await pool.query("SELECT node_id, region FROM registered_nodes WHERE status='active' AND last_heartbeat_at < $1", [Math.floor(Date.now()/1000) - 86400])
       for (const node of offline.rows) {
         await pool.query("UPDATE registered_nodes SET status='offline' WHERE node_id=$1", [node.node_id])
-        console.log(`[Sentinel] Node ${node.node_id} marked offline`)
+        console.log(`[Sentinel] Node ${node.node_id} marked offline (no heartbeat 24h)`)
       }
     } catch(e) { console.error('[Sentinel] Node check error:', e.message) }
   }, 120000)

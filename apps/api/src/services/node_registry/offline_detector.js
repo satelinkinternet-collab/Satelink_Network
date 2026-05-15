@@ -9,8 +9,8 @@
  */
 
 const OFFLINE_CHECK_INTERVAL_MS = 120000; // 2 minutes
-const OFFLINE_THRESHOLD_SECONDS = 360; // 6 minutes (3 × 2-min heartbeats)
-const SUSPEND_THRESHOLD_SECONDS = 86400; // 24 hours
+const OFFLINE_THRESHOLD_SECONDS = 86400; // 24 hours (was 6 minutes)
+const SUSPEND_THRESHOLD_SECONDS = 604800; // 7 days (was 24 hours)
 
 export const offlineDetectorStatus = {
   last_run_time: null,
