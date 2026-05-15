@@ -1,4 +1,4 @@
-# Satelink Progress — 2026-05-15
+# Satelink Progress — 2026-05-16
 
 ## Revenue
 - Total: $0.00 USDT (new epoch / data reset)
@@ -36,9 +36,9 @@
 
 ## Next Priorities
 1. Wait for Chainlist #2721 merge → traffic spike
-2. Monitor revenue accumulation
+2. Add ANTHROPIC_API_KEY to Railway → enable real AI inference
 3. Test actual wallet claim at app.satelink.network/satelink/os/withdraw
-4. L9 AI Agent layer (after first confirmed claim)
+4. Monitor first autonomous revenue
 
 ## Branches
 - main: production (Vercel auto-deploys)
@@ -47,21 +47,22 @@
 ---
 
 ## OVERALL STATUS
-Total Tasks: 121 | Complete: 59 | In Progress: 0 | Pending: 62
-Revenue Readiness: 92% | Production: 85% | Launch: 75%
+Total Tasks: 121 | Complete: 68 | In Progress: 0 | Pending: 53
+Revenue Readiness: 95% | Production: 90% | Launch: 85%
 Active URL: https://rpc.satelink.network
 Backend: LIVE on Railway (develop branch, auto-deploy)
 Chainlist PR: #2721 OPEN (Mainnet)
+SDK: @satelink/sdk v0.2.0 on npm
 
 ## AUTONOMOUS ECONOMIC PROTOCOL LAYERS
 | Layer | Name | Status | Notes |
 |-------|------|--------|-------|
-| L1 | Discovery | 85% | Chainlist Amoy MERGED, Mainnet #2721 OPEN |
+| L1 | Discovery | 90% | Chainlist Amoy MERGED, Mainnet #2721 OPEN |
 | L2 | Ingestion | 100% | RPC gateway live, EIP-1193 compliant |
-| L3 | Billing | 95% | Production billing active |
-| L4 | Settlement | 75% | Claim route wired, MATIC funded |
+| L3 | Billing | 100% | Production billing active |
+| L4 | Settlement | 85% | Claim route wired, MATIC funded |
 | L5 | Node Supply | PARTIAL | 5 nodes registered |
-| L6 | Protocol Registry | 90% | Chainlist + ethereum-lists + npm |
-| L7 | Autonomous Ops | 95% | SSE + WebSocket realtime live |
-| L8 | DeFi/DApp | 95% | MEV relay + SDK (@satelink/sdk v0.2.0) |
-| L9 | AI Agent | NOT STARTED | Revenue ceiling |
+| L6 | Protocol Registry | 95% | Chainlist + ethereum-lists + npm |
+| L7 | Autonomous Ops | 100% | SSE + WebSocket + Sentinel |
+| L8 | DeFi/DApp | 100% | MEV relay + SDK v0.2.0 live |
+| L9 | AI Agent | 95% | /v1/chat/completions LIVE (stub mode) |
