@@ -1,8 +1,5 @@
 "use client";
 
-
-
-
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
@@ -16,6 +13,8 @@ import {
   type NodeData,
   type RpcMetrics,
 } from "@/lib/api/satelink-api";
+import { FilterBar } from "@/components/satelink/filter-bar";
+import { useDashboardFilters } from "@/lib/stores/dashboard-filters";
 
 interface LiveEvent {
   type: string;
@@ -32,6 +31,7 @@ export default function AdminCommandCenter() {
   const [epochCountdown, setEpochCountdown] = useState(60);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const eventsRef = useRef<LiveEvent[]>([]);
+  const { fmt } = useDashboardFilters();
 
   useEffect(() => {
     async function load() {
@@ -83,8 +83,11 @@ export default function AdminCommandCenter() {
 
   return (
     <div className="min-h-screen bg-[#091413] font-['Inter',sans-serif] text-[#B0E4CC]">
+      {/* FILTER BAR */}
+      <FilterBar page="overview" />
+
       {/* TOP COMMAND BAR */}
-      <div className="sticky top-0 z-50 flex items-center h-12 px-4 gap-4 border-b border-[#1a3028] bg-[#091413]/95 backdrop-blur-sm">
+      <div className="sticky top-[88px] z-40 flex items-center h-12 px-4 gap-4 border-b border-[#1a3028] bg-[#091413]/95 backdrop-blur-sm">
         <div className="flex items-center gap-2 text-[13px] font-semibold">
           <div className="w-2 h-2 rounded-full bg-[#408A71] animate-pulse" />
           SATELINK ADMIN
@@ -144,8 +147,8 @@ export default function AdminCommandCenter() {
         {/* KEY METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { label: "Total Revenue", value: `$${totalRevenue.toFixed(6)}`, sub: `${epochs.length} epochs tracked`, glow: true },
-            { label: "Revenue Today", value: `$${revenueToday.toFixed(6)}`, sub: `${metrics?.revenue?.eventsToday || 0} events` },
+            { label: "Total Revenue", value: fmt(totalRevenue), sub: `${epochs.length} epochs tracked`, glow: true },
+            { label: "Revenue Today", value: fmt(revenueToday), sub: `${metrics?.revenue?.eventsToday || 0} events` },
             { label: "Epochs with Revenue", value: `${epochsWithRevenue.length}`, sub: `of ${epochs.length} total` },
             { label: "Total RPC Calls", value: totalRequests.toLocaleString(), sub: "all tracked epochs" },
             { label: "Nodes Online", value: String(status?.nodes_online ?? "—"), sub: `${nodes.length} registered` },
@@ -207,11 +210,11 @@ export default function AdminCommandCenter() {
                             #{e.epoch_id ?? "pending"}
                           </td>
                           <td className={`px-3 py-2 font-mono text-[11px] ${hasRev ? "text-[#00D1FF]" : "text-[#285A48]"}`}>
-                            ${rev.toFixed(6)}
+                            {fmt(rev)}
                           </td>
-                          <td className="px-3 py-2 font-mono text-[11px] text-[#408A71]">${nodePool.toFixed(6)}</td>
-                          <td className="px-3 py-2 font-mono text-[11px] text-[#408A71]">${platform.toFixed(6)}</td>
-                          <td className="px-3 py-2 font-mono text-[11px] text-[#408A71]">${distrib.toFixed(6)}</td>
+                          <td className="px-3 py-2 font-mono text-[11px] text-[#408A71]">{fmt(nodePool)}</td>
+                          <td className="px-3 py-2 font-mono text-[11px] text-[#408A71]">{fmt(platform)}</td>
+                          <td className="px-3 py-2 font-mono text-[11px] text-[#408A71]">{fmt(distrib)}</td>
                           <td className="px-3 py-2 font-mono text-[11px] text-[#285A48]">{e.requests}</td>
                           <td className="px-3 py-2">
                             <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${hasRev ? "bg-[#0f2e1a] text-[#408A71] border border-[#285A48]" : "bg-[#0f1510] text-[#285A48] border border-[#1a2e25]"}`}>

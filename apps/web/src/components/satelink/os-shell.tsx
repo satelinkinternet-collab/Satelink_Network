@@ -32,40 +32,73 @@ interface NetworkStatus {
   avg_latency_ms: number;
 }
 
-const navGroups = [
+type DotColor = 'green' | 'cyan' | 'grey';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ElementType;
+  dot: DotColor;
+  badge?: string;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
   {
-    label: "Infrastructure",
+    label: "Command Center",
     items: [
-      {
-        href: "/satelink/os/overview",
-        label: "Overview",
-        icon: LayoutDashboard,
-      },
-      { href: "/satelink/os/nodes", label: "Nodes", icon: Cpu },
-      { href: "/satelink/os/deployments", label: "Deployments", icon: Rocket },
-      { href: "/satelink/os/queue", label: "Queue", icon: Database },
-      { href: "/satelink/os/network", label: "Network", icon: Globe2 },
-    ],
+      { label: 'Overview',      href: '/satelink/os/overview',    icon: LayoutDashboard, dot: 'green' },
+      { label: 'Live Events',   href: '/satelink/os/events',      icon: Bell, dot: 'cyan', badge: 'LIVE' },
+      { label: 'System Health', href: '/satelink/os/health',      icon: Cpu, dot: 'grey' },
+      { label: 'Alerts',        href: '/satelink/os/alerts',      icon: Bell, dot: 'grey' },
+    ]
   },
   {
-    label: "Revenue",
+    label: "Network Ops",
     items: [
-      { href: "/satelink/os/analytics", label: "Analytics", icon: ChartLine },
-      { href: "/satelink/os/billing", label: "Billing", icon: Receipt },
-      { href: "/satelink/os/withdraw", label: "Withdraw", icon: Wallet },
-    ],
+      { label: 'Nodes',         href: '/satelink/os/nodes',       icon: Cpu, dot: 'green' },
+      { label: 'Deployments',   href: '/satelink/os/deployments', icon: Rocket, dot: 'grey' },
+      { label: 'Queue',         href: '/satelink/os/queue',       icon: Database, dot: 'grey' },
+      { label: 'Network',       href: '/satelink/os/network',     icon: Globe2, dot: 'grey' },
+      { label: 'Providers',     href: '/satelink/os/providers',   icon: Globe2, dot: 'grey' },
+    ]
+  },
+  {
+    label: "Economics",
+    items: [
+      { label: 'Analytics',      href: '/satelink/os/analytics',   icon: ChartLine, dot: 'cyan' },
+      { label: 'Revenue Engine', href: '/satelink/os/revenue',     icon: ChartLine, dot: 'grey' },
+      { label: 'Epoch Manager',  href: '/satelink/os/epochs',      icon: Database, dot: 'grey' },
+      { label: 'Treasury',       href: '/satelink/os/treasury',    icon: Wallet, dot: 'grey' },
+    ]
+  },
+  {
+    label: "API & Billing",
+    items: [
+      { label: 'API Keys', href: '/satelink/os/api-keys', icon: Key, dot: 'grey' },
+      { label: 'Billing',  href: '/satelink/os/billing',  icon: Receipt, dot: 'grey' },
+      { label: 'Plans',    href: '/satelink/os/plans',    icon: Receipt, dot: 'grey' },
+    ]
+  },
+  {
+    label: "Settlement",
+    items: [
+      { label: 'Withdraw', href: '/satelink/os/withdraw', icon: Wallet, dot: 'cyan' },
+      { label: 'Claims',   href: '/satelink/os/claims',   icon: Receipt, dot: 'grey' },
+      { label: 'On-Chain', href: '/satelink/os/onchain',  icon: Globe2, dot: 'grey' },
+    ]
   },
   {
     label: "Platform",
     items: [
-      { href: "/satelink/os/api-keys", label: "API Keys", icon: Key },
-      { href: "/satelink/os/settings", label: "Settings", icon: Settings },
-      {
-        href: "/satelink/os/notifications",
-        label: "Notifications",
-        icon: Bell,
-      },
-    ],
+      { label: 'Settings',      href: '/satelink/os/settings',      icon: Settings, dot: 'grey' },
+      { label: 'Notifications', href: '/satelink/os/notifications', icon: Bell, dot: 'grey' },
+      { label: 'AI Gateway',    href: '/satelink/os/ai',            icon: Cpu, dot: 'grey', badge: 'L9' },
+    ]
   },
 ];
 
@@ -151,13 +184,26 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
+  const getDotStyle = (dot: DotColor, isActive: boolean) => {
+    if (isActive) return "bg-[#408A71] shadow-[0_0_6px_rgba(64,138,113,0.6)]";
+    switch (dot) {
+      case 'green': return "bg-[#408A71] animate-pulse";
+      case 'cyan': return "bg-[#00D1FF]";
+      case 'grey': default: return "bg-[#285A48] opacity-40";
+    }
+  };
+
   const NavItem = ({
     href,
     label,
+    dot,
+    badge,
   }: {
     href: string;
     label: string;
     icon: React.ElementType;
+    dot: DotColor;
+    badge?: string;
   }) => {
     const isActive = pathname === href;
     return (
@@ -169,8 +215,13 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
             : "text-[#408A71] border-transparent hover:bg-[#0c1a17] hover:text-[#B0E4CC]"
         }`}
       >
-        <StatusDot status={isActive ? "online" : "offline"} />
-        {label}
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${getDotStyle(dot, isActive)}`} />
+        <span className="flex-1">{label}</span>
+        {badge && (
+          <span className="text-[8px] px-1 py-0.5 rounded bg-[#0c1a17] text-[#00D1FF] border border-[#1a3028] font-semibold">
+            {badge}
+          </span>
+        )}
       </Link>
     );
   };

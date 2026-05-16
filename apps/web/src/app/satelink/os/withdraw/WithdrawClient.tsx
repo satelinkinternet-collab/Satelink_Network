@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ClaimButton } from '@/components/payout/ClaimButton';
+import { FilterBar } from '@/components/satelink/filter-bar';
+import { useDashboardFilters } from '@/lib/stores/dashboard-filters';
 
 const API = 'https://rpc.satelink.network';
 const NODE = 'NODE-ap-south-1-a09becbb';
@@ -13,6 +15,7 @@ export default function WithdrawClient() {
   const [claimable, setClaimable]   = useState<number | null>(null);
   const [checking, setChecking]     = useState(false);
   const [lastTx, setLastTx]         = useState<string | null>(null);
+  const { fmt } = useDashboardFilters();
 
   // Fetch network totals (direct backend call)
   useEffect(() => {
@@ -73,11 +76,11 @@ export default function WithdrawClient() {
     .finally(() => setChecking(false));
   }, [address, isConnected]);
 
-  const f = (n: number) => `$${n.toFixed(6)}`;
-
   return (
-    <div className="min-h-screen bg-[#091413] p-6">
-      <div className="max-w-xl mx-auto">
+    <div className="min-h-screen bg-[#091413]">
+      <FilterBar page="withdraw" />
+
+      <div className="max-w-xl mx-auto p-6">
 
         {/* Header */}
         <div className="mb-6">
@@ -97,10 +100,10 @@ export default function WithdrawClient() {
                                       rounded h-20 animate-pulse"/>
             ))
           ) : [
-            {label:'Network Revenue',  value:f(networkRev.total),    glow:false},
-            {label:'Node Pool 50%',    value:f(networkRev.node),     glow:false},
-            {label:'Platform Fee 30%', value:f(networkRev.platform), glow:false},
-            {label:'Distribution 20%', value:f(networkRev.distrib),  glow:false},
+            {label:'Network Revenue',  value:fmt(networkRev.total),    glow:false},
+            {label:'Node Pool 50%',    value:fmt(networkRev.node),     glow:false},
+            {label:'Platform Fee 30%', value:fmt(networkRev.platform), glow:false},
+            {label:'Distribution 20%', value:fmt(networkRev.distrib),  glow:false},
           ].map(m => (
             <div key={m.label}
                  className="bg-[#0c1a17] border border-[#1a3028] rounded p-4
@@ -230,7 +233,7 @@ export default function WithdrawClient() {
                 Pool Balance
               </p>
               <p className="text-[15px] font-semibold font-mono text-[#B0E4CC] mt-1">
-                {networkRev ? f(networkRev.distrib) : '—'}
+                {networkRev ? fmt(networkRev.distrib) : '—'}
               </p>
             </div>
             <div>

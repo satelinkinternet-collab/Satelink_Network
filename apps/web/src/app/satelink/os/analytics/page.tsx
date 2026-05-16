@@ -1,12 +1,11 @@
 "use client";
 
-
-
-
 import { useEffect, useState, useMemo } from "react";
 import { AreaChart, BarChart, DonutChart } from "@tremor/react";
 import { MetricCard, InfraCard, InfraCardHeader, SectionHeader } from "@/components/ui/satelink-ui";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
+import { FilterBar } from "@/components/satelink/filter-bar";
+import { useDashboardFilters } from "@/lib/stores/dashboard-filters";
 
 interface EpochRevenue {
   epoch: string;
@@ -21,6 +20,7 @@ interface MethodStats {
 export default function SatelinkAnalyticsPage() {
   const metrics = useInfrastructureStore((s) => s.metrics);
   const activityStream = useInfrastructureStore((s) => s.activityStream);
+  const { fmt } = useDashboardFilters();
 
   const [revenueHistory, setRevenueHistory] = useState<EpochRevenue[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -94,6 +94,8 @@ export default function SatelinkAnalyticsPage() {
 
   return (
     <div className="space-y-5">
+      <FilterBar page="analytics" />
+
       <SectionHeader
         title="Revenue Analytics"
         sub="USDT settlement · Polygon Network · 60s epochs"
@@ -103,13 +105,13 @@ export default function SatelinkAnalyticsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Total Revenue"
-          value={`$${totalRevenue.toFixed(4)}`}
+          value={fmt(totalRevenue)}
           sub="All epochs combined"
           glow
         />
         <MetricCard
           label="Latest Epoch"
-          value={`$${latestRevenue.toFixed(4)}`}
+          value={fmt(latestRevenue)}
           sub="Most recent settlement"
         />
         <MetricCard
@@ -198,7 +200,7 @@ export default function SatelinkAnalyticsPage() {
                   <span className="text-[10px] text-[#285A48]">· {r.desc}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-mono text-[#408A71]">${r.amount.toFixed(4)}</span>
+                  <span className="text-[11px] font-mono text-[#408A71]">{fmt(r.amount)}</span>
                   <span className="text-[13px] font-semibold font-mono" style={{ color: r.color }}>{r.pct}%</span>
                 </div>
               </div>
