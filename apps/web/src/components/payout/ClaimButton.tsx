@@ -1,9 +1,8 @@
 'use client';
-// SATELINK-CLAIMBUTTON-V4 — accepts nodeId + walletAddress from parent
+// SATELINK-CLAIMBUTTON-V5 — uses Next.js proxy (no CORS)
 import { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 
-const API = 'https://rpc.satelink.network';
 const CTR = '0xE475c53B88190FD2130dB1E37504991EFe283fb0' as const;
 const ABI = [{
   name: 'claim', type: 'function', stateMutability: 'nonpayable',
@@ -23,7 +22,7 @@ interface ClaimButtonProps {
   onSuccess?: (txHash: string) => void;
 }
 
-type S = 'idle' | 'auth' | 'prep' | 'sign' | 'wait' | 'done' | 'err';
+type S = 'idle' | 'prep' | 'sign' | 'wait' | 'done' | 'err';
 
 export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonProps) {
   const [s, setS]   = useState<S>('idle');
@@ -37,24 +36,19 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
     if (!walletAddress) return;
     setE('');
     try {
-      setS('auth');
-      const a = await fetch(`${API}/api/auth/node-token`, {
+      setS('prep');
+      // Single proxy call handles auth+claim server-side (no CORS)
+      const c = await fetch('/api/proxy/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nodeId, walletAddress }),
       }).then(r => r.json());
-      if (!a.ok || !a.token) throw new Error(a.error || 'Auth failed');
 
-      setS('prep');
-      const c = await fetch(`${API}/api/nodes/${nodeId}/claim`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${a.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ walletAddress }),
-      }).then(r => r.json());
-      if (!c.success && !c.signature) throw new Error(c.error || 'Need $1.00 minimum');
+      console.log('[ClaimButton] proxy response:', JSON.stringify(c).slice(0, 300));
+
+      if (!c.success && !c.signature) {
+        throw new Error(c.error || 'Need $1.00 minimum');
+      }
 
       const sig = c.signature || c;
       setS('sign');
@@ -75,6 +69,7 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
       setS('wait');
       onSuccess?.(h);
     } catch (e: any) {
+      console.error('[ClaimButton] error:', e);
       setE(String(e?.message || e).slice(0, 160));
       setS('err');
     }
@@ -103,11 +98,10 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
     </div>
   );
 
-  const busy = ['auth', 'prep', 'sign'].includes(s);
+  const busy = ['prep', 'sign'].includes(s);
   const lab: Record<S, string> = {
     idle: 'Claim Earnings → USDT',
-    auth: 'Authenticating...',
-    prep: 'Preparing signature...',
+    prep: 'Preparing claim...',
     sign: 'Confirm in wallet...',
     wait: 'Confirming...',
     done: 'Claimed ✓',

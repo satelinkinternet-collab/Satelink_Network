@@ -4,7 +4,6 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ClaimButton } from '@/components/payout/ClaimButton';
 
-const API = 'https://rpc.satelink.network';
 const NODE = 'NODE-ap-south-1-a09becbb';
 
 export default function WithdrawClient() {
@@ -14,9 +13,9 @@ export default function WithdrawClient() {
   const [checking, setChecking]     = useState(false);
   const [lastTx, setLastTx]         = useState<string | null>(null);
 
-  // Fetch network totals (for display only)
+  // Fetch network totals via proxy (no CORS)
   useEffect(() => {
-    fetch(`${API}/api/epochs`)
+    fetch('/api/proxy/epochs')
       .then(r => r.json())
       .then(d => {
         const ep = d.epochs || [];
@@ -29,37 +28,36 @@ export default function WithdrawClient() {
       }).catch(console.error);
   }, []);
 
-  // When wallet connects, check real claimable amount
+  // When wallet connects, check claimable via proxy (no CORS)
   useEffect(() => {
     if (!address || !isConnected) { setClaimable(null); return; }
     setChecking(true);
-    fetch(`${API}/api/auth/node-token`, {
+    fetch('/api/proxy/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nodeId: NODE, walletAddress: address }),
     })
     .then(r => r.json())
-    .then(auth => {
-      if (!auth.token) throw new Error('No token');
-      return fetch(`${API}/api/nodes/${NODE}/claim`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${auth.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ walletAddress: address }),
-      });
-    })
-    .then(r => r.json())
     .then(data => {
+      console.log('[CLAIM CHECK]', JSON.stringify(data).slice(0, 300));
       if (data?.success || data?.signature) {
         const sig = data.signature || data;
-        setClaimable(parseFloat(sig.amount_usdt || sig.amount || '0'));
+        const amountUsdt = parseFloat(
+          sig.amount_usdt ||
+          (sig.amount && sig.amount < 1000 ? String(sig.amount) : null) ||
+          (sig.amountWei ? String(parseInt(sig.amountWei) / 1_000_000) : null) ||
+          '0'
+        );
+        console.log('[CLAIM CHECK] claimable:', amountUsdt);
+        setClaimable(amountUsdt);
+      } else if (data?.error?.includes('Minimum') || data?.error?.includes('$1')) {
+        setClaimable(0);
       } else {
+        console.warn('[CLAIM CHECK] unexpected:', data);
         setClaimable(0);
       }
     })
-    .catch(() => setClaimable(0))
+    .catch(e => { console.error('[CLAIM CHECK] failed:', e); setClaimable(0); })
     .finally(() => setChecking(false));
   }, [address, isConnected]);
 
