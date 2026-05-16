@@ -51,8 +51,8 @@ contract DeployAllFoundry is Script {
         // ── 5. ClaimsWithdrawals ────────────────────────────────────
         ClaimsWithdrawals claimsWd = new ClaimsWithdrawals(address(anchor), address(vault));
 
-        // ── 6. ClaimsContract ───────────────────────────────────────
-        ClaimsContract claims = new ClaimsContract(address(vault));
+        // ── 6. ClaimsContract (EIP-712 pull model) ───────────────────
+        ClaimsContract claims = new ClaimsContract(address(usdt), deployer);
 
         // ── 7. SplitEngine ──────────────────────────────────────────
         SplitEngine splitEngine = new SplitEngine();

@@ -34,7 +34,7 @@ interface Settlement {
 const CONTRACTS = [
   { name: "NodeRegistryV2", address: "0x27D7320d5786D5B4B4dE8aAAC6cf62338ADeC037" },
   { name: "RevenueDistributor", address: "0x8a9CefBD801574806a634aF179f538ABB5926F5a" },
-  { name: "ClaimsContract", address: "0xE475c53B88190FD2130dB1E37504991EFe283fb0" },
+  { name: "ClaimsContract", address: "0x6987921e2453f360e314e4424F6c2789F10a1CC9" },
   { name: "USDT (Polygon)", address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F" },
 ];
 

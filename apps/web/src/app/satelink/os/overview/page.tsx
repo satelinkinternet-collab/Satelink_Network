@@ -177,7 +177,7 @@ export default function AdminCommandCenter() {
                 <p className="text-[10px] text-[#285A48] mt-0.5">Real-time from /api/epochs · 50/30/20 split</p>
               </div>
               <a
-                href="https://polygonscan.com/address/0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+                href="https://polygonscan.com/address/0x6987921e2453f360e314e4424F6c2789F10a1CC9"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[10px] text-[#285A48] hover:text-[#408A71] transition-colors"
@@ -379,7 +379,7 @@ export default function AdminCommandCenter() {
             <div className="space-y-2">
               {[
                 { label: "Test RPC endpoint", href: "https://rpc.satelink.network/health", external: true },
-                { label: "View Polygonscan", href: "https://polygonscan.com/address/0xE475c53B88190FD2130dB1E37504991EFe283fb0", external: true },
+                { label: "View Polygonscan", href: "https://polygonscan.com/address/0x6987921e2453f360e314e4424F6c2789F10a1CC9", external: true },
                 { label: "Check Chainlist PR", href: "https://github.com/DefiLlama/chainlist/pull/2721", external: true },
                 { label: "Node operator dashboard", href: "/satelink/os/billing", external: false },
                 { label: "Analytics", href: "/satelink/os/analytics", external: false },

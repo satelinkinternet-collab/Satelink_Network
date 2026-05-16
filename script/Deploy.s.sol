@@ -52,8 +52,8 @@ contract DeployAll is Script {
         EpochAnchor anchor = new EpochAnchor(deployer, deployer);
         console.log("6. EpochAnchor:", address(anchor));
 
-        // ── 7. ClaimsContract (claim creation + expiry) ──
-        ClaimsContract claimsContract = new ClaimsContract(address(vault));
+        // ── 7. ClaimsContract (EIP-712 pull model) ──
+        ClaimsContract claimsContract = new ClaimsContract(address(usdt), deployer);
         console.log("7. ClaimsContract:", address(claimsContract));
 
         // ── 8. ClaimsWithdrawals (epoch-gated withdrawals) ──

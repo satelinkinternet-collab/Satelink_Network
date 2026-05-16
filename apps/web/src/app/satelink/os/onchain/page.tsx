@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const CLAIMS_CONTRACT = '0xE475c53B88190FD2130dB1E37504991EFe283fb0';
+const CLAIMS_CONTRACT = '0x6987921e2453f360e314e4424F6c2789F10a1CC9';
 const USDT_CONTRACT = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
 const RPC_URL = 'https://rpc.satelink.network/rpc/polygon';
 

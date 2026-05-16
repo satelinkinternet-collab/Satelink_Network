@@ -194,7 +194,7 @@ export function createApp(pool, redis) {
       settlement: {
         token: "USDT",
         chain: "Polygon",
-        contract: "0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+        contract: "0x6987921e2453f360e314e4424F6c2789F10a1CC9"
       },
       freeTier: {
         requestsPerDay: 100,

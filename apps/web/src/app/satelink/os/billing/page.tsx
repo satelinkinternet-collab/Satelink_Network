@@ -195,7 +195,7 @@ export default function NodeOperatorDashboard() {
             <div>
               <span className="text-[#285A48]">Contract</span>
               <a
-                href="https://polygonscan.com/address/0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+                href="https://polygonscan.com/address/0x6987921e2453f360e314e4424F6c2789F10a1CC9"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block font-mono text-[#408A71] hover:text-[#00D1FF] truncate"

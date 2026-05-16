@@ -67,7 +67,7 @@ const FAQ_ITEMS = [
   {
     question: "How does revenue settlement work?",
     answer:
-      "Revenue from RPC calls is recorded per epoch (60s windows). Node operators earn 50% of epoch revenue, claimable as USDT on Polygon after the epoch closes. Claims are processed via ClaimsContract at 0xE475c53B88190FD2130dB1E37504991EFe283fb0.",
+      "Revenue from RPC calls is recorded per epoch (60s windows). Node operators earn 50% of epoch revenue, claimable as USDT on Polygon after the epoch closes. Claims are processed via ClaimsContract at 0x6987921e2453f360e314e4424F6c2789F10a1CC9.",
   },
   {
     question: "How do I start as a node operator?",
@@ -285,7 +285,7 @@ export default function NodesPage() {
             <div className="max-w-3xl mx-auto space-y-4">
               <ContractCard
                 name="ClaimsContract"
-                address="0xE475c53B88190FD2130dB1E37504991EFe283fb0"
+                address="0x6987921e2453f360e314e4424F6c2789F10a1CC9"
                 description="Node operators claim USDT earnings from this contract. Minimum claim: 1 USDT."
               />
               <ContractCard

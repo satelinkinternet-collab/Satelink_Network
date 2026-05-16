@@ -211,7 +211,7 @@ export function createAdminMalRouter(pool) {
           totalClaimedUsdt: parseFloat(c.total || 0)
         })),
         contract: {
-          address: '0xE475c53B88190FD2130dB1E37504991EFe283fb0',
+          address: '0x6987921e2453f360e314e4424F6c2789F10a1CC9',
           chain: 'Polygon',
           chainId: 137
         }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 
 const API = 'https://rpc.satelink.network';
-const CTR = '0xE475c53B88190FD2130dB1E37504991EFe283fb0' as const;
+const CTR = '0x6987921e2453f360e314e4424F6c2789F10a1CC9' as const;
 const ABI = [{
   name: 'claim', type: 'function', stateMutability: 'nonpayable',
   inputs: [

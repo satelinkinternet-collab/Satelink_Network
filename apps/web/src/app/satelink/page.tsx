@@ -305,7 +305,7 @@ export default function SatelinkLandingPage() {
                 links: [
                   { href: "/status", label: "System Status" },
                   { href: "/network", label: "Network Map" },
-                  { href: "https://polygonscan.com/address/0xE475c53B88190FD2130dB1E37504991EFe283fb0", label: "Smart Contracts", external: true },
+                  { href: "https://polygonscan.com/address/0x6987921e2453f360e314e4424F6c2789F10a1CC9", label: "Smart Contracts", external: true },
                 ],
               },
             ].map((col) => (

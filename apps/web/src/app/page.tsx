@@ -623,7 +623,7 @@ function EconomicsOverview() {
             intervention. Minimum claim: 1 USDT.
           </p>
           <p className="text-[#285A48] text-sm mt-4 font-mono">
-            ClaimsContract: 0xE475c53B88190FD2130dB1E37504991EFe283fb0
+            ClaimsContract: 0x6987921e2453f360e314e4424F6c2789F10a1CC9
           </p>
         </div>
       </div>

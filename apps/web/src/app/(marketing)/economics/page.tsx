@@ -6,7 +6,7 @@ import { ArrowRight, CircleDollarSign, Clock, FileCode, Layers, PiggyBank, Walle
 import { Button } from "@/components/ui/button";
 
 const CONTRACTS = [
-  { name: "ClaimsContract", address: "0xE475c53B88190FD2130dB1E37504991EFe283fb0", chain: "Polygon Mainnet" },
+  { name: "ClaimsContract", address: "0x6987921e2453f360e314e4424F6c2789F10a1CC9", chain: "Polygon Mainnet" },
   { name: "NodeRegistryV2", address: "0x27D7320d7e668f5A7C5a33A1CbdDA037EBF00037", chain: "Polygon Mainnet" },
   { name: "RevenueDistributor", address: "0x8a9CefBD1e4b7aDb12B69c04826F5a26F5a26F5a", chain: "Polygon Mainnet" },
   { name: "RevenueVault", address: "0xa77512B9B9c3c3c3c3c3c3c3c3c3c3c3c3c3b6d", chain: "Polygon Mainnet" },

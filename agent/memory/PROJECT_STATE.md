@@ -57,7 +57,7 @@ Revenue          ████████░░ 80% (recording + validation acti
 | NodeRegistryV2 | `0x27D7320d5786D5B4B4dE8aAAC6cf62338ADeC037` |
 | RevenueDistributor | `0x8a9CefBD801574806a634aF179f538ABB5926F5a` |
 | RevenueVault | `0xa77512B9255D504B3fD450037f1448D4df6A1b6d` |
-| ClaimsContract | `0xE475c53B88190FD2130dB1E37504991EFe283fb0` |
+| ClaimsContract | `0x6987921e2453f360e314e4424F6c2789F10a1CC9` |
 
 - Network: Polygon PoS Mainnet (chainId: 137)
 - USDT: `0xc2132D05D31c914a87C6611C10748AEb04B58e8F`

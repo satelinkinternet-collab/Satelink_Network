@@ -155,8 +155,8 @@ export default function DocsPage() {
             <tr className="border-b border-[#1F2937]/50">
               <td className="py-2">ClaimsContract</td>
               <td className="py-2 text-blue-400">
-                <a href="https://polygonscan.com/address/0xE475c53B88190FD2130dB1E37504991EFe283fb0" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                  0xE475c53B88190FD2130dB1E37504991EFe283fb0
+                <a href="https://polygonscan.com/address/0x6987921e2453f360e314e4424F6c2789F10a1CC9" target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  0x6987921e2453f360e314e4424F6c2789F10a1CC9
                 </a>
               </td>
             </tr>

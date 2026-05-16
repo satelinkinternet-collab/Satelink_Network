@@ -37,7 +37,7 @@
 
 - **Chain:** Polygon Mainnet (137)
 - **Token:** USDT (0xc2132D05D31c914a87C6611C10748AEb04B58e8F)
-- **Claims Contract:** 0xE475c53B88190FD2130dB1E37504991EFe283fb0
+- **Claims Contract:** 0x6987921e2453f360e314e4424F6c2789F10a1CC9
 - **Treasury:** 0x966E1Ae22996545015b1414B35234b10719d7Ad4
 - **Minimum Claim:** $1.00 USDT
 
