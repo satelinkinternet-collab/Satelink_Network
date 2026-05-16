@@ -1,8 +1,9 @@
 'use client';
-// SATELINK-CLAIMBUTTON-V7 — uses proxy route for reliability
+// SATELINK-CLAIMBUTTON-V8 — direct backend calls (CORS fixed on backend)
 import { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 
+const API = 'https://rpc.satelink.network';
 const CTR = '0xE475c53B88190FD2130dB1E37504991EFe283fb0' as const;
 const ABI = [{
   name: 'claim', type: 'function', stateMutability: 'nonpayable',
@@ -22,7 +23,7 @@ interface ClaimButtonProps {
   onSuccess?: (txHash: string) => void;
 }
 
-type S = 'idle' | 'prep' | 'sign' | 'wait' | 'done' | 'err';
+type S = 'idle' | 'auth' | 'prep' | 'sign' | 'wait' | 'done' | 'err';
 
 export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonProps) {
   const [s, setS]   = useState<S>('idle');
@@ -36,18 +37,38 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
     if (!walletAddress) return;
     setE('');
     try {
-      setS('prep');
-      const claimRes = await fetch('/api/proxy/claim', {
+      // Step 1: Get auth token
+      setS('auth');
+      const authRes = await fetch(`${API}/api/auth/node-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nodeId, walletAddress }),
       });
 
-      // Handle non-JSON responses safely
-      const contentType = claimRes.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
+      if (!authRes.ok) {
+        const text = await authRes.text();
+        throw new Error(`Auth failed: ${text.slice(0, 60)}`);
+      }
+
+      const auth = await authRes.json();
+      if (!auth.ok || !auth.token) {
+        throw new Error(auth.error || 'Auth failed');
+      }
+
+      // Step 2: Get claim signature
+      setS('prep');
+      const claimRes = await fetch(`${API}/api/nodes/${nodeId}/claim`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ walletAddress }),
+      });
+
+      if (!claimRes.ok) {
         const text = await claimRes.text();
-        throw new Error(`Server error: ${text.slice(0, 80)}`);
+        throw new Error(`Claim failed: ${text.slice(0, 60)}`);
       }
 
       const c = await claimRes.json();
@@ -117,10 +138,11 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
     </div>
   );
 
-  const busy = ['prep', 'sign'].includes(s);
+  const busy = ['auth', 'prep', 'sign'].includes(s);
   const lab: Record<S, string> = {
     idle: 'Claim Earnings → USDT',
-    prep: 'Preparing claim...',
+    auth: 'Authenticating...',
+    prep: 'Preparing signature...',
     sign: 'Confirm in wallet...',
     wait: 'Confirming...',
     done: 'Claimed ✓',

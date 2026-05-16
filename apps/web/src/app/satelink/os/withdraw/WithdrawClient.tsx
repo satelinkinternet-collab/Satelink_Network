@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { ClaimButton } from '@/components/payout/ClaimButton';
 
+const API = 'https://rpc.satelink.network';
 const NODE = 'NODE-ap-south-1-a09becbb';
 
 export default function WithdrawClient() {
@@ -13,9 +14,9 @@ export default function WithdrawClient() {
   const [checking, setChecking]     = useState(false);
   const [lastTx, setLastTx]         = useState<string | null>(null);
 
-  // Fetch network totals via proxy
+  // Fetch network totals (direct backend call)
   useEffect(() => {
-    fetch('/api/proxy/epochs')
+    fetch(`${API}/api/epochs`)
       .then(r => r.json())
       .then(d => {
         const ep = d.epochs || [];
@@ -28,14 +29,28 @@ export default function WithdrawClient() {
       }).catch(console.error);
   }, []);
 
-  // When wallet connects, check claimable via proxy
+  // When wallet connects, check claimable amount (direct backend calls)
   useEffect(() => {
     if (!address || !isConnected) { setClaimable(null); return; }
     setChecking(true);
-    fetch('/api/proxy/claim', {
+
+    // Two-step: auth then claim
+    fetch(`${API}/api/auth/node-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nodeId: NODE, walletAddress: address }),
+    })
+    .then(r => r.json())
+    .then(auth => {
+      if (!auth.ok || !auth.token) throw new Error('Auth failed');
+      return fetch(`${API}/api/nodes/${NODE}/claim`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ walletAddress: address }),
+      });
     })
     .then(r => r.json())
     .then(data => {
