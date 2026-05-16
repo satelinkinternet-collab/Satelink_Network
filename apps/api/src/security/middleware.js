@@ -42,6 +42,7 @@ export function attachBaseMiddleware(app) {
         '/health',
         '/healthz',
         '/api/auth',
+        '/api/keys',
         '/api/pricing',
         '/api/status',
         '/api/epochs',

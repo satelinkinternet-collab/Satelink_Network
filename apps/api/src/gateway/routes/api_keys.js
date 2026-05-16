@@ -14,7 +14,7 @@ import crypto from 'crypto';
 import Redis from 'ioredis';
 
 const PLAN_LIMITS = {
-  free: { limit: 100, tier: 'free' },
+  free: { limit: 200, tier: 'free' },
   basic: { limit: 10000, tier: 'basic' },
   pro: { limit: 100000, tier: 'pro' },
   enterprise: { limit: 1000000, tier: 'enterprise' }
@@ -148,6 +148,58 @@ export function createApiKeysRouter(db) {
   const router = Router();
 
   ensureTable(db);
+
+  // Simple POST / — create free tier key without email (for plans page)
+  router.post('/', async (req, res) => {
+    try {
+      const { tier = 'free', wallet_address } = req.body || {};
+
+      if (tier !== 'free') {
+        return res.status(400).json({
+          ok: false,
+          error: 'Only free tier available via self-service',
+          upgrade_url: 'https://app.satelink.network/satelink/os/plans'
+        });
+      }
+
+      const apiKey = generateApiKey();
+      const keyHash = hashApiKey(apiKey);
+      const keyPrefix = getKeyPrefix(apiKey);
+      const planConfig = PLAN_LIMITS[tier];
+      const now = Math.floor(Date.now() / 1000);
+
+      if (db && db.query) {
+        await db.query(
+          `INSERT INTO rpc_api_keys (key_hash, key_prefix, email, plan, tier, daily_limit, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, 'active', $7)`,
+          [keyHash, keyPrefix, wallet_address || 'self-service', tier, planConfig.tier, planConfig.limit, now]
+        );
+      }
+
+      const redisClient = getRedis();
+      if (redisClient) {
+        await redisClient.set(
+          `rpc:apikey:${apiKey}`,
+          JSON.stringify({ tier: planConfig.tier, plan: tier, created: now, status: 'active' })
+        );
+      }
+
+      console.log(`[ApiKeys] Created self-service: ${keyPrefix} tier=${tier}`);
+
+      res.json({
+        ok: true,
+        api_key: apiKey,
+        tier,
+        daily_limit: planConfig.limit,
+        usage: `Add header: X-API-Key: ${apiKey}`,
+        example: `curl -X POST https://rpc.satelink.network/rpc/polygon -H "X-API-Key: ${apiKey}" -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'`,
+        docs: 'https://docs.satelink.network'
+      });
+    } catch (err) {
+      console.error('[ApiKeys] Self-service create error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to create API key' });
+    }
+  });
 
   router.post('/create', async (req, res) => {
     try {

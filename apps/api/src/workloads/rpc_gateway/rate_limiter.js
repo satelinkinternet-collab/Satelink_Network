@@ -19,7 +19,7 @@ import crypto from 'crypto';
 
 const TIERS = {
   free: {
-    limit: 100,
+    limit: 200,
     period: 'day',
     priceUsdt: 0
   },
