@@ -66,7 +66,7 @@ export function attachBaseMiddleware(app) {
     const publicCorsOptions = {
         origin: "*",
         methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "X-API-Key"]
+        allowedHeaders: ["Content-Type", "X-API-Key", "Authorization"]
     };
 
     // Apply public CORS to machine endpoints
