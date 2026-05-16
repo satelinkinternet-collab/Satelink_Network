@@ -22,7 +22,7 @@ export async function generateClaimSignature(nodeId, walletAddress, pool) {
     const client = await pool.connect();
 
     try {
-        // 1. Verify claimable amount from pending earnings
+        // 1. Try epoch_earnings first (preferred path)
         const earningsResult = await client.query(
             `SELECT COALESCE(SUM(amount_usdt), 0) as claimable
              FROM epoch_earnings
@@ -31,10 +31,29 @@ export async function generateClaimSignature(nodeId, walletAddress, pool) {
             [nodeId, walletAddress]
         );
 
-        const claimable = parseFloat(earningsResult.rows[0]?.claimable || 0);
+        let claimable = parseFloat(earningsResult.rows[0]?.claimable || 0);
+        let usedFallback = false;
+
+        // 2. If epoch_earnings empty, fallback to revenue_events_v2 direct sum
+        if (claimable < 0.01) {
+            const revResult = await client.query(
+                `SELECT COALESCE(SUM(amount_usdt) * 0.5, 0) as claimable
+                 FROM revenue_events_v2
+                 WHERE node_id = $1
+                   AND is_test_data = false`,
+                [nodeId]
+            );
+            claimable = parseFloat(revResult.rows[0]?.claimable || 0);
+            usedFallback = true;
+            console.log(`[CLAIM] epoch_earnings empty, using revenue_events_v2 fallback: $${claimable.toFixed(6)}`);
+        }
 
         if (claimable < MIN_CLAIM_THRESHOLD_USDT) {
             throw new Error(`Minimum ${MIN_CLAIM_THRESHOLD_USDT} USDT required. Available: ${claimable.toFixed(6)}`);
+        }
+
+        if (usedFallback) {
+            console.log(`[CLAIM] Generating signature for $${claimable.toFixed(6)} via revenue_events_v2 fallback`);
         }
 
         // 2. Get signer key
