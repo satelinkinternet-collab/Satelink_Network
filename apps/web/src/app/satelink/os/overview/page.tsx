@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/satelink-api";
 import { FilterBar } from "@/components/satelink/filter-bar";
 import { useDashboardFilters } from "@/lib/stores/dashboard-filters";
+import { FounderModeToggle, FounderInsights } from "@/components/satelink/founder-mode";
 
 interface LiveEvent {
   type: string;
@@ -113,6 +114,7 @@ export default function AdminCommandCenter() {
           </span>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <FounderModeToggle />
           {lastUpdate && (
             <span className="text-[9px] text-[#285A48]">
               Updated {lastUpdate.toLocaleTimeString()}
@@ -128,6 +130,9 @@ export default function AdminCommandCenter() {
       </div>
 
       <div className="p-5 space-y-4">
+        {/* FOUNDER MODE INSIGHTS */}
+        <FounderInsights />
+
         {/* EPOCH PROGRESS BAR */}
         <div className="bg-[#0c1a17] border border-[#1a3028] rounded-md p-3">
           <div className="flex items-center justify-between mb-2">

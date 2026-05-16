@@ -17,6 +17,7 @@ import { createClaimsRouter } from "./src/routes/claims_route.mjs";
 import { createOsEventsRouter } from "./src/realtime/os-events-route.js";
 import nodeAuthRouter from "./src/routes/node_auth_route.mjs";
 import { createMachineAccessRouter } from "./src/machine-access/index.js";
+import { createAdminMalRouter } from "./src/routes/admin_mal_route.mjs";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -253,6 +254,9 @@ export function createApp(pool, redis) {
 
   // Internal machine identity and observability control plane
   app.use("/machine-access/v1", createMachineAccessRouter(pool, redis));
+
+  // Admin MAL - Founder Mode diagnostics (MASTER_ADMIN_TOKEN protected)
+  app.use("/api/admin/mal", createAdminMalRouter(pool));
 
   return app;
 }

@@ -48,6 +48,7 @@ export function attachBaseMiddleware(app) {
         '/api/epochs',
         '/api/nodes',
         '/api/settlement',
+        '/api/admin/mal',
         '/os',
         '/provider.json'
     ];
@@ -67,7 +68,7 @@ export function attachBaseMiddleware(app) {
     const publicCorsOptions = {
         origin: "*",
         methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "X-API-Key", "Authorization"]
+        allowedHeaders: ["Content-Type", "X-API-Key", "X-Admin-Token", "Authorization"]
     };
 
     // Apply public CORS to machine endpoints
