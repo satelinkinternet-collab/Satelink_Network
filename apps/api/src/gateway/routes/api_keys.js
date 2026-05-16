@@ -196,8 +196,8 @@ export function createApiKeysRouter(db) {
         docs: 'https://docs.satelink.network'
       });
     } catch (err) {
-      console.error('[ApiKeys] Self-service create error:', err.message);
-      res.status(500).json({ ok: false, error: 'Failed to create API key' });
+      console.error('[ApiKeys] Self-service create error:', err.message, err.stack);
+      res.status(500).json({ ok: false, error: 'Failed to create API key', reason: err.message });
     }
   });
 
@@ -261,8 +261,8 @@ export function createApiKeysRouter(db) {
         message: 'Store this key securely — it cannot be retrieved again'
       });
     } catch (err) {
-      console.error('[ApiKeys] Create error:', err.message);
-      res.status(500).json({ ok: false, error: 'Failed to create API key' });
+      console.error('[ApiKeys] Create error:', err.message, err.stack);
+      res.status(500).json({ ok: false, error: 'Failed to create API key', reason: err.message });
     }
   });
 
