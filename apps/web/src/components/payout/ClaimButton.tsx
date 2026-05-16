@@ -1,9 +1,8 @@
 'use client';
-// SATELINK-CLAIMBUTTON-V6 — direct backend calls (CORS fixed)
+// SATELINK-CLAIMBUTTON-V7 — uses proxy route for reliability
 import { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 
-const API = 'https://rpc.satelink.network';
 const CTR = '0xE475c53B88190FD2130dB1E37504991EFe283fb0' as const;
 const ABI = [{
   name: 'claim', type: 'function', stateMutability: 'nonpayable',
@@ -23,7 +22,7 @@ interface ClaimButtonProps {
   onSuccess?: (txHash: string) => void;
 }
 
-type S = 'idle' | 'auth' | 'prep' | 'sign' | 'wait' | 'done' | 'err';
+type S = 'idle' | 'prep' | 'sign' | 'wait' | 'done' | 'err';
 
 export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonProps) {
   const [s, setS]   = useState<S>('idle');
@@ -37,24 +36,21 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
     if (!walletAddress) return;
     setE('');
     try {
-      setS('auth');
-      const a = await fetch(`${API}/api/auth/node-token`, {
+      setS('prep');
+      const claimRes = await fetch('/api/proxy/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nodeId, walletAddress }),
-      }).then(r => r.json());
-      if (!a.ok || !a.token) throw new Error(a.error || 'Auth failed');
+      });
 
-      setS('prep');
-      const c = await fetch(`${API}/api/nodes/${nodeId}/claim`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${a.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ walletAddress }),
-      }).then(r => r.json());
+      // Handle non-JSON responses safely
+      const contentType = claimRes.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await claimRes.text();
+        throw new Error(`Server error: ${text.slice(0, 80)}`);
+      }
 
+      const c = await claimRes.json();
       console.log('[ClaimButton] claim response:', JSON.stringify(c).slice(0, 300));
 
       if (!c.success && !c.signature) {
@@ -62,6 +58,18 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
       }
 
       const sig = c.signature || c;
+
+      // Handle both wei and USD formats
+      let weiAmount: bigint;
+      if (sig.amountWei && parseInt(String(sig.amountWei)) > 1000) {
+        weiAmount = BigInt(sig.amountWei);
+      } else if (sig.amount && parseInt(String(sig.amount)) > 1000) {
+        weiAmount = BigInt(sig.amount);
+      } else {
+        const usdAmount = parseFloat(sig.amount_usdt || sig.amount || '0');
+        weiAmount = BigInt(Math.round(usdAmount * 1_000_000));
+      }
+
       setS('sign');
       const h = await writeContractAsync({
         address: CTR,
@@ -70,7 +78,7 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
         chainId: 137,
         args: [
           nodeId,
-          BigInt(sig.amountWei ?? sig.amount ?? 0),
+          weiAmount,
           BigInt(sig.nonce),
           BigInt(sig.expiry),
           sig.signature as `0x${string}`,
@@ -109,11 +117,10 @@ export function ClaimButton({ nodeId, walletAddress, onSuccess }: ClaimButtonPro
     </div>
   );
 
-  const busy = ['auth', 'prep', 'sign'].includes(s);
+  const busy = ['prep', 'sign'].includes(s);
   const lab: Record<S, string> = {
     idle: 'Claim Earnings → USDT',
-    auth: 'Authenticating...',
-    prep: 'Preparing signature...',
+    prep: 'Preparing claim...',
     sign: 'Confirm in wallet...',
     wait: 'Confirming...',
     done: 'Claimed ✓',
