@@ -176,12 +176,17 @@ export function createApiKeysRouter(db) {
         );
       }
 
-      const redisClient = getRedis();
-      if (redisClient) {
-        await redisClient.set(
-          `rpc:apikey:${apiKey}`,
-          JSON.stringify({ tier: planConfig.tier, plan: tier, created: now, status: 'active' })
-        );
+      // Redis is optional - don't fail if unavailable
+      try {
+        const redisClient = getRedis();
+        if (redisClient) {
+          await redisClient.set(
+            `rpc:apikey:${apiKey}`,
+            JSON.stringify({ tier: planConfig.tier, plan: tier, created: now, status: 'active' })
+          );
+        }
+      } catch (redisErr) {
+        console.warn('[ApiKeys] Redis unavailable, continuing with DB only:', redisErr.message);
       }
 
       console.log(`[ApiKeys] Created self-service: ${keyPrefix} tier=${tier}`);
@@ -239,13 +244,17 @@ export function createApiKeysRouter(db) {
         );
       }
 
-      await incrementEmailKeyCount(redisClient, email);
-
-      if (redisClient) {
-        await redisClient.set(
-          `rpc:apikey:${apiKey}`,
-          JSON.stringify({ tier: planConfig.tier, email, plan, created: now, status: 'active' })
-        );
+      // Redis operations are optional - don't fail if unavailable
+      try {
+        await incrementEmailKeyCount(redisClient, email);
+        if (redisClient) {
+          await redisClient.set(
+            `rpc:apikey:${apiKey}`,
+            JSON.stringify({ tier: planConfig.tier, email, plan, created: now, status: 'active' })
+          );
+        }
+      } catch (redisErr) {
+        console.warn('[ApiKeys] Redis unavailable:', redisErr.message);
       }
 
       await sendDiscordNotification(email, plan, keyPrefix);
