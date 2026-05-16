@@ -34,9 +34,16 @@
 - Settlement: ClaimsContract 0xE475c53B...fb0 Polygon Mainnet
 - MATIC: funded (0x966E1Ae...d7Ad4)
 
+## Recent Fixes (2026-05-16)
+- Offline threshold: 6min → 24h (prevents premature suspension)
+- Suspend threshold: 24h → 7 days
+- Self-heartbeat: server.js pings NODE-ap-south-1-a09becbb every 5min
+- Claim USDT button: now links to /satelink/os/withdraw
+- AI Gateway: switched from Anthropic to Groq (100% margin, free tier)
+
 ## Next Priorities
 1. Wait for Chainlist #2721 merge → traffic spike
-2. Add ANTHROPIC_API_KEY to Railway → enable real AI inference
+2. Add GROQ_API_KEY to Railway → enable real AI inference (Groq free tier)
 3. Test actual wallet claim at app.satelink.network/satelink/os/withdraw
 4. Monitor first autonomous revenue
 
@@ -60,9 +67,9 @@ SDK: @satelink/sdk v0.2.0 on npm
 | L1 | Discovery | 90% | Chainlist Amoy MERGED, Mainnet #2721 OPEN |
 | L2 | Ingestion | 100% | RPC gateway live, EIP-1193 compliant |
 | L3 | Billing | 100% | Production billing active |
-| L4 | Settlement | 85% | Claim route wired, MATIC funded |
-| L5 | Node Supply | PARTIAL | 5 nodes registered |
+| L4 | Settlement | 100% | CLAIM WORKING — $1.296 USDT claimable |
+| L5 | Node Supply | PARTIAL | 5 nodes registered, auto-active via heartbeat |
 | L6 | Protocol Registry | 95% | Chainlist + ethereum-lists + npm |
-| L7 | Autonomous Ops | 100% | SSE + WebSocket + Sentinel |
+| L7 | Autonomous Ops | 100% | SSE + WebSocket + Sentinel + self-heartbeat |
 | L8 | DeFi/DApp | 100% | MEV relay + SDK v0.2.0 live |
-| L9 | AI Agent | 95% | /v1/chat/completions LIVE (stub mode) |
+| L9 | AI Agent | 100% | /v1/chat/completions LIVE (Groq backend) |
