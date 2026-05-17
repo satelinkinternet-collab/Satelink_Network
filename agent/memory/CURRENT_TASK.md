@@ -1,41 +1,39 @@
-# CURRENT TASK
+# CURRENT STATE — 2026-05-18
 
-Status: CLAIM SYSTEM FULLY OPERATIONAL
-Verified: May 16, 2026 05:39 UTC
+## STATUS: v1.0 COMPLETE. Focus on traffic growth.
 
-## Claim Test Result
+## IMMEDIATE PRIORITIES (in order)
+1. Chainlist #2721 merge — waiting for DefiLlama CI fix or admin approval
+   - Code is correct, CI fails due to node:sqlite Node v20 vs v22 issue
+   - Comment posted tagging @0xngmi @treeSea
 
-```
-✅ CLAIMABLE: $1.2964636 USDT
-Signature: 0x73f9a7c4fa42f93407a2e9fb1130262f866f35f83...
-Contract: 0x6987921e2453f360e314e4424F6c2789F10a1CC9
-Expiry: 2026-05-18T00:05:40.000Z (48h)
-```
+2. Recover $4.93 USDT from old contract
+   - Contract: 0xE475c53B88190FD2130dB1E37504991EFe283fb0
+   - Deployer 0x3b324B334E1e8ec926310e6716C97A9aF43b667A has CLAIM_CREATOR_ROLE
+   - Method: createClaim() → claimReward() → withdrawFunds() (calls vault)
+   - Risk: vault may not have liquidity → 40% recovery probability
 
-## Fixes Applied Today
+3. Test real $1 USDT deposit flow
+   - Create free API key → send $9 USDT to treasury → paste TX hash
+   - Verifies the complete metered → collected revenue loop
 
-1. **Offline threshold**: 6min → 24h (prevents node suspension)
-2. **Suspend threshold**: 24h → 7 days
-3. **Self-heartbeat**: server.js pings node every 5min
-4. **Claim processor fallback**: epoch_earnings → revenue_events_v2
-5. **AI Gateway**: Anthropic → Groq (100% margin)
-6. **Claim USDT button**: now links to /satelink/os/withdraw
+## KEY ENDPOINTS
+- MAL: GET /api/admin/mal/diagnostics (X-Admin-Token header)
+- Claim: POST /api/nodes/NODE-ap-south-1-a09becbb/claim
+- Deposit: POST /api/keys/:key/deposit
+- Discord: POST /api/admin/mal/notify (type: test/summary/alert)
 
-## Architecture
+## ACTIVE RAILWAY VARS
+- MASTER_ADMIN_TOKEN: 34b6e9ad... (rotated 2026-05-17)
+- CLAIMS_CONTRACT_ADDRESS: 0x6987921e...CC9
+- DISCORD_ALERTS_ENABLED: true
+- GROQ_API_KEY: set (L9 AI live)
+- DISCORD_WEBHOOK_URL: set (system-alerts channel)
+- DISCORD_REVENUE_WEBHOOK_URL: set (revenue-events channel)
 
-```
-POST /api/nodes/:nodeId/claim
-  └── generateClaimSignature()
-      ├── Query epoch_earnings (preferred)
-      └── Fallback: SUM(revenue_events_v2) * 0.5
-          └── Returns EIP-712 signature
-              └── User submits to ClaimsContract.claim()
-```
-
-## Next Steps
-
-1. User visits app.satelink.network/satelink/os/withdraw
-2. Connects wallet 0x966E1Ae...d7Ad4
-3. Clicks "Claim Earnings → USDT"
-4. Confirms in MetaMask (pays ~$0.01 gas on Polygon)
-5. USDT arrives in wallet
+## RULES
+- Never fund ClaimsContract from personal wallet
+- Always read contract source before mainnet deployment
+- $40.19 settlement queue = METERED only (not real USDT)
+- 1.43M calls = 6-day cumulative total
+- Rate limiting: 200/day free, upgrade via /api/keys
