@@ -104,3 +104,5 @@ playwright-report/
 !.env.example
 !packages/config/.env.example
 !.gitkeep
+token.txt
+*.txt # prevent future accidents
