@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 const API = 'https://rpc.satelink.network';
+const TREASURY = '0x966E1Ae22996545015b1414B35234b10719d7Ad4';
 
 const PLANS = [
   {
@@ -12,6 +13,7 @@ const PLANS = [
     limit: '200 req/day',
     features: ['No API key required', 'Public RPC access', 'All 6 chains', 'Community support'],
     tier: 'free',
+    priceUsdt: 0,
     cta: 'Get Free Key',
     highlight: false,
   },
@@ -22,9 +24,9 @@ const PLANS = [
     limit: '10,000 req/day',
     features: ['API key required', 'Priority routing', 'All chains', 'Email support', 'Usage analytics'],
     tier: 'basic',
-    cta: 'Coming Soon',
+    priceUsdt: 9,
+    cta: 'Activate Basic',
     highlight: false,
-    soon: true,
   },
   {
     name: 'Pro',
@@ -33,20 +35,20 @@ const PLANS = [
     limit: '100,000 req/day',
     features: ['API key required', 'MEV relay access', 'WebSocket support', 'All chains', 'Priority support'],
     tier: 'pro',
-    cta: 'Coming Soon',
+    priceUsdt: 49,
+    cta: 'Activate Pro',
     highlight: true,
-    soon: true,
   },
   {
     name: 'Enterprise',
-    price: 'Custom',
-    period: '',
+    price: '$199',
+    period: '/month',
     limit: '1M+ req/day',
-    features: ['Dedicated nodes', 'SLA guarantee', 'Custom chains', '24/7 support', 'Custom pricing'],
+    features: ['Dedicated nodes', 'SLA guarantee', 'Custom chains', '24/7 support', 'Volume discounts'],
     tier: 'enterprise',
-    cta: 'Contact Us',
+    priceUsdt: 199,
+    cta: 'Activate Enterprise',
     highlight: false,
-    soon: true,
   },
 ];
 
@@ -60,10 +62,23 @@ interface ApiKeyResult {
   error?: string;
 }
 
+interface DepositResult {
+  ok: boolean;
+  deposited_usdt?: number;
+  new_tier?: string;
+  new_daily_limit?: number;
+  message?: string;
+  error?: string;
+}
+
 export default function PlansPage() {
   const [result, setResult] = useState<ApiKeyResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showDeposit, setShowDeposit] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState('');
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [depositResult, setDepositResult] = useState<DepositResult | null>(null);
 
   async function getFreeKey() {
     setLoading(true);
@@ -84,6 +99,35 @@ export default function PlansPage() {
     }
   }
 
+  async function verifyDeposit() {
+    if (!result?.api_key || !txHash || !showDeposit) return;
+
+    setDepositLoading(true);
+    setDepositResult(null);
+
+    try {
+      const res = await fetch(`${API}/api/keys/${result.api_key}/deposit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tx_hash: txHash, tier: showDeposit }),
+      });
+      const data = await res.json();
+      setDepositResult(data);
+      if (data.ok) {
+        setResult(prev => prev ? {
+          ...prev,
+          tier: data.new_tier,
+          daily_limit: data.new_daily_limit
+        } : null);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Verification failed';
+      setDepositResult({ ok: false, error: message });
+    } finally {
+      setDepositLoading(false);
+    }
+  }
+
   function copyKey() {
     if (result?.api_key) {
       navigator.clipboard.writeText(result.api_key);
@@ -91,6 +135,12 @@ export default function PlansPage() {
       setTimeout(() => setCopied(false), 2000);
     }
   }
+
+  function copyTreasury() {
+    navigator.clipboard.writeText(TREASURY);
+  }
+
+  const selectedPlan = PLANS.find(p => p.tier === showDeposit);
 
   return (
     <div className="space-y-6">
@@ -100,7 +150,7 @@ export default function PlansPage() {
           API Plans
         </h1>
         <p className="text-[11px] text-[#408A71] mt-1">
-          RPC access for every scale · USDT settlement · Polygon Mainnet
+          RPC access for every scale · USDT deposit on Polygon · Instant activation
         </p>
       </div>
 
@@ -147,8 +197,15 @@ export default function PlansPage() {
                 </button>
               ) : (
                 <button
-                  disabled
-                  className="w-full py-2 bg-transparent border border-[#1a3028] text-[#285A48] font-semibold text-[12px] rounded cursor-not-allowed"
+                  onClick={() => {
+                    if (!result?.api_key) {
+                      getFreeKey();
+                    }
+                    setShowDeposit(plan.tier);
+                    setDepositResult(null);
+                    setTxHash('');
+                  }}
+                  className="w-full py-2 bg-transparent border border-[#285A48] text-[#408A71] font-semibold text-[12px] rounded hover:bg-[#0f2318] hover:border-[#408A71] transition-colors"
                 >
                   {plan.cta}
                 </button>
@@ -184,36 +241,115 @@ export default function PlansPage() {
                 </button>
               </div>
               <p className="text-[11px] text-[#285A48] mb-3">
-                Daily limit: <span className="text-[#408A71]">{result.daily_limit} requests</span> ·
+                Daily limit: <span className="text-[#408A71]">{result.daily_limit?.toLocaleString()} requests</span> ·
                 Tier: <span className="text-[#408A71]">{result.tier}</span>
               </p>
 
-              <div className="bg-[#091413] rounded p-4 mb-3">
-                <p className="text-[10px] text-[#285A48] uppercase tracking-wider mb-2">
-                  Usage
-                </p>
-                <p className="text-[11px] text-[#408A71] font-mono">
-                  Add header: <span className="text-[#00D1FF]">X-API-Key: {result.api_key?.slice(0, 15)}...</span>
-                </p>
-              </div>
+              {/* Deposit Modal */}
+              {showDeposit && selectedPlan && (
+                <div className="mt-4 p-4 bg-[#091413] border border-[#285A48] rounded">
+                  <p className="text-[12px] font-semibold text-[#B0E4CC] mb-3">
+                    Activate {selectedPlan.name} Plan — ${selectedPlan.priceUsdt} USDT
+                  </p>
 
-              <div className="bg-[#091413] rounded p-4">
-                <p className="text-[10px] text-[#285A48] uppercase tracking-wider mb-2">
-                  Example cURL
-                </p>
-                <pre className="text-[10px] font-mono text-[#408A71] overflow-x-auto whitespace-pre-wrap">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[10px] text-[#285A48] mb-1">
+                        1. Send {selectedPlan.priceUsdt} USDT to this address on Polygon:
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-[#0c1a17] rounded p-2 font-mono text-[10px] text-[#408A71] break-all">
+                          {TREASURY}
+                        </div>
+                        <button
+                          onClick={copyTreasury}
+                          className="px-2 py-1 bg-[#1a3028] text-[#285A48] text-[10px] rounded hover:text-[#408A71]"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 text-[10px] text-[#285A48]">
+                      <span>Network: <span className="text-[#408A71]">Polygon</span></span>
+                      <span>Token: <span className="text-[#408A71]">USDT</span></span>
+                      <span>ChainId: <span className="text-[#408A71]">137</span></span>
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] text-[#285A48] mb-1">
+                        2. Paste your transaction hash:
+                      </p>
+                      <input
+                        value={txHash}
+                        onChange={(e) => setTxHash(e.target.value)}
+                        placeholder="0x..."
+                        className="w-full bg-[#0c1a17] border border-[#1a3028] text-[#B0E4CC] text-[11px] font-mono p-2 rounded focus:border-[#285A48] outline-none"
+                      />
+                    </div>
+
+                    <button
+                      onClick={verifyDeposit}
+                      disabled={depositLoading || !txHash.startsWith('0x')}
+                      className="w-full py-2 bg-[#408A71] text-[#091413] font-semibold text-[12px] rounded hover:bg-[#4fa07f] transition-colors disabled:opacity-40"
+                    >
+                      {depositLoading ? 'Verifying...' : 'Verify & Activate'}
+                    </button>
+
+                    {depositResult && (
+                      <div className={`p-3 rounded ${depositResult.ok ? 'bg-[#0f2e1a] border border-[#285A48]' : 'bg-[#1a0f0f] border border-[#3e1818]'}`}>
+                        {depositResult.ok ? (
+                          <p className="text-[11px] text-[#408A71]">
+                            ✅ {depositResult.message}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-[#c04040]">
+                            ✗ {depositResult.error}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => setShowDeposit(null)}
+                      className="w-full py-1 text-[10px] text-[#285A48] hover:text-[#408A71]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!showDeposit && (
+                <>
+                  <div className="bg-[#091413] rounded p-4 mb-3">
+                    <p className="text-[10px] text-[#285A48] uppercase tracking-wider mb-2">
+                      Usage
+                    </p>
+                    <p className="text-[11px] text-[#408A71] font-mono">
+                      Add header: <span className="text-[#00D1FF]">X-API-Key: {result.api_key?.slice(0, 15)}...</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-[#091413] rounded p-4">
+                    <p className="text-[10px] text-[#285A48] uppercase tracking-wider mb-2">
+                      Example cURL
+                    </p>
+                    <pre className="text-[10px] font-mono text-[#408A71] overflow-x-auto whitespace-pre-wrap">
 {`curl -X POST https://rpc.satelink.network/rpc/polygon \\
   -H "X-API-Key: ${result.api_key}" \\
   -H "Content-Type: application/json" \\
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'`}
-                </pre>
-              </div>
+                    </pre>
+                  </div>
 
-              <div className="mt-4 p-3 bg-[#16140a] border border-[#3a3e18] rounded">
-                <p className="text-[10px] text-[#a0a030]">
-                  ⚠ Save this key securely — it cannot be retrieved again
-                </p>
-              </div>
+                  <div className="mt-4 p-3 bg-[#16140a] border border-[#3a3e18] rounded">
+                    <p className="text-[10px] text-[#a0a030]">
+                      ⚠ Save this key securely — it cannot be retrieved again
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <p className="text-[12px] text-[#c04040]">Error: {result.error}</p>
@@ -224,25 +360,24 @@ export default function PlansPage() {
       {/* Info Box */}
       <div className="bg-[#0c1a17] border border-[#1a3028] rounded-md p-5">
         <p className="text-[11px] font-medium text-[#B0E4CC] mb-3">
-          Revenue Model — 50/30/20 Split
+          How Deposits Work
         </p>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-3 mb-4 text-center">
           {[
-            { label: 'Node Operators', pct: 50, color: '#408A71' },
-            { label: 'Platform', pct: 30, color: '#285A48' },
-            { label: 'Distribution', pct: 20, color: '#00D1FF' },
-          ].map((r) => (
-            <div key={r.label} className="text-center">
-              <p className="text-[20px] font-bold font-mono" style={{ color: r.color }}>
-                {r.pct}%
-              </p>
-              <p className="text-[10px] text-[#285A48]">{r.label}</p>
+            { step: '1', label: 'Create Key', icon: '🔑' },
+            { step: '2', label: 'Send USDT', icon: '💸' },
+            { step: '3', label: 'Verify TX', icon: '✓' },
+            { step: '4', label: 'Upgraded!', icon: '🚀' },
+          ].map((s) => (
+            <div key={s.step}>
+              <p className="text-[16px] mb-1">{s.icon}</p>
+              <p className="text-[10px] text-[#285A48]">{s.label}</p>
             </div>
           ))}
         </div>
         <p className="text-[11px] text-[#285A48] leading-relaxed">
-          All RPC revenue is automatically split: 50% to node operators, 30% platform fee, 20% distribution pool.
-          Paid tiers coming soon — deposit USDT → get API key → credits auto-deduct per call.
+          Deposit USDT on Polygon to your API key. On-chain verification activates your tier instantly.
+          Revenue is split: 50% node operators, 30% platform, 20% distribution pool.
         </p>
       </div>
 
