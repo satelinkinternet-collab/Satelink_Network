@@ -15,6 +15,7 @@ import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node
 import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
 import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
+import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -248,6 +249,19 @@ async function start() {
         res.status(500).json({ ok: false, error: e.message });
       }
     });
+
+    // Treasury settlement status endpoint (mounted early, uses job instance later)
+    app.get('/system/treasury-settlement', async (req, res) => {
+      try {
+        const { TreasurySettlementJob } = await import('./src/jobs/treasury_settlement_job.mjs');
+        const job = new TreasurySettlementJob(pool);
+        const status = await job.getStatus();
+        res.json({ ok: true, ...status });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     console.log('[BOOT] ✅ Additional routes mounted');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
@@ -318,6 +332,15 @@ async function start() {
     process.exit(1);
   }
 
+  // Step 12b: Start treasury settlement job (auto-forward deposits to ClaimsContract)
+  let treasurySettlement;
+  try {
+    treasurySettlement = startTreasurySettlementScheduler(pool, 5);
+    console.log('[BOOT] ✅ Treasury settlement job started (5min interval)');
+  } catch (err) {
+    console.error('[BOOT] ⚠️ Treasury settlement job failed (non-fatal):', err.message);
+  }
+
   // Step 13: Bind to port
   const PORT = process.env.PORT || 8080;
   try {
@@ -333,6 +356,7 @@ async function start() {
       console.log(`💰 Revenue-monitor started (5min interval)`);
       console.log(`🏦 Treasury-monitor started (10min interval)`);
       console.log(`📊 Capacity-alerter started (2min interval)`);
+      console.log(`💸 Treasury-settlement started (5min interval)`);
     });
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
