@@ -77,12 +77,13 @@ export function createAdminMalRouter(pool) {
 
   router.get('/economics', async (req, res) => {
     try {
-      const dayAgo = new Date(Date.now() - 86400000).toISOString();
-      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      // Use epoch milliseconds for BIGINT created_at column
+      const dayAgoMs = Date.now() - 86400000;
+      const weekAgoMs = Date.now() - 7 * 86400000;
 
       const [todayRevenue, weekRevenue, totalRevenue, topMethods, recentEpochs] = await Promise.all([
-        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1`, [dayAgo]),
-        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1`, [weekAgo]),
+        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1`, [dayAgoMs]),
+        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1`, [weekAgoMs]),
         pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2`),
         pool.query(`SELECT method, COUNT(*) as calls, SUM(amount_usdt) as revenue FROM revenue_events_v2 GROUP BY method ORDER BY calls DESC LIMIT 10`).catch(() => ({ rows: [] })),
         pool.query(`SELECT id, total_usdt, request_count, closed_at FROM epochs ORDER BY id DESC LIMIT 5`).catch(() => ({ rows: [] }))
@@ -131,7 +132,7 @@ export function createAdminMalRouter(pool) {
     try {
       const [allNodes, activeNodes, nodesByType, nodesByRegion, topEarners] = await Promise.all([
         pool.query(`SELECT COUNT(*) as count FROM nodes`),
-        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'active'`),
+        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE LOWER(status) IN ('active', 'online', 'healthy')`),
         pool.query(`SELECT node_type, COUNT(*) as count FROM nodes GROUP BY node_type`).catch(() => ({ rows: [] })),
         pool.query(`SELECT region, COUNT(*) as count FROM nodes GROUP BY region`).catch(() => ({ rows: [] })),
         pool.query(`
@@ -179,12 +180,22 @@ export function createAdminMalRouter(pool) {
 
   router.get('/settlement', async (req, res) => {
     try {
-      const [pendingClaims, processedClaims, recentSettlements, largestClaims] = await Promise.all([
+      const [pendingClaims, processedClaims, recentClaims, epochEarnings, unclaimedEarnings] = await Promise.all([
         pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM claims WHERE status = 'pending'`).catch(() => ({ rows: [{ count: 0, total: 0 }] })),
         pool.query(`SELECT COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM claims WHERE status = 'processed'`).catch(() => ({ rows: [{ count: 0, total: 0 }] })),
         pool.query(`SELECT id, node_id, amount_usdt, status, created_at FROM claims ORDER BY created_at DESC LIMIT 10`).catch(() => ({ rows: [] })),
-        pool.query(`SELECT node_id, SUM(amount_usdt) as total FROM claims WHERE status = 'processed' GROUP BY node_id ORDER BY total DESC LIMIT 5`).catch(() => ({ rows: [] }))
+        pool.query(`SELECT status, COUNT(*) as count, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings GROUP BY status`).catch(() => ({ rows: [] })),
+        pool.query(`SELECT node_id, COALESCE(SUM(amount_usdt), 0) as total FROM epoch_earnings WHERE status != 'claimed' GROUP BY node_id`).catch(() => ({ rows: [] }))
       ]);
+
+      // Parse epoch_earnings by status
+      const earningsByStatus = {};
+      for (const row of epochEarnings.rows) {
+        earningsByStatus[row.status || 'unknown'] = {
+          count: parseInt(row.count || 0),
+          totalUsdt: parseFloat(row.total || 0)
+        };
+      }
 
       res.json({
         ok: true,
@@ -199,17 +210,22 @@ export function createAdminMalRouter(pool) {
             totalUsdt: parseFloat(processedClaims.rows[0]?.total || 0)
           }
         },
-        recentSettlements: recentSettlements.rows.map(c => ({
+        epochEarnings: earningsByStatus,
+        unclaimedByNode: unclaimedEarnings.rows.map(r => ({
+          nodeId: r.node_id,
+          unclaimedUsdt: parseFloat(r.total || 0)
+        })),
+        recentClaims: recentClaims.rows.map(c => ({
           claimId: c.id,
           nodeId: c.node_id,
           amountUsdt: parseFloat(c.amount_usdt || 0),
           status: c.status,
           createdAt: c.created_at
         })),
-        topRecipients: largestClaims.rows.map(c => ({
-          nodeId: c.node_id,
-          totalClaimedUsdt: parseFloat(c.total || 0)
-        })),
+        claimable: {
+          hint: 'Call POST /api/nodes/:nodeId/claim to claim unclaimed earnings',
+          endpoint: 'https://rpc.satelink.network/api/nodes/NODE-ap-south-1-a09becbb/claim'
+        },
         contract: {
           address: '0x6987921e2453f360e314e4424F6c2789F10a1CC9',
           chain: 'Polygon',
@@ -223,11 +239,11 @@ export function createAdminMalRouter(pool) {
 
   router.get('/summary', async (req, res) => {
     try {
-      const dayAgo = new Date(Date.now() - 86400000).toISOString();
+      const dayAgoMs = Date.now() - 86400000;
 
       const [nodes, revenue, claims, epochs] = await Promise.all([
-        pool.query(`SELECT COUNT(*) FILTER (WHERE status = 'active') as active, COUNT(*) as total FROM nodes`),
-        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as today FROM revenue_events_v2 WHERE created_at > $1`, [dayAgo]),
+        pool.query(`SELECT COUNT(*) FILTER (WHERE LOWER(status) = 'active') as active, COUNT(*) as total FROM nodes`),
+        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as today FROM revenue_events_v2 WHERE created_at > $1`, [dayAgoMs]),
         pool.query(`SELECT COUNT(*) FILTER (WHERE status = 'pending') as pending, COALESCE(SUM(amount_usdt) FILTER (WHERE status = 'pending'), 0) as pending_usdt FROM claims`).catch(() => ({ rows: [{ pending: 0, pending_usdt: 0 }] })),
         pool.query(`SELECT id FROM epochs ORDER BY id DESC LIMIT 1`).catch(() => ({ rows: [{ id: 0 }] }))
       ]);
