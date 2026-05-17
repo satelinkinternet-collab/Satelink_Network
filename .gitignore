@@ -1,79 +1,106 @@
-# Dependencies
+# ═══════════════════════════════════════
+# SATELINK — HARDENED .GITIGNORE v1.0
+# ═══════════════════════════════════════
+
+# ── SECRETS & ENV ────────────────────
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.secret
+*.credentials
+~/.satelink_deployer_key
+
+# ── NODE ─────────────────────────────
 node_modules/
 .pnp
 .pnp.js
-
-# Testing
-coverage/
-
-# Output
-build/
-dist/
-.next/
-out/
-.vercel
-.turbo/
-
-# Logs
-logs/
-*.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/cache
+.yarn/unplugged
 
-# Environment and Secrets
-.env
-.env.*
-!.env.example
-!.env.staging.example
+# ── BUILD OUTPUTS ────────────────────
+dist/
+build/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+.cache/
 
-# Database
+# ── FOUNDRY / SOLIDITY ───────────────
+cache/
+broadcast/
+out/
+!broadcast/*/31337/
+!broadcast/**/dry-run/
+typechain-types/
+
+# ── DATABASE ─────────────────────────
 *.db
-*.db-shm
-*.db-wal
 *.sqlite
 *.sqlite3
-satelink.db
-test.db
-
-# OS
-.DS_Store
-
-# Editor
-.vscode/
-.continue/
-.cursor/
-.claude/*
-!.claude/skills/
-!.claude/commands/
-!.claude/CLAUDE.md
-!.claude/settings.json
-*.swp
-*.bak
-
-# AI tools
-.aider*
-
-# Secrets and Tokens
-token.txt
-*.token
-
-# Temporary and Artifacts
-artifacts/
-tempdir/
-.cache/
-cache/
-cookies.txt
-share_bundle/
-share_bundle.zip
+*.db-journal
 *.db-shm
 *.db-wal
-satelink-keys/
-satelink-env/
-.env.local
-.env.production
-*.key
-*.pem
-forge-cache/
-.foundry/
-.satelink-backups/
-package-lock.json
+dump.rdb
+*.rdb
+
+# ── LOGS ─────────────────────────────
+logs/
+*.log
+*.log.*
+npm-debug.log*
+lerna-debug.log*
+
+# ── OS ───────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── EDITOR ───────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# ── TESTING ──────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+
+# ── DEPLOY ARTIFACTS ─────────────────
+.vercel/
+.railway/
+*.zip
+*.tar.gz
+
+# ── AI TOOLS ─────────────────────────
+.aider*
+.continue/
+
+# ── KEEP THESE ───────────────────────
+!.env.example
+!packages/config/.env.example
+!.gitkeep

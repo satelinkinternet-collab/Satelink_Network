@@ -1,0 +1,21 @@
+# Satelink CODEOWNERS
+# All changes require founder review (single-founder protocol)
+
+# Global
+* @Satelink-Protocol
+
+# Smart contracts — highest risk
+/contracts/ @Satelink-Protocol
+/script/ @Satelink-Protocol
+
+# Core backend
+/apps/api/src/settlement/ @Satelink-Protocol
+/apps/api/src/security/ @Satelink-Protocol
+/apps/api/src/billing/ @Satelink-Protocol
+
+# Frontend payment flows
+/apps/web/src/app/satelink/os/withdraw/ @Satelink-Protocol
+/apps/web/src/components/payout/ @Satelink-Protocol
+
+# CI/CD pipelines
+/.github/ @Satelink-Protocol
