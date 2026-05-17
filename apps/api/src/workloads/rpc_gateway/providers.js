@@ -8,6 +8,18 @@
  * - Circuit breaker state per provider
  */
 
+// Ankr requires valid API key — disable if not set or invalid
+const ANKR_KEY = process.env.ANKR_API_KEY;
+const ANKR_VALID = ANKR_KEY &&
+  ANKR_KEY.length > 10 &&
+  !ANKR_KEY.includes('REPLACE') &&
+  !ANKR_KEY.includes('demo') &&
+  !ANKR_KEY.includes('your-');
+
+if (!ANKR_VALID) {
+  console.log('[RPC] Ankr disabled — no valid ANKR_API_KEY');
+}
+
 const PROVIDER_CONFIGS = {
   "polygon-amoy": {
     chainId: 80002,
@@ -35,10 +47,11 @@ const PROVIDER_CONFIGS = {
         id: "ankr-amoy",
         url:
           process.env.ANKR_AMOY_URL ||
-          "https://rpc.ankr.com/polygon/bc582073d6de8c8d3fe663373cbc263b8212ef2895c8ca33625f67e997a75fce_amoy",
+          (ANKR_VALID ? `https://rpc.ankr.com/polygon_amoy/${ANKR_KEY}` : null),
         priority: 3,
         rateLimit: 100,
         type: "ankr",
+        enabled: ANKR_VALID || !!process.env.ANKR_AMOY_URL,
       },
       {
         id: "drpc-amoy",
@@ -77,10 +90,11 @@ const PROVIDER_CONFIGS = {
         id: "ankr-polygon",
         url:
           process.env.ANKR_POLYGON_URL ||
-          `https://rpc.ankr.com/polygon/${process.env.ANKR_API_KEY || ""}`,
-        priority: 1,
+          (ANKR_VALID ? `https://rpc.ankr.com/polygon/${ANKR_KEY}` : null),
+        priority: 3,
         rateLimit: 100,
         type: "ankr",
+        enabled: ANKR_VALID || !!process.env.ANKR_POLYGON_URL,
       },
       {
         id: "llamarpc-polygon",
@@ -124,10 +138,11 @@ const PROVIDER_CONFIGS = {
       },
       {
         id: "ankr-eth",
-        url: process.env.ANKR_ETH_URL || "https://rpc.ankr.com/eth",
+        url: process.env.ANKR_ETH_URL || (ANKR_VALID ? `https://rpc.ankr.com/eth/${ANKR_KEY}` : null),
         priority: 3,
         rateLimit: 100,
         type: "ankr",
+        enabled: ANKR_VALID || !!process.env.ANKR_ETH_URL,
       },
       {
         id: "cloudflare-eth",
@@ -159,10 +174,11 @@ const PROVIDER_CONFIGS = {
       },
       {
         id: "ankr-arbitrum",
-        url: "https://rpc.ankr.com/arbitrum",
+        url: ANKR_VALID ? `https://rpc.ankr.com/arbitrum/${ANKR_KEY}` : null,
         priority: 2,
         rateLimit: 100,
         type: "ankr",
+        enabled: ANKR_VALID,
       },
     ],
   },
@@ -180,10 +196,11 @@ const PROVIDER_CONFIGS = {
       },
       {
         id: "ankr-base",
-        url: "https://rpc.ankr.com/base",
+        url: ANKR_VALID ? `https://rpc.ankr.com/base/${ANKR_KEY}` : null,
         priority: 2,
         rateLimit: 100,
         type: "ankr",
+        enabled: ANKR_VALID,
       },
     ],
   },
@@ -196,15 +213,17 @@ const PROVIDER_CONFIGS = {
         id: "solana-official",
         url: "https://api.mainnet-beta.solana.com",
         priority: 1,
-        rateLimit: 100,
+        rateLimit: 40,
         type: "public",
+        enabled: false, // Disabled: strict rate limits and method restrictions
       },
       {
         id: "solana-ankr",
-        url: `https://rpc.ankr.com/solana/${process.env.ANKR_API_KEY || ""}`,
+        url: ANKR_VALID ? `https://rpc.ankr.com/solana/${ANKR_KEY}` : null,
         priority: 2,
         rateLimit: 100,
         type: "ankr",
+        enabled: ANKR_VALID,
       },
     ],
   },

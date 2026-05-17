@@ -3,7 +3,8 @@
  * Automated system notifications: revenue events, node health, claims, alerts.
  */
 
-const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+const ALERT_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+const REVENUE_WEBHOOK = process.env.DISCORD_REVENUE_WEBHOOK_URL || ALERT_WEBHOOK;
 const ENABLED = process.env.DISCORD_ALERTS_ENABLED === 'true';
 
 const COLORS = {
@@ -14,10 +15,21 @@ const COLORS = {
   revenue: 0x00d1ff,
 };
 
-async function sendEmbed(embed) {
-  if (!ENABLED || !WEBHOOK) return;
+// Throttle: alert once per key per hour max
+const alertThrottle = new Map();
+
+function shouldSendAlert(key) {
+  const last = alertThrottle.get(key) || 0;
+  const now = Date.now();
+  if (now - last < 3600000) return false;
+  alertThrottle.set(key, now);
+  return true;
+}
+
+async function sendEmbed(embed, webhook = ALERT_WEBHOOK) {
+  if (!ENABLED || !webhook) return;
   try {
-    await fetch(WEBHOOK, {
+    await fetch(webhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -43,7 +55,7 @@ export const discord = {
       ],
       timestamp: new Date().toISOString(),
       footer: { text: 'Satelink Network · rpc.satelink.network' },
-    });
+    }, REVENUE_WEBHOOK);
   },
 
   async claim(nodeId, amountUsdt, txHash) {
@@ -123,12 +135,29 @@ export const discord = {
   },
 
   async alert(title, message, severity = 'warning') {
+    const key = `alert:${title}`;
+    if (severity !== 'error' && !shouldSendAlert(key)) return;
     await sendEmbed({
       title: `${severity === 'error' ? '🚨' : '⚠️'} ${title}`,
       color: COLORS[severity] || COLORS.warning,
       description: message,
       timestamp: new Date().toISOString(),
       footer: { text: 'Satelink MAL Alert' },
+    });
+  },
+
+  async rpcProviderAlert(provider, chain, errorRate, lastError) {
+    const key = `provider:${provider}:${chain}`;
+    if (!shouldSendAlert(key)) return;
+    await sendEmbed({
+      title: '🔴 RPC Provider Alert',
+      color: COLORS.error,
+      description: `**${provider}** (${chain}) has ${errorRate}% error rate`,
+      fields: [
+        { name: 'Last error', value: (lastError || 'unknown').slice(0, 100), inline: false },
+        { name: 'Action', value: 'Provider automatically bypassed, using fallbacks', inline: false },
+      ],
+      timestamp: new Date().toISOString(),
     });
   },
 
@@ -148,7 +177,7 @@ export const discord = {
   },
 
   isEnabled() {
-    return ENABLED && !!WEBHOOK;
+    return ENABLED && !!ALERT_WEBHOOK;
   },
 };
 
