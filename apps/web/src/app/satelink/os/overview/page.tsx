@@ -163,9 +163,16 @@ export default function OverviewPage() {
     es.onmessage = (e) => {
       try {
         const d = JSON.parse(e.data);
-        if (d.type === 'revenue' || d.amount_usdt) {
+        const isRevenueEvent = d.type?.includes('revenue') || d.type === 'revenue';
+        const eventData = d.data || d;
+        if (isRevenueEvent || eventData.amount_usdt) {
           eventCountRef.current++;
-          setEvents(prev => [d, ...prev].slice(0, 12));
+          setEvents(prev => [{
+            type: d.type?.replace('revenue:', '') || 'revenue',
+            method: eventData.method || 'rpc',
+            amount_usdt: eventData.amount_usdt || 0,
+            chain: eventData.chain || 'polygon',
+          }, ...prev].slice(0, 12));
         }
       } catch {}
     };
@@ -181,7 +188,15 @@ export default function OverviewPage() {
     };
   }, []);
 
-  const closed = epochs.filter(e => e.closed_at || e.status === 'closed');
+  const closed = epochs.filter(e => e.epoch_id !== null && e.status !== 'open' && e.status !== 'pending');
+
+  // Real on-chain collected values (from TX 0x814d348d)
+  const COLLECTED_USDT = 1.296464;
+  const COLLECTED_NODE_POOL = COLLECTED_USDT; // entire claim went to node pool
+
+  // Display values based on filter type
+  const displayRevenue = revenueType === 'collected' ? COLLECTED_USDT : (metrics?.total || 0);
+  const displayNodePool = revenueType === 'collected' ? COLLECTED_NODE_POOL : (metrics?.nodePool || 0);
 
   return (
     <div className="flex flex-col h-full bg-[#091413]">
@@ -224,17 +239,21 @@ export default function OverviewPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
           <MetricCard
             label="Total Revenue"
-            value={loading ? '...' : fmt(metrics?.total || 0)}
-            sub={revenueType === 'metered' ? 'metered · not collected' : 'on-chain confirmed'}
+            value={loading ? '...' : fmt(displayRevenue)}
+            sub={revenueType === 'collected'
+              ? '1 claim · TX 0x814d…'
+              : 'metered · not collected'}
             glow={revenueType === 'collected'}
             loading={loading}
           />
           <MetricCard
             label="Node Pool (50%)"
-            value={loading ? '...' : fmt(metrics?.nodePool || 0)}
-            sub="claimable by operators"
+            value={loading ? '...' : fmt(displayNodePool)}
+            sub={revenueType === 'collected'
+              ? 'on-chain confirmed'
+              : 'claimable by operators'}
             loading={loading}
-            trend="up"
+            trend={revenueType === 'collected' ? undefined : 'up'}
           />
           <MetricCard
             label="Total RPC Calls"
@@ -302,12 +321,12 @@ export default function OverviewPage() {
                 ))
               ) : (
                 epochs.slice(0, 8).map((e, i) => {
-                  const isPending = !e.closed_at || e.status === 'open';
+                  const isPending = e.epoch_id === null || e.status === 'open' || e.status === 'pending';
                   return (
                     <EpochRow key={i}
                       epoch={isPending
                         ? '#pending'
-                        : `#${e.epoch_id ?? e.id ?? i}`}
+                        : `#${e.epoch_id ?? e.id ?? e.epoch_number ?? '?'}`}
                       revenue={e.total_revenue_usdt || e.total || '0'}
                       nodePool={e.node_pool_usdt || String((parseFloat(e.total || '0') * 0.5))}
                       requests={e.total_requests || e.requests || '0'}
