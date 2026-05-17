@@ -7,7 +7,7 @@ import { createAiGatewayRouter } from "./src/workloads/ai_gateway/index.js";
 import { createBandwidthRouter } from "./src/workloads/bandwidth_proxy/index.js";
 import { createLangChainAdapterRouter } from "./src/workloads/ai_gateway/langchain_adapter.js";
 import { createPluginManifestRouter, createOpenApiRouter } from "./src/workloads/ai_gateway/plugin_manifest.js";
-import { createApiKeysRouter } from "./src/gateway/routes/api_keys.js";
+import { createSimpleApiKeysRouter } from "./src/billing/api_keys_route.mjs";
 import { createNodeRegistryRouter } from "./src/services/node_registry/registration.js";
 import { createSdkAnalyticsRouter } from "./src/workloads/rpc_gateway/sdk_analytics.js";
 import { createSettlementAuditRouter } from "./src/services/settlement/audit.js";
@@ -224,8 +224,8 @@ export function createApp(pool, redis) {
   app.use("/.well-known", createPluginManifestRouter());
   app.use("/openapi.json", createOpenApiRouter());
 
-  // API Key management
-  app.use("/api/keys", createApiKeysRouter(pool));
+  // API Key management (with deposit verification for tier upgrades)
+  app.use("/api/keys", createSimpleApiKeysRouter(pool));
 
   // Revenue API routes
   app.use("/api", revenueRoutes(pool));

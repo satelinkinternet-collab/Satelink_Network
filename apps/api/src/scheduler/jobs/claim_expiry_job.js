@@ -36,8 +36,11 @@ async function sweepExpiredEarnings(pool) {
         `, [expiryThreshold]);
 
         let totalSwept = 0;
+        let totalReallocated = 0;
 
         for (const row of expiredResult.rows) {
+            const expiredAmount = parseFloat(row.expired_amount);
+
             // Mark earnings as expired
             await client.query(`
                 UPDATE epoch_earnings
@@ -47,26 +50,61 @@ async function sweepExpiredEarnings(pool) {
                 AND created_at < $3
             `, [now, row.node_id, expiryThreshold]);
 
-            // Record sweep to treasury
+            // 50% goes to treasury, 50% reallocated to active nodes
+            const treasuryShare = expiredAmount * 0.5;
+            const reallocationShare = expiredAmount * 0.5;
+
+            // Record 50% sweep to treasury
             await client.query(`
                 INSERT INTO treasury_sweeps (node_id, amount_usdt, reason, swept_at)
-                VALUES ($1, $2, '48_day_expiry', $3)
-            `, [row.node_id, row.expired_amount, now]);
+                VALUES ($1, $2, '48_day_expiry_50pct', $3)
+            `, [row.node_id, treasuryShare, now]);
 
-            totalSwept += parseFloat(row.expired_amount);
+            totalSwept += treasuryShare;
+            totalReallocated += reallocationShare;
 
             logger.info({
                 nodeId: row.node_id,
-                amount: row.expired_amount,
+                amount: expiredAmount,
+                toTreasury: treasuryShare,
+                toReallocation: reallocationShare,
                 reason: '48_day_expiry'
-            }, 'CLAIM_EXPIRY: swept unclaimed earnings to treasury');
+            }, 'CLAIM_EXPIRY: expired earnings split 50/50');
+        }
+
+        // Reallocate 50% to currently active nodes
+        if (totalReallocated > 0) {
+            const activeNodes = await client.query(`
+                SELECT node_id FROM nodes
+                WHERE LOWER(status) IN ('active', 'online', 'healthy')
+            `);
+
+            if (activeNodes.rows.length > 0) {
+                const perNodeShare = totalReallocated / activeNodes.rows.length;
+
+                for (const node of activeNodes.rows) {
+                    await client.query(`
+                        INSERT INTO epoch_earnings
+                            (epoch_id, wallet_or_node_id, amount_usdt, status, created_at)
+                        VALUES
+                            (0, $1, $2, 'UNPAID', $3)
+                    `, [node.node_id, perNodeShare, now]);
+                }
+
+                logger.info({
+                    totalReallocated,
+                    nodesReallocated: activeNodes.rows.length,
+                    perNodeShare
+                }, 'CLAIM_EXPIRY: reallocated expired earnings to active nodes');
+            }
         }
 
         await client.query('COMMIT');
 
         return {
             nodesAffected: expiredResult.rows.length,
-            totalSwept
+            totalSwept,
+            totalReallocated
         };
 
     } catch (err) {
@@ -119,8 +157,9 @@ async function runExpiryJob(pool) {
         logger.info({
             nodesSwept: earningsResult.nodesAffected,
             totalSwept: earningsResult.totalSwept,
+            totalReallocated: earningsResult.totalReallocated || 0,
             signaturesExpired: signaturesResult.expiredSignatures
-        }, 'CLAIM_EXPIRY: job completed');
+        }, 'CLAIM_EXPIRY: job completed (50% treasury, 50% reallocated)');
 
         return {
             ok: true,

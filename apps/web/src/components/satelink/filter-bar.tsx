@@ -87,7 +87,8 @@ export function FilterBar({page}:{page:FilterPage}) {
               onChange={setChain}
             />
             {page === 'overview' && (
-              <span className="text-[9px] text-[#1a3028] italic ml-1">(analytics)</span>
+              <span title="Chain filter applies to Analytics page. Epoch revenue is network-wide across all chains."
+                    className="text-[9px] text-[#1a3028] cursor-help ml-1">ⓘ</span>
             )}
           </div>
         )}

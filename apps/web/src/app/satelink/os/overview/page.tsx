@@ -198,6 +198,11 @@ export default function OverviewPage() {
   const displayRevenue = revenueType === 'collected' ? COLLECTED_USDT : (metrics?.total || 0);
   const displayNodePool = revenueType === 'collected' ? COLLECTED_NODE_POOL : (metrics?.nodePool || 0);
 
+  // Hourly rate calculation (6 days × 24 hours = 144 hours)
+  const totalReqs = metrics?.totalReqs || 0;
+  const avgCallsPerHour = totalReqs > 0 ? Math.round(totalReqs / 144) : 0;
+  const meteredPerHour = avgCallsPerHour * 0.000030;
+
   return (
     <div className="flex flex-col h-full bg-[#091413]">
       <FilterBar page="overview" />
@@ -235,8 +240,8 @@ export default function OverviewPage() {
           </div>
         </div>
 
-        {/* Primary metrics — 5 columns */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+        {/* Primary metrics — 6 columns */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
           <MetricCard
             label="Total Revenue"
             value={loading ? '...' : fmt(displayRevenue)}
@@ -257,8 +262,14 @@ export default function OverviewPage() {
           />
           <MetricCard
             label="Total RPC Calls"
-            value={loading ? '...' : (metrics?.totalReqs || 0).toLocaleString()}
-            sub="all epochs combined"
+            value={loading ? '...' : totalReqs.toLocaleString()}
+            sub="6-day cumulative total"
+            loading={loading}
+          />
+          <MetricCard
+            label="Avg Hourly Rate"
+            value={loading ? '...' : `${avgCallsPerHour.toLocaleString()}/hr`}
+            sub={`${fmt(meteredPerHour)}/hr metered`}
             loading={loading}
           />
           <MetricCard
