@@ -256,7 +256,7 @@ export function createApp(pool, redis) {
   app.use("/machine-access/v1", createMachineAccessRouter(pool, redis));
 
   // Admin MAL - Founder Mode diagnostics (MASTER_ADMIN_TOKEN protected)
-  app.use("/api/admin/mal", createAdminMalRouter(pool));
+  app.use("/api/admin", createAdminMalRouter(pool));
 
   return app;
 }

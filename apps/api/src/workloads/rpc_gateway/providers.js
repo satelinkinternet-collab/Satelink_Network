@@ -65,10 +65,13 @@ const PROVIDER_CONFIGS = {
         id: "alchemy-polygon",
         url:
           process.env.ALCHEMY_POLYGON_URL ||
-          `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY || "demo"}`,
+          (process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY
+            ? `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY}`
+            : null),
         priority: 2,
         rateLimit: 300,
         type: "alchemy",
+        enabled: !!(process.env.ALCHEMY_POLYGON_URL || process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY),
       },
       {
         id: "ankr-polygon",
@@ -111,10 +114,13 @@ const PROVIDER_CONFIGS = {
         id: "alchemy-eth",
         url:
           process.env.ALCHEMY_ETH_URL ||
-          `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY || "demo"}`,
+          (process.env.ALCHEMY_API_KEY
+            ? `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
+            : null),
         priority: 2,
         rateLimit: 300,
         type: "alchemy",
+        enabled: !!(process.env.ALCHEMY_ETH_URL || process.env.ALCHEMY_API_KEY),
       },
       {
         id: "ankr-eth",
@@ -227,7 +233,8 @@ export function getChainConfig(chainKey) {
 
 export function getProviders(chainKey) {
   const config = getChainConfig(chainKey);
-  return config ? config.providers : [];
+  if (!config) return [];
+  return config.providers.filter(p => p.url && p.enabled !== false);
 }
 
 export function getPrimaryProvider(chainKey) {
