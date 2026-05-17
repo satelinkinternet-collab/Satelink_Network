@@ -75,16 +75,21 @@ export function FilterBar({page}:{page:FilterPage}) {
         />
 
         {showChain && (
-          <FG<ChainFilter>
-            label="Chain"
-            value={chain}
-            options={[
-              {value:'all',label:'All'},{value:'polygon',label:'Polygon'},
-              {value:'ethereum',label:'ETH'},{value:'arbitrum',label:'ARB'},
-              {value:'base',label:'Base'},
-            ]}
-            onChange={setChain}
-          />
+          <div className="flex items-center gap-1">
+            <FG<ChainFilter>
+              label="Chain"
+              value={chain}
+              options={[
+                {value:'all',label:'All'},{value:'polygon',label:'Polygon'},
+                {value:'ethereum',label:'ETH'},{value:'arbitrum',label:'ARB'},
+                {value:'base',label:'Base'},
+              ]}
+              onChange={setChain}
+            />
+            {page === 'overview' && (
+              <span className="text-[9px] text-[#1a3028] italic ml-1">(analytics)</span>
+            )}
+          </div>
         )}
 
         {showRevType && (

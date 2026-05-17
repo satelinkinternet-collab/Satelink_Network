@@ -8,22 +8,52 @@ import { OsPageTemplate } from "@/components/satelink/os-page-template";
 import { useInfrastructureStore } from "@/store/useInfrastructureStore";
 
 interface ApiNode {
-  id: string;
-  node_id: string;
-  wallet_address: string;
+  id?: string;
+  nodeId?: string;
+  node_id?: string;
+  wallet_address?: string;
   region: string;
   status: string;
-  reputation_score: number;
-  uptime_pct: number;
-  total_earned_usdt: number;
-  created_at: string;
-  last_heartbeat: string;
+  reputationScore?: number;
+  reputation_score?: number;
+  uptimePct?: number;
+  uptime_pct?: number;
+  total_earned_usdt?: number;
+  created_at?: string;
+  registeredAt?: string;
+  last_heartbeat?: string;
+}
+
+function timeAgo(ts: string | null | undefined): string {
+  if (!ts) return '—';
+  const date = new Date(ts);
+  if (isNaN(date.getTime())) {
+    const num = parseInt(ts);
+    if (!isNaN(num)) {
+      const diff = Date.now() - num * 1000;
+      const min = Math.floor(diff / 60000);
+      if (min < 1) return 'just now';
+      if (min < 60) return `${min}m ago`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h ago`;
+      return `${Math.floor(hr / 24)}d ago`;
+    }
+    return '—';
+  }
+  const diff = Date.now() - date.getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  return `${Math.floor(hr / 24)}d ago`;
 }
 
 export default function SatelinkNodesPage() {
   const storeNodes = useInfrastructureStore((state) => state.nodes);
   const [apiNodes, setApiNodes] = useState<ApiNode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalEarned, setTotalEarned] = useState(0);
 
   useEffect(() => {
     const fetchNodes = async () => {
@@ -42,6 +72,17 @@ export default function SatelinkNodesPage() {
     fetchNodes();
     const interval = setInterval(fetchNodes, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetch("https://rpc.satelink.network/api/epochs")
+      .then(r => r.json())
+      .then(d => {
+        const total = (d.epochs || []).reduce((s: number, e: { node_pool_usdt?: number; total?: number }) =>
+          s + parseFloat(String(e.node_pool_usdt || (e.total || 0) * 0.5)), 0);
+        setTotalEarned(total);
+      })
+      .catch(() => {});
   }, []);
 
   const displayNodes = apiNodes.length > 0 ? apiNodes : [];
@@ -101,23 +142,32 @@ export default function SatelinkNodesPage() {
               </tr>
             </thead>
             <tbody>
-              {displayNodes.map((node) => (
-                <tr key={node.id || node.node_id} className="border-b border-white/5 hover:bg-white/5">
-                  <td className="px-4 py-3 font-mono text-white">{node.node_id || node.id}</td>
-                  <td className="px-4 py-3 text-[#B0E4CC]">{node.region || "Global"}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={node.status} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-[#00D1FF]">{(node.uptime_pct || 0).toFixed(1)}%</td>
-                  <td className="px-4 py-3">
-                    <ReputationBar score={node.reputation_score || 0} />
-                  </td>
-                  <td className="px-4 py-3 font-mono text-emerald-300">${(node.total_earned_usdt || 0).toFixed(4)}</td>
-                  <td className="px-4 py-3 text-xs text-[#B0E4CC]/60">
-                    {node.last_heartbeat ? new Date(node.last_heartbeat).toLocaleString() : "—"}
-                  </td>
-                </tr>
-              ))}
+              {displayNodes.map((node, idx) => {
+                const nodeId = node.nodeId || node.node_id || node.id || `node-${idx}`;
+                const uptime = node.uptimePct ?? node.uptime_pct ?? 0;
+                const reputation = node.reputationScore ?? node.reputation_score ?? 0;
+                const earned = node.total_earned_usdt ?? totalEarned;
+                const heartbeat = node.last_heartbeat || node.registeredAt;
+                return (
+                  <tr key={nodeId} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="px-4 py-3 font-mono text-white">{nodeId}</td>
+                    <td className="px-4 py-3 text-[#B0E4CC]">{node.region || "Global"}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={node.status} />
+                    </td>
+                    <td className="px-4 py-3 font-mono text-[#00D1FF]">
+                      {uptime > 0 ? `${uptime.toFixed(1)}%` : node.status === 'active' ? 'active' : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ReputationBar score={reputation} />
+                    </td>
+                    <td className="px-4 py-3 font-mono text-emerald-300">${earned.toFixed(4)}</td>
+                    <td className="px-4 py-3 text-xs text-[#B0E4CC]/60">
+                      {timeAgo(heartbeat)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
