@@ -1,18 +1,40 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/apps/api"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-
+  # Frontend dependencies - weekly, grouped
   - package-ecosystem: "npm"
     directory: "/apps/web"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+      time: "09:00"
+    groups:
+      react-ecosystem:
+        patterns: ["react*", "next*", "@types/react*"]
+      ui-components:
+        patterns: ["@rainbow-me/*", "wagmi*", "viem*", "recharts*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    open-pull-requests-limit: 3
 
+  # Backend dependencies - weekly, grouped
+  - package-ecosystem: "npm"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    groups:
+      security-only:
+        update-types: ["security"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    open-pull-requests-limit: 2
+
+  # GitHub Actions - monthly only
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    open-pull-requests-limit: 2
