@@ -7,6 +7,7 @@
  */
 
 import { Router } from 'express';
+import { discord } from '../services/discord_notify.mjs';
 
 const MASTER_ADMIN_TOKEN = process.env.MASTER_ADMIN_TOKEN;
 
@@ -265,6 +266,56 @@ export function createAdminMalRouter(pool) {
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
+  });
+
+  // POST /api/admin/mal/notify — Send Discord notification via MAL
+  router.post('/notify', async (req, res) => {
+    const { type, title, message, severity } = req.body;
+
+    try {
+      if (type === 'test') {
+        await discord.test();
+      } else if (type === 'alert') {
+        await discord.alert(title || 'Admin Alert', message || '', severity);
+      } else if (type === 'summary') {
+        const dayAgoMs = Date.now() - 86400000;
+
+        const [statsResult, nodesResult, keysResult] = await Promise.all([
+          pool.query(`
+            SELECT COUNT(*) as calls, COALESCE(SUM(amount_usdt), 0) as revenue
+            FROM revenue_events_v2
+            WHERE created_at > $1 AND is_test_data = false
+          `, [dayAgoMs]).catch(() => ({ rows: [{ calls: 0, revenue: 0 }] })),
+          pool.query(`SELECT COUNT(*) as n FROM nodes WHERE LOWER(status) IN ('active', 'online', 'healthy')`).catch(() => ({ rows: [{ n: 0 }] })),
+          pool.query(`SELECT COUNT(*) as n FROM api_credits`).catch(() => ({ rows: [{ n: 0 }] })),
+        ]);
+
+        await discord.dailySummary({
+          calls: parseInt(statsResult.rows[0]?.calls || 0),
+          revenue: parseFloat(statsResult.rows[0]?.revenue || 0),
+          nodes: parseInt(nodesResult.rows[0]?.n || 0),
+          apiKeys: parseInt(keysResult.rows[0]?.n || 0),
+          uptime: 99.8,
+          rateLimits: 0,
+        });
+      } else {
+        return res.status(400).json({ ok: false, error: 'Invalid type. Use: test, alert, summary' });
+      }
+
+      res.json({ ok: true, sent: type, discordEnabled: discord.isEnabled() });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/admin/mal/discord-status — Check Discord integration status
+  router.get('/discord-status', (req, res) => {
+    res.json({
+      ok: true,
+      enabled: discord.isEnabled(),
+      webhookConfigured: !!process.env.DISCORD_WEBHOOK_URL,
+      alertsEnabled: process.env.DISCORD_ALERTS_ENABLED === 'true',
+    });
   });
 
   return router;

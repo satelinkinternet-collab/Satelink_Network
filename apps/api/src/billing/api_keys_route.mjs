@@ -13,6 +13,7 @@ import {
   ensureCreditTables,
   TIERS
 } from './credit_system.mjs';
+import { discord } from '../services/discord_notify.mjs';
 
 const TREASURY = process.env.TREASURY_ADDRESS || '0x966E1Ae22996545015b1414B35234b10719d7Ad4';
 const USDT_POLYGON = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
@@ -265,6 +266,8 @@ export function createSimpleApiKeysRouter(pool) {
       `, [depositAmount, newTier, newLimit, key]);
 
       console.log(`[DEPOSIT] Key ${key.slice(0, 12)}... deposited $${depositAmount} USDT → ${newTier} (TX: ${tx_hash.slice(0, 10)}...)`);
+
+      discord.deposit(key, depositAmount, newTier).catch(() => {});
 
       return res.json({
         ok: true,

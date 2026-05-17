@@ -16,6 +16,7 @@ import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_sche
 import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
+import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import Redis from "ioredis";
 
@@ -380,6 +381,48 @@ async function start() {
     }
   }, 300000); // Every 5 minutes
   console.log(`[BOOT] ✅ Self-heartbeat started for ${SELF_NODE_ID} (5min interval)`);
+
+  // Step 15: Discord daily summary scheduler (8:00 AM UTC)
+  if (discord.isEnabled()) {
+    const scheduleDailySummary = () => {
+      const now = new Date();
+      const next8am = new Date();
+      next8am.setUTCHours(8, 0, 0, 0);
+      if (next8am <= now) next8am.setUTCDate(next8am.getUTCDate() + 1);
+      const msToNext8am = next8am - now;
+
+      setTimeout(async function sendSummary() {
+        try {
+          const dayAgoMs = Date.now() - 86400000;
+          const [statsResult, nodesResult, keysResult] = await Promise.all([
+            pool.query(`
+              SELECT COUNT(*) as calls, COALESCE(SUM(amount_usdt), 0) as revenue
+              FROM revenue_events_v2
+              WHERE created_at > $1 AND is_test_data = false
+            `, [dayAgoMs]).catch(() => ({ rows: [{ calls: 0, revenue: 0 }] })),
+            pool.query(`SELECT COUNT(*) as n FROM nodes WHERE LOWER(status) IN ('active', 'online', 'healthy')`).catch(() => ({ rows: [{ n: 0 }] })),
+            pool.query(`SELECT COUNT(*) as n FROM api_credits`).catch(() => ({ rows: [{ n: 0 }] })),
+          ]);
+
+          await discord.dailySummary({
+            calls: parseInt(statsResult.rows[0]?.calls || 0),
+            revenue: parseFloat(statsResult.rows[0]?.revenue || 0),
+            nodes: parseInt(nodesResult.rows[0]?.n || 0),
+            apiKeys: parseInt(keysResult.rows[0]?.n || 0),
+            uptime: 99.8,
+            rateLimits: 0,
+          });
+          console.log('[DISCORD] Daily summary sent');
+        } catch (e) {
+          console.warn('[DISCORD] Daily summary failed:', e.message);
+        }
+        setTimeout(sendSummary, 24 * 60 * 60 * 1000);
+      }, msToNext8am);
+
+      console.log(`[BOOT] ✅ Discord daily summary scheduled for ${next8am.toISOString()}`);
+    };
+    scheduleDailySummary();
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

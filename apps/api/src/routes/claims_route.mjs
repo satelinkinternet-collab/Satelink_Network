@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { verifyJWT } from '../gateway/routes/auth_v2.js';
 import { generateClaimSignature } from '../services/claims/claim_processor.js';
 import { broadcaster } from '../realtime/broadcaster-instance.js';
+import { discord } from '../services/discord_notify.mjs';
 
 export function createClaimsRouter(pool) {
   const router = Router();
@@ -327,6 +328,8 @@ export function createClaimsRouter(pool) {
         wallet: walletAddress,
         timestamp: new Date().toISOString()
       });
+
+      discord.claim(nodeId, result.amount_usdt || 0, null).catch(() => {});
 
       res.json({
         success: true,
