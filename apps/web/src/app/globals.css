@@ -151,8 +151,9 @@ code, pre, .mono {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+::-webkit-scrollbar-track { background: #091413; }
+::-webkit-scrollbar-thumb { background: #1a3028; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #285A48; }
 
 /* Selection */
 ::selection { background: rgba(64,138,113,0.25); color: var(--light); }
@@ -251,7 +252,7 @@ code, pre, .mono {
 
 /* ── Animations ── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes pulse-glow {
@@ -264,8 +265,12 @@ code, pre, .mono {
 }
 
 .fade-in { animation: fadeIn 0.4s ease-out both; }
+.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
 .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 .shimmer { animation: shimmer 3s ease-in-out infinite; background-size: 200% auto; }
+
+/* Monospace numbers everywhere */
+.font-mono { font-variant-numeric: tabular-nums; }
 
 /* ── Scrollbar (custom class) ── */
 .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }

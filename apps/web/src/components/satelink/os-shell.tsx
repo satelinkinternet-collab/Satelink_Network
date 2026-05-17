@@ -87,7 +87,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Settlement",
     items: [
-      { label: 'Withdraw', href: '/satelink/os/withdraw', icon: Wallet, dot: 'cyan' },
+      { label: 'Withdraw', href: '/satelink/os/withdraw', icon: Wallet, dot: 'cyan', badge: 'v1.0' },
       { label: 'Claims',   href: '/satelink/os/claims',   icon: Receipt, dot: 'grey' },
       { label: 'On-Chain', href: '/satelink/os/onchain',  icon: Globe2, dot: 'grey' },
     ]
@@ -373,8 +373,31 @@ export function SatelinkOsShell({ children }: { children: React.ReactNode }) {
                   ))}
                 </div>
 
-                {/* Bottom: Node status */}
-                <div className="mt-auto mx-3 mb-4 p-3 rounded border border-[#1a3028] bg-[#0c1a17]">
+                {/* Bottom: Mini stats bar */}
+                <div className="mt-auto pt-3 border-t border-[#1a3028] mx-3 pb-3">
+                  <div className="flex items-center justify-between text-[9px] mb-1.5">
+                    <span className="text-[#285A48]">RPC calls today</span>
+                    <span className="font-mono text-[#408A71]">
+                      {status?.total_requests_24h?.toLocaleString() ?? '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] mb-1.5">
+                    <span className="text-[#285A48]">Latency</span>
+                    <span className="font-mono text-[#00D1FF]">
+                      {status?.avg_latency_ms ?? '—'}ms
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="text-[#285A48]">Node status</span>
+                    <span className="text-[#408A71] font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#408A71] animate-pulse" />
+                      active
+                    </span>
+                  </div>
+                </div>
+
+                {/* RPC Endpoint info */}
+                <div className="mx-3 mb-4 p-3 rounded border border-[#1a3028] bg-[#0c1a17]">
                   {nodeId ? (
                     <>
                       <div className="flex items-center gap-1.5 mb-1">

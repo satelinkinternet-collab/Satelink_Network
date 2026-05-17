@@ -1,286 +1,266 @@
-"use client";
+'use client';
+import { useEffect, useState } from 'react';
+import {
+  AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend
+} from 'recharts';
+import { useDashboardFilters } from '@/lib/stores/dashboard-filters';
+import { FilterBar } from '@/components/satelink/filter-bar';
 
-import { useEffect, useState, useMemo } from "react";
-import { AreaChart, BarChart, DonutChart } from "@tremor/react";
-import { MetricCard, InfraCard, InfraCardHeader, SectionHeader } from "@/components/ui/satelink-ui";
-import { useInfrastructureStore } from "@/store/useInfrastructureStore";
-import { FilterBar } from "@/components/satelink/filter-bar";
-import { useDashboardFilters } from "@/lib/stores/dashboard-filters";
+const API = 'https://rpc.satelink.network';
 
-interface EpochRevenue {
-  epoch: string;
-  revenue: number;
+const COLORS = {
+  node: '#408A71',
+  platform: '#00D1FF',
+  distrib: '#a0a030',
+  bg: '#091413',
+  grid: '#1a3028',
+  text: '#285A48',
+};
+
+function ChartCard({ title, sub, children, height = 200 }: {
+  title: string;
+  sub: string;
+  children: React.ReactNode;
+  height?: number;
+}) {
+  return (
+    <div className="bg-[#0c1a17] border border-[#1a3028] rounded p-4">
+      <p className="text-[11px] font-semibold text-[#B0E4CC] mb-0.5">{title}</p>
+      <p className="text-[9px] text-[#285A48] mb-4">{sub}</p>
+      <div style={{ height }}>{children}</div>
+    </div>
+  );
 }
 
-interface MethodStats {
-  method: string;
-  calls: number;
-}
+const CustomTooltip = ({ active, payload, label, fmt }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#091413] border border-[#285A48] rounded p-3
+                    text-[10px] shadow-lg">
+      <p className="text-[#B0E4CC] font-semibold mb-1.5">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 mb-0.5">
+          <span className="w-2 h-2 rounded-sm flex-shrink-0"
+                style={{ backgroundColor: p.color }} />
+          <span className="text-[#285A48]">{p.name}:</span>
+          <span className="font-mono font-semibold"
+                style={{ color: p.color }}>
+            {fmt ? fmt(p.value) : p.value?.toLocaleString?.() || p.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
-export default function SatelinkAnalyticsPage() {
-  const metrics = useInfrastructureStore((s) => s.metrics);
-  const activityStream = useInfrastructureStore((s) => s.activityStream);
-  const { fmt } = useDashboardFilters();
-
-  const [revenueHistory, setRevenueHistory] = useState<EpochRevenue[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [methodStats, setMethodStats] = useState<MethodStats[]>([]);
+export default function AnalyticsPage() {
+  const { fmt, revenueType } = useDashboardFilters();
+  const [epochs, setEpochs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRevenue = async () => {
-      try {
-        const res = await fetch("https://rpc.satelink.network/api/epochs");
-        if (res.ok) {
-          const data = await res.json();
-          const epochs = data.epochs || [];
-          if (Array.isArray(epochs) && epochs.length > 0) {
-            const history = epochs
-              .filter((e: { epoch_id: number | null }) => e.epoch_id !== null)
-              .slice(0, 12)
-              .reverse()
-              .map((e: { epoch_id: number; total: number }) => ({
-                epoch: `#${e.epoch_id}`,
-                revenue: parseFloat(String(e.total)) || 0,
-              }));
-            setRevenueHistory(history);
-            const total = epochs.reduce((sum: number, e: { total: number }) =>
-              sum + (parseFloat(String(e.total)) || 0), 0);
-            setTotalRevenue(total);
-          }
-        }
-      } catch (err) {
-        console.error("[Analytics] Failed to fetch epochs:", err);
-      }
-    };
-    fetchRevenue();
-    const interval = setInterval(fetchRevenue, 60000);
-    return () => clearInterval(interval);
+    fetch(`${API}/api/epochs`)
+      .then(r => r.json())
+      .then(d => {
+        setEpochs((d.epochs || []).reverse());
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    const counts: Record<string, number> = {};
-    activityStream.forEach((a) => {
-      if (a.type === "revenue.recorded" || a.type?.includes("rpc")) {
-        const methodMatch = a.message.match(/eth_\w+|polygon_\w+|web3_\w+/i);
-        const method = methodMatch ? methodMatch[0] : "rpc_call";
-        counts[method] = (counts[method] || 0) + 1;
-      }
-    });
+  const chartData = epochs.slice(-12).map((e: any) => ({
+    epoch: `#${e.epoch_id ?? e.id ?? '?'}`,
+    revenue: parseFloat(e.total_revenue_usdt || e.total || 0),
+    nodePool: parseFloat(e.node_pool_usdt || (e.total || 0) * 0.5),
+    platform: parseFloat(e.platform_share_usdt || (e.total || 0) * 0.3),
+    distrib: parseFloat(e.distributor_share_usdt || (e.total || 0) * 0.2),
+    requests: parseInt(e.total_requests || e.requests || 0),
+  }));
 
-    if (Object.keys(counts).length === 0) {
-      counts["eth_blockNumber"] = 156;
-      counts["eth_call"] = 89;
-      counts["eth_getBalance"] = 67;
-      counts["eth_gasPrice"] = 45;
-      counts["eth_chainId"] = 38;
-    }
+  const totalRevenue = epochs.reduce((s, e) =>
+    s + parseFloat(e.total_revenue_usdt || e.total || 0), 0);
+  const totalNodePool = epochs.reduce((s, e) =>
+    s + parseFloat(e.node_pool_usdt || (e.total || 0) * 0.5), 0);
+  const totalPlatform = epochs.reduce((s, e) =>
+    s + parseFloat(e.platform_share_usdt || (e.total || 0) * 0.3), 0);
+  const totalRequests = epochs.reduce((s, e) =>
+    s + parseInt(e.total_requests || e.requests || 0), 0);
 
-    const sorted = Object.entries(counts)
-      .map(([method, calls]) => ({ method, calls }))
-      .sort((a, b) => b.calls - a.calls)
-      .slice(0, 8);
-    setMethodStats(sorted);
-  }, [activityStream]);
+  const pieData = [
+    { name: 'Node Operators', value: totalNodePool, color: COLORS.node },
+    { name: 'Platform Fee', value: totalPlatform, color: COLORS.platform },
+    { name: 'Distribution', value: totalRevenue - totalNodePool - totalPlatform,
+      color: COLORS.distrib },
+  ].filter(d => d.value > 0);
 
-  const revenueSplit = useMemo(() => [
-    { name: "Node Operators", value: 50, color: "#408A71" },
-    { name: "Platform Fee", value: 30, color: "#00D1FF" },
-    { name: "Distribution Pool", value: 20, color: "#285A48" },
-  ], []);
-
-  const latestRevenue = revenueHistory.length > 0 ? revenueHistory[revenueHistory.length - 1]?.revenue || 0 : 0;
-  const topMethod = methodStats.length > 0 ? methodStats[0]?.method || "—" : "—";
-  const totalCalls = methodStats.reduce((sum, m) => sum + m.calls, 0);
+  if (loading) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-[11px] text-[#285A48] animate-pulse">
+        Loading analytics...
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col h-full bg-[#091413]">
       <FilterBar page="analytics" />
+      <div className="flex-1 overflow-auto p-5">
 
-      <SectionHeader
-        title="Revenue Analytics"
-        sub="USDT settlement · Polygon Network · 60s epochs"
-      />
-
-      {/* Metrics Row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          label="Total Revenue"
-          value={fmt(totalRevenue)}
-          sub="All epochs combined"
-          glow
-        />
-        <MetricCard
-          label="Latest Epoch"
-          value={fmt(latestRevenue)}
-          sub="Most recent settlement"
-        />
-        <MetricCard
-          label="Top Method"
-          value={topMethod}
-          sub={`${totalCalls.toLocaleString()} total calls`}
-        />
-        <MetricCard
-          label="Node Share"
-          value="50%"
-          sub="$0.0000 earned this epoch"
-        />
-      </div>
-
-      {/* Revenue Over Time + Split */}
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <InfraCard>
-          <InfraCardHeader title="Revenue Over Time" sub="USDT per epoch" />
-          <div className="p-4 h-[280px]">
-            {revenueHistory.length > 0 ? (
-              <AreaChart
-                data={revenueHistory}
-                index="epoch"
-                categories={["revenue"]}
-                colors={["cyan"]}
-                valueFormatter={(v) => `$${v.toFixed(4)}`}
-                showLegend={false}
-                showGridLines={false}
-                showXAxis={true}
-                showYAxis={true}
-                className="h-full"
-                curveType="monotone"
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-[11px] text-[#285A48]">
-                Loading revenue data...
-              </div>
-            )}
+        {revenueType === 'metered' && (
+          <div className="mb-4 p-3 bg-[#16140a] border border-[#3a3e18]
+                          rounded text-[10px] text-[#a0a030] flex items-start gap-2">
+            <span className="mt-0.5">⚠</span>
+            <span>
+              <strong>Metered revenue</strong> — economic value tracked by
+              infrastructure usage at $0.000030/call. Real USDT collection
+              requires API key payment enforcement. Switch filter to
+              <strong> Collected</strong> to see on-chain confirmed revenue.
+            </span>
           </div>
-        </InfraCard>
+        )}
 
-        <InfraCard>
-          <InfraCardHeader title="Revenue Split" sub="50 / 30 / 20 model" />
-          <div className="p-4 h-[280px] flex items-center justify-center">
-            <DonutChart
-              data={revenueSplit}
-              index="name"
-              category="value"
-              colors={["emerald", "cyan", "slate"]}
-              valueFormatter={(v) => `${v}%`}
-              showAnimation={true}
-              className="h-48 w-48"
-            />
-          </div>
-          <div className="px-4 pb-4 space-y-1.5">
-            {revenueSplit.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-[10px]">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-[#408A71]">{item.name}</span>
-                </div>
-                <span className="font-mono text-[#B0E4CC]">{item.value}%</span>
-              </div>
-            ))}
-          </div>
-        </InfraCard>
-      </div>
-
-      {/* Revenue Distribution Detail */}
-      <InfraCard>
-        <InfraCardHeader title="Revenue Distribution" sub="Real-time split allocation" />
-        <div className="p-5 space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           {[
-            { role: 'Node Operators', pct: 50, desc: 'Infrastructure contributors', color: '#408A71', amount: totalRevenue * 0.5 },
-            { role: 'Platform Fee', pct: 30, desc: 'Protocol treasury', color: '#00D1FF', amount: totalRevenue * 0.3 },
-            { role: 'Distribution Pool', pct: 20, desc: 'Ecosystem growth fund', color: '#285A48', amount: totalRevenue * 0.2 },
-          ].map((r) => (
-            <div key={r.role} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.color }} />
-                  <span className="text-[12px] text-[#B0E4CC]">{r.role}</span>
-                  <span className="text-[10px] text-[#285A48]">· {r.desc}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-mono text-[#408A71]">{fmt(r.amount)}</span>
-                  <span className="text-[13px] font-semibold font-mono" style={{ color: r.color }}>{r.pct}%</span>
-                </div>
-              </div>
-              <div className="h-1.5 bg-[#091413] rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${r.pct}%`, background: r.color }} />
-              </div>
+            {label:'Total Metered', value:fmt(totalRevenue), color:'#B0E4CC'},
+            {label:'Node Earnings', value:fmt(totalNodePool), color:'#408A71'},
+            {label:'Platform Fee', value:fmt(totalPlatform), color:'#00D1FF'},
+            {label:'Total Calls', value:totalRequests.toLocaleString(), color:'#B0E4CC'},
+          ].map(m => (
+            <div key={m.label}
+                 className="bg-[#0c1a17] border border-[#1a3028] rounded p-4">
+              <p className="text-[9px] text-[#285A48] uppercase
+                            tracking-widest font-semibold mb-2">
+                {m.label}
+              </p>
+              <p className="text-[20px] font-bold font-mono"
+                 style={{ color: m.color }}>
+                {m.value}
+              </p>
             </div>
           ))}
         </div>
-      </InfraCard>
 
-      {/* RPC Methods */}
-      <InfraCard>
-        <InfraCardHeader title="RPC Method Distribution" sub={`${totalCalls.toLocaleString()} calls tracked`} />
-        <div className="p-4 h-[300px]">
-          {methodStats.length > 0 ? (
-            <BarChart
-              data={methodStats}
-              index="method"
-              categories={["calls"]}
-              colors={["emerald"]}
-              valueFormatter={(v) => v.toLocaleString()}
-              showLegend={false}
-              showGridLines={false}
-              layout="vertical"
-              className="h-full"
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center text-[11px] text-[#285A48]">
-              Waiting for RPC traffic...
-            </div>
-          )}
+        <div className="mb-4">
+          <ChartCard
+            title="Revenue per Epoch — 50/30/20 Split"
+            sub="Node pool · Platform fee · Distribution · metered USDT"
+            height={220}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}
+                         margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                <defs>
+                  {[
+                    {id:'node', color: COLORS.node},
+                    {id:'plat', color: COLORS.platform},
+                    {id:'dist', color: COLORS.distrib},
+                  ].map(g => (
+                    <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={g.color} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={g.color} stopOpacity={0} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="2 4" stroke={COLORS.grid} />
+                <XAxis dataKey="epoch" stroke={COLORS.text}
+                       tick={{ fontSize: 9, fill: COLORS.text }} />
+                <YAxis stroke={COLORS.text}
+                       tick={{ fontSize: 9, fill: COLORS.text }}
+                       tickFormatter={v => fmt(v)} width={70} />
+                <Tooltip content={<CustomTooltip fmt={fmt} />} />
+                <Area type="monotone" dataKey="nodePool" name="Node Pool"
+                      stroke={COLORS.node} fill="url(#node)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="platform" name="Platform"
+                      stroke={COLORS.platform} fill="url(#plat)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="distrib" name="Distribution"
+                      stroke={COLORS.distrib} fill="url(#dist)" strokeWidth={1.5} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
         </div>
-      </InfraCard>
 
-      {/* Latency + Throughput */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <InfraCard>
-          <InfraCardHeader title="Latency Trend" sub="ms over time" />
-          <div className="p-4 h-[200px]">
-            {metrics.length > 0 ? (
-              <AreaChart
-                data={metrics.map((m) => ({ t: m.t, latency: m.latency }))}
-                index="t"
-                categories={["latency"]}
-                colors={["cyan"]}
-                valueFormatter={(v) => `${v}ms`}
-                showLegend={false}
-                showGridLines={false}
-                className="h-full"
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-[11px] text-[#285A48]">
-                No latency data yet
-              </div>
-            )}
-          </div>
-        </InfraCard>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <ChartCard
+            title="RPC Requests per Epoch"
+            sub="Total calls processed across all chains"
+            height={180}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}
+                        margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke={COLORS.grid} />
+                <XAxis dataKey="epoch" stroke={COLORS.text}
+                       tick={{ fontSize: 9, fill: COLORS.text }} />
+                <YAxis stroke={COLORS.text}
+                       tick={{ fontSize: 9, fill: COLORS.text }}
+                       tickFormatter={v => v >= 1000 ?
+                         `${(v/1000).toFixed(0)}K` : String(v)} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="requests" name="RPC Calls"
+                     fill={COLORS.node} radius={[2,2,0,0]} opacity={0.8} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
-        <InfraCard>
-          <InfraCardHeader title="Throughput" sub="req/s over time" />
-          <div className="p-4 h-[200px]">
-            {metrics.length > 0 ? (
-              <AreaChart
-                data={metrics.map((m) => ({ t: m.t, throughput: m.throughput }))}
-                index="t"
-                categories={["throughput"]}
-                colors={["emerald"]}
-                valueFormatter={(v) => `${v} req/s`}
-                showLegend={false}
-                showGridLines={false}
-                className="h-full"
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-[11px] text-[#285A48]">
-                No throughput data yet
+          <ChartCard
+            title="Revenue Distribution"
+            sub="Cumulative split across all epochs"
+            height={180}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} cx="40%" cy="50%"
+                     innerRadius={45} outerRadius={70}
+                     paddingAngle={3} dataKey="value">
+                  {pieData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} opacity={0.9} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: any) => fmt(v)}
+                         contentStyle={{
+                           background: COLORS.bg,
+                           border: `1px solid ${COLORS.grid}`,
+                           borderRadius: 4, fontSize: 10
+                         }} />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(v) => (
+                    <span style={{ fontSize: 10, color: COLORS.text }}>{v}</span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+
+        <div className="bg-[#0c1a17] border border-[#1a3028] rounded p-4">
+          <p className="text-[11px] font-semibold text-[#B0E4CC] mb-4">
+            Unit Economics
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {label:'Price per call', value:'$0.000030', note:'USDT'},
+              {label:'Calls per $1', value:'33,333', note:'requests'},
+              {label:'Rate (current)', value:fmt(0.89)+'/hr', note:'metered'},
+              {label:'To $500/hr', value:`${Math.round(500/0.89)}x`, note:'more traffic'},
+            ].map(m => (
+              <div key={m.label}>
+                <p className="text-[9px] text-[#285A48] uppercase
+                              tracking-widest font-semibold mb-1">
+                  {m.label}
+                </p>
+                <p className="text-[16px] font-bold font-mono text-[#B0E4CC]">
+                  {m.value}
+                </p>
+                <p className="text-[9px] text-[#285A48]">{m.note}</p>
               </div>
-            )}
+            ))}
           </div>
-        </InfraCard>
+        </div>
+
       </div>
     </div>
   );
