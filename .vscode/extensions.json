@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "anthropic.claude-vscode",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-docker",
+    "nomicfoundation.hardhat-solidity",
+    "tamasfe.even-better-toml",
+    "eamodio.gitlens",
+    "usernamehw.errorlens",
+    "rangav.vscode-thunder-client",
+    "christian-kohler.path-intellisense",
+    "ms-vscode-remote.remote-containers"
+  ]
+}
