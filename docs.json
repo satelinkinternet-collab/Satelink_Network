@@ -19,7 +19,7 @@
       {
         "group": "API Reference",
         "pages": [
-          "docs/README",
+          "docs/readme",
           "docs/api-reference",
           "docs/sdk-guide"
         ]
@@ -35,7 +35,7 @@
         "group": "Resources",
         "pages": [
           "docs/faq",
-          "docs/INTEGRATION_GUIDE"
+          "docs/integration-guide"
         ]
       }
     ]
