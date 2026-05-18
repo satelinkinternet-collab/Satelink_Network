@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Satelink Documentation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+
+    header {
+      background: #408A71;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .header-links {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .header-links a {
+      color: white;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .header-links a:hover {
+      text-decoration: underline;
+    }
+
+    .btn-primary {
+      background: white;
+      color: #408A71;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      text-decoration: none !important;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    .intro {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .intro h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #2D6B55;
+    }
+
+    .intro p {
+      color: #666;
+      font-size: 1.1rem;
+    }
+
+    .sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .section {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: 1px solid #e5e5e5;
+    }
+
+    .section h3 {
+      color: #408A71;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e5e5e5;
+    }
+
+    .section ul {
+      list-style: none;
+    }
+
+    .section li {
+      margin-bottom: 0.5rem;
+    }
+
+    .section a {
+      color: #1a1a1a;
+      text-decoration: none;
+      display: block;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .section a:hover {
+      background: #f0f7f4;
+      color: #408A71;
+    }
+
+    .section .description {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    footer {
+      background: #2D6B55;
+      color: white;
+      text-align: center;
+      padding: 2rem;
+      margin-top: 3rem;
+    }
+
+    .social-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .social-links a {
+      color: white;
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .social-links a:hover {
+      text-decoration: underline;
+    }
+
+    footer p {
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      main {
+        padding: 2rem 1rem;
+      }
+
+      .intro h2 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Satelink Documentation</h1>
+    <nav class="header-links">
+      <a href="https://app.satelink.network">Dashboard</a>
+      <a href="https://app.satelink.network/satelink/os/plans" class="btn-primary">Get API Key</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="intro">
+      <h2>Welcome to Satelink</h2>
+      <p>Decentralized infrastructure for RPC, AI inference, and compute workloads</p>
+    </div>
+
+    <div class="sections">
+      <div class="section">
+        <h3>Getting Started</h3>
+        <ul>
+          <li>
+            <a href="readme.md">
+              Introduction
+              <span class="description">Overview of Satelink Network</span>
+            </a>
+          </li>
+          <li>
+            <a href="quick-start.md">
+              Quick Start
+              <span class="description">Get up and running in minutes</span>
+            </a>
+          </li>
+          <li>
+            <a href="pricing.md">
+              Pricing
+              <span class="description">Plans and usage costs</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3>API Reference</h3>
+        <ul>
+          <li>
+            <a href="api-reference.md">
+              API Reference
+              <span class="description">Endpoints,  authentication, examples</span>
+            </a>
+          </li>
+          <li>
+            <a href="sdk-guide.md">
+              SDK Guide
+              <span class="description">JavaScript, Python, and CLI tools</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3>Node Operators</h3>
+        <ul>
+          <li>
+            <a href="node-operators.md">
+              Node Operators
+              <span class="description">Run a node, earn USDT</span>
+            </a>
+          </li>
+          <li>
+            <a href="settlement.md">
+              Settlement
+              <span class="description">Payment flows and earnings</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3>Resources</h3>
+        <ul>
+          <li>
+            <a href="faq.md">
+              FAQ
+              <span class="description">Common questions answered</span>
+            </a>
+          </li>
+          <li>
+            <a href="integration-guide.md">
+              Integration Guide
+              <span class="description">Connect your application</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="social-links">
+      <a href="https://github.com/Satelink-Protocol/Satelink_Network">GitHub</a>
+      <a href="https://twitter.com/satelinknet">Twitter</a>
+      <a href="https://discord.gg/satelink">Discord</a>
+    </div>
+    <p>Satelink Network - Decentralized Infrastructure Protocol</p>
+  </footer>
+</body>
+</html>
