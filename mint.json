@@ -2,8 +2,8 @@
   "$schema": "https://mintlify.com/schema.json",
   "name": "Satelink",
   "logo": {
-    "light": "/logo.svg",
-    "dark": "/logo.svg"
+    "light": "https://satelink.network/logo.svg",
+    "dark": "https://satelink.network/logo.svg"
   },
   "favicon": "/favicon.png",
   "colors": {
@@ -29,30 +29,29 @@
     {
       "group": "Getting Started",
       "pages": [
-        "docs/quick-start",
-        "docs/pricing"
+        "quick-start",
+        "pricing"
       ]
     },
     {
       "group": "API Reference",
       "pages": [
-        "docs/README",
-        "docs/api-reference",
-        "docs/sdk-guide"
+        "api-reference",
+        "sdk-guide"
       ]
     },
     {
       "group": "Node Operators",
       "pages": [
-        "docs/node-operators",
-        "docs/settlement"
+        "node-operators",
+        "settlement"
       ]
     },
     {
       "group": "Resources",
       "pages": [
-        "docs/faq",
-        "docs/INTEGRATION_GUIDE"
+        "faq",
+        "integration-guide"
       ]
     }
   ],
