@@ -1,4 +1,7 @@
-# Satelink API Reference
+---
+title: "API overview"
+description: "Endpoints, authentication, and rate limits for the Satelink RPC gateway, key management, and node operator APIs."
+---
 
 Base URL: `https://rpc.satelink.network`
 

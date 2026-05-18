@@ -1,4 +1,7 @@
-# FAQ — Satelink Network
+---
+title: "FAQ"
+description: "Answers to common questions about Satelink RPC, node operator earnings, supported chains, security, and pricing."
+---
 
 ## General
 

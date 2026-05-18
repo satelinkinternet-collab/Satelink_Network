@@ -1,4 +1,7 @@
-# Quick Start — Satelink RPC
+---
+title: "Quick start"
+description: "Make your first Satelink JSON-RPC call in two minutes, with a free API key and any supported chain."
+---
 
 Get your first RPC call running in 2 minutes.
 
@@ -81,9 +84,9 @@ Response:
 3. Submit TX hash: `POST /api/keys/YOUR_KEY/deposit`
 4. Instant upgrade — no waiting
 
-## Next Steps
+## Next steps
 
-- [API Reference](/docs/api-reference) — Full endpoint documentation
-- [SDK Integration](/docs/sdk-guide) — JavaScript/TypeScript SDK
-- [Node Operator Guide](/docs/node-operators) — Earn USDT by running a node
-- [Pricing Details](/docs/pricing) — Full pricing breakdown
+- [API reference](/docs/api-reference) — Full endpoint documentation
+- [SDK integration](/docs/sdk-guide) — JavaScript/TypeScript SDK
+- [Node operator guide](/docs/node-operators) — Earn USDT by running a node
+- [Pricing details](/docs/pricing) — Full pricing breakdown

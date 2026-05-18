@@ -1,4 +1,7 @@
-# Settlement Architecture — On-Chain USDT Claims
+---
+title: "Settlement"
+description: "How Satelink settles node operator earnings on-chain with EIP-712 claims and the ClaimsContract on Polygon."
+---
 
 How Satelink settles node operator earnings on Polygon.
 

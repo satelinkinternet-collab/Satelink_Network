@@ -1,4 +1,7 @@
-# Node Operator Guide
+---
+title: "Node operators"
+description: "Run a Satelink node to earn 50% of RPC revenue in USDT on Polygon. Register, monitor, and claim earnings."
+---
 
 Earn USDT by running a Satelink node. Route RPC traffic and receive 50% of all revenue your node generates.
 

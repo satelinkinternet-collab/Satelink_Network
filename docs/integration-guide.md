@@ -1,4 +1,7 @@
-# Satelink Integration Guide
+---
+title: "Integration guide"
+description: "Point wallets, dApps, and machines to Satelink RPC endpoints, authenticate with API keys, and check pricing."
+---
 
 How to route traffic to Satelink (for machines and developers).
 
