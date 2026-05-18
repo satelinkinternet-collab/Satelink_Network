@@ -1,13 +1,12 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Satelink",
+  "name": "Satelink Network",
   "colors": {
     "primary": "#408A71",
     "light": "#5CB89A",
     "dark": "#2D6B55"
   },
-  "favicon": "/favicon.png",
   "navigation": {
     "groups": [
       {
@@ -41,10 +40,6 @@
       }
     ]
   },
-  "logo": {
-    "light": "/logo.svg",
-    "dark": "/logo.svg"
-  },
   "navbar": {
     "links": [
       {
@@ -69,5 +64,13 @@
     "posthog": {
       "apiKey": "phc_placeholder"
     }
+  },
+  "api": {
+    "playground": {
+      "proxy": false
+    }
+  },
+  "seo": {
+    "indexing": "navigable"
   }
 }
