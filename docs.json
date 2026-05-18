@@ -12,6 +12,7 @@
       {
         "group": "Getting Started",
         "pages": [
+          "docs/introduction",
           "docs/quick-start",
           "docs/pricing"
         ]
@@ -35,7 +36,7 @@
         "group": "Resources",
         "pages": [
           "docs/faq",
-          "docs/INTEGRATION_GUIDE"
+          "docs/integration-guide"
         ]
       }
     ]
