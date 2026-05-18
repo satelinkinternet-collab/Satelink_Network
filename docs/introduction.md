@@ -1,6 +1,6 @@
 ---
-title: "Introduction"
-description: "Satelink is a decentralized RPC network that routes Web3 traffic through community-run nodes and settles in USDT on Polygon."
+title: "Satelink: decentralized Web3 RPC with USDT payouts"
+description: "Satelink is a decentralized Web3 RPC network across Polygon, Ethereum, Arbitrum, and Base. Operators earn USDT for routing traffic."
 ---
 
 Satelink is a decentralized RPC network. Developers get reliable Web3 RPC across Polygon, Ethereum, Arbitrum, and Base, and node operators earn USDT for serving traffic.
