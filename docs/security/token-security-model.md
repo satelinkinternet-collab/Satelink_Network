@@ -1,3 +1,8 @@
+---
+title: "Token security model"
+description: "How Satelink hashes, scopes, audits, and replay-protects machine access tokens."
+---
+
 # Satelink Machine Access Token Security Model
 
 ## Core Rules

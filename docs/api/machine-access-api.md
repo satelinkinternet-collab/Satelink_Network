@@ -1,6 +1,13 @@
+---
+title: "Machine Access API"
+description: "Endpoint reference for the Satelink machine access control plane, observability plane, and action plane."
+---
+
 # Machine Access API
 
 Base path: `/machine-access/v1`
+
+For an introduction and quickstart, see [Machine access overview](/docs/machine-access).
 
 ## Admin Plane
 Protected by `x-satelink-admin-secret`

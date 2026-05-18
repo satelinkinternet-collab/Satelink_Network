@@ -25,6 +25,14 @@
         ]
       },
       {
+        "group": "Machine Access",
+        "pages": [
+          "docs/machine-access",
+          "docs/api/machine-access-api",
+          "docs/security/token-security-model"
+        ]
+      },
+      {
         "group": "Node Operators",
         "pages": [
           "docs/node-operators",
@@ -35,7 +43,7 @@
         "group": "Resources",
         "pages": [
           "docs/faq",
-          "docs/INTEGRATION_GUIDE"
+          "docs/integration-guide"
         ]
       }
     ]
