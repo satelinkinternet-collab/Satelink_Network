@@ -83,7 +83,7 @@ Response:
 
 ## Next Steps
 
-- [API Reference](/api-reference) — Full endpoint documentation
-- [SDK Integration](/sdk-guide) — JavaScript/TypeScript SDK
-- [Node Operator Guide](/node-operators) — Earn USDT by running a node
-- [Pricing Details](/pricing) — Full pricing breakdown
+- [API Reference](/docs/api-reference) — Full endpoint documentation
+- [SDK Integration](/docs/sdk-guide) — JavaScript/TypeScript SDK
+- [Node Operator Guide](/docs/node-operators) — Earn USDT by running a node
+- [Pricing Details](/docs/pricing) — Full pricing breakdown

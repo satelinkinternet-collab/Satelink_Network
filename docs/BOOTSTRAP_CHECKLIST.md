@@ -39,7 +39,7 @@ Step-by-step checklist to bring the network from zero to first external payout.
 - [x] PR merged — DONE
 
 ### Chainlist Registration (Mainnet)
-- [ ] Submit PR for Polygon Mainnet (137) — see [docs/chainlist_mainnet_pr.md](chainlist_mainnet_pr.md)
+- [ ] Submit PR for Polygon Mainnet (137) — see [docs/chainlist_mainnet_pr.md](./chainlist_mainnet_pr)
 - [ ] PR title: "Add Satelink public RPC for Polygon Mainnet (137)"
 - [ ] PR merged
 
@@ -104,7 +104,7 @@ Machines (DeFi bots, AI agents, indexers) find Satelink autonomously via these r
 
 ### Registry Submissions (do once — autonomous forever)
 - [x] Chainlist Amoy (80002): https://github.com/DefiLlama/chainlist — MERGED
-- [ ] Chainlist Mainnet (137): see [docs/chainlist_mainnet_pr.md](chainlist_mainnet_pr.md)
+- [ ] Chainlist Mainnet (137): see [docs/chainlist_mainnet_pr.md](./chainlist_mainnet_pr)
 - [x] dRPC provider: https://drpc.org/partners — SUBMITTED April 19
 - [ ] Ankr community: https://www.ankr.com/rpc/
 - [ ] Blast API: https://blastapi.io/
