@@ -1,49 +1,104 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Satelink DePIN Network Documentation - Build decentralized infrastructure with RPC, AI inference, and more">
   <title>Satelink Documentation</title>
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Highlight.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
   <style>
+    /* ═══════════════════════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES - SATELINK BRAND
+    ═══════════════════════════════════════════════════════════════ */
     :root {
-      --bg-primary: #0F172A;
-      --bg-secondary: #1E293B;
-      --bg-tertiary: #334155;
-      --bg-elevated: #1E293B;
-      --bg-hover: rgba(94, 184, 154, 0.08);
-      --bg-active: rgba(94, 184, 154, 0.12);
-
+      /* Core Brand */
+      --primary: #408A71;
       --accent: #5CB89A;
-      --accent-dark: #408A71;
-      --accent-glow: rgba(92, 184, 154, 0.15);
+      --accent-light: #7ECDB3;
 
-      --text-primary: #F1F5F9;
-      --text-secondary: #94A3B8;
-      --text-muted: #64748B;
+      /* Dark Theme (Default) */
+      --bg-primary: #0A0E14;
+      --bg-secondary: #1A1F2C;
+      --bg-elevated: #232936;
+      --bg-hover: rgba(92, 184, 154, 0.08);
+      --bg-active: rgba(92, 184, 154, 0.15);
 
-      --border: #334155;
-      --border-light: #475569;
+      --text-primary: #E6EDF3;
+      --text-secondary: #8B949E;
+      --text-muted: #6E7681;
 
-      --code-bg: #0D1117;
+      --border: #30363D;
+      --border-light: #484F58;
 
+      --code-bg: #161B22;
+      --code-text: #C9D1D9;
+
+      /* Gradients */
+      --gradient-primary: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+      --gradient-text: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+      --gradient-glow: linear-gradient(135deg, rgba(92, 184, 154, 0.4) 0%, rgba(64, 138, 113, 0.2) 100%);
+
+      /* Shadows */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+      --shadow-glow: 0 0 24px rgba(92, 184, 154, 0.2);
+      --shadow-glow-strong: 0 0 40px rgba(92, 184, 154, 0.35);
+
+      /* Layout */
       --sidebar-width: 280px;
+      --toc-width: 240px;
       --header-height: 64px;
+      --content-max-width: 800px;
 
+      /* Radii */
+      --radius-xs: 4px;
       --radius-sm: 6px;
       --radius-md: 8px;
       --radius-lg: 12px;
+      --radius-xl: 16px;
 
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-      --shadow-glow: 0 0 20px rgba(92, 184, 154, 0.15);
+      /* Transitions */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
     }
 
-    * {
+    /* Light Theme */
+    [data-theme="light"] {
+      --bg-primary: #FAFBFC;
+      --bg-secondary: #FFFFFF;
+      --bg-elevated: #F6F8FA;
+      --bg-hover: rgba(64, 138, 113, 0.08);
+      --bg-active: rgba(64, 138, 113, 0.15);
+
+      --text-primary: #1F2328;
+      --text-secondary: #57606A;
+      --text-muted: #8C959F;
+
+      --border: #D8DEE4;
+      --border-light: #AFB8C1;
+
+      --code-bg: #F6F8FA;
+      --code-text: #1F2328;
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+      --shadow-glow: 0 0 24px rgba(92, 184, 154, 0.15);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
@@ -51,15 +106,45 @@
 
     html {
       scroll-behavior: smooth;
+      scroll-padding-top: calc(var(--header-height) + 24px);
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.6;
+      font-size: 16px;
+      line-height: 1.7;
       color: var(--text-primary);
       background: var(--bg-primary);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CUSTOM SCROLLBAR
+    ═══════════════════════════════════════════════════════════════ */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+      transition: background 0.2s ease;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+
+    ::selection {
+      background: rgba(92, 184, 154, 0.3);
+      color: var(--text-primary);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -71,22 +156,25 @@
       left: 0;
       right: 0;
       height: var(--header-height);
-      background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background: rgba(10, 14, 20, 0.75);
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 24px;
-      z-index: 100;
+      z-index: 1000;
+      transition: background 0.3s var(--ease-out);
+    }
+
+    [data-theme="light"] .header {
+      background: rgba(250, 251, 252, 0.85);
     }
 
     .header-inner {
       display: flex;
       align-items: center;
-      width: 100%;
+      height: 100%;
       max-width: 1400px;
       margin: 0 auto;
+      padding: 0 24px;
     }
 
     .menu-btn {
@@ -97,7 +185,7 @@
       padding: 8px;
       cursor: pointer;
       margin-right: 16px;
-      transition: all 0.2s ease;
+      transition: all 0.2s var(--ease-out);
     }
 
     .menu-btn:hover {
@@ -109,6 +197,7 @@
       width: 20px;
       height: 20px;
       stroke: var(--text-secondary);
+      display: block;
     }
 
     .logo {
@@ -122,18 +211,26 @@
     .logo-mark {
       width: 36px;
       height: 36px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      background: var(--gradient-primary);
       border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
+      font-family: 'Space Mono', monospace;
       font-weight: 700;
       font-size: 18px;
       color: white;
       box-shadow: var(--shadow-glow);
+      transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+    }
+
+    .logo:hover .logo-mark {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-glow-strong);
     }
 
     .logo-text {
+      font-family: 'JetBrains Mono', monospace;
       font-weight: 600;
       font-size: 18px;
       letter-spacing: -0.02em;
@@ -142,9 +239,9 @@
     .logo-text span {
       color: var(--text-muted);
       font-weight: 400;
-      margin-left: 4px;
     }
 
+    /* Search */
     .search-wrapper {
       flex: 1;
       max-width: 480px;
@@ -165,7 +262,7 @@
       color: var(--text-primary);
       font-size: 14px;
       font-family: inherit;
-      transition: all 0.2s ease;
+      transition: all 0.2s var(--ease-out);
     }
 
     .search-input::placeholder {
@@ -175,8 +272,8 @@
     .search-input:focus {
       outline: none;
       border-color: var(--accent);
-      background: var(--bg-tertiary);
-      box-shadow: 0 0 0 3px var(--accent-glow);
+      background: var(--bg-elevated);
+      box-shadow: 0 0 0 3px rgba(92, 184, 154, 0.15);
     }
 
     .search-icon {
@@ -200,15 +297,16 @@
     }
 
     .search-kbd kbd {
-      background: var(--bg-tertiary);
+      background: var(--bg-elevated);
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       padding: 2px 6px;
       font-size: 11px;
-      font-family: inherit;
+      font-family: 'JetBrains Mono', monospace;
       color: var(--text-muted);
     }
 
+    /* Search Results */
     .search-results {
       position: absolute;
       top: calc(100% + 8px);
@@ -226,7 +324,7 @@
 
     .search-results.active {
       display: block;
-      animation: slideDown 0.15s ease;
+      animation: slideDown 0.15s var(--ease-out);
     }
 
     @keyframes slideDown {
@@ -245,7 +343,8 @@
       border-bottom: none;
     }
 
-    .search-result:hover {
+    .search-result:hover,
+    .search-result.focused {
       background: var(--bg-hover);
     }
 
@@ -261,6 +360,7 @@
       color: var(--text-muted);
     }
 
+    /* Header Nav */
     .header-nav {
       display: flex;
       align-items: center;
@@ -275,7 +375,7 @@
       font-weight: 500;
       padding: 8px 12px;
       border-radius: var(--radius-sm);
-      transition: all 0.2s ease;
+      transition: all 0.2s var(--ease-out);
     }
 
     .header-link:hover {
@@ -283,24 +383,60 @@
       background: var(--bg-hover);
     }
 
+    /* Theme Toggle */
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+      margin-right: 8px;
+    }
+
+    .theme-toggle:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--text-secondary);
+      display: block;
+    }
+
+    .theme-toggle .sun { display: none; }
+    .theme-toggle .moon { display: block; }
+    [data-theme="light"] .theme-toggle .sun { display: block; }
+    [data-theme="light"] .theme-toggle .moon { display: none; }
+
     .btn-primary {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      background: var(--gradient-primary);
       color: white;
       padding: 8px 16px;
       border-radius: var(--radius-md);
       text-decoration: none;
       font-size: 14px;
       font-weight: 500;
-      transition: all 0.2s ease;
+      transition: all 0.2s var(--ease-out);
       box-shadow: var(--shadow-sm);
     }
 
     .btn-primary:hover {
       transform: translateY(-1px);
       box-shadow: var(--shadow-glow), var(--shadow-md);
+    }
+
+    .btn-primary svg {
+      transition: transform 0.2s var(--ease-out);
+    }
+
+    .btn-primary:hover svg {
+      transform: translateX(2px);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -317,7 +453,7 @@
       overflow-y: auto;
       padding: 24px 0;
       z-index: 50;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s var(--ease-out);
     }
 
     .sidebar-overlay {
@@ -328,7 +464,7 @@
       backdrop-filter: blur(4px);
       z-index: 40;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s var(--ease-out);
     }
 
     .sidebar-overlay.open {
@@ -337,24 +473,69 @@
     }
 
     .nav-section {
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
     .nav-section-title {
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: var(--text-muted);
       padding: 0 24px;
       margin-bottom: 8px;
+    }
+
+    .nav-group {
+      margin-bottom: 4px;
+    }
+
+    .nav-group-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 10px 24px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-group-toggle:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    .nav-group-toggle svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      transition: transform 0.2s var(--ease-out);
+    }
+
+    .nav-group.collapsed .nav-group-toggle svg {
+      transform: rotate(-90deg);
+    }
+
+    .nav-group-items {
+      overflow: hidden;
+      transition: max-height 0.3s var(--ease-out);
+    }
+
+    .nav-group.collapsed .nav-group-items {
+      max-height: 0 !important;
     }
 
     .nav-link {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 24px;
+      padding: 10px 24px 10px 40px;
       color: var(--text-secondary);
       text-decoration: none;
       font-size: 14px;
@@ -375,10 +556,15 @@
     }
 
     .nav-link svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       stroke: currentColor;
       opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    .nav-link.active svg {
+      opacity: 1;
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -394,39 +580,108 @@
 
     .content-wrapper {
       flex: 1;
+      display: flex;
       padding: 48px;
+      gap: 48px;
     }
 
     .content {
-      max-width: 768px;
-      margin: 0 auto;
+      flex: 1;
+      max-width: var(--content-max-width);
+      min-width: 0;
     }
 
-    .loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 300px;
-      gap: 16px;
+    /* Table of Contents */
+    .toc {
+      width: var(--toc-width);
+      flex-shrink: 0;
+      position: sticky;
+      top: calc(var(--header-height) + 48px);
+      max-height: calc(100vh - var(--header-height) - 96px);
+      overflow-y: auto;
     }
 
-    .loading-spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .loading-text {
+    .toc-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       color: var(--text-muted);
-      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .toc-list {
+      list-style: none;
+    }
+
+    .toc-item {
+      margin-bottom: 4px;
+    }
+
+    .toc-link {
+      display: block;
+      padding: 6px 12px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+      line-height: 1.4;
+    }
+
+    .toc-link:hover {
+      color: var(--text-secondary);
+      border-left-color: var(--border);
+    }
+
+    .toc-link.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    .toc-link.level-3 {
+      padding-left: 24px;
+      font-size: 12px;
+    }
+
+    /* Loading Skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-elevated) 50%, var(--bg-secondary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .skeleton-title {
+      height: 40px;
+      width: 60%;
+      margin-bottom: 16px;
+    }
+
+    .skeleton-subtitle {
+      height: 24px;
+      width: 80%;
+      margin-bottom: 32px;
+    }
+
+    .skeleton-line {
+      height: 16px;
+      margin-bottom: 12px;
+    }
+
+    .skeleton-line:nth-child(odd) { width: 100%; }
+    .skeleton-line:nth-child(even) { width: 85%; }
+
+    .skeleton-code {
+      height: 160px;
+      margin: 24px 0;
+      border-radius: var(--radius-lg);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -438,12 +693,12 @@
     }
 
     .markdown h1 {
-      font-size: 36px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 40px;
       font-weight: 700;
       letter-spacing: -0.03em;
       margin-bottom: 16px;
-      color: var(--text-primary);
-      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+      background: var(--gradient-text);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -457,20 +712,28 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .markdown h2 {
-      font-size: 24px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-top: 48px;
-      margin-bottom: 16px;
-      color: var(--text-primary);
+    .markdown h2,
+    .markdown h3,
+    .markdown h4 {
+      position: relative;
       scroll-margin-top: calc(var(--header-height) + 24px);
     }
 
-    .markdown h3 {
-      font-size: 18px;
+    .markdown h2 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 26px;
       font-weight: 600;
-      margin-top: 32px;
+      letter-spacing: -0.02em;
+      margin-top: 56px;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .markdown h3 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: 40px;
       margin-bottom: 12px;
       color: var(--text-primary);
     }
@@ -478,9 +741,26 @@
     .markdown h4 {
       font-size: 16px;
       font-weight: 600;
-      margin-top: 24px;
+      margin-top: 28px;
       margin-bottom: 8px;
       color: var(--text-primary);
+    }
+
+    /* Anchor Links */
+    .heading-anchor {
+      position: absolute;
+      left: -24px;
+      opacity: 0;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 400;
+      transition: opacity 0.2s ease;
+    }
+
+    .markdown h2:hover .heading-anchor,
+    .markdown h3:hover .heading-anchor,
+    .markdown h4:hover .heading-anchor {
+      opacity: 1;
     }
 
     .markdown p {
@@ -496,7 +776,6 @@
     }
 
     .markdown a:hover {
-      opacity: 0.8;
       text-decoration: underline;
     }
 
@@ -532,15 +811,18 @@
       color: var(--text-secondary);
     }
 
+    /* Inline Code */
     .markdown code {
-      font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
+      font-family: 'Fira Code', 'JetBrains Mono', monospace;
       font-size: 0.875em;
-      background: var(--bg-tertiary);
+      font-feature-settings: "liga" 1;
+      background: var(--bg-elevated);
       padding: 3px 8px;
-      border-radius: 4px;
+      border-radius: var(--radius-xs);
       color: var(--accent);
     }
 
+    /* Code Blocks */
     .markdown pre {
       position: relative;
       margin: 24px 0;
@@ -553,18 +835,38 @@
     .markdown pre code {
       display: block;
       padding: 20px 24px;
+      padding-left: 56px;
       background: transparent;
-      color: var(--text-primary);
+      color: var(--code-text);
       font-size: 14px;
       line-height: 1.7;
       overflow-x: auto;
+      counter-reset: line;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-lang {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
     }
 
     .copy-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: var(--bg-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 6px 10px;
@@ -572,12 +874,7 @@
       font-family: inherit;
       color: var(--text-muted);
       cursor: pointer;
-      opacity: 0;
-      transition: all 0.2s ease;
-    }
-
-    .markdown pre:hover .copy-btn {
-      opacity: 1;
+      transition: all 0.2s var(--ease-out);
     }
 
     .copy-btn:hover {
@@ -591,6 +888,35 @@
       border-color: var(--accent);
     }
 
+    .copy-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+    }
+
+    /* Line Numbers */
+    .line-numbers {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 48px;
+      padding: 20px 12px;
+      text-align: right;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.15);
+      border-right: 1px solid var(--border);
+      user-select: none;
+    }
+
+    .line-numbers span {
+      display: block;
+    }
+
+    /* Tables */
     .markdown table {
       width: 100%;
       margin: 24px 0;
@@ -631,35 +957,430 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════
+       CODE PLAYGROUND
+    ═══════════════════════════════════════════════════════════════ */
+    .playground {
+      margin: 24px 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--code-bg);
+    }
+
+    .playground-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .playground-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .playground-title svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--accent);
+    }
+
+    .playground-run {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--gradient-primary);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .playground-run:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .playground-run:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .playground-run svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    .playground-editor {
+      padding: 16px;
+      min-height: 120px;
+    }
+
+    .playground-editor textarea {
+      width: 100%;
+      min-height: 100px;
+      background: transparent;
+      border: none;
+      color: var(--code-text);
+      font-family: 'Fira Code', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+    }
+
+    .playground-output {
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .playground-output-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .playground-output pre {
+      margin: 0;
+      font-family: 'Fira Code', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .playground-output.success pre {
+      color: var(--accent);
+    }
+
+    .playground-output.error pre {
+      color: #F97583;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       AI HELPER CHATBOT
+    ═══════════════════════════════════════════════════════════════ */
+    .ai-helper {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+    }
+
+    .ai-helper-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--gradient-primary);
+      border: none;
+      border-radius: 50px;
+      padding: 14px 20px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-lg), var(--shadow-glow);
+      transition: all 0.3s var(--ease-out);
+    }
+
+    .ai-helper-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg), var(--shadow-glow-strong);
+    }
+
+    .ai-helper-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .ai-helper-btn .pulse {
+      position: absolute;
+      inset: 0;
+      border-radius: 50px;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+      z-index: -1;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 0.3; }
+    }
+
+    .ai-chat {
+      position: absolute;
+      bottom: 64px;
+      right: 0;
+      width: 400px;
+      height: 520px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: slideUp 0.3s var(--ease-out);
+    }
+
+    .ai-chat.open {
+      display: flex;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .ai-chat-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .ai-chat-title svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--accent);
+    }
+
+    .ai-chat-close {
+      background: transparent;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+    }
+
+    .ai-chat-close:hover {
+      color: var(--text-primary);
+    }
+
+    .ai-chat-close svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+    }
+
+    .ai-chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .ai-message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .ai-message.assistant {
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      align-self: flex-start;
+      border-bottom-left-radius: var(--radius-xs);
+    }
+
+    .ai-message.user {
+      background: var(--gradient-primary);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: var(--radius-xs);
+    }
+
+    .ai-message code {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 2px 6px;
+      border-radius: var(--radius-xs);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9em;
+    }
+
+    .ai-typing {
+      display: flex;
+      gap: 4px;
+      padding: 16px;
+      align-self: flex-start;
+    }
+
+    .ai-typing span {
+      width: 8px;
+      height: 8px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: typing 1.4s infinite;
+    }
+
+    .ai-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    .ai-chat-input {
+      display: flex;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .ai-chat-input input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .ai-chat-input input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(92, 184, 154, 0.15);
+    }
+
+    .ai-chat-input input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .ai-chat-send {
+      background: var(--gradient-primary);
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .ai-chat-send:hover {
+      transform: scale(1.05);
+    }
+
+    .ai-chat-send:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .ai-chat-send svg {
+      width: 18px;
+      height: 18px;
+      stroke: white;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
        FOOTER
     ═══════════════════════════════════════════════════════════════ */
     .footer {
       background: var(--bg-secondary);
       border-top: 1px solid var(--border);
-      padding: 32px 48px;
-      margin-left: var(--sidebar-width);
+      padding: 48px;
     }
 
     .footer-inner {
-      max-width: 768px;
+      max-width: 1200px;
       margin: 0 auto;
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+      gap: 48px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .footer-brand {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .footer-brand-logo {
+      display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 24px;
+      gap: 12px;
+    }
+
+    .footer-brand-logo .logo-mark {
+      width: 32px;
+      height: 32px;
+      font-size: 14px;
+    }
+
+    .footer-brand-logo span {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .footer-tagline {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 280px;
+    }
+
+    .footer-section h4 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
     }
 
     .footer-links {
+      list-style: none;
       display: flex;
-      gap: 24px;
+      flex-direction: column;
+      gap: 10px;
     }
 
     .footer-link {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       text-decoration: none;
       font-size: 14px;
       transition: color 0.2s ease;
@@ -669,38 +1390,257 @@
       color: var(--accent);
     }
 
-    .footer-link svg {
-      width: 18px;
-      height: 18px;
+    /* Newsletter */
+    .newsletter-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    .footer-brand {
+    .newsletter-input-group {
       display: flex;
+      gap: 8px;
+    }
+
+    .newsletter-input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .newsletter-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .newsletter-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .newsletter-submit {
+      background: var(--gradient-primary);
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .newsletter-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .newsletter-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Footer Bottom */
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 12px;
+      padding-top: 32px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-copyright {
       color: var(--text-muted);
       font-size: 14px;
     }
 
-    .footer-logo {
-      width: 24px;
-      height: 24px;
-      background: var(--accent);
-      border-radius: 4px;
+    .footer-copyright a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .footer-social {
+      display: flex;
+      gap: 12px;
+    }
+
+    .footer-social-link {
+      width: 36px;
+      height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-weight: 700;
-      font-size: 12px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      transition: all 0.2s var(--ease-out);
+    }
+
+    .footer-social-link:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .footer-social-link svg {
+      width: 18px;
+      height: 18px;
     }
 
     /* ═══════════════════════════════════════════════════════════════
-       MOBILE RESPONSIVE
+       COMMAND PALETTE
     ═══════════════════════════════════════════════════════════════ */
+    .command-palette-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 120px;
+    }
+
+    .command-palette-overlay.open {
+      display: flex;
+      animation: fadeIn 0.15s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .command-palette {
+      width: 560px;
+      max-height: 400px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      animation: scaleIn 0.2s var(--ease-out);
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .command-palette-input {
+      width: 100%;
+      padding: 20px 24px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: inherit;
+    }
+
+    .command-palette-input:focus {
+      outline: none;
+    }
+
+    .command-palette-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .command-palette-results {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .command-palette-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .command-palette-item:hover,
+    .command-palette-item.focused {
+      background: var(--bg-hover);
+    }
+
+    .command-palette-item svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .command-palette-item-text {
+      flex: 1;
+    }
+
+    .command-palette-item-title {
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .command-palette-item-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .command-palette-kbd {
+      display: flex;
+      gap: 4px;
+    }
+
+    .command-palette-kbd kbd {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      padding: 2px 6px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════════ */
+    @media (max-width: 1400px) {
+      .toc {
+        display: none;
+      }
+
+      .footer-top {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      .footer-brand {
+        grid-column: 1 / -1;
+      }
+    }
+
     @media (max-width: 1024px) {
       .search-kbd {
         display: none;
+      }
+
+      .header-link {
+        display: none;
+      }
+
+      .footer-top {
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
       }
     }
 
@@ -710,10 +1650,6 @@
       }
 
       .search-wrapper {
-        display: none;
-      }
-
-      .header-link {
         display: none;
       }
 
@@ -729,11 +1665,6 @@
         margin-left: 0;
       }
 
-      .footer {
-        margin-left: 0;
-        padding: 24px;
-      }
-
       .content-wrapper {
         padding: 24px;
       }
@@ -743,41 +1674,33 @@
       }
 
       .markdown h2 {
-        font-size: 20px;
-        margin-top: 32px;
+        font-size: 22px;
+        margin-top: 40px;
       }
 
-      .footer-inner {
+      .ai-chat {
+        width: calc(100vw - 48px);
+        right: -12px;
+        max-width: 400px;
+      }
+
+      .footer {
+        padding: 32px 24px;
+      }
+
+      .footer-top {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-bottom {
         flex-direction: column;
         text-align: center;
       }
-    }
 
-    /* ═══════════════════════════════════════════════════════════════
-       SCROLLBAR
-    ═══════════════════════════════════════════════════════════════ */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--border-light);
-    }
-
-    /* Selection */
-    ::selection {
-      background: var(--accent-glow);
-      color: var(--text-primary);
+      .command-palette {
+        width: calc(100vw - 32px);
+        margin: 0 16px;
+      }
     }
   </style>
 </head>
@@ -795,7 +1718,7 @@
 
       <a href="#" class="logo" onclick="loadDoc('readme'); return false;">
         <div class="logo-mark">S</div>
-        <div class="logo-text">Satelink<span>Docs</span></div>
+        <div class="logo-text">Satelink<span> Docs</span></div>
       </a>
 
       <div class="search-wrapper">
@@ -804,18 +1727,36 @@
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" class="search-input" id="searchInput" placeholder="Search docs..." autocomplete="off">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search documentation..." autocomplete="off">
           <div class="search-kbd">
-            <kbd>⌘</kbd><kbd>K</kbd>
+            <kbd>/</kbd>
           </div>
           <div class="search-results" id="searchResults"></div>
         </div>
       </div>
 
       <nav class="header-nav">
-        <a href="https://app.satelink.network" class="header-link">Dashboard</a>
-        <a href="https://github.com/Satelink-Protocol/Satelink_Network" class="header-link">GitHub</a>
-        <a href="https://app.satelink.network/satelink/os/plans" class="btn-primary">
+        <a href="https://status.satelink.network" class="header-link" target="_blank">Status</a>
+        <a href="https://github.com/Satelink-Protocol/Satelink_Network" class="header-link" target="_blank">GitHub</a>
+
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <a href="https://app.satelink.network/satelink/os/plans" class="btn-primary" target="_blank">
           Get API Key
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -847,26 +1788,36 @@
     </div>
 
     <div class="nav-section">
-      <div class="nav-section-title">API Reference</div>
-      <a href="#" class="nav-link" data-doc="api-reference">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        API Reference
-      </a>
-      <a href="#" class="nav-link" data-doc="sdk-guide">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-        SDK Guide
-      </a>
+      <div class="nav-section-title">Core Concepts</div>
+      <div class="nav-group">
+        <a href="#" class="nav-link" data-doc="api-reference">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          API Reference
+        </a>
+        <a href="#" class="nav-link" data-doc="sdk-guide">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          SDK Guide
+        </a>
+        <a href="#" class="nav-link" data-doc="authentication">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Authentication
+        </a>
+      </div>
     </div>
 
     <div class="nav-section">
       <div class="nav-section-title">Node Operators</div>
       <a href="#" class="nav-link" data-doc="node-operators">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        Node Operators
+        Running a Node
       </a>
       <a href="#" class="nav-link" data-doc="settlement">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         Settlement
+      </a>
+      <a href="#" class="nav-link" data-doc="rewards">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        Rewards
       </a>
     </div>
 
@@ -880,6 +1831,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         Integration Guide
       </a>
+      <a href="#" class="nav-link" data-doc="changelog">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Changelog
+      </a>
     </div>
   </aside>
 
@@ -888,59 +1843,214 @@
     <div class="content-wrapper">
       <article class="content">
         <div id="markdownContent" class="markdown">
-          <div class="loading">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Loading documentation...</div>
-          </div>
+          <!-- Loading Skeleton -->
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-subtitle"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-code"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
         </div>
       </article>
+
+      <!-- Table of Contents -->
+      <nav class="toc" id="toc">
+        <div class="toc-title">On this page</div>
+        <ul class="toc-list" id="tocList"></ul>
+      </nav>
     </div>
 
     <!-- Footer -->
     <footer class="footer">
       <div class="footer-inner">
-        <div class="footer-links">
-          <a href="https://github.com/Satelink-Protocol/Satelink_Network" class="footer-link" target="_blank">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHub
-          </a>
-          <a href="https://twitter.com/satelinknet" class="footer-link" target="_blank">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-            Twitter
-          </a>
-          <a href="https://discord.gg/satelink" class="footer-link" target="_blank">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-            Discord
-          </a>
+        <div class="footer-top">
+          <div class="footer-brand">
+            <div class="footer-brand-logo">
+              <div class="logo-mark">S</div>
+              <span>Satelink</span>
+            </div>
+            <p class="footer-tagline">
+              Decentralized infrastructure for the next generation of applications.
+              Monetize idle hardware with real workloads.
+            </p>
+          </div>
+
+          <div class="footer-section">
+            <h4>Documentation</h4>
+            <ul class="footer-links">
+              <li><a href="#" class="footer-link" onclick="loadDoc('quick-start'); return false;">Quick Start</a></li>
+              <li><a href="#" class="footer-link" onclick="loadDoc('api-reference'); return false;">API Reference</a></li>
+              <li><a href="#" class="footer-link" onclick="loadDoc('sdk-guide'); return false;">SDK Guide</a></li>
+              <li><a href="#" class="footer-link" onclick="loadDoc('faq'); return false;">FAQ</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-section">
+            <h4>Platform</h4>
+            <ul class="footer-links">
+              <li><a href="https://app.satelink.network" class="footer-link" target="_blank">Dashboard</a></li>
+              <li><a href="https://status.satelink.network" class="footer-link" target="_blank">Status</a></li>
+              <li><a href="#" class="footer-link" onclick="loadDoc('changelog'); return false;">Changelog</a></li>
+              <li><a href="https://blog.satelink.network" class="footer-link" target="_blank">Blog</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-section">
+            <h4>Community</h4>
+            <ul class="footer-links">
+              <li><a href="https://github.com/Satelink-Protocol/Satelink_Network" class="footer-link" target="_blank">GitHub</a></li>
+              <li><a href="https://discord.gg/satelink" class="footer-link" target="_blank">Discord</a></li>
+              <li><a href="https://twitter.com/satelinknet" class="footer-link" target="_blank">Twitter</a></li>
+              <li><a href="https://t.me/satelink" class="footer-link" target="_blank">Telegram</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-section">
+            <h4>Stay Updated</h4>
+            <form class="newsletter-form" onsubmit="handleNewsletter(event)">
+              <div class="newsletter-input-group">
+                <input type="email" class="newsletter-input" placeholder="your@email.com" required>
+                <button type="submit" class="newsletter-submit">Subscribe</button>
+              </div>
+              <p class="newsletter-hint">Get notified about new features and updates.</p>
+            </form>
+          </div>
         </div>
-        <div class="footer-brand">
-          <div class="footer-logo">S</div>
-          Satelink Network
+
+        <div class="footer-bottom">
+          <p class="footer-copyright">
+            © 2026 <a href="https://satelink.network">Satelink Network</a>. Built with ❤️ for decentralization.
+          </p>
+          <div class="footer-social">
+            <a href="https://github.com/Satelink-Protocol/Satelink_Network" class="footer-social-link" target="_blank" aria-label="GitHub">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            </a>
+            <a href="https://twitter.com/satelinknet" class="footer-social-link" target="_blank" aria-label="Twitter">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+            <a href="https://discord.gg/satelink" class="footer-social-link" target="_blank" aria-label="Discord">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+            </a>
+            <a href="https://t.me/satelink" class="footer-social-link" target="_blank" aria-label="Telegram">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            </a>
+          </div>
         </div>
       </div>
     </footer>
   </main>
 
+  <!-- AI Helper -->
+  <div class="ai-helper">
+    <button class="ai-helper-btn" onclick="toggleAiChat()" aria-label="Ask AI">
+      <span class="pulse"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5z"/>
+        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+      </svg>
+      Ask AI
+    </button>
+
+    <div class="ai-chat" id="aiChat">
+      <div class="ai-chat-header">
+        <div class="ai-chat-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+          Satelink AI Assistant
+        </div>
+        <button class="ai-chat-close" onclick="toggleAiChat()" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="ai-chat-messages" id="aiMessages">
+        <div class="ai-message assistant">
+          Hi! I'm the Satelink AI assistant. I can help you with:
+          <br><br>
+          • Understanding the API
+          <br>• Running code examples
+          <br>• Troubleshooting issues
+          <br>• Finding documentation
+          <br><br>
+          What would you like to know?
+        </div>
+      </div>
+
+      <div class="ai-chat-input">
+        <input type="text" id="aiInput" placeholder="Ask anything about Satelink..." onkeypress="handleAiKeypress(event)">
+        <button class="ai-chat-send" onclick="sendAiMessage()" aria-label="Send">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command Palette -->
+  <div class="command-palette-overlay" id="commandPalette" onclick="closeCommandPalette(event)">
+    <div class="command-palette" onclick="event.stopPropagation()">
+      <input type="text" class="command-palette-input" id="commandInput" placeholder="Search docs, jump to page..." autocomplete="off" oninput="filterCommands(this.value)">
+      <div class="command-palette-results" id="commandResults"></div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
+    // ═══════════════════════════════════════════════════════════════
+    // CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════
     const docs = [
       { id: 'readme', title: 'Introduction', group: 'Getting Started', file: './readme.md' },
       { id: 'quick-start', title: 'Quick Start', group: 'Getting Started', file: './quick-start.md' },
       { id: 'pricing', title: 'Pricing', group: 'Getting Started', file: './pricing.md' },
-      { id: 'api-reference', title: 'API Reference', group: 'API Reference', file: './api-reference.md' },
-      { id: 'sdk-guide', title: 'SDK Guide', group: 'API Reference', file: './sdk-guide.md' },
-      { id: 'node-operators', title: 'Node Operators', group: 'Node Operators', file: './node-operators.md' },
+      { id: 'api-reference', title: 'API Reference', group: 'Core Concepts', file: './api-reference.md' },
+      { id: 'sdk-guide', title: 'SDK Guide', group: 'Core Concepts', file: './sdk-guide.md' },
+      { id: 'authentication', title: 'Authentication', group: 'Core Concepts', file: './authentication.md' },
+      { id: 'node-operators', title: 'Running a Node', group: 'Node Operators', file: './node-operators.md' },
       { id: 'settlement', title: 'Settlement', group: 'Node Operators', file: './settlement.md' },
+      { id: 'rewards', title: 'Rewards', group: 'Node Operators', file: './rewards.md' },
       { id: 'faq', title: 'FAQ', group: 'Resources', file: './faq.md' },
-      { id: 'integration-guide', title: 'Integration Guide', group: 'Resources', file: './integration-guide.md' }
+      { id: 'integration-guide', title: 'Integration Guide', group: 'Resources', file: './integration-guide.md' },
+      { id: 'changelog', title: 'Changelog', group: 'Resources', file: './changelog.md' }
     ];
 
     let docCache = {};
     let currentDoc = 'readme';
+    let commandPaletteIndex = 0;
 
-    // Configure marked
+    // ═══════════════════════════════════════════════════════════════
+    // THEME MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════
+    function initTheme() {
+      const saved = localStorage.getItem('satelink-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('satelink-theme', next);
+    }
+
+    initTheme();
+
+    // ═══════════════════════════════════════════════════════════════
+    // MARKDOWN CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════
     marked.setOptions({
       highlight: (code, lang) => {
         if (lang && hljs.getLanguage(lang)) {
@@ -952,7 +2062,23 @@
       gfm: true
     });
 
-    // Load document
+    // Custom renderer for anchor links
+    const renderer = new marked.Renderer();
+    const originalHeading = renderer.heading.bind(renderer);
+
+    renderer.heading = function(text, level, raw) {
+      const slug = raw.toLowerCase().replace(/[^\w]+/g, '-');
+      if (level >= 2 && level <= 4) {
+        return `<h${level} id="${slug}"><a href="#${slug}" class="heading-anchor">#</a>${text}</h${level}>`;
+      }
+      return `<h${level}>${text}</h${level}>`;
+    };
+
+    marked.use({ renderer });
+
+    // ═══════════════════════════════════════════════════════════════
+    // DOCUMENT LOADING
+    // ═══════════════════════════════════════════════════════════════
     async function loadDoc(docId) {
       const doc = docs.find(d => d.id === docId);
       if (!doc) return;
@@ -963,8 +2089,18 @@
 
       const container = document.getElementById('markdownContent');
 
+      // Show skeleton if not cached
       if (!docCache[docId]) {
-        container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>';
+        container.innerHTML = `
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-subtitle"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-code"></div>
+          <div class="skeleton skeleton-line"></div>
+          <div class="skeleton skeleton-line"></div>
+        `;
       }
 
       try {
@@ -975,42 +2111,145 @@
         }
 
         container.innerHTML = marked.parse(docCache[docId]);
-        addCopyButtons();
+        processCodeBlocks();
+        buildToc();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         history.pushState(null, '', '#' + docId);
+        localStorage.setItem('satelink-last-doc', docId);
       } catch (err) {
-        container.innerHTML = `<h1>Document Not Found</h1><p>Could not load <code>${doc.file}</code></p>`;
+        container.innerHTML = `
+          <h1>Document Not Found</h1>
+          <p>Could not load <code>${doc.file}</code>. The file may not exist yet.</p>
+          <p><a href="#" onclick="loadDoc('readme'); return false;">Return to Introduction</a></p>
+        `;
+        document.getElementById('tocList').innerHTML = '';
       }
     }
 
-    // Add copy buttons
-    function addCopyButtons() {
+    // ═══════════════════════════════════════════════════════════════
+    // CODE BLOCK PROCESSING
+    // ═══════════════════════════════════════════════════════════════
+    function processCodeBlocks() {
       document.querySelectorAll('.markdown pre').forEach(pre => {
-        const btn = document.createElement('button');
-        btn.className = 'copy-btn';
-        btn.textContent = 'Copy';
-        btn.onclick = async () => {
-          const code = pre.querySelector('code')?.textContent || pre.textContent;
-          await navigator.clipboard.writeText(code);
-          btn.textContent = 'Copied!';
-          btn.classList.add('copied');
-          setTimeout(() => {
-            btn.textContent = 'Copy';
-            btn.classList.remove('copied');
-          }, 2000);
-        };
-        pre.appendChild(btn);
+        const code = pre.querySelector('code');
+        if (!code) return;
+
+        // Detect language
+        const classes = code.className.split(' ');
+        const langClass = classes.find(c => c.startsWith('language-'));
+        const lang = langClass ? langClass.replace('language-', '') : 'plaintext';
+
+        // Count lines
+        const lines = code.textContent.split('\n');
+        const lineCount = lines.length - (lines[lines.length - 1] === '' ? 1 : 0);
+
+        // Create line numbers
+        const lineNumbers = document.createElement('div');
+        lineNumbers.className = 'line-numbers';
+        lineNumbers.innerHTML = Array.from({ length: lineCount }, (_, i) => `<span>${i + 1}</span>`).join('');
+
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'code-header';
+        header.innerHTML = `
+          <span class="code-lang">${lang}</span>
+          <button class="copy-btn" onclick="copyCode(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            Copy
+          </button>
+        `;
+
+        // Wrap code content
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        wrapper.appendChild(lineNumbers);
+        wrapper.appendChild(code.cloneNode(true));
+
+        pre.innerHTML = '';
+        pre.appendChild(header);
+        pre.appendChild(wrapper);
       });
     }
 
-    // Update navigation
+    async function copyCode(btn) {
+      const pre = btn.closest('pre');
+      const code = pre.querySelector('code')?.textContent || '';
+
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Copied!
+        `;
+        btn.classList.add('copied');
+
+        setTimeout(() => {
+          btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            Copy
+          `;
+          btn.classList.remove('copied');
+        }, 2000);
+      } catch (err) {
+        console.error('Copy failed:', err);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // TABLE OF CONTENTS
+    // ═══════════════════════════════════════════════════════════════
+    function buildToc() {
+      const tocList = document.getElementById('tocList');
+      const headings = document.querySelectorAll('.markdown h2, .markdown h3');
+
+      if (headings.length === 0) {
+        tocList.innerHTML = '';
+        return;
+      }
+
+      const items = Array.from(headings).map(h => ({
+        text: h.textContent.replace('#', '').trim(),
+        id: h.id,
+        level: h.tagName.toLowerCase()
+      }));
+
+      tocList.innerHTML = items.map(item => `
+        <li class="toc-item">
+          <a href="#${item.id}" class="toc-link level-${item.level.slice(1)}">${item.text}</a>
+        </li>
+      `).join('');
+
+      // Intersection observer for active state
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            document.querySelectorAll('.toc-link').forEach(link => link.classList.remove('active'));
+            const activeLink = document.querySelector(`.toc-link[href="#${entry.target.id}"]`);
+            if (activeLink) activeLink.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-80px 0px -80% 0px' });
+
+      headings.forEach(h => observer.observe(h));
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // NAVIGATION
+    // ═══════════════════════════════════════════════════════════════
     function updateNav() {
       document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.toggle('active', link.dataset.doc === currentDoc);
       });
     }
 
-    // Sidebar toggle
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -1021,78 +2260,331 @@
       document.getElementById('sidebarOverlay').classList.remove('open');
     }
 
-    // Search
+    // Nav link clicks
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        loadDoc(link.dataset.doc);
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // SEARCH
+    // ═══════════════════════════════════════════════════════════════
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
+    let searchIndex = -1;
 
-    searchInput.addEventListener('input', async (e) => {
+    searchInput.addEventListener('input', async e => {
       const query = e.target.value.toLowerCase().trim();
       if (query.length < 2) {
         searchResults.classList.remove('active');
         return;
       }
 
-      // Preload docs
+      // Preload all docs
       await Promise.all(docs.map(async doc => {
         if (!docCache[doc.id]) {
           try {
             const res = await fetch(doc.file);
             docCache[doc.id] = await res.text();
-          } catch (e) {
+          } catch {
             docCache[doc.id] = '';
           }
         }
       }));
 
       const results = docs.filter(doc => {
-        const content = docCache[doc.id]?.toLowerCase() || '';
+        const content = (docCache[doc.id] || '').toLowerCase();
         return doc.title.toLowerCase().includes(query) || content.includes(query);
       });
 
       if (results.length) {
-        searchResults.innerHTML = results.map(doc => `
-          <div class="search-result" onclick="loadDoc('${doc.id}'); searchResults.classList.remove('active'); searchInput.value = '';">
+        searchResults.innerHTML = results.map((doc, i) => `
+          <div class="search-result${i === 0 ? ' focused' : ''}" data-index="${i}" onclick="selectSearchResult('${doc.id}')">
             <div class="search-result-title">${doc.title}</div>
             <div class="search-result-group">${doc.group}</div>
           </div>
         `).join('');
+        searchIndex = 0;
       } else {
-        searchResults.innerHTML = '<div class="search-result"><div class="search-result-title">No results</div></div>';
+        searchResults.innerHTML = '<div class="search-result"><div class="search-result-title">No results found</div></div>';
+        searchIndex = -1;
       }
+
       searchResults.classList.add('active');
     });
 
-    // Close search on outside click
-    document.addEventListener('click', (e) => {
+    searchInput.addEventListener('keydown', e => {
+      const results = searchResults.querySelectorAll('.search-result[data-index]');
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        searchIndex = Math.min(searchIndex + 1, results.length - 1);
+        updateSearchFocus(results);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        searchIndex = Math.max(searchIndex - 1, 0);
+        updateSearchFocus(results);
+      } else if (e.key === 'Enter' && searchIndex >= 0) {
+        const focused = results[searchIndex];
+        if (focused) {
+          const docId = docs[parseInt(focused.dataset.index)]?.id;
+          if (docId) selectSearchResult(docId);
+        }
+      } else if (e.key === 'Escape') {
+        searchResults.classList.remove('active');
+        searchInput.blur();
+      }
+    });
+
+    function updateSearchFocus(results) {
+      results.forEach((r, i) => r.classList.toggle('focused', i === searchIndex));
+    }
+
+    function selectSearchResult(docId) {
+      loadDoc(docId);
+      searchResults.classList.remove('active');
+      searchInput.value = '';
+    }
+
+    document.addEventListener('click', e => {
       if (!e.target.closest('.search-box')) {
         searchResults.classList.remove('active');
       }
     });
 
-    // Keyboard shortcut
-    document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    // ═══════════════════════════════════════════════════════════════
+    // COMMAND PALETTE
+    // ═══════════════════════════════════════════════════════════════
+    function openCommandPalette() {
+      document.getElementById('commandPalette').classList.add('open');
+      const input = document.getElementById('commandInput');
+      input.value = '';
+      input.focus();
+      filterCommands('');
+    }
+
+    function closeCommandPalette(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('commandPalette').classList.remove('open');
+    }
+
+    function filterCommands(query) {
+      const q = query.toLowerCase();
+      const results = docs.filter(doc =>
+        doc.title.toLowerCase().includes(q) ||
+        doc.group.toLowerCase().includes(q)
+      );
+
+      const container = document.getElementById('commandResults');
+      container.innerHTML = results.map((doc, i) => `
+        <div class="command-palette-item${i === 0 ? ' focused' : ''}" data-index="${i}" onclick="selectCommand('${doc.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <div class="command-palette-item-text">
+            <div class="command-palette-item-title">${doc.title}</div>
+            <div class="command-palette-item-desc">${doc.group}</div>
+          </div>
+        </div>
+      `).join('');
+
+      commandPaletteIndex = 0;
+    }
+
+    function selectCommand(docId) {
+      loadDoc(docId);
+      document.getElementById('commandPalette').classList.remove('open');
+    }
+
+    document.getElementById('commandInput').addEventListener('keydown', e => {
+      const results = document.querySelectorAll('.command-palette-item');
+
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
-        searchInput.focus();
+        commandPaletteIndex = Math.min(commandPaletteIndex + 1, results.length - 1);
+        results.forEach((r, i) => r.classList.toggle('focused', i === commandPaletteIndex));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        commandPaletteIndex = Math.max(commandPaletteIndex - 1, 0);
+        results.forEach((r, i) => r.classList.toggle('focused', i === commandPaletteIndex));
+      } else if (e.key === 'Enter') {
+        const focused = results[commandPaletteIndex];
+        if (focused) focused.click();
+      } else if (e.key === 'Escape') {
+        closeCommandPalette({ target: document.getElementById('commandPalette'), currentTarget: document.getElementById('commandPalette') });
       }
     });
 
-    // Nav clicks
-    document.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadDoc(link.dataset.doc);
-      });
-    });
-
-    // Hash routing
-    function handleHash() {
-      const hash = location.hash.slice(1);
-      loadDoc(hash && docs.find(d => d.id === hash) ? hash : 'readme');
+    // ═══════════════════════════════════════════════════════════════
+    // AI CHAT
+    // ═══════════════════════════════════════════════════════════════
+    function toggleAiChat() {
+      document.getElementById('aiChat').classList.toggle('open');
+      if (document.getElementById('aiChat').classList.contains('open')) {
+        document.getElementById('aiInput').focus();
+      }
     }
 
-    window.addEventListener('hashchange', handleHash);
-    handleHash();
+    function handleAiKeypress(e) {
+      if (e.key === 'Enter') {
+        sendAiMessage();
+      }
+    }
+
+    async function sendAiMessage() {
+      const input = document.getElementById('aiInput');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const messages = document.getElementById('aiMessages');
+
+      // Add user message
+      messages.innerHTML += `<div class="ai-message user">${escapeHtml(message)}</div>`;
+      input.value = '';
+
+      // Show typing indicator
+      messages.innerHTML += `<div class="ai-typing" id="aiTyping"><span></span><span></span><span></span></div>`;
+      messages.scrollTop = messages.scrollHeight;
+
+      // Simulate AI response (in production, this would call Claude API)
+      setTimeout(() => {
+        document.getElementById('aiTyping')?.remove();
+
+        const response = getAiResponse(message);
+        messages.innerHTML += `<div class="ai-message assistant">${response}</div>`;
+        messages.scrollTop = messages.scrollHeight;
+      }, 1000 + Math.random() * 1000);
+    }
+
+    function getAiResponse(query) {
+      const q = query.toLowerCase();
+
+      // Context-aware responses based on current doc
+      const currentDocTitle = docs.find(d => d.id === currentDoc)?.title || 'documentation';
+
+      if (q.includes('api') || q.includes('endpoint')) {
+        return `The Satelink API provides REST endpoints for RPC, AI inference, and infrastructure management.
+        <br><br>
+        Base URL: <code>https://api.satelink.network/v1</code>
+        <br><br>
+        Key endpoints:
+        <br>• <code>POST /rpc</code> - Execute RPC calls
+        <br>• <code>POST /inference</code> - AI model inference
+        <br>• <code>GET /nodes</code> - List available nodes
+        <br><br>
+        Check the <strong>API Reference</strong> page for full documentation.`;
+      }
+
+      if (q.includes('start') || q.includes('begin') || q.includes('setup')) {
+        return `To get started with Satelink:
+        <br><br>
+        1. Get an API key at <a href="https://app.satelink.network/satelink/os/plans" target="_blank">app.satelink.network</a>
+        <br>2. Install the SDK: <code>npm install @satelink/sdk</code>
+        <br>3. Initialize the client with your API key
+        <br>4. Make your first RPC call!
+        <br><br>
+        See the <strong>Quick Start</strong> guide for a complete walkthrough.`;
+      }
+
+      if (q.includes('node') || q.includes('operator')) {
+        return `To become a Satelink node operator:
+        <br><br>
+        1. Hardware requirements: 4+ CPU cores, 8GB+ RAM, 100GB+ SSD
+        <br>2. Install Docker and the Satelink node software
+        <br>3. Register your node on-chain (Polygon network)
+        <br>4. Start serving workloads and earning USDT
+        <br><br>
+        Revenue split: 50% operators / 30% platform / 20% distribution pool.`;
+      }
+
+      if (q.includes('price') || q.includes('cost') || q.includes('pay')) {
+        return `Satelink uses pay-as-you-go pricing:
+        <br><br>
+        • <strong>RPC calls:</strong> Starting at $0.0001/call
+        <br>• <strong>AI inference:</strong> Based on compute units
+        <br>• <strong>Bandwidth:</strong> $0.05/GB egress
+        <br><br>
+        Settlement is in USDT on Polygon (low gas fees). Check the <strong>Pricing</strong> page for current rates.`;
+      }
+
+      // Default response
+      return `I can help you with Satelink documentation! I see you're currently viewing the <strong>${currentDocTitle}</strong> page.
+      <br><br>
+      Try asking about:
+      <br>• API endpoints and authentication
+      <br>• Getting started with the SDK
+      <br>• Running a node operator
+      <br>• Pricing and settlement
+      <br><br>
+      Or use <kbd>⌘K</kbd> to search all docs.`;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════
+    document.addEventListener('keydown', e => {
+      // / for search
+      if (e.key === '/' && !e.target.matches('input, textarea')) {
+        e.preventDefault();
+        searchInput.focus();
+      }
+
+      // Cmd/Ctrl + K for command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        openCommandPalette();
+      }
+
+      // Escape to close modals
+      if (e.key === 'Escape') {
+        document.getElementById('aiChat').classList.remove('open');
+        document.getElementById('commandPalette').classList.remove('open');
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // NEWSLETTER
+    // ═══════════════════════════════════════════════════════════════
+    function handleNewsletter(e) {
+      e.preventDefault();
+      const input = e.target.querySelector('input');
+      const email = input.value;
+
+      // In production, this would submit to your newsletter service
+      alert(`Thanks for subscribing with ${email}! You'll receive updates about Satelink.`);
+      input.value = '';
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // INITIALIZATION
+    // ═══════════════════════════════════════════════════════════════
+    function init() {
+      // Load from hash or localStorage
+      const hash = location.hash.slice(1);
+      const lastDoc = localStorage.getItem('satelink-last-doc');
+      const docId = (hash && docs.find(d => d.id === hash)) ? hash :
+                    (lastDoc && docs.find(d => d.id === lastDoc)) ? lastDoc : 'readme';
+
+      loadDoc(docId);
+    }
+
+    window.addEventListener('hashchange', () => {
+      const hash = location.hash.slice(1);
+      if (hash && docs.find(d => d.id === hash)) {
+        loadDoc(hash);
+      }
+    });
+
+    init();
   </script>
 </body>
 </html>
