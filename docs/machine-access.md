@@ -1,6 +1,6 @@
 ---
 title: "Machine access overview"
-description: "Issue scoped, revocable tokens so machines and AI agents can observe and act on Satelink Network safely."
+description: "Issue scoped, revocable tokens so AI agents, CI runners, and automation can observe runtime and trigger preview actions on Satelink Network."
 ---
 
 # Machine access

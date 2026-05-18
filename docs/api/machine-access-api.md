@@ -1,6 +1,6 @@
 ---
-title: "Machine Access API"
-description: "Endpoint reference for the Satelink machine access control plane, observability plane, and action plane."
+title: "Machine Access API reference"
+description: "Endpoints for issuing machine tokens, reading runtime observability, and triggering preview deploys, builds, and diagnostics on Satelink Network."
 ---
 
 # Machine Access API
