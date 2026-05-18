@@ -29,29 +29,29 @@
     {
       "group": "Getting Started",
       "pages": [
-        "quick-start",
-        "pricing"
+        "docs/quick-start",
+        "docs/pricing"
       ]
     },
     {
       "group": "API Reference",
       "pages": [
-        "api-reference",
-        "sdk-guide"
+        "docs/api-reference",
+        "docs/sdk-guide"
       ]
     },
     {
       "group": "Node Operators",
       "pages": [
-        "node-operators",
-        "settlement"
+        "docs/node-operators",
+        "docs/settlement"
       ]
     },
     {
       "group": "Resources",
       "pages": [
-        "faq",
-        "integration-guide"
+        "docs/faq",
+        "docs/integration-guide"
       ]
     }
   ],
