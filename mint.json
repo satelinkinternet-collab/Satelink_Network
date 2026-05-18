@@ -1,10 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
   "name": "Satelink",
-  "logo": {
-    "light": "https://satelink.network/logo.svg",
-    "dark": "https://satelink.network/logo.svg"
-  },
   "favicon": "/favicon.png",
   "colors": {
     "primary": "#408A71",
@@ -59,11 +55,6 @@
     "twitter": "https://twitter.com/satelinknet",
     "github": "https://github.com/Satelink-Protocol/Satelink_Network",
     "discord": "https://discord.gg/satelink"
-  },
-  "analytics": {
-    "posthog": {
-      "apiKey": "phc_placeholder"
-    }
   }
 }
 
