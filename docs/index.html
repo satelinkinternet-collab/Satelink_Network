@@ -4,22 +4,43 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Satelink Documentation</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <style>
     :root {
-      --primary: #408A71;
-      --primary-dark: #2D6B55;
-      --primary-light: #5CB89A;
-      --bg: #ffffff;
-      --bg-secondary: #f8faf9;
-      --bg-tertiary: #f0f4f2;
-      --text: #1a1a1a;
-      --text-secondary: #666666;
-      --text-muted: #999999;
-      --border: #e5e8e6;
+      --bg-primary: #0F172A;
+      --bg-secondary: #1E293B;
+      --bg-tertiary: #334155;
+      --bg-elevated: #1E293B;
+      --bg-hover: rgba(94, 184, 154, 0.08);
+      --bg-active: rgba(94, 184, 154, 0.12);
+
+      --accent: #5CB89A;
+      --accent-dark: #408A71;
+      --accent-glow: rgba(92, 184, 154, 0.15);
+
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+
+      --border: #334155;
+      --border-light: #475569;
+
+      --code-bg: #0D1117;
+
       --sidebar-width: 280px;
-      --header-height: 60px;
-      --code-bg: #f6f8fa;
+      --header-height: 64px;
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 20px rgba(92, 184, 154, 0.15);
     }
 
     * {
@@ -33,118 +54,171 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       line-height: 1.6;
-      color: var(--text);
-      background: var(--bg);
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Header */
+    /* ═══════════════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════════════ */
     .header {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       height: var(--header-height);
-      background: var(--bg);
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
-      padding: 0 1.5rem;
+      padding: 0 24px;
       z-index: 100;
     }
 
-    .header-left {
+    .header-inner {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
     }
 
-    .menu-toggle {
+    .menu-btn {
       display: none;
-      background: none;
-      border: none;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px;
       cursor: pointer;
-      padding: 0.5rem;
+      margin-right: 16px;
+      transition: all 0.2s ease;
     }
 
-    .menu-toggle svg {
-      width: 24px;
-      height: 24px;
-      stroke: var(--text);
+    .menu-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+
+    .menu-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--text-secondary);
     }
 
     .logo {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--primary);
-      text-decoration: none;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-primary);
     }
 
-    .logo-icon {
-      width: 28px;
-      height: 28px;
-      background: var(--primary);
-      border-radius: 6px;
+    .logo-mark {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 18px;
+      color: white;
+      box-shadow: var(--shadow-glow);
     }
 
-    .search-container {
+    .logo-text {
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span {
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+
+    .search-wrapper {
       flex: 1;
-      max-width: 400px;
-      margin: 0 2rem;
+      max-width: 480px;
+      margin: 0 32px;
     }
 
     .search-box {
       position: relative;
-      width: 100%;
     }
 
     .search-input {
       width: 100%;
-      padding: 0.6rem 1rem 0.6rem 2.5rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.9rem;
+      height: 40px;
+      padding: 0 16px 0 44px;
       background: var(--bg-secondary);
-      transition: all 0.2s;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
     }
 
     .search-input:focus {
       outline: none;
-      border-color: var(--primary);
-      background: var(--bg);
-      box-shadow: 0 0 0 3px rgba(64, 138, 113, 0.1);
+      border-color: var(--accent);
+      background: var(--bg-tertiary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
     }
 
     .search-icon {
       position: absolute;
-      left: 0.75rem;
+      left: 14px;
       top: 50%;
       transform: translateY(-50%);
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       stroke: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-kbd {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      gap: 4px;
+    }
+
+    .search-kbd kbd {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-family: inherit;
+      color: var(--text-muted);
     }
 
     .search-results {
       position: absolute;
-      top: calc(100% + 4px);
+      top: calc(100% + 8px);
       left: 0;
       right: 0;
-      background: var(--bg);
+      background: var(--bg-elevated);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      max-height: 300px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      max-height: 400px;
       overflow-y: auto;
       display: none;
       z-index: 200;
@@ -152,77 +226,96 @@
 
     .search-results.active {
       display: block;
+      animation: slideDown 0.15s ease;
     }
 
-    .search-result-item {
-      padding: 0.75rem 1rem;
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .search-result {
+      padding: 12px 16px;
       cursor: pointer;
       border-bottom: 1px solid var(--border);
+      transition: background 0.15s ease;
     }
 
-    .search-result-item:last-child {
+    .search-result:last-child {
       border-bottom: none;
     }
 
-    .search-result-item:hover {
-      background: var(--bg-secondary);
+    .search-result:hover {
+      background: var(--bg-hover);
     }
 
     .search-result-title {
       font-weight: 500;
-      font-size: 0.9rem;
+      font-size: 14px;
+      color: var(--text-primary);
+      margin-bottom: 2px;
     }
 
     .search-result-group {
-      font-size: 0.75rem;
+      font-size: 12px;
       color: var(--text-muted);
     }
 
-    .header-right {
+    .header-nav {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 8px;
       margin-left: auto;
     }
 
     .header-link {
       color: var(--text-secondary);
       text-decoration: none;
-      font-size: 0.9rem;
+      font-size: 14px;
       font-weight: 500;
-      transition: color 0.2s;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
     }
 
     .header-link:hover {
-      color: var(--primary);
+      color: var(--text-primary);
+      background: var(--bg-hover);
     }
 
     .btn-primary {
-      background: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
       text-decoration: none;
-      font-size: 0.875rem;
+      font-size: 14px;
       font-weight: 500;
-      transition: background 0.2s;
+      transition: all 0.2s ease;
+      box-shadow: var(--shadow-sm);
     }
 
     .btn-primary:hover {
-      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-glow), var(--shadow-md);
     }
 
-    /* Sidebar */
+    /* ═══════════════════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════════════════ */
     .sidebar {
       position: fixed;
       top: var(--header-height);
       left: 0;
       width: var(--sidebar-width);
       height: calc(100vh - var(--header-height));
-      background: var(--bg);
+      background: var(--bg-primary);
       border-right: 1px solid var(--border);
       overflow-y: auto;
-      padding: 1.5rem 0;
+      padding: 24px 0;
       z-index: 50;
       transition: transform 0.3s ease;
     }
@@ -230,51 +323,67 @@
     .sidebar-overlay {
       display: none;
       position: fixed;
-      top: var(--header-height);
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 40;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
 
-    .nav-group {
-      margin-bottom: 1.5rem;
+    .sidebar-overlay.open {
+      display: block;
+      opacity: 1;
     }
 
-    .nav-group-title {
-      font-size: 0.75rem;
+    .nav-section {
+      margin-bottom: 28px;
+    }
+
+    .nav-section-title {
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
       color: var(--text-muted);
-      padding: 0 1.5rem;
-      margin-bottom: 0.5rem;
+      padding: 0 24px;
+      margin-bottom: 8px;
     }
 
-    .nav-item {
-      display: block;
-      padding: 0.5rem 1.5rem;
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
       color: var(--text-secondary);
       text-decoration: none;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-      border-left: 3px solid transparent;
+      font-size: 14px;
+      font-weight: 450;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
     }
 
-    .nav-item:hover {
-      color: var(--primary);
-      background: var(--bg-secondary);
+    .nav-link:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
     }
 
-    .nav-item.active {
-      color: var(--primary);
-      background: var(--bg-tertiary);
-      border-left-color: var(--primary);
-      font-weight: 500;
+    .nav-link.active {
+      color: var(--accent);
+      background: var(--bg-active);
+      border-left-color: var(--accent);
     }
 
-    /* Main Content */
+    .nav-link svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      opacity: 0.7;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MAIN CONTENT
+    ═══════════════════════════════════════════════════════════════ */
     .main {
       margin-left: var(--sidebar-width);
       margin-top: var(--header-height);
@@ -283,220 +392,281 @@
       flex-direction: column;
     }
 
-    .content {
+    .content-wrapper {
       flex: 1;
-      max-width: 800px;
+      padding: 48px;
+    }
+
+    .content {
+      max-width: 768px;
       margin: 0 auto;
-      padding: 3rem 2rem;
-      width: 100%;
     }
 
     .loading {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 200px;
-      color: var(--text-muted);
+      min-height: 300px;
+      gap: 16px;
     }
 
     .loading-spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--border);
-      border-top-color: var(--primary);
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
-      margin-right: 0.75rem;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    /* Markdown Styles */
-    .markdown-body {
-      font-size: 1rem;
+    .loading-text {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MARKDOWN STYLES
+    ═══════════════════════════════════════════════════════════════ */
+    .markdown {
+      font-size: 16px;
       line-height: 1.75;
     }
 
-    .markdown-body h1 {
-      font-size: 2.25rem;
+    .markdown h1 {
+      font-size: 36px;
       font-weight: 700;
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .markdown h1 + p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      padding-bottom: 32px;
       border-bottom: 1px solid var(--border);
-      color: var(--text);
     }
 
-    .markdown-body h2 {
-      font-size: 1.5rem;
+    .markdown h2 {
+      font-size: 24px;
       font-weight: 600;
-      margin-top: 2.5rem;
-      margin-bottom: 1rem;
-      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-top: 48px;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+      scroll-margin-top: calc(var(--header-height) + 24px);
     }
 
-    .markdown-body h3 {
-      font-size: 1.25rem;
+    .markdown h3 {
+      font-size: 18px;
       font-weight: 600;
-      margin-top: 2rem;
-      margin-bottom: 0.75rem;
-      color: var(--text);
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--text-primary);
     }
 
-    .markdown-body h4 {
-      font-size: 1.1rem;
+    .markdown h4 {
+      font-size: 16px;
       font-weight: 600;
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
+      margin-top: 24px;
+      margin-bottom: 8px;
+      color: var(--text-primary);
     }
 
-    .markdown-body p {
-      margin-bottom: 1rem;
+    .markdown p {
+      margin-bottom: 16px;
+      color: var(--text-secondary);
     }
 
-    .markdown-body a {
-      color: var(--primary);
+    .markdown a {
+      color: var(--accent);
       text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.15s ease;
     }
 
-    .markdown-body a:hover {
+    .markdown a:hover {
+      opacity: 0.8;
       text-decoration: underline;
     }
 
-    .markdown-body ul, .markdown-body ol {
-      margin-bottom: 1rem;
-      padding-left: 1.5rem;
+    .markdown strong {
+      color: var(--text-primary);
+      font-weight: 600;
     }
 
-    .markdown-body li {
-      margin-bottom: 0.5rem;
+    .markdown ul, .markdown ol {
+      margin-bottom: 16px;
+      padding-left: 24px;
+      color: var(--text-secondary);
     }
 
-    .markdown-body blockquote {
-      border-left: 4px solid var(--primary);
-      padding: 0.5rem 1rem;
-      margin: 1rem 0;
+    .markdown li {
+      margin-bottom: 8px;
+    }
+
+    .markdown li::marker {
+      color: var(--accent);
+    }
+
+    .markdown blockquote {
+      margin: 24px 0;
+      padding: 16px 20px;
       background: var(--bg-secondary);
-      border-radius: 0 8px 8px 0;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
     }
 
-    .markdown-body blockquote p {
+    .markdown blockquote p {
       margin: 0;
+      color: var(--text-secondary);
     }
 
-    .markdown-body code {
-      font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    .markdown code {
+      font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
       font-size: 0.875em;
-      background: var(--code-bg);
-      padding: 0.2em 0.4em;
+      background: var(--bg-tertiary);
+      padding: 3px 8px;
       border-radius: 4px;
+      color: var(--accent);
     }
 
-    .markdown-body pre {
+    .markdown pre {
       position: relative;
+      margin: 24px 0;
       background: var(--code-bg);
-      border-radius: 8px;
-      padding: 1rem;
-      margin: 1rem 0;
-      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
     }
 
-    .markdown-body pre code {
-      background: none;
-      padding: 0;
-      font-size: 0.875rem;
-      line-height: 1.6;
+    .markdown pre code {
+      display: block;
+      padding: 20px 24px;
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.7;
+      overflow-x: auto;
     }
 
     .copy-btn {
       position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      background: var(--bg);
+      top: 12px;
+      right: 12px;
+      background: var(--bg-tertiary);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.35rem 0.6rem;
-      font-size: 0.75rem;
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      color: var(--text-muted);
       cursor: pointer;
       opacity: 0;
-      transition: opacity 0.2s;
+      transition: all 0.2s ease;
     }
 
-    .markdown-body pre:hover .copy-btn {
+    .markdown pre:hover .copy-btn {
       opacity: 1;
     }
 
     .copy-btn:hover {
-      background: var(--bg-secondary);
+      background: var(--bg-hover);
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
     .copy-btn.copied {
-      color: var(--primary);
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
-    .markdown-body table {
+    .markdown table {
       width: 100%;
+      margin: 24px 0;
       border-collapse: collapse;
-      margin: 1rem 0;
+      font-size: 14px;
     }
 
-    .markdown-body th, .markdown-body td {
-      border: 1px solid var(--border);
-      padding: 0.75rem;
+    .markdown th, .markdown td {
+      padding: 12px 16px;
       text-align: left;
+      border: 1px solid var(--border);
     }
 
-    .markdown-body th {
+    .markdown th {
       background: var(--bg-secondary);
       font-weight: 600;
+      color: var(--text-primary);
     }
 
-    .markdown-body hr {
+    .markdown td {
+      color: var(--text-secondary);
+    }
+
+    .markdown tr:hover td {
+      background: var(--bg-hover);
+    }
+
+    .markdown hr {
       border: none;
       border-top: 1px solid var(--border);
-      margin: 2rem 0;
+      margin: 48px 0;
     }
 
-    .markdown-body img {
+    .markdown img {
       max-width: 100%;
-      border-radius: 8px;
+      border-radius: var(--radius-lg);
+      margin: 24px 0;
     }
 
-    /* Footer */
+    /* ═══════════════════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════════════════ */
     .footer {
       background: var(--bg-secondary);
       border-top: 1px solid var(--border);
-      padding: 2rem;
+      padding: 32px 48px;
       margin-left: var(--sidebar-width);
     }
 
-    .footer-content {
-      max-width: 800px;
+    .footer-inner {
+      max-width: 768px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 24px;
     }
 
     .footer-links {
       display: flex;
-      gap: 1.5rem;
+      gap: 24px;
     }
 
     .footer-link {
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s ease;
     }
 
     .footer-link:hover {
-      color: var(--primary);
+      color: var(--accent);
     }
 
     .footer-link svg {
@@ -504,18 +674,42 @@
       height: 18px;
     }
 
-    .footer-text {
-      font-size: 0.85rem;
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       color: var(--text-muted);
+      font-size: 14px;
     }
 
-    /* Mobile */
+    .footer-logo {
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MOBILE RESPONSIVE
+    ═══════════════════════════════════════════════════════════════ */
+    @media (max-width: 1024px) {
+      .search-kbd {
+        display: none;
+      }
+    }
+
     @media (max-width: 768px) {
-      .menu-toggle {
-        display: block;
+      .menu-btn {
+        display: flex;
       }
 
-      .search-container {
+      .search-wrapper {
         display: none;
       }
 
@@ -531,32 +725,40 @@
         transform: translateX(0);
       }
 
-      .sidebar-overlay.open {
-        display: block;
-      }
-
       .main {
         margin-left: 0;
       }
 
       .footer {
         margin-left: 0;
+        padding: 24px;
       }
 
-      .content {
-        padding: 2rem 1rem;
+      .content-wrapper {
+        padding: 24px;
       }
 
-      .footer-content {
+      .markdown h1 {
+        font-size: 28px;
+      }
+
+      .markdown h2 {
+        font-size: 20px;
+        margin-top: 32px;
+      }
+
+      .footer-inner {
         flex-direction: column;
         text-align: center;
       }
     }
 
-    /* Scrollbar */
+    /* ═══════════════════════════════════════════════════════════════
+       SCROLLBAR
+    ═══════════════════════════════════════════════════════════════ */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
     }
 
     ::-webkit-scrollbar-track {
@@ -565,45 +767,61 @@
 
     ::-webkit-scrollbar-thumb {
       background: var(--border);
-      border-radius: 3px;
+      border-radius: 4px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: var(--text-muted);
+      background: var(--border-light);
+    }
+
+    /* Selection */
+    ::selection {
+      background: var(--accent-glow);
+      color: var(--text-primary);
     }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header class="header">
-    <div class="header-left">
-      <button class="menu-toggle" onclick="toggleSidebar()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="header-inner">
+      <button class="menu-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-      <a href="#" class="logo" onclick="loadDoc('readme')">
-        <span class="logo-icon">S</span>
-        Satelink Docs
+
+      <a href="#" class="logo" onclick="loadDoc('readme'); return false;">
+        <div class="logo-mark">S</div>
+        <div class="logo-text">Satelink<span>Docs</span></div>
       </a>
-    </div>
 
-    <div class="search-container">
-      <div class="search-box">
-        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" class="search-input" placeholder="Search documentation..." id="searchInput" autocomplete="off">
-        <div class="search-results" id="searchResults"></div>
+      <div class="search-wrapper">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search docs..." autocomplete="off">
+          <div class="search-kbd">
+            <kbd>⌘</kbd><kbd>K</kbd>
+          </div>
+          <div class="search-results" id="searchResults"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="header-right">
-      <a href="https://app.satelink.network" class="header-link">Dashboard</a>
-      <a href="https://app.satelink.network/satelink/os/plans" class="btn-primary">Get API Key</a>
+      <nav class="header-nav">
+        <a href="https://app.satelink.network" class="header-link">Dashboard</a>
+        <a href="https://github.com/Satelink-Protocol/Satelink_Network" class="header-link">GitHub</a>
+        <a href="https://app.satelink.network/satelink/os/plans" class="btn-primary">
+          Get API Key
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </nav>
     </div>
   </header>
 
@@ -612,48 +830,75 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <nav>
-      <div class="nav-group">
-        <div class="nav-group-title">Getting Started</div>
-        <a href="#" class="nav-item" data-doc="readme">Introduction</a>
-        <a href="#" class="nav-item" data-doc="quick-start">Quick Start</a>
-        <a href="#" class="nav-item" data-doc="pricing">Pricing</a>
-      </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Getting Started</div>
+      <a href="#" class="nav-link" data-doc="readme">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Introduction
+      </a>
+      <a href="#" class="nav-link" data-doc="quick-start">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Quick Start
+      </a>
+      <a href="#" class="nav-link" data-doc="pricing">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Pricing
+      </a>
+    </div>
 
-      <div class="nav-group">
-        <div class="nav-group-title">API Reference</div>
-        <a href="#" class="nav-item" data-doc="api-reference">API Reference</a>
-        <a href="#" class="nav-item" data-doc="sdk-guide">SDK Guide</a>
-      </div>
+    <div class="nav-section">
+      <div class="nav-section-title">API Reference</div>
+      <a href="#" class="nav-link" data-doc="api-reference">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        API Reference
+      </a>
+      <a href="#" class="nav-link" data-doc="sdk-guide">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        SDK Guide
+      </a>
+    </div>
 
-      <div class="nav-group">
-        <div class="nav-group-title">Node Operators</div>
-        <a href="#" class="nav-item" data-doc="node-operators">Node Operators</a>
-        <a href="#" class="nav-item" data-doc="settlement">Settlement</a>
-      </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Node Operators</div>
+      <a href="#" class="nav-link" data-doc="node-operators">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Node Operators
+      </a>
+      <a href="#" class="nav-link" data-doc="settlement">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Settlement
+      </a>
+    </div>
 
-      <div class="nav-group">
-        <div class="nav-group-title">Resources</div>
-        <a href="#" class="nav-item" data-doc="faq">FAQ</a>
-        <a href="#" class="nav-item" data-doc="integration-guide">Integration Guide</a>
-      </div>
-    </nav>
+    <div class="nav-section">
+      <div class="nav-section-title">Resources</div>
+      <a href="#" class="nav-link" data-doc="faq">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        FAQ
+      </a>
+      <a href="#" class="nav-link" data-doc="integration-guide">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Integration Guide
+      </a>
+    </div>
   </aside>
 
   <!-- Main Content -->
   <main class="main">
-    <div class="content">
-      <div id="markdownContent" class="markdown-body">
-        <div class="loading">
-          <div class="loading-spinner"></div>
-          Loading documentation...
+    <div class="content-wrapper">
+      <article class="content">
+        <div id="markdownContent" class="markdown">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading documentation...</div>
+          </div>
         </div>
-      </div>
+      </article>
     </div>
 
     <!-- Footer -->
     <footer class="footer">
-      <div class="footer-content">
+      <div class="footer-inner">
         <div class="footer-links">
           <a href="https://github.com/Satelink-Protocol/Satelink_Network" class="footer-link" target="_blank">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -668,7 +913,10 @@
             Discord
           </a>
         </div>
-        <div class="footer-text">Satelink Network - Decentralized Infrastructure Protocol</div>
+        <div class="footer-brand">
+          <div class="footer-logo">S</div>
+          Satelink Network
+        </div>
       </div>
     </footer>
   </main>
@@ -677,25 +925,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
-    // Docs metadata for search
     const docs = [
-      { id: 'readme', title: 'Introduction', group: 'Getting Started', file: 'readme.md' },
-      { id: 'quick-start', title: 'Quick Start', group: 'Getting Started', file: 'quick-start.md' },
-      { id: 'pricing', title: 'Pricing', group: 'Getting Started', file: 'pricing.md' },
-      { id: 'api-reference', title: 'API Reference', group: 'API Reference', file: 'api-reference.md' },
-      { id: 'sdk-guide', title: 'SDK Guide', group: 'API Reference', file: 'sdk-guide.md' },
-      { id: 'node-operators', title: 'Node Operators', group: 'Node Operators', file: 'node-operators.md' },
-      { id: 'settlement', title: 'Settlement', group: 'Node Operators', file: 'settlement.md' },
-      { id: 'faq', title: 'FAQ', group: 'Resources', file: 'faq.md' },
-      { id: 'integration-guide', title: 'Integration Guide', group: 'Resources', file: 'integration-guide.md' }
+      { id: 'readme', title: 'Introduction', group: 'Getting Started', file: './readme.md' },
+      { id: 'quick-start', title: 'Quick Start', group: 'Getting Started', file: './quick-start.md' },
+      { id: 'pricing', title: 'Pricing', group: 'Getting Started', file: './pricing.md' },
+      { id: 'api-reference', title: 'API Reference', group: 'API Reference', file: './api-reference.md' },
+      { id: 'sdk-guide', title: 'SDK Guide', group: 'API Reference', file: './sdk-guide.md' },
+      { id: 'node-operators', title: 'Node Operators', group: 'Node Operators', file: './node-operators.md' },
+      { id: 'settlement', title: 'Settlement', group: 'Node Operators', file: './settlement.md' },
+      { id: 'faq', title: 'FAQ', group: 'Resources', file: './faq.md' },
+      { id: 'integration-guide', title: 'Integration Guide', group: 'Resources', file: './integration-guide.md' }
     ];
 
-    let docContents = {};
+    let docCache = {};
     let currentDoc = 'readme';
 
     // Configure marked
     marked.setOptions({
-      highlight: function(code, lang) {
+      highlight: (code, lang) => {
         if (lang && hljs.getLanguage(lang)) {
           return hljs.highlight(code, { language: lang }).value;
         }
@@ -705,46 +952,40 @@
       gfm: true
     });
 
-    // Load a document
+    // Load document
     async function loadDoc(docId) {
       const doc = docs.find(d => d.id === docId);
       if (!doc) return;
 
       currentDoc = docId;
-      updateActiveNav();
+      updateNav();
       closeSidebar();
 
-      const contentEl = document.getElementById('markdownContent');
+      const container = document.getElementById('markdownContent');
 
-      // Show loading if not cached
-      if (!docContents[docId]) {
-        contentEl.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading documentation...</div>';
+      if (!docCache[docId]) {
+        container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="loading-text">Loading...</div></div>';
       }
 
       try {
-        if (!docContents[docId]) {
-          const response = await fetch(doc.file);
-          if (!response.ok) throw new Error('Failed to load');
-          docContents[docId] = await response.text();
+        if (!docCache[docId]) {
+          const res = await fetch(doc.file);
+          if (!res.ok) throw new Error('Not found');
+          docCache[docId] = await res.text();
         }
 
-        contentEl.innerHTML = marked.parse(docContents[docId]);
+        container.innerHTML = marked.parse(docCache[docId]);
         addCopyButtons();
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        // Update URL hash
         history.pushState(null, '', '#' + docId);
-      } catch (error) {
-        contentEl.innerHTML = `
-          <h1>Error Loading Document</h1>
-          <p>Could not load ${doc.file}. Please try again later.</p>
-        `;
+      } catch (err) {
+        container.innerHTML = `<h1>Document Not Found</h1><p>Could not load <code>${doc.file}</code></p>`;
       }
     }
 
-    // Add copy buttons to code blocks
+    // Add copy buttons
     function addCopyButtons() {
-      document.querySelectorAll('pre').forEach(pre => {
+      document.querySelectorAll('.markdown pre').forEach(pre => {
         const btn = document.createElement('button');
         btn.className = 'copy-btn';
         btn.textContent = 'Copy';
@@ -762,14 +1003,14 @@
       });
     }
 
-    // Update active navigation
-    function updateActiveNav() {
-      document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.doc === currentDoc);
+    // Update navigation
+    function updateNav() {
+      document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.toggle('active', link.dataset.doc === currentDoc);
       });
     }
 
-    // Toggle sidebar (mobile)
+    // Sidebar toggle
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
       document.getElementById('sidebarOverlay').classList.toggle('open');
@@ -780,48 +1021,45 @@
       document.getElementById('sidebarOverlay').classList.remove('open');
     }
 
-    // Search functionality
+    // Search
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
 
     searchInput.addEventListener('input', async (e) => {
       const query = e.target.value.toLowerCase().trim();
-
       if (query.length < 2) {
         searchResults.classList.remove('active');
         return;
       }
 
-      // Preload all docs for search
+      // Preload docs
       await Promise.all(docs.map(async doc => {
-        if (!docContents[doc.id]) {
+        if (!docCache[doc.id]) {
           try {
-            const response = await fetch(doc.file);
-            docContents[doc.id] = await response.text();
+            const res = await fetch(doc.file);
+            docCache[doc.id] = await res.text();
           } catch (e) {
-            docContents[doc.id] = '';
+            docCache[doc.id] = '';
           }
         }
       }));
 
-      // Search through docs
       const results = docs.filter(doc => {
-        const content = docContents[doc.id]?.toLowerCase() || '';
+        const content = docCache[doc.id]?.toLowerCase() || '';
         return doc.title.toLowerCase().includes(query) || content.includes(query);
       });
 
-      if (results.length > 0) {
+      if (results.length) {
         searchResults.innerHTML = results.map(doc => `
-          <div class="search-result-item" onclick="loadDoc('${doc.id}'); searchResults.classList.remove('active'); searchInput.value = '';">
+          <div class="search-result" onclick="loadDoc('${doc.id}'); searchResults.classList.remove('active'); searchInput.value = '';">
             <div class="search-result-title">${doc.title}</div>
             <div class="search-result-group">${doc.group}</div>
           </div>
         `).join('');
-        searchResults.classList.add('active');
       } else {
-        searchResults.innerHTML = '<div class="search-result-item"><div class="search-result-title">No results found</div></div>';
-        searchResults.classList.add('active');
+        searchResults.innerHTML = '<div class="search-result"><div class="search-result-title">No results</div></div>';
       }
+      searchResults.classList.add('active');
     });
 
     // Close search on outside click
@@ -831,25 +1069,28 @@
       }
     });
 
-    // Navigation click handlers
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', (e) => {
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        loadDoc(item.dataset.doc);
+        searchInput.focus();
+      }
+    });
+
+    // Nav clicks
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        loadDoc(link.dataset.doc);
       });
     });
 
-    // Handle URL hash
+    // Hash routing
     function handleHash() {
-      const hash = window.location.hash.slice(1);
-      if (hash && docs.find(d => d.id === hash)) {
-        loadDoc(hash);
-      } else {
-        loadDoc('readme');
-      }
+      const hash = location.hash.slice(1);
+      loadDoc(hash && docs.find(d => d.id === hash) ? hash : 'readme');
     }
 
-    // Initialize
     window.addEventListener('hashchange', handleHash);
     handleHash();
   </script>
