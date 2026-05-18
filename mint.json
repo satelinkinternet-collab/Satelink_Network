@@ -25,6 +25,7 @@
     {
       "group": "Getting Started",
       "pages": [
+        "docs/README",
         "docs/quick-start",
         "docs/pricing"
       ]
