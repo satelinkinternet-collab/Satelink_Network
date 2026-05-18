@@ -1,6 +1,6 @@
 ---
 title: "Integration guide"
-description: "Point wallets, dApps, and machines to Satelink RPC endpoints, authenticate with API keys, and check pricing."
+description: "Point wallets, dApps, and machines to Satelink RPC endpoints, authenticate with API keys, check live pricing, and add Satelink in MetaMask."
 ---
 
 How to route traffic to Satelink (for machines and developers).

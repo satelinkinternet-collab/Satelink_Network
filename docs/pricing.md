@@ -1,6 +1,6 @@
 ---
 title: "Pricing"
-description: "Compare Satelink RPC tiers, per-method rates, and pay-per-use USDT settlement on Polygon mainnet."
+description: "Compare Satelink RPC tier limits, per-method rates, and pay-per-use USDT settlement on Polygon, plus how to upgrade with a deposit."
 ---
 
 Satelink offers simple, transparent pricing with pay-per-use USDT settlement on Polygon.

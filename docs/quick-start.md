@@ -1,6 +1,6 @@
 ---
 title: "Quick start"
-description: "Make your first Satelink JSON-RPC call in two minutes, with a free API key and any supported chain."
+description: "Create a free Satelink API key and make your first JSON-RPC call against Polygon, Ethereum, Arbitrum, or Base in under two minutes."
 ---
 
 Get your first RPC call running in 2 minutes.

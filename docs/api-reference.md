@@ -1,6 +1,6 @@
 ---
 title: "API reference"
-description: "Full reference for Satelink RPC gateway endpoints, API key management, deposits, usage, and public status APIs."
+description: "Detailed reference for Satelink RPC gateway endpoints, API key creation and usage, USDT deposits, public status checks, and error codes."
 ---
 
 Base URL: `https://rpc.satelink.network`

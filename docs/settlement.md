@@ -1,6 +1,6 @@
 ---
 title: "Settlement"
-description: "How Satelink settles node operator earnings on-chain with EIP-712 claims and the ClaimsContract on Polygon."
+description: "How Satelink settles node operator earnings on-chain through EIP-712 signed claims, epoch accounting, and the ClaimsContract on Polygon."
 ---
 
 How Satelink settles node operator earnings on Polygon.

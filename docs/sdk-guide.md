@@ -1,6 +1,6 @@
 ---
 title: "SDK integration"
-description: "Connect to Satelink RPC from ethers.js, viem, web3.js, web3.py, ethers-rs, go-ethereum, and WebSocket clients."
+description: "Connect to Satelink RPC from ethers.js, viem, web3.js, web3.py, ethers-rs, go-ethereum, and WebSocket clients with working code examples."
 ---
 
 Use Satelink RPC with your favorite Web3 library.
