@@ -24,7 +24,6 @@
 - Discord: POST /api/admin/mal/notify (type: test/summary/alert)
 
 ## ACTIVE RAILWAY VARS
-- MASTER_ADMIN_TOKEN: 34b6e9ad... (rotated 2026-05-17)
 - CLAIMS_CONTRACT_ADDRESS: 0x6987921e...CC9
 - DISCORD_ALERTS_ENABLED: true
 - GROQ_API_KEY: set (L9 AI live)
