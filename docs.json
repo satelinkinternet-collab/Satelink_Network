@@ -28,12 +28,14 @@
         "group": "Node Operators",
         "pages": [
           "docs/node-operators",
+          "docs/earnings-calculator",
           "docs/settlement"
         ]
       },
       {
         "group": "Resources",
         "pages": [
+          "docs/network-status",
           "docs/faq",
           "docs/INTEGRATION_GUIDE"
         ]
