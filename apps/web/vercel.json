@@ -28,8 +28,22 @@
       ]
     }
   ],
+  "redirects": [
+    { "source": "/calculator.html", "destination": "/calculator", "permanent": true },
+    { "source": "/privacy.html", "destination": "/privacy", "permanent": true },
+    { "source": "/terms.html", "destination": "/terms", "permanent": true },
+    { "source": "/about.html", "destination": "/about", "permanent": true },
+    { "source": "/careers.html", "destination": "/careers", "permanent": true },
+    { "source": "/blog.html", "destination": "/blog", "permanent": true },
+    { "source": "/press.html", "destination": "/press", "permanent": true },
+    { "source": "/compare.html", "destination": "/compare", "permanent": true },
+    { "source": "/wiki.html", "destination": "/wiki", "permanent": true },
+    { "source": "/status.html", "destination": "/status", "permanent": true },
+    { "source": "/index.html", "destination": "/", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/privacy", "destination": "/legal/privacy" },
-    { "source": "/terms", "destination": "/legal/terms" }
+    { "source": "/terms", "destination": "/legal/terms" },
+    { "source": "/about", "destination": "/(marketing)/about" }
   ]
 }
