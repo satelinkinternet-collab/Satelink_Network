@@ -1,0 +1,82 @@
+---
+title: "Network status"
+description: "Monitor Satelink network health, uptime, and incidents in real time with the public status page and status API."
+---
+
+The public status page and status API expose live health metrics for the Satelink RPC gateway, so you can verify network availability before debugging your own integration.
+
+Use them to:
+
+- Check whether degraded latency or errors are caused by Satelink or your code.
+- Wire uptime checks into your own monitoring (StatusGator, Better Stack, custom dashboards).
+- Confirm active node count and 24-hour throughput before launching production workloads.
+
+## Status page
+
+The hosted page at [status.satelink.network](https://status.satelink.network) shows:
+
+- **Overall system state** — `LIVE`, `DEGRADED`, or `SAFE_MODE`.
+- **90-day uptime history** across core services.
+- **Service status grid** for the RPC gateway, webhooks, automation engine, compute marketplace, and protocol routing.
+- **Regional hub latency** for US East, US West, Europe, Asia Pacific, and South America.
+- **Incident timeline** with the last 30 days of postmortems.
+
+The page refreshes every 60 seconds. No authentication is required.
+
+## Status API
+
+For programmatic checks, call the public status endpoint. It is unauthenticated, rate-limited per IP, and returns JSON.
+
+### Request
+
+```bash
+curl https://rpc.satelink.network/api/status
+```
+
+### Response
+
+```json
+{
+  "ok": true,
+  "status": "LIVE",
+  "incidents": "None",
+  "active_nodes": 1842,
+  "uptime_24h_pct": 99.9,
+  "total_operations_24h": 52400000,
+  "total_operations_all_time": 1738291023,
+  "total_simulated_rewards_24h": 184.27,
+  "system_status": "LIVE",
+  "version": "v0.9.34-beta"
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `LIVE` when healthy, `DEGRADED` when incidents are open, `SAFE_MODE` when the network is paused. |
+| `incidents` | string | `None` or `Active Issue`. |
+| `active_nodes` | number | Distinct nodes that reported uptime in the current epoch. |
+| `uptime_24h_pct` | number | Average node uptime over the last 24 hours, as a percentage. |
+| `total_operations_24h` | number | RPC and workload operations served in the last 24 hours. |
+| `total_operations_all_time` | number | Cumulative operations since network launch. |
+| `total_simulated_rewards_24h` | number | USDT-equivalent rewards accrued to operators in the last 24 hours. |
+| `version` | string | Current gateway release. |
+
+## Treat status as a signal, not an SLA
+
+The status endpoint reflects the gateway's view of the network. For contractual uptime guarantees, refer to your plan's [SLA terms](/docs/pricing). If you see `status` as `LIVE` but your requests still fail, double-check your API key tier limits before opening a support ticket.
+
+## Example: health check in Node.js
+
+```javascript
+async function isSatelinkHealthy() {
+  const res = await fetch("https://rpc.satelink.network/api/status");
+  const data = await res.json();
+  return data.status === "LIVE" && data.uptime_24h_pct >= 99;
+}
+
+if (!(await isSatelinkHealthy())) {
+  console.warn("Satelink degraded — failing over to backup RPC");
+}
+```

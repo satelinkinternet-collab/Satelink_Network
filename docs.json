@@ -35,6 +35,7 @@
         "group": "Resources",
         "pages": [
           "docs/faq",
+          "docs/network-status",
           "docs/INTEGRATION_GUIDE"
         ]
       }
