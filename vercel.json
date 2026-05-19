@@ -1,0 +1,52 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd apps/web && npm run build",
+  "installCommand": "npm install",
+  "redirects": [
+    {
+      "source": "/calculator.html",
+      "destination": "/calculator",
+      "permanent": true
+    },
+    {
+      "source": "/status.html",
+      "destination": "/status",
+      "permanent": true
+    },
+    {
+      "source": "/privacy.html",
+      "destination": "/legal/privacy",
+      "permanent": true
+    },
+    {
+      "source": "/terms.html",
+      "destination": "/legal/terms",
+      "permanent": true
+    },
+    {
+      "source": "/about.html",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/careers.html",
+      "destination": "/careers",
+      "permanent": true
+    },
+    {
+      "source": "/blog.html",
+      "destination": "/blog",
+      "permanent": true
+    },
+    {
+      "source": "/press.html",
+      "destination": "/press",
+      "permanent": true
+    },
+    {
+      "source": "/compare.html",
+      "destination": "/compare",
+      "permanent": true
+    }
+  ]
+}
