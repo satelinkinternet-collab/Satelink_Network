@@ -1,3 +1,8 @@
+---
+title: "Satelink node earnings calculator"
+description: "Estimate monthly USDT revenue, hardware costs, and payback period for a Satelink node based on hardware, uptime, workload mix, and reputation."
+---
+
 # Earnings calculator
 
 Estimate monthly revenue, costs, and payback period before you run a Satelink node.

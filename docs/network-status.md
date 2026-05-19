@@ -1,3 +1,8 @@
+---
+title: "Satelink network status and uptime monitoring"
+description: "Check live Satelink RPC uptime, latency, active nodes, and per-service health, or pull the same metrics from the public status JSON API."
+---
+
 # Network status
 
 Monitor live Satelink uptime, latency, and node health in real time.
