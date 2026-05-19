@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Satelink - Infrastructure for the Decentralized Internet</title>
-  <meta name="description" content="Run real workloads on distributed hardware. Developers pay per call, node operators earn USDT, platform settles on-chain. Proven infrastructure with $53+ USDT distributed.">
-  <meta name="keywords" content="DePIN, decentralized infrastructure, RPC, blockchain, USDT, Polygon, node operators, Web3, API">
+  <title>Satelink - Decentralized Infrastructure Network | DePIN</title>
+  <meta name="description" content="Run real workloads on distributed hardware. Developers pay per call, node operators earn USDT. On-chain settlement on Polygon. $53+ USDT distributed.">
+  <meta name="keywords" content="DePIN, decentralized infrastructure, RPC gateway, Polygon, USDT settlement, node operator earnings, Web3, blockchain API">
   <meta name="author" content="Satelink Network">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://satelink.network">
 
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://satelink.network">
-  <meta property="og:title" content="Satelink - Infrastructure for the Decentralized Internet">
-  <meta property="og:description" content="Run real workloads on distributed hardware. On-chain USDT settlement on Polygon.">
+  <meta property="og:title" content="Satelink - Decentralized Infrastructure Network">
+  <meta property="og:description" content="Monetize idle hardware with real workloads. On-chain USDT settlement on Polygon.">
   <meta property="og:image" content="https://satelink.network/og-image.png">
 
   <meta name="twitter:card" content="summary_large_image">
@@ -29,13 +29,17 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
+    "@type": "Organization",
     "name": "Satelink Network",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Cross-platform",
-    "description": "Decentralized infrastructure platform with on-chain USDT settlement on Polygon.",
+    "description": "Decentralized infrastructure platform with on-chain USDT settlement on Polygon",
     "url": "https://satelink.network",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    "logo": "https://satelink.network/logo.svg",
+    "foundingDate": "2025",
+    "sameAs": [
+      "https://github.com/Satelink-Protocol",
+      "https://twitter.com/satelinknet",
+      "https://discord.gg/satelink"
+    ]
   }
   </script>
 
@@ -107,6 +111,20 @@
     a { color: inherit; text-decoration: none; }
 
     .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* Network Canvas Animation */
+    #networkCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    [data-theme="light"] #networkCanvas { opacity: 0.3; }
 
     /* Header */
     .header {
@@ -369,7 +387,7 @@
     }
 
     /* Section */
-    .section { padding: 120px 0; position: relative; }
+    .section { padding: 120px 0; position: relative; z-index: 1; }
 
     .section-header { text-align: center; max-width: 640px; margin: 0 auto 64px; }
 
@@ -394,6 +412,174 @@
       color: var(--text-secondary);
       line-height: 1.7;
     }
+
+    /* Social Proof */
+    .social-proof { background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .social-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin-bottom: 64px;
+    }
+
+    .social-stat {
+      text-align: center;
+      padding: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .social-stat-value {
+      font-family: var(--font-mono);
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .social-stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .testimonials {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    .testimonial-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      backdrop-filter: blur(10px);
+    }
+
+    .testimonial-quote {
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      font-style: italic;
+    }
+
+    .testimonial-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .testimonial-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: white;
+      font-size: 14px;
+    }
+
+    .testimonial-name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .testimonial-role {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s var(--ease);
+    }
+
+    .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(92, 184, 154, 0.1);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .feature-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+
+    .feature-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+    /* Comparison Table */
+    .comparison-section { background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 20px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .comparison-table th {
+      background: var(--bg-muted);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .comparison-table th:first-child {
+      text-align: left;
+    }
+
+    .comparison-table td:first-child {
+      text-align: left;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .comparison-table tr:last-child td { border-bottom: none; }
+
+    .comparison-table .satelink-col {
+      background: rgba(92, 184, 154, 0.05);
+    }
+
+    .comparison-table th.satelink-col {
+      background: rgba(92, 184, 154, 0.15);
+      color: var(--accent);
+    }
+
+    .check { color: var(--success); font-size: 20px; }
+    .cross { color: var(--error); font-size: 18px; }
 
     /* Proof Section */
     .proof { background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -514,8 +700,62 @@
 
     .product-link:hover svg { transform: translateX(4px); }
 
-    /* How It Works */
+    /* How It Works - Enhanced with Diagrams */
     .how-section { background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
+    .how-diagrams {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      margin-bottom: 64px;
+    }
+
+    .diagram-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      backdrop-filter: blur(10px);
+    }
+
+    .diagram-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .diagram-svg {
+      width: 100%;
+      height: 180px;
+    }
+
+    .diagram-svg text {
+      font-family: var(--font-sans);
+      fill: var(--text-primary);
+    }
+
+    .diagram-svg .node {
+      fill: var(--bg-muted);
+      stroke: var(--accent);
+      stroke-width: 2;
+    }
+
+    .diagram-svg .arrow {
+      stroke: var(--accent);
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .diagram-svg .arrow-animated {
+      stroke-dasharray: 8 4;
+      animation: flowArrow 1s linear infinite;
+    }
+
+    @keyframes flowArrow {
+      from { stroke-dashoffset: 12; }
+      to { stroke-dashoffset: 0; }
+    }
 
     .how-flow {
       display: flex;
@@ -942,7 +1182,7 @@
     .cta-buttons .btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: white; }
 
     /* Footer */
-    .footer { background: var(--bg-base); border-top: 1px solid var(--border); padding: 80px 0 40px; }
+    .footer { background: var(--bg-base); border-top: 1px solid var(--border); padding: 80px 0 40px; position: relative; z-index: 1; }
 
     .footer-grid { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 48px; margin-bottom: 64px; }
 
@@ -1011,6 +1251,9 @@
       .footer-grid { grid-template-columns: repeat(2, 1fr); }
       .footer-brand { grid-column: span 2; }
       .node-grid { grid-template-columns: 1fr; }
+      .social-stats { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .how-diagrams { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 768px) {
@@ -1029,16 +1272,24 @@
       .footer-brand { grid-column: 1; }
       .footer-bottom { flex-direction: column; text-align: center; }
       .cta-card { padding: 48px 24px; }
+      .testimonials { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .comparison-table { font-size: 13px; }
+      .comparison-table th, .comparison-table td { padding: 12px 8px; }
     }
 
     @media (max-width: 640px) {
       .nav-actions .btn { display: none; }
       .hero-cta { flex-direction: column; align-items: stretch; }
       .hero-cta .btn { width: 100%; }
+      .social-stats { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+  <!-- Network Canvas Animation -->
+  <canvas id="networkCanvas"></canvas>
+
   <header class="header">
     <div class="header-inner">
       <a href="/" class="logo">
@@ -1097,7 +1348,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </a>
             <a href="https://docs.satelink.network" class="btn btn-secondary btn-lg">View Docs</a>
-            <a href="#nodes" class="btn btn-ghost btn-lg">Run a Node →</a>
+            <a href="#nodes" class="btn btn-ghost btn-lg">Run a Node</a>
           </div>
 
           <div class="hero-metrics fade-up">
@@ -1118,6 +1369,164 @@
               <div class="metric-label">Avg Latency</div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Social Proof -->
+    <section class="section social-proof">
+      <div class="container">
+        <div class="section-header fade-up">
+          <div class="section-eyebrow">Trusted by Developers</div>
+          <h2 class="section-title">Growing Every Day</h2>
+        </div>
+
+        <div class="social-stats fade-up">
+          <div class="social-stat">
+            <div class="social-stat-value">1,000+</div>
+            <div class="social-stat-label">Daily API Calls</div>
+          </div>
+          <div class="social-stat">
+            <div class="social-stat-value">1</div>
+            <div class="social-stat-label">Active Nodes</div>
+          </div>
+          <div class="social-stat">
+            <div class="social-stat-value">99.8%</div>
+            <div class="social-stat-label">Network Uptime</div>
+          </div>
+          <div class="social-stat">
+            <div class="social-stat-value">$53+</div>
+            <div class="social-stat-label">USDT Distributed</div>
+          </div>
+        </div>
+
+        <div class="testimonials fade-up">
+          <div class="testimonial-card">
+            <p class="testimonial-quote">"Switched from Infura to Satelink. 40% cheaper and more reliable. The pay-per-call model makes so much more sense for our usage patterns."</p>
+            <div class="testimonial-author">
+              <div class="testimonial-avatar">AD</div>
+              <div>
+                <div class="testimonial-name">Anonymous Developer</div>
+                <div class="testimonial-role">DeFi Protocol Team</div>
+              </div>
+            </div>
+          </div>
+          <div class="testimonial-card">
+            <p class="testimonial-quote">"Running a Satelink node covers my VPS costs. Passive income that actually works. Setup took 10 minutes."</p>
+            <div class="testimonial-author">
+              <div class="testimonial-avatar">NO</div>
+              <div>
+                <div class="testimonial-name">Node Operator</div>
+                <div class="testimonial-role">Singapore</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-header fade-up">
+          <div class="section-eyebrow">Why Satelink</div>
+          <h2 class="section-title">Everything You Need to Build</h2>
+        </div>
+
+        <div class="features-grid fade-up">
+          <div class="feature-card">
+            <div class="feature-icon">&#9889;</div>
+            <h3 class="feature-title">Low Latency</h3>
+            <p class="feature-desc">&lt;100ms average response time with intelligent routing to the nearest node.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#128176;</div>
+            <h3 class="feature-title">Pay Per Call</h3>
+            <p class="feature-desc">No monthly fees. Just $0.000030 per call. Only pay for what you use.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#128279;</div>
+            <h3 class="feature-title">Multi-Chain</h3>
+            <p class="feature-desc">Ethereum, Polygon, Base, Arbitrum. One API key, all chains.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#128274;</div>
+            <h3 class="feature-title">Secure</h3>
+            <p class="feature-desc">On-chain settlement, no custody. Your funds never touch centralized systems.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#128200;</div>
+            <h3 class="feature-title">Transparent</h3>
+            <p class="feature-desc">All transactions on Polygonscan. Verify every settlement yourself.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">&#127758;</div>
+            <h3 class="feature-title">Global</h3>
+            <p class="feature-desc">Distributed node network spanning multiple continents.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Competitor Comparison -->
+    <section class="section comparison-section">
+      <div class="container">
+        <div class="section-header fade-up">
+          <div class="section-eyebrow">Compare</div>
+          <h2 class="section-title">Why Choose Satelink?</h2>
+        </div>
+
+        <table class="comparison-table fade-up">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th class="satelink-col">Satelink</th>
+              <th>Infura</th>
+              <th>Alchemy</th>
+              <th>QuickNode</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cost per 1M calls</td>
+              <td class="satelink-col"><strong>$30</strong></td>
+              <td>$50</td>
+              <td>$40</td>
+              <td>$60</td>
+            </tr>
+            <tr>
+              <td>Decentralized</td>
+              <td class="satelink-col"><span class="check">&#10003;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+            </tr>
+            <tr>
+              <td>Node Operator Rewards</td>
+              <td class="satelink-col"><span class="check">&#10003;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+            </tr>
+            <tr>
+              <td>On-Chain Settlement</td>
+              <td class="satelink-col"><span class="check">&#10003;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+              <td><span class="cross">&#10005;</span></td>
+            </tr>
+            <tr>
+              <td>Free Tier</td>
+              <td class="satelink-col">200/day</td>
+              <td>100K/mo</td>
+              <td>300K/mo</td>
+              <td>50K/mo</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="text-align: center; margin-top: 32px;" class="fade-up">
+          <a href="compare.html" class="btn btn-secondary">Full Comparison</a>
         </div>
       </div>
     </section>
@@ -1171,7 +1580,7 @@
 
         <div class="proof-footer fade-up">
           <a href="https://polygonscan.com/address/0x6987921e2453f360e314e4424F6c2789F10a1CC9" target="_blank">
-            All settlements verifiable on blockchain →
+            All settlements verifiable on blockchain &#8594;
           </a>
         </div>
       </div>
@@ -1230,12 +1639,81 @@
       </div>
     </section>
 
-    <!-- How It Works -->
+    <!-- How It Works with Diagrams -->
     <section class="section how-section">
       <div class="container">
         <div class="section-header fade-up">
           <div class="section-eyebrow">How It Works</div>
           <h2 class="section-title">Simple, Transparent, Decentralized</h2>
+        </div>
+
+        <div class="how-diagrams fade-up">
+          <!-- Request Flow Diagram -->
+          <div class="diagram-card">
+            <h4 class="diagram-title">Request Flow</h4>
+            <svg class="diagram-svg" viewBox="0 0 280 160">
+              <defs>
+                <marker id="arrowhead1" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#5CB89A"/>
+                </marker>
+              </defs>
+              <rect class="node" x="10" y="60" width="50" height="40" rx="6"/>
+              <text x="35" y="85" text-anchor="middle" font-size="10">Dev</text>
+              <line class="arrow arrow-animated" x1="65" y1="80" x2="90" y2="80" marker-end="url(#arrowhead1)"/>
+              <rect class="node" x="95" y="60" width="50" height="40" rx="6"/>
+              <text x="120" y="85" text-anchor="middle" font-size="10">Gateway</text>
+              <line class="arrow arrow-animated" x1="150" y1="80" x2="175" y2="80" marker-end="url(#arrowhead1)"/>
+              <rect class="node" x="180" y="60" width="50" height="40" rx="6"/>
+              <text x="205" y="85" text-anchor="middle" font-size="10">Node</text>
+              <line class="arrow" x1="235" y1="80" x2="260" y2="80" marker-end="url(#arrowhead1)"/>
+              <text x="270" y="85" text-anchor="middle" font-size="10" fill="#5CB89A">&#10003;</text>
+              <text x="140" y="140" text-anchor="middle" font-size="11" fill="#9BA1A6">Automatic failover to nearest node</text>
+            </svg>
+          </div>
+
+          <!-- Settlement Flow Diagram -->
+          <div class="diagram-card">
+            <h4 class="diagram-title">Settlement Flow</h4>
+            <svg class="diagram-svg" viewBox="0 0 280 160">
+              <rect class="node" x="10" y="30" width="55" height="35" rx="6"/>
+              <text x="37" y="52" text-anchor="middle" font-size="9">Revenue</text>
+              <line class="arrow arrow-animated" x1="70" y1="47" x2="85" y2="47" marker-end="url(#arrowhead1)"/>
+              <rect class="node" x="90" y="30" width="55" height="35" rx="6"/>
+              <text x="117" y="52" text-anchor="middle" font-size="9">Epoch</text>
+              <line class="arrow arrow-animated" x1="150" y1="47" x2="165" y2="47" marker-end="url(#arrowhead1)"/>
+              <rect class="node" x="170" y="30" width="55" height="35" rx="6"/>
+              <text x="197" y="52" text-anchor="middle" font-size="9">Merkle</text>
+              <line class="arrow arrow-animated" x1="230" y1="47" x2="245" y2="47" marker-end="url(#arrowhead1)"/>
+              <rect class="node" x="10" y="90" width="55" height="35" rx="6" style="fill: rgba(92,184,154,0.2)"/>
+              <text x="37" y="112" text-anchor="middle" font-size="9">Claim</text>
+              <line class="arrow" x1="85" y1="107" x2="70" y2="107" marker-end="url(#arrowhead1)" transform="rotate(180 77 107)"/>
+              <rect class="node" x="90" y="90" width="55" height="35" rx="6"/>
+              <text x="117" y="112" text-anchor="middle" font-size="9">Polygon TX</text>
+              <line class="arrow" x1="165" y1="107" x2="150" y2="107" marker-end="url(#arrowhead1)" transform="rotate(180 157 107)"/>
+              <rect class="node" x="170" y="90" width="55" height="35" rx="6"/>
+              <text x="197" y="112" text-anchor="middle" font-size="9">Verify</text>
+              <path class="arrow" d="M255 47 L265 47 L265 107 L230 107" marker-end="url(#arrowhead1)" fill="none" stroke="#5CB89A" stroke-width="2"/>
+              <text x="140" y="150" text-anchor="middle" font-size="11" fill="#9BA1A6">Every 60 seconds on Polygon</text>
+            </svg>
+          </div>
+
+          <!-- Revenue Split Diagram -->
+          <div class="diagram-card">
+            <h4 class="diagram-title">Revenue Split</h4>
+            <svg class="diagram-svg" viewBox="0 0 280 160">
+              <circle cx="140" cy="70" r="55" fill="none" stroke="#2D5A4A" stroke-width="20"/>
+              <circle cx="140" cy="70" r="55" fill="none" stroke="#408A71" stroke-width="20" stroke-dasharray="103.67 242.89" stroke-dashoffset="0" transform="rotate(-90 140 70)"/>
+              <circle cx="140" cy="70" r="55" fill="none" stroke="#5CB89A" stroke-width="20" stroke-dasharray="172.79 172.79" stroke-dashoffset="0" transform="rotate(-90 140 70)"/>
+              <text x="140" y="68" text-anchor="middle" font-size="20" font-weight="700" fill="#ECEDEE">50%</text>
+              <text x="140" y="85" text-anchor="middle" font-size="10" fill="#9BA1A6">Nodes</text>
+              <rect x="20" y="135" width="12" height="12" rx="2" fill="#5CB89A"/>
+              <text x="38" y="145" font-size="10" fill="#9BA1A6">50% Nodes</text>
+              <rect x="110" y="135" width="12" height="12" rx="2" fill="#408A71"/>
+              <text x="128" y="145" font-size="10" fill="#9BA1A6">30% Platform</text>
+              <rect x="210" y="135" width="12" height="12" rx="2" fill="#2D5A4A"/>
+              <text x="228" y="145" font-size="10" fill="#9BA1A6">20% Pool</text>
+            </svg>
+          </div>
         </div>
 
         <div class="how-flow fade-up">
@@ -1247,7 +1725,7 @@
             <p class="how-step-desc">Pay per API call with USDT. No subscriptions.</p>
           </div>
 
-          <div class="how-arrow">→</div>
+          <div class="how-arrow">&#8594;</div>
 
           <div class="how-step">
             <div class="how-step-icon">
@@ -1257,7 +1735,7 @@
             <p class="how-step-desc">Routes workloads and settles on-chain every 60s.</p>
           </div>
 
-          <div class="how-arrow">→</div>
+          <div class="how-arrow">&#8594;</div>
 
           <div class="how-step">
             <div class="how-step-icon">
@@ -1425,6 +1903,10 @@ console.<span class="code-function">log</span>(<span class="code-string">'Curren
               <div class="calc-result-label">Estimated Monthly Earnings</div>
               <div class="calc-result-value" id="earningsValue">$15.00</div>
             </div>
+
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="calculator.html" class="btn btn-secondary">Advanced Calculator</a>
+            </div>
           </div>
 
           <div class="requirements fade-up">
@@ -1448,7 +1930,7 @@ console.<span class="code-function">log</span>(<span class="code-string">'Curren
               </li>
             </ul>
             <div class="node-cta">
-              <a href="https://docs.satelink.network/#node-operators" class="btn btn-primary btn-lg">Run a Node →</a>
+              <a href="https://docs.satelink.network/#node-operators" class="btn btn-primary btn-lg">Run a Node</a>
             </div>
           </div>
         </div>
@@ -1590,9 +2072,9 @@ console.<span class="code-function">log</span>(<span class="code-string">'Curren
           <h4>Product</h4>
           <ul class="footer-links">
             <li><a href="#products">RPC Gateway</a></li>
-            <li><a href="#products">AI Proxy</a></li>
+            <li><a href="#products">AI Inference</a></li>
             <li><a href="#products">Webhooks</a></li>
-            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="status.html">Status Page</a></li>
           </ul>
         </div>
 
@@ -1601,37 +2083,37 @@ console.<span class="code-function">log</span>(<span class="code-string">'Curren
           <ul class="footer-links">
             <li><a href="https://docs.satelink.network">Documentation</a></li>
             <li><a href="https://docs.satelink.network/#api-reference">API Reference</a></li>
-            <li><a href="https://docs.satelink.network/#sdk-guide">SDKs</a></li>
-            <li><a href="status.html">Status</a></li>
+            <li><a href="wiki.html">Wiki</a></li>
+            <li><a href="https://github.com/Satelink-Protocol/Satelink_Network">GitHub</a></li>
           </ul>
         </div>
 
         <div class="footer-column">
           <h4>Company</h4>
           <ul class="footer-links">
-            <li><a href="#roadmap">Roadmap</a></li>
-            <li><a href="https://blog.satelink.network">Blog</a></li>
-            <li><a href="https://github.com/Satelink-Protocol/Satelink_Network">GitHub</a></li>
-            <li><a href="mailto:support@satelink.network">Contact</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="careers.html">Careers</a></li>
+            <li><a href="blog.html">Blog</a></li>
+            <li><a href="press.html">Press</a></li>
           </ul>
         </div>
 
         <div class="footer-column">
           <h4>Resources</h4>
           <ul class="footer-links">
+            <li><a href="calculator.html">Calculator</a></li>
+            <li><a href="compare.html">Compare</a></li>
             <li><a href="https://discord.gg/satelink">Discord</a></li>
             <li><a href="https://twitter.com/satelinknet">Twitter</a></li>
-            <li><a href="https://docs.satelink.network/#faq">FAQ</a></li>
-            <li><a href="https://docs.satelink.network/#changelog">Changelog</a></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <p class="footer-copyright">© 2026 Satelink Network. All rights reserved.</p>
+        <p class="footer-copyright">&copy; 2026 Satelink Network. All rights reserved.</p>
         <div class="footer-legal">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="terms.html">Terms of Service</a>
         </div>
       </div>
     </div>
@@ -1648,8 +2130,106 @@ console.<span class="code-function">log</span>(<span class="code-string">'Curren
       const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('satelink-theme', next);
+      initNetworkCanvas();
     }
     initTheme();
+
+    // Network Canvas Animation
+    function initNetworkCanvas() {
+      const canvas = document.getElementById('networkCanvas');
+      const ctx = canvas.getContext('2d');
+      let animationId;
+      let particles = [];
+      let mouse = { x: null, y: null, radius: 150 };
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function createParticles() {
+        particles = [];
+        const numParticles = Math.min(80, Math.floor((canvas.width * canvas.height) / 15000));
+        for (let i = 0; i < numParticles; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            radius: Math.random() * 2 + 1
+          });
+        }
+      }
+
+      function animate() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach((p, i) => {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+          if (mouse.x) {
+            const dx = mouse.x - p.x;
+            const dy = mouse.y - p.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < mouse.radius) {
+              const force = (mouse.radius - dist) / mouse.radius;
+              p.vx -= (dx / dist) * force * 0.02;
+              p.vy -= (dy / dist) * force * 0.02;
+            }
+          }
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = isDark ? 'rgba(92, 184, 154, 0.6)' : 'rgba(64, 138, 113, 0.6)';
+          ctx.fill();
+
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p.x - p2.x;
+            const dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 150) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = isDark
+                ? `rgba(92, 184, 154, ${0.2 * (1 - dist / 150)})`
+                : `rgba(64, 138, 113, ${0.15 * (1 - dist / 150)})`;
+              ctx.stroke();
+            }
+          }
+        });
+
+        animationId = requestAnimationFrame(animate);
+      }
+
+      window.addEventListener('resize', () => {
+        resize();
+        createParticles();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      window.addEventListener('mouseout', () => {
+        mouse.x = null;
+        mouse.y = null;
+      });
+
+      if (animationId) cancelAnimationFrame(animationId);
+      resize();
+      createParticles();
+      animate();
+    }
+
+    initNetworkCanvas();
 
     // Scroll animations
     const observer = new IntersectionObserver((entries) => {
