@@ -1,172 +1,178 @@
-import { Navigation } from "@/components/marketing/Navigation";
-import { Footer } from "@/components/marketing/Footer";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Press | Satelink Network",
-  description: "Press resources, brand assets, and media inquiries for Satelink Network.",
-};
-
-const PRESS_RELEASES = [
-  {
-    title: "Satelink Announces Public Beta Launch",
-    date: "May 15, 2026",
-    excerpt: "Decentralized infrastructure network opens to public beta with USDT settlement on Polygon.",
-  },
-  {
-    title: "Satelink Completes First On-Chain Settlement",
-    date: "April 28, 2026",
-    excerpt: "First automated USDT payment to node operators marks protocol milestone.",
-  },
-];
-
-const STATS = [
-  { label: "API Calls Processed", value: "1.7M+" },
-  { label: "USDT Distributed", value: "$53+" },
-  { label: "Active Nodes", value: "5+" },
-  { label: "Chains Supported", value: "5" },
-];
-
 export default function PressPage() {
   return (
-    <>
-      <Navigation />
-      <main className="pt-14 min-h-screen" style={{ background: "var(--bg-page)" }}>
-        <section className="py-20 text-center border-b" style={{ borderColor: "var(--border-subtle)", background: "var(--bg-card)" }}>
-          <div className="max-w-3xl mx-auto px-6">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: "var(--text-primary)" }}>
-              Press & Media
-            </h1>
-            <p className="text-lg" style={{ color: "var(--text-secondary)" }}>
-              Resources for journalists, analysts, and content creators covering Satelink.
-            </p>
-          </div>
-        </section>
+    <div dangerouslySetInnerHTML={{ __html: `
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Press Kit - Satelink Network</title>
+  <meta name="description" content="Satelink Network press kit. Download logos, brand assets, and boilerplate information.">
+  <link rel="canonical" href="https://satelink.network/press">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23408A71' rx='18' width='100' height='100'/><text x='50' y='66' font-size='48' fill='white' text-anchor='middle' font-family='system-ui' font-weight='700'>S</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #408A71;
+      --accent: #5CB89A;
+      --bg-base: #0B0D0F;
+      --bg-subtle: #111316;
+      --bg-card: rgba(28, 31, 36, 0.7);
+      --text-primary: #ECEDEE;
+      --text-secondary: #9BA1A6;
+      --text-muted: #6C7075;
+      --border: rgba(255, 255, 255, 0.08);
+      --font-sans: 'Inter', -apple-system, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-sans); background: var(--bg-base); color: var(--text-primary); line-height: 1.7; }
+    .header { position: sticky; top: 0; background: rgba(11, 13, 15, 0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 100; padding: 16px 24px; }
+    .header-inner { max-width: 900px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; color: var(--text-primary); }
+    .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--primary)); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; }
+    .header-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; margin-left: 24px; }
+    .header-links a:hover { color: var(--text-primary); }
+    .hero { padding: 80px 24px 60px; text-align: center; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+    .hero h1 { font-size: 48px; font-weight: 800; margin-bottom: 16px; background: linear-gradient(135deg, var(--text-primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 18px; color: var(--text-secondary); }
+    .section { padding: 60px 24px; max-width: 900px; margin: 0 auto; }
+    h2 { font-size: 28px; font-weight: 700; margin-bottom: 24px; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; margin-bottom: 32px; }
+    .card h3 { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--accent); }
+    .card p { font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; }
+    .logo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px; }
+    @media (max-width: 640px) { .logo-grid { grid-template-columns: 1fr; } }
+    .logo-card { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 12px; padding: 32px; text-align: center; }
+    .logo-preview { width: 80px; height: 80px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 800; }
+    .logo-preview.dark { background: #0B0D0F; color: #5CB89A; border-radius: 16px; }
+    .logo-preview.light { background: #FFFFFF; color: #408A71; border-radius: 16px; border: 1px solid #E5E5E5; }
+    .logo-preview.icon { background: linear-gradient(135deg, #5CB89A, #408A71); color: white; border-radius: 16px; }
+    .logo-label { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; }
+    .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 640px) { .color-grid { grid-template-columns: repeat(2, 1fr); } }
+    .color-card { text-align: center; }
+    .color-swatch { width: 100%; height: 80px; border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border); }
+    .color-name { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+    .color-hex { font-size: 13px; color: var(--text-muted); font-family: monospace; }
+    .boilerplate { background: var(--bg-subtle); border-radius: 12px; padding: 24px; font-size: 15px; line-height: 1.8; color: var(--text-secondary); }
+    .contact-card { display: flex; align-items: center; gap: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+    .contact-icon { font-size: 48px; }
+    .contact-info h3 { font-weight: 600; margin-bottom: 8px; }
+    .contact-info a { color: var(--accent); }
+    .footer { background: var(--bg-subtle); border-top: 1px solid var(--border); padding: 40px 24px; text-align: center; }
+    .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; }
+    .footer-links a { color: var(--text-secondary); text-decoration: none; font-size: 14px; }
+    .footer-copy { font-size: 13px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo"><div class="logo-icon">S</div><span>Satelink</span></a>
+      <div class="header-links">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/blog">Blog</a>
+      </div>
+    </div>
+  </header>
 
-        <section className="py-16">
-          <div className="max-w-4xl mx-auto px-6">
-            <h2 className="text-2xl font-bold mb-8" style={{ color: "var(--text-primary)" }}>
-              Key Metrics
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
-              {STATS.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="p-6 rounded-xl border text-center"
-                  style={{ background: "var(--bg-card)", borderColor: "var(--border-subtle)" }}
-                >
-                  <div className="text-3xl font-bold mb-2" style={{ color: "var(--brand-primary)" }}>
-                    {stat.value}
-                  </div>
-                  <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
+  <section class="hero">
+    <h1>Press Kit</h1>
+    <p>Brand assets, logos, and information for press and media</p>
+  </section>
 
-            <h2 className="text-2xl font-bold mb-8" style={{ color: "var(--text-primary)" }}>
-              Press Releases
-            </h2>
-            <div className="space-y-4 mb-16">
-              {PRESS_RELEASES.map((release) => (
-                <div
-                  key={release.title}
-                  className="p-6 rounded-xl border"
-                  style={{ background: "var(--bg-card)", borderColor: "var(--border-subtle)" }}
-                >
-                  <div className="text-sm mb-2" style={{ color: "var(--text-muted)" }}>
-                    {release.date}
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-                    {release.title}
-                  </h3>
-                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    {release.excerpt}
-                  </p>
-                </div>
-              ))}
-            </div>
+  <section class="section">
+    <div class="card">
+      <h3>Logo Downloads</h3>
+      <div class="logo-grid">
+        <div class="logo-card">
+          <div class="logo-preview dark">S</div>
+          <div class="logo-label">Dark Background</div>
+        </div>
+        <div class="logo-card">
+          <div class="logo-preview light">S</div>
+          <div class="logo-label">Light Background</div>
+        </div>
+        <div class="logo-card">
+          <div class="logo-preview icon">S</div>
+          <div class="logo-label">Icon Only</div>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted);">Please use our official logos without modification. Maintain clear space around the logo equal to the height of the "S" icon.</p>
+    </div>
 
-            <h2 className="text-2xl font-bold mb-8" style={{ color: "var(--text-primary)" }}>
-              Brand Assets
-            </h2>
-            <div
-              className="p-8 rounded-xl border"
-              style={{ background: "var(--bg-card)", borderColor: "var(--border-subtle)" }}
-            >
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                    Logo
-                  </h3>
-                  <div
-                    className="p-8 rounded-lg flex items-center justify-center mb-4"
-                    style={{ background: "var(--bg-page)" }}
-                  >
-                    <div
-                      className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold"
-                      style={{ background: "linear-gradient(135deg, #5CB89A, #408A71)", color: "white" }}
-                    >
-                      S
-                    </div>
-                  </div>
-                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                    Use on dark backgrounds. Maintain clear space around the logo.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
-                    Brand Colors
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded" style={{ background: "#408A71" }} />
-                      <div>
-                        <div className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>#408A71</div>
-                        <div className="text-xs" style={{ color: "var(--text-muted)" }}>Primary Green</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded" style={{ background: "#5CB89A" }} />
-                      <div>
-                        <div className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>#5CB89A</div>
-                        <div className="text-xs" style={{ color: "var(--text-muted)" }}>Accent Green</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded" style={{ background: "#00D1FF" }} />
-                      <div>
-                        <div className="text-sm font-mono" style={{ color: "var(--text-primary)" }}>#00D1FF</div>
-                        <div className="text-xs" style={{ color: "var(--text-muted)" }}>Signal Cyan</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+    <div class="card">
+      <h3>Brand Colors</h3>
+      <div class="color-grid">
+        <div class="color-card">
+          <div class="color-swatch" style="background: #408A71;"></div>
+          <div class="color-name">Primary</div>
+          <div class="color-hex">#408A71</div>
+        </div>
+        <div class="color-card">
+          <div class="color-swatch" style="background: #5CB89A;"></div>
+          <div class="color-name">Accent</div>
+          <div class="color-hex">#5CB89A</div>
+        </div>
+        <div class="color-card">
+          <div class="color-swatch" style="background: #0B0D0F;"></div>
+          <div class="color-name">Dark</div>
+          <div class="color-hex">#0B0D0F</div>
+        </div>
+        <div class="color-card">
+          <div class="color-swatch" style="background: #ECEDEE; border-color: #E5E5E5;"></div>
+          <div class="color-name">Light</div>
+          <div class="color-hex">#ECEDEE</div>
+        </div>
+      </div>
+    </div>
 
-        <section className="py-16 text-center" style={{ background: "var(--bg-card)" }}>
-          <div className="max-w-2xl mx-auto px-6">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--text-primary)" }}>
-              Media Inquiries
-            </h2>
-            <p className="mb-6" style={{ color: "var(--text-secondary)" }}>
-              For press inquiries, interviews, or additional assets, please contact us.
-            </p>
-            <a
-              href="mailto:press@satelink.network"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium"
-              style={{ background: "var(--brand-primary)", color: "white" }}
-            >
-              press@satelink.network
-            </a>
-          </div>
-        </section>
-      </main>
-      <Footer />
-    </>
-  );
+    <div class="card">
+      <h3>Boilerplate</h3>
+      <div class="boilerplate">
+        <p><strong>Short (50 words):</strong></p>
+        <p>Satelink Network is a decentralized infrastructure platform that connects developers with distributed hardware. Using on-chain USDT settlement on Polygon, node operators earn 50% of revenue by handling RPC requests, AI inference, and webhook delivery. Real workloads. Real revenue. Verifiable on-chain.</p>
+        <br>
+        <p><strong>Long (100 words):</strong></p>
+        <p>Satelink Network is building the decentralized infrastructure backbone for the machine economy. Our platform enables developers to access multi-chain RPC endpoints, AI inference, and webhook delivery through a global network of independent node operators. Unlike centralized cloud providers, Satelink settles all payments transparently on Polygon using USDT, with 50% of revenue going directly to node operators. The network has processed over 1.7 million API calls and distributed $53+ USDT since launch. Satelink is open source, permissionless, and designed for a future where infrastructure is owned by the community, not corporations.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Key Facts</h3>
+      <ul style="list-style: none; color: var(--text-secondary); font-size: 15px;">
+        <li style="margin-bottom: 12px;">✓ Founded: 2025</li>
+        <li style="margin-bottom: 12px;">✓ Product Launch: Q2 2026</li>
+        <li style="margin-bottom: 12px;">✓ API Calls: 1.7M+</li>
+        <li style="margin-bottom: 12px;">✓ Settlement: USDT on Polygon</li>
+        <li style="margin-bottom: 12px;">✓ Revenue Share: 50% to node operators</li>
+        <li style="margin-bottom: 12px;">✓ Open Source: <a href="https://github.com/Satelink-Protocol/Satelink_Network" style="color: var(--accent);" target="_blank">GitHub</a></li>
+      </ul>
+    </div>
+
+    <h2>Press Contact</h2>
+    <div class="contact-card">
+      <div class="contact-icon">📧</div>
+      <div class="contact-info">
+        <h3>Media Inquiries</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 8px;">For press inquiries, interviews, or additional information:</p>
+        <a href="mailto:press@satelink.network">press@satelink.network</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
+    <p class="footer-copy">© 2026 Satelink Network. All rights reserved.</p>
+  </footer>
+</body>
+</html>
+    `}} />
+  )
 }
