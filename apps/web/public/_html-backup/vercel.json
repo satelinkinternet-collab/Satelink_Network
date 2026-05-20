@@ -1,0 +1,11 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/docs",
+      "destination": "https://github.com/Satelink-Protocol/Satelink_Network/wiki",
+      "permanent": true
+    }
+  ]
+}
