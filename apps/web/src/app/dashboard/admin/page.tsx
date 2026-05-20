@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
 const API_BASE = "https://rpc.satelink.network";
-const PASSWORD_HASH = "a3c9e8d7b6f5e4d3c2b1a0z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0";
+const PASSWORD_HASH = process.env.NEXT_PUBLIC_ADMIN_HASH || "";
 
 interface Metrics {
   eventsToday: number;
