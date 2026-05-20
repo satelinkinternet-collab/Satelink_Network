@@ -106,3 +106,18 @@ playwright-report/
 !.gitkeep
 token.txt
 *.txt # prevent future accidents
+
+# Backups
+.satelink-backups
+*.backup
+
+# Build artifacts
+.turbo
+out
+.next
+
+# Logs
+*.log
+logs/
+.vercel
+.env*.local
