@@ -2,5 +2,20 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app.satelink.network" }],
+      "destination": "/dashboard/:path*"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.satelink.network" }],
+      "destination": "/dashboard",
+      "permanent": false
+    }
+  ]
 }
