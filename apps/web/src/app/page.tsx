@@ -87,10 +87,10 @@ export default function HomePage() {
           <span style={{background:'rgba(64,138,113,0.2)',color:'#5CB89A',fontSize:10,padding:'2px 6px',borderRadius:4,border:'1px solid rgba(92,184,154,0.3)'}}>BETA</span>
         </div>
         <div style={{display:'flex',gap:'32px',fontSize:13,color:'rgba(255,255,255,0.6)'}}>
-          <a href="/calculator" style={{color:'inherit',textDecoration:'none'}}>Developers</a>
-          <a href="/calculator" style={{color:'inherit',textDecoration:'none'}}>Nodes</a>
-          <a href="/status" style={{color:'inherit',textDecoration:'none'}}>Network</a>
-          <a href="/calculator" style={{color:'inherit',textDecoration:'none'}}>Pricing</a>
+          <a href="/developers" style={{color:'inherit',textDecoration:'none'}}>Developers</a>
+          <a href="/nodes" style={{color:'inherit',textDecoration:'none'}}>Nodes</a>
+          <a href="/network" style={{color:'inherit',textDecoration:'none'}}>Network</a>
+          <a href="/pricing" style={{color:'inherit',textDecoration:'none'}}>Pricing</a>
           <a href="/compare" style={{color:'inherit',textDecoration:'none'}}>Compare</a>
         </div>
         <a href="/app" style={{background:'#408A71',color:'#fff',padding:'8px 20px',borderRadius:6,fontSize:13,fontWeight:600,textDecoration:'none'}}>Launch App →</a>

@@ -7,14 +7,19 @@
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "app.satelink.network" }],
-      "destination": "/dashboard/:path*"
+      "destination": "/satelink/os/overview/:path*"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "/status"
     }
   ],
   "redirects": [
     {
       "source": "/",
       "has": [{ "type": "host", "value": "app.satelink.network" }],
-      "destination": "/dashboard",
+      "destination": "/satelink/os/overview",
       "permanent": false
     }
   ]
