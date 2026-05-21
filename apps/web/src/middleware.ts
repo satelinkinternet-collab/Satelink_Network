@@ -24,6 +24,15 @@ const PROTECTED_PREFIXES = [
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const hostname = request.headers.get('host') || '';
+
+    // Protect /_status: only accessible from status.satelink.network
+    if (pathname.startsWith('/_status')) {
+        if (!hostname.includes('status.satelink.network')) {
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+        return NextResponse.next();
+    }
 
     const isProtected = PROTECTED_PREFIXES.some(p => pathname.startsWith(p));
     if (!isProtected) return NextResponse.next();
@@ -47,6 +56,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
+        '/_status/:path*',
         '/admin/:path*',
         '/node/:path*',
         '/builder/:path*',

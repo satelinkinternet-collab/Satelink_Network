@@ -33,6 +33,29 @@ const nextConfig: NextConfig = {
     pagesBufferLength: 2,
   },
 
+  async redirects() {
+    return [
+      {
+        source: '/status',
+        destination: 'https://status.satelink.network/',
+        permanent: true,
+        missing: [{ type: 'host', value: 'status.satelink.network' }],
+      },
+      {
+        source: '/status/',
+        destination: 'https://status.satelink.network/',
+        permanent: true,
+        missing: [{ type: 'host', value: 'status.satelink.network' }],
+      },
+      {
+        source: '/status/:path*',
+        destination: 'https://status.satelink.network/:path*',
+        permanent: true,
+        missing: [{ type: 'host', value: 'status.satelink.network' }],
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
