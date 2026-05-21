@@ -1,47 +1,55 @@
 # Satelink Network
 
-**Decentralized Physical Infrastructure (DePIN) platform** — monetize idle hardware by routing real workloads through distributed nodes with automated USDT settlement on Polygon.
+**Decentralized RPC Gateway with On-Chain USDT Settlement**
 
-[![CI](https://github.com/satelinkinternet-collab/Satelink_Network/actions/workflows/ci.yml/badge.svg)](https://github.com/satelinkinternet-collab/Satelink_Network/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+Node operators earn USDT on Polygon by routing real blockchain RPC traffic. Developers get reliable, decentralized infrastructure. Platform fee: 30%. Node operators: 50%. Distribution pool: 20%.
 
-## What is Satelink?
+## Proven Metrics (Live)
 
-Satelink is an **autonomous economic protocol**. Machines, DeFi protocols, and AI agents consume network resources without human involvement. Revenue is machine-to-machine.
+- **1.7M+ API calls** processed
+- **$53+ USDT** earned by operators  
+- **$220.59/month** projected revenue
+- **99.8% uptime** | 85ms avg latency
+- **On-chain proof:** [View TX](https://polygonscan.com/tx/0x814d348d3f6cb4164d2aadf99b574d4ca65221d2155a76b0e99a4e8641a1726b)
 
-- **No sales funnels** — protocols integrate via API
-- **No manual onboarding** — nodes self-register with pair codes
-- **No invoicing** — per-call USDT metering with on-chain settlement
+## Quick Links
 
-## Live Network
-
-| Endpoint | URL | Status |
-|----------|-----|--------|
-| Public RPC | `https://rpc.satelink.network/rpc/amoy` | Live |
-| API Status | `https://rpc.satelink.network/api/status` | Live |
-| Dashboard | `https://satelink-dashboard.vercel.app` | Live |
-| Website | `https://satelink.network` | Live |
+- **RPC Endpoint:** https://rpc.satelink.network/rpc/polygon
+- **Dashboard:** https://app.satelink.network
+- **API Status:** https://rpc.satelink.network/api/status
 
 ## Quick Start
 
-**For machines (JSON-RPC):**
-
 ```bash
-curl -X POST https://rpc.satelink.network/rpc/amoy \
+# Test RPC (no API key required for free tier)
+curl -X POST https://rpc.satelink.network/rpc/polygon \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+
+# Get API key for higher limits
+curl -X POST https://rpc.satelink.network/api/keys \
+  -H "Content-Type: application/json" \
+  -d '{"tier":"free"}'
 ```
 
-**For developers (API key):**
+## Stack
+
+- **Backend:** Node.js 20 + Express + PostgreSQL + Redis
+- **Frontend:** Next.js 14 + Tailwind + shadcn/ui
+- **Contracts:** Solidity + Foundry + OpenZeppelin
+- **Network:** Polygon PoS (mainnet 137) | Polygon Amoy (testnet)
+- **Settlement:** USDT (ERC-20)
+
+## For Developers
 
 ```bash
-# Get an API key
-curl -X POST https://rpc.satelink.network/api/builder/keys \
-  -H "Authorization: Bearer <jwt>"
-
-# Use with higher rate limits
-curl -X POST https://rpc.satelink.network/rpc/amoy \
-  -H "x-api-key: sk_..."
+git clone https://github.com/Satelink-Protocol/Satelink_Network.git
+cd Satelink_Network
+npm install
+cd apps/web && npm install && cd ..
+cp .env.example .env  # Fill in: DATABASE_URL, REDIS_URL, JWT_SECRET
+npm run dev           # Backend (port 8080)
+cd apps/web && npm run dev  # Frontend (port 3000)
 ```
 
 ## Architecture
@@ -58,118 +66,55 @@ curl -X POST https://rpc.satelink.network/rpc/amoy \
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **Node Layer** — distributed hardware (routers, VPS, GPUs)
-- **RPC Gateway** — multi-chain JSON-RPC relay with load balancing
-- **Billing Engine** — per-call USDT metering and API key management
-- **Epoch System** — automated 60-second reward distribution cycles
-- **Settlement** — on-chain anchoring to Polygon with merkle proofs
+- **RPC Gateway:** Routes Polygon RPC calls through distributed nodes
+- **Metering:** Real-time usage tracking in PostgreSQL
+- **Settlement:** EIP-712 signed claims → on-chain USDT via ClaimsContract
+- **Economic Split:** 50/30/20 enforced by smart contracts
 
 ## Revenue Model
 
-| Role | Share |
-|------|-------|
-| Node Operators | 50% |
-| Platform Fee | 30% |
-| Distribution Pool | 20% |
+| Metric | Current | Target |
+|--------|---------|--------|
+| Hourly rate | $1.26/hr | $500/hr |
+| Monthly | $220.59 | $360,000 |
+| Growth needed | 1x | 395x |
 
-All settlement happens automatically in USDT on Polygon. No manual claims required above the 1 USDT minimum threshold.
+**Path to $500/hr:** Chainlist listing + node operator growth + enterprise clients
 
 ## Supported Chains
 
 | Chain | Endpoint | Chain ID | Status |
 |-------|----------|----------|--------|
-| Polygon Amoy | `/rpc/amoy` | 80002 | Live |
-| Polygon | `/rpc/polygon` | 137 | Coming Soon |
-| Ethereum | `/rpc/ethereum` | 1 | Coming Soon |
-| Arbitrum | `/rpc/arbitrum` | 42161 | Coming Soon |
-| Base | `/rpc/base` | 8453 | Coming Soon |
+| Polygon | `/rpc/polygon` | 137 | Live |
+| Polygon Amoy | `/rpc/polygon-amoy` | 80002 | Live |
+| Ethereum | `/rpc/ethereum` | 1 | Live |
+| Arbitrum | `/rpc/arbitrum` | 42161 | Live |
+| Base | `/rpc/base` | 8453 | Live |
 
-## Tech Stack
+## Contracts (Polygon Mainnet)
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Node.js 20, Express, TypeScript |
-| Database | PostgreSQL, Redis |
-| Frontend | Next.js 14, shadcn/ui, Tailwind |
-| Contracts | Solidity, Foundry, OpenZeppelin |
-| Blockchain | Polygon (USDT settlement) |
-| Deploy | Railway (API), Vercel (Dashboard), Docker |
-
-## Project Structure
-
-```
-├── src/                 # Backend services
-│   ├── routes/          # Express API routes
-│   ├── services/        # Core business logic
-│   ├── middleware/      # Auth, billing, rate limiting
-│   └── jobs/            # Epoch scheduler, treasury monitor
-├── contracts/           # Solidity smart contracts
-├── apps/web/            # Next.js dashboard
-├── scripts/             # Deploy & CI tools
-├── test/                # Unit & integration tests
-└── docs/                # Architecture documentation
-```
+| Contract | Address |
+|----------|---------|
+| ClaimsContract | `0x6987921e2453f360e314e4424F6c2789F10a1CC9` |
+| Treasury | `0x966E1Ae22996545015b1414B35234b10719d7Ad4` |
 
 ## Documentation
 
-- [Integration Guide](docs/INTEGRATION_GUIDE.md) — API usage for developers
-- [Architecture](docs/AUTONOMOUS_ECONOMIC_PROTOCOL.md) — System design deep-dive
-- [Deploy to Polygon](docs/DEPLOY_POLYGON.md) — Smart contract deployment
-- [Bootstrap Checklist](docs/BOOTSTRAP_CHECKLIST.md) — Production setup
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-```
-
-## Environment Variables
-
-Required for production:
-
-```env
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-JWT_SECRET=<64+ chars>
-RPC_URL=https://polygon-rpc...
-CHAIN_ID=137
-TREASURY_ADDRESS=0x...
-```
-
-See `.env.example` for full list.
-
-## Network Stats
-
-- **Chain:** Polygon Amoy (testnet) → Polygon mainnet (Q3 2026)
-- **Settlement:** USDT (ERC-20)
-- **Epoch interval:** 60 seconds
-- **Minimum claim:** 1 USDT
-- **Rate limit (public):** 100 requests/day
+- [Integration Guide](docs/INTEGRATION_GUIDE.md)
+- [Node Operator Guide](docs/NODE_OPERATOR_GUIDE.md)
+- [Deploy to Polygon](docs/DEPLOY_POLYGON.md)
+- [Architecture](docs/architecture/AUTONOMOUS_ECONOMIC_PROTOCOL.md)
 
 ## Contributing
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT
 
 ---
 
-**Revenue first. Rewards second. Ops are the product. Nodes are the supply.**
+**Revenue first. Rewards second.**
 
-[Website](https://satelink.network) · [Dashboard](https://satelink-dashboard.vercel.app) · [Docs](docs/)
+[Website](https://satelink.network) · [Dashboard](https://app.satelink.network) · [RPC](https://rpc.satelink.network)

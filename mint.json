@@ -1,0 +1,61 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Satelink",
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#408A71",
+    "light": "#5CB89A",
+    "dark": "#2D6B55",
+    "anchors": {
+      "from": "#408A71",
+      "to": "#00D1FF"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Dashboard",
+      "url": "https://app.satelink.network"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get API Key",
+    "url": "https://app.satelink.network/satelink/os/plans"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "docs/readme",
+        "docs/quick-start",
+        "docs/pricing"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "docs/api-reference",
+        "docs/sdk-guide"
+      ]
+    },
+    {
+      "group": "Node Operators",
+      "pages": [
+        "docs/node-operators",
+        "docs/settlement"
+      ]
+    },
+    {
+      "group": "Resources",
+      "pages": [
+        "docs/faq",
+        "docs/integration-guide"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "twitter": "https://twitter.com/satelinknet",
+    "github": "https://github.com/Satelink-Protocol/Satelink_Network",
+    "discord": "https://discord.gg/satelink"
+  }
+}
+

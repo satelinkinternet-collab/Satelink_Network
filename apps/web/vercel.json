@@ -1,35 +1,44 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs",
-  "headers": [
+  "installCommand": "npm install",
+  "rewrites": [
     {
-      "source": "/satelink/os/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "X-Deploy-Version", "value": "v3-1747325000" }
-      ]
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app.satelink.network" }],
+      "destination": "/satelink/os/overview/:path*"
     },
     {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
-      ]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Cache-Control", "value": "no-store" }
-      ]
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "/_status/:path*"
     }
   ],
-  "rewrites": [
-    { "source": "/privacy", "destination": "/legal/privacy" },
-    { "source": "/terms", "destination": "/legal/terms" }
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.satelink.network" }],
+      "destination": "/satelink/os/overview",
+      "permanent": false
+    },
+    {
+      "source": "/status",
+      "missing": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "https://status.satelink.network/",
+      "permanent": true
+    },
+    {
+      "source": "/status/",
+      "missing": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "https://status.satelink.network/",
+      "permanent": true
+    },
+    {
+      "source": "/status/:path*",
+      "missing": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "https://status.satelink.network/:path*",
+      "permanent": true
+    }
   ]
 }

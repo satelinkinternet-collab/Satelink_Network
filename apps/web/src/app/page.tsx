@@ -1,671 +1,186 @@
-"use client";
+'use client'
 
-
-
-import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
-import { Navigation } from "@/components/marketing/Navigation";
-import { Footer } from "@/components/marketing/Footer";
-import { GlobeBackground } from "@/components/effects/GlobeBackground";
-
-interface NetworkMetrics {
-  activeNodes: number;
-  rpcRequests24h: number;
-  currentEpoch: number;
-  avgLatency: number;
-  chainsSupported: number;
-  networkStatus: "operational" | "degraded" | "down";
-}
+import { useEffect, useRef, useState } from 'react'
 
 export default function HomePage() {
-  const [metrics, setMetrics] = useState<NetworkMetrics>({
-    activeNodes: 5,
-    rpcRequests24h: 0,
-    currentEpoch: 0,
-    avgLatency: 0,
-    chainsSupported: 5,
-    networkStatus: "operational",
-  });
-
-  const fetchMetrics = useCallback(async () => {
-    try {
-      const res = await fetch("https://rpc.satelink.network/api/status");
-      if (res.ok) {
-        const data = await res.json();
-        setMetrics({
-          activeNodes: data.nodes?.active || 5,
-          rpcRequests24h: data.revenue?.eventsToday || data.rpc?.requestsToday || 0,
-          currentEpoch: data.epoch?.current || 0,
-          avgLatency: data.rpc?.avgLatency || 0,
-          chainsSupported: data.chains?.count || 5,
-          networkStatus: data.status === "ok" ? "operational" : "degraded",
-        });
-      }
-    } catch {
-      // Use defaults
-    }
-  }, []);
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [stats, setStats] = useState({
+    uptime: '99.7%',
+    latency: '85ms',
+    nodes: '1',
+    requests: '1.8M'
+  })
 
   useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000);
-    return () => clearInterval(interval);
-  }, [fetchMetrics]);
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Satelink Network",
-    "description": "Decentralized Physical Infrastructure Network for RPC, AI inference, and machine APIs. Revenue settles as USDT on Polygon automatically.",
-    "url": "https://satelink.network",
-    "applicationCategory": "Infrastructure",
-    "operatingSystem": "Any",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD",
-      "description": "Free tier: 1000 RPC requests/day"
-    },
-    "provider": {
-      "@type": "Organization",
-      "name": "Satelink Network",
-      "url": "https://satelink.network",
-      "sameAs": [
-        "https://github.com/Satelink-Protocol/Satelink_Network",
-        "https://twitter.com/satelinknetwork"
-      ]
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const particles: Array<{x:number,y:number,vx:number,vy:number,label:string}> = []
+    const labels = ['AP-N','AP-S','US-W','US-E','EU-W','SEA']
+
+    for (let i = 0; i < 6; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        label: labels[i]
+      })
     }
-  };
+
+    function animate() {
+      if (!ctx || !canvas) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      particles.forEach(p => {
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1
+      })
+
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const dist = Math.sqrt(dx*dx + dy*dy)
+          if (dist < 300) {
+            ctx.beginPath()
+            ctx.strokeStyle = `rgba(64,138,113,${0.3 * (1 - dist/300)})`
+            ctx.lineWidth = 0.8
+            ctx.moveTo(particles[i].x, particles[i].y)
+            ctx.lineTo(particles[j].x, particles[j].y)
+            ctx.stroke()
+          }
+        }
+      }
+
+      particles.forEach(p => {
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2)
+        ctx.fillStyle = '#5CB89A'
+        ctx.fill()
+        ctx.fillStyle = 'rgba(92,184,154,0.7)'
+        ctx.font = '10px monospace'
+        ctx.fillText(p.label, p.x + 6, p.y - 6)
+      })
+
+      requestAnimationFrame(animate)
+    }
+    animate()
+  }, [])
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <Navigation />
-      <main>
-        <HeroSection />
-        <LiveNetworkMetrics metrics={metrics} />
-        <ProductGrid />
-        <HowSatelinkWorks />
-        <DeveloperExperience />
-        <EconomicsOverview />
-        <FinalCTA />
-      </main>
-      <Footer />
-    </>
-  );
-}
+    <div style={{background:'#0A0E14',minHeight:'100vh',color:'#fff',fontFamily:'Inter,sans-serif',position:'relative',overflow:'hidden'}}>
+      <canvas ref={canvasRef} style={{position:'fixed',top:0,left:0,zIndex:0,opacity:0.6}} />
 
-function HeroSection() {
-  return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#091413]">
-      <GlobeBackground />
-      <div className="hero-grid absolute inset-0 pointer-events-none" />
+      {/* NAV */}
+      <nav style={{position:'relative',zIndex:10,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 32px',borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+          <span style={{width:8,height:8,borderRadius:'50%',background:'#5CB89A',display:'inline-block'}}></span>
+          <span style={{fontWeight:700,fontSize:14,letterSpacing:'0.1em'}}>SATELINK</span>
+          <span style={{background:'rgba(64,138,113,0.2)',color:'#5CB89A',fontSize:10,padding:'2px 6px',borderRadius:4,border:'1px solid rgba(92,184,154,0.3)'}}>BETA</span>
+        </div>
+        <div style={{display:'flex',gap:'32px',fontSize:13,color:'rgba(255,255,255,0.6)'}}>
+          <a href="/developers" style={{color:'inherit',textDecoration:'none'}}>Developers</a>
+          <a href="/nodes" style={{color:'inherit',textDecoration:'none'}}>Nodes</a>
+          <a href="/network" style={{color:'inherit',textDecoration:'none'}}>Network</a>
+          <a href="/pricing" style={{color:'inherit',textDecoration:'none'}}>Pricing</a>
+          <a href="/compare" style={{color:'inherit',textDecoration:'none'}}>Compare</a>
+        </div>
+        <a href="/app" style={{background:'#408A71',color:'#fff',padding:'8px 20px',borderRadius:6,fontSize:13,fontWeight:600,textDecoration:'none'}}>Launch App →</a>
+      </nav>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-        <div className="hero-badge mb-8">
-          <span className="live-dot" />
-          Public Beta &middot; Polygon Mainnet &middot; USDT Settlement
+      {/* HERO */}
+      <div style={{position:'relative',zIndex:10,textAlign:'center',padding:'120px 32px 80px'}}>
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(64,138,113,0.1)',border:'1px solid rgba(92,184,154,0.3)',borderRadius:20,padding:'6px 16px',marginBottom:32,fontSize:12,color:'#5CB89A'}}>
+          <span style={{width:6,height:6,borderRadius:'50%',background:'#5CB89A',animation:'pulse 2s infinite',display:'inline-block'}}></span>
+          Public Beta · Polygon Mainnet · USDT Settlement
         </div>
 
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#B0E4CC] mb-6 leading-tight">
-          Infrastructure Network for
-          <br />
-          <span className="gradient-text">RPC, AI, and Machine APIs</span>
+        <h1 style={{fontSize:'clamp(36px,6vw,72px)',fontWeight:700,lineHeight:1.1,marginBottom:24,maxWidth:800,margin:'0 auto 24px'}}>
+          Infrastructure Network for<br/>
+          <span style={{color:'#5CB89A'}}>RPC, AI, and Machine APIs</span>
         </h1>
 
-        <p className="text-lg md:text-xl text-[#408A71] max-w-3xl mx-auto mb-8 leading-relaxed">
-          Satelink routes real workloads through decentralized infrastructure nodes worldwide.
-          Every API call settles as USDT on Polygon.
+        <p style={{fontSize:18,color:'rgba(255,255,255,0.5)',maxWidth:560,margin:'0 auto 48px',lineHeight:1.6}}>
+          Satelink routes real workloads through decentralized infrastructure nodes worldwide. Every API call settles as USDT on Polygon.
         </p>
 
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
-          <Link href="/dashboard" className="btn btn-primary btn-lg">
-            Launch Console
-          </Link>
-          <Link href="/node/setup" className="btn btn-secondary btn-lg">
-            Run a Node
-          </Link>
-          <a
-            href="https://docs.satelink.network"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-outline btn-lg"
-          >
-            View Docs
-          </a>
+        <div style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}}>
+          <a href="/app" style={{background:'#5CB89A',color:'#0A0E14',padding:'14px 32px',borderRadius:8,fontWeight:700,fontSize:15,textDecoration:'none'}}>Launch Console</a>
+          <a href="/calculator" style={{background:'transparent',color:'#fff',padding:'14px 32px',borderRadius:8,fontWeight:600,fontSize:15,textDecoration:'none',border:'1px solid rgba(255,255,255,0.15)'}}>Run a Node</a>
+          <a href="https://github.com/Satelink-Protocol/Satelink_Network/wiki" style={{background:'transparent',color:'rgba(255,255,255,0.5)',padding:'14px 32px',borderRadius:8,fontWeight:600,fontSize:15,textDecoration:'none',border:'1px solid rgba(255,255,255,0.08)'}}>View Docs</a>
         </div>
+      </div>
 
-        <div className="semantic-description mt-16 max-w-4xl mx-auto text-left bg-[#0d1f1d]/80 border border-[#285A48]/40 rounded-xl p-8">
-          <h2 className="text-2xl font-semibold text-[#B0E4CC] mb-4">
-            What is Satelink?
-          </h2>
-          <p className="text-[#408A71] leading-relaxed">
-            Satelink is an autonomous economic protocol that connects developers needing
-            infrastructure (RPC, AI inference, webhooks, compute) with node operators
-            running distributed hardware. Every request is metered, billed in USDT,
-            and settled automatically via smart contracts on Polygon. Node operators
-            earn 50% of all revenue with zero human intervention required.
+      {/* LIVE STATS */}
+      <div style={{position:'relative',zIndex:10,display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,background:'rgba(255,255,255,0.04)',margin:'0 32px',borderRadius:12,overflow:'hidden',border:'1px solid rgba(255,255,255,0.06)'}}>
+        {[
+          {label:'UPTIME (30D)',value:stats.uptime,color:'#5CB89A'},
+          {label:'AVG LATENCY',value:stats.latency,color:'#fff'},
+          {label:'API REQUESTS',value:stats.requests,color:'#fff'},
+          {label:'ACTIVE NODES',value:stats.nodes,color:'#fff'},
+        ].map((s,i) => (
+          <div key={i} style={{padding:'28px 24px',background:'rgba(10,14,20,0.8)'}}>
+            <div style={{fontSize:10,letterSpacing:'0.1em',color:'rgba(255,255,255,0.3)',marginBottom:8}}>{s.label}</div>
+            <div style={{fontSize:32,fontWeight:700,color:s.color,fontVariantNumeric:'tabular-nums'}}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* WHAT IS SATELINK */}
+      <div style={{position:'relative',zIndex:10,maxWidth:720,margin:'80px auto',padding:'0 32px'}}>
+        <div style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:40}}>
+          <h2 style={{fontSize:18,fontWeight:600,marginBottom:16}}>What is Satelink?</h2>
+          <p style={{color:'rgba(255,255,255,0.5)',lineHeight:1.7,margin:0}}>
+            Satelink is an autonomous economic protocol that connects developers needing infrastructure (RPC, AI inference, webhooks, compute) with node operators running distributed hardware. Every request is metered, billed in USDT, and settled automatically via smart contracts on Polygon. Node operators earn 50% of all revenue with zero human intervention required.
           </p>
         </div>
       </div>
 
-      <style jsx>{`
-        .hero-grid {
-          background-image:
-            linear-gradient(rgba(40, 90, 72, 0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(40, 90, 72, 0.06) 1px, transparent 1px);
-          background-size: 50px 50px;
-        }
-        .gradient-text {
-          background: linear-gradient(135deg, #00D1FF 0%, #B0E4CC 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .hero-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(0, 209, 255, 0.1);
-          border: 1px solid rgba(0, 209, 255, 0.25);
-          color: #00D1FF;
-          padding: 8px 16px;
-          border-radius: 9999px;
-          font-size: 0.875rem;
-        }
-        .live-dot {
-          width: 8px;
-          height: 8px;
-          background: #408A71;
-          border-radius: 50%;
-          animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          border-radius: 8px;
-          padding: 14px 28px;
-          font-size: 1rem;
-          transition: all 0.2s;
-        }
-        .btn-primary {
-          background: #408A71;
-          color: #091413;
-          border: none;
-        }
-        .btn-primary:hover {
-          background: #4CAF8C;
-          box-shadow: 0 0 24px rgba(64, 138, 113, 0.4);
-        }
-        .btn-secondary {
-          background: transparent;
-          color: #B0E4CC;
-          border: 1px solid #408A71;
-        }
-        .btn-secondary:hover {
-          border-color: #00D1FF;
-          color: #00D1FF;
-        }
-        .btn-outline {
-          background: transparent;
-          color: #408A71;
-          border: 1px solid #285A48;
-        }
-        .btn-outline:hover {
-          border-color: #408A71;
-          color: #B0E4CC;
-        }
-      `}</style>
-    </section>
-  );
-}
-
-function LiveNetworkMetrics({ metrics }: { metrics: NetworkMetrics }) {
-  return (
-    <section className="py-20 bg-[#0a1816]">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#408A71]/10 border border-[#408A71]/30 text-[#408A71] text-sm font-medium mb-4">
-            <span className="w-2 h-2 rounded-full bg-[#408A71] animate-pulse" />
-            Live Network Data
-          </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B0E4CC] mb-4">
-            Real-Time Network Metrics
-          </h2>
-          <p className="text-[#408A71] max-w-2xl mx-auto">
-            Monitor the Satelink network. Data refreshes every 30 seconds from /api/status.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <MetricCard
-            label="Active Nodes"
-            value={metrics.activeNodes.toString()}
-            source="/api/nodes"
-          />
-          <MetricCard
-            label="RPC Requests 24h"
-            value={formatNumber(metrics.rpcRequests24h)}
-            source="/api/status"
-          />
-          <MetricCard
-            label="Current Epoch"
-            value={metrics.currentEpoch.toString()}
-            source="/api/status"
-          />
-          <MetricCard
-            label="Avg Latency"
-            value={metrics.avgLatency > 0 ? `${metrics.avgLatency}ms` : "—"}
-            source="/rpc/health"
-          />
-          <MetricCard
-            label="Chains Supported"
-            value={metrics.chainsSupported.toString()}
-            source="/rpc/chains"
-          />
-          <MetricCard
-            label="Network Status"
-            value={metrics.networkStatus === "operational" ? "Operational" : "Degraded"}
-            source="/api/status"
-            highlight={metrics.networkStatus === "operational"}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  source,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  source: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="bg-[#0d1f1d] border border-[#285A48]/40 rounded-xl p-5 text-center">
-      <div
-        className={`text-2xl md:text-3xl font-bold mb-2 font-mono ${
-          highlight ? "text-[#4CAF8C]" : "text-[#B0E4CC]"
-        }`}
-      >
-        {value}
-      </div>
-      <div className="text-sm text-[#408A71] mb-1">{label}</div>
-      <div className="text-xs text-[#285A48] font-mono">{source}</div>
-    </div>
-  );
-}
-
-function ProductGrid() {
-  const products = [
-    {
-      title: "RPC Gateway",
-      description:
-        "JSON-RPC relay for Polygon, Ethereum, Arbitrum. Route to the fastest available provider automatically.",
-      status: "live",
-    },
-    {
-      title: "AI Inference",
-      description:
-        "OpenAI-compatible endpoint. Per-token billing. Stage S3 — coming soon.",
-      status: "coming",
-    },
-    {
-      title: "Webhook Engine",
-      description:
-        "Reliable webhook delivery with retry logic. Developer-grade event infrastructure.",
-      status: "live",
-    },
-    {
-      title: "MEV Relay",
-      description:
-        "Private mempool relay for DeFi protocols. Avoid frontrunning with dedicated node routing.",
-      status: "live",
-    },
-    {
-      title: "Compute Network",
-      description:
-        "Distributed compute execution. Run workloads across verified node operators.",
-      status: "coming",
-    },
-    {
-      title: "Node Registry",
-      description:
-        "Register your infrastructure as a Satelink node. Earn USDT for every request routed through you.",
-      status: "live",
-    },
-  ];
-
-  return (
-    <section className="py-20 bg-[#091413]">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B0E4CC] mb-4">
-            Infrastructure Products
-          </h2>
-          <p className="text-[#408A71] max-w-2xl mx-auto">
-            Six core products powering the autonomous machine economy. Each product
-            generates revenue that splits 50/30/20 every epoch.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <div
-              key={product.title}
-              className="bg-[#0d1f1d] border border-[#285A48]/40 rounded-xl p-6 hover:border-[#408A71]/60 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-xl font-semibold text-[#B0E4CC]">
-                  {product.title}
-                </h3>
-                <span
-                  className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    product.status === "live"
-                      ? "bg-[#408A71]/20 text-[#4CAF8C]"
-                      : "bg-[#285A48]/20 text-[#408A71]"
-                  }`}
-                >
-                  {product.status === "live" ? "LIVE" : "SOON"}
-                </span>
-              </div>
-              <p className="text-[#408A71] text-sm leading-relaxed">
-                {product.description}
-              </p>
+      {/* FEATURES GRID */}
+      <div style={{position:'relative',zIndex:10,maxWidth:1100,margin:'0 auto 80px',padding:'0 32px'}}>
+        <h2 style={{textAlign:'center',fontSize:32,fontWeight:700,marginBottom:48}}>Everything You Need to Build</h2>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+          {[
+            {icon:'⚡',title:'Low Latency',desc:'<100ms average response time globally'},
+            {icon:'💰',title:'Pay Per Call',desc:'No monthly fees. $0.000030/call. Scale freely.'},
+            {icon:'🔗',title:'Multi-Chain',desc:'Ethereum, Polygon, Base, Arbitrum endpoints'},
+            {icon:'🔒',title:'Secure',desc:'On-chain settlement. No custody. No trust.'},
+            {icon:'📊',title:'Transparent',desc:'All transactions verified on Polygonscan'},
+            {icon:'🌍',title:'Global',desc:'Distributed node network across regions'},
+          ].map((f,i) => (
+            <div key={i} style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:28}}>
+              <div style={{fontSize:28,marginBottom:12}}>{f.icon}</div>
+              <div style={{fontWeight:600,marginBottom:8}}>{f.title}</div>
+              <div style={{color:'rgba(255,255,255,0.4)',fontSize:13,lineHeight:1.5}}>{f.desc}</div>
             </div>
           ))}
         </div>
       </div>
-    </section>
-  );
-}
 
-function HowSatelinkWorks() {
-  const steps = [
-    {
-      title: "Developer Request",
-      description:
-        "Your app sends an RPC call, AI inference request, or webhook to Satelink endpoints.",
-    },
-    {
-      title: "Satelink Gateway",
-      description:
-        "Rate limiting, authentication, and intelligent routing determine the optimal path.",
-    },
-    {
-      title: "Optimal Node Selection",
-      description:
-        "Reputation scoring and latency measurements select the best node for your workload.",
-    },
-    {
-      title: "Workload Execution",
-      description:
-        "The selected node executes RPC, AI, webhook, or compute tasks and returns results.",
-    },
-    {
-      title: "Revenue Recording",
-      description:
-        "Per-call billing is recorded in revenue_events_v2 with microsecond precision.",
-    },
-    {
-      title: "Epoch Settlement",
-      description:
-        "Every 60 seconds, epochs close automatically with 50/30/20 revenue split.",
-    },
-    {
-      title: "USDT Claim",
-      description:
-        "Node operators claim earnings as USDT on Polygon mainnet. No minimum wait time.",
-    },
-  ];
-
-  return (
-    <section className="py-20 bg-[#0a1816]">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B0E4CC] mb-4">
-            How Satelink Works
-          </h2>
-          <p className="text-[#408A71] max-w-2xl mx-auto">
-            From request to settlement in 60 seconds. Fully autonomous, no human
-            intervention required.
-          </p>
-        </div>
-
-        <div className="relative">
-          <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-[#408A71]/0 via-[#408A71]/40 to-[#408A71]/0" />
-
-          <div className="space-y-8">
-            {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className={`flex items-start gap-6 ${
-                  index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"
-                }`}
-              >
-                <div className="flex-1 md:text-right">
-                  {index % 2 === 0 && (
-                    <StepContent step={step} />
-                  )}
-                </div>
-
-                <div className="relative z-10 flex-shrink-0 w-12 h-12 rounded-full bg-[#408A71] text-[#091413] flex items-center justify-center font-bold text-lg">
-                  {index + 1}
-                </div>
-
-                <div className="flex-1">
-                  {index % 2 !== 0 && (
-                    <StepContent step={step} />
-                  )}
-                </div>
-              </div>
+      {/* FOOTER */}
+      <footer style={{position:'relative',zIndex:10,borderTop:'1px solid rgba(255,255,255,0.06)',padding:'48px 32px',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:32,maxWidth:1100,margin:'0 auto'}}>
+        {[
+          {title:'Product',links:[['RPC Gateway','/app'],['Calculator','/calculator'],['Status','/status'],['Compare','/compare']]},
+          {title:'Developers',links:[['Documentation','https://github.com/Satelink-Protocol/Satelink_Network/wiki'],['API Reference','/app'],['GitHub','https://github.com/Satelink-Protocol']]},
+          {title:'Company',links:[['About','/about'],['Careers','/careers'],['Blog','/blog'],['Press','/press']]},
+          {title:'Legal',links:[['Privacy Policy','/legal/privacy'],['Terms of Service','/legal/terms']]},
+        ].map((col,i) => (
+          <div key={i}>
+            <div style={{fontSize:11,letterSpacing:'0.1em',color:'rgba(255,255,255,0.3)',marginBottom:16}}>{col.title}</div>
+            {col.links.map(([label,href],j) => (
+              <a key={j} href={href} style={{display:'block',color:'rgba(255,255,255,0.5)',textDecoration:'none',fontSize:13,marginBottom:10}}>{label}</a>
             ))}
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StepContent({
-  step,
-}: {
-  step: { title: string; description: string };
-}) {
-  return (
-    <div className="bg-[#0d1f1d] border border-[#285A48]/40 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-[#B0E4CC] mb-2">{step.title}</h3>
-      <p className="text-[#408A71] text-sm leading-relaxed">{step.description}</p>
+        ))}
+      </footer>
     </div>
-  );
-}
-
-function DeveloperExperience() {
-  return (
-    <section className="py-20 bg-[#091413]">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B0E4CC] mb-4">
-            Developer Experience
-          </h2>
-          <p className="text-[#408A71] max-w-2xl mx-auto">
-            Production-ready infrastructure with real working endpoints. No API key
-            required for the free tier.
-          </p>
-        </div>
-
-        <div className="bg-[#0d1f1d] border border-[#285A48]/60 rounded-xl overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-3 bg-[#0a1816] border-b border-[#285A48]/40">
-            <div className="flex gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#EF4444]" />
-              <span className="w-3 h-3 rounded-full bg-[#F59E0B]" />
-              <span className="w-3 h-3 rounded-full bg-[#408A71]" />
-            </div>
-            <span className="text-[#408A71] text-sm font-mono">satelink-rpc</span>
-          </div>
-
-          <div className="p-6 font-mono text-sm leading-loose overflow-x-auto">
-            <div className="text-[#408A71] mb-4"># Connect to Polygon Mainnet RPC — no API key required</div>
-            <div className="text-[#B0E4CC]">
-              curl -X POST https://rpc.satelink.network/rpc/polygon \
-            </div>
-            <div className="text-[#B0E4CC] pl-4">
-              -H &quot;Content-Type: application/json&quot; \
-            </div>
-            <div className="text-[#B0E4CC] pl-4 mb-6">
-              -d &#39;&#123;&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;method&quot;:&quot;eth_blockNumber&quot;,&quot;params&quot;:[],&quot;id&quot;:1&#125;&#39;
-            </div>
-
-            <div className="text-[#408A71] mb-4"># Check network status</div>
-            <div className="text-[#B0E4CC] mb-6">
-              curl https://rpc.satelink.network/api/status
-            </div>
-
-            <div className="text-[#408A71] mb-4"># View pricing</div>
-            <div className="text-[#B0E4CC] mb-6">
-              curl https://rpc.satelink.network/api/pricing
-            </div>
-
-            <div className="text-[#408A71] mb-4"># Install SDK</div>
-            <div className="text-[#B0E4CC] mb-6">
-              npm install @satelink/sdk
-            </div>
-
-            <div className="text-[#408A71] mb-4"># Use in your app</div>
-            <div className="text-[#B0E4CC]">
-              node -e &quot;require(&#39;@satelink/sdk&#39;).rpc(&#39;eth_blockNumber&#39;,[]).then(b=&gt;console.log(parseInt(b,16)))&quot;
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 bg-[#0d1f1d]/60 border border-[#285A48]/30 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-[#B0E4CC] mb-3">
-            Free Tier Details
-          </h3>
-          <p className="text-[#408A71] leading-relaxed">
-            The public RPC endpoint at <code className="text-[#00D1FF]">rpc.satelink.network/rpc/polygon</code>{" "}
-            is free for up to 100 requests per day with no API key required. For higher
-            limits, create an API key at <Link href="/developers#api-key" className="text-[#00D1FF] hover:underline">/developers</Link>.
-            Paid tiers support up to 1,000,000 requests/day with WebSocket subscriptions
-            and priority support.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function EconomicsOverview() {
-  return (
-    <section className="py-20 bg-[#0a1816]">
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B0E4CC] mb-4">
-            Revenue Economics
-          </h2>
-          <p className="text-[#408A71] max-w-2xl mx-auto">
-            Transparent 50/30/20 split. Every epoch settles automatically.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-[#0d1f1d] border border-[#4CAF8C]/40 rounded-xl p-8 text-center">
-            <div className="text-5xl font-bold text-[#4CAF8C] mb-3">50%</div>
-            <div className="text-xl font-semibold text-[#B0E4CC] mb-2">
-              Node Operators
-            </div>
-            <p className="text-[#408A71] text-sm">
-              Half of all epoch revenue goes directly to the nodes that processed
-              the workloads.
-            </p>
-          </div>
-
-          <div className="bg-[#0d1f1d] border border-[#00D1FF]/40 rounded-xl p-8 text-center">
-            <div className="text-5xl font-bold text-[#00D1FF] mb-3">30%</div>
-            <div className="text-xl font-semibold text-[#B0E4CC] mb-2">
-              Platform Fee
-            </div>
-            <p className="text-[#408A71] text-sm">
-              Funds protocol development, infrastructure, and operational costs.
-            </p>
-          </div>
-
-          <div className="bg-[#0d1f1d] border border-[#B0E4CC]/40 rounded-xl p-8 text-center">
-            <div className="text-5xl font-bold text-[#B0E4CC] mb-3">20%</div>
-            <div className="text-xl font-semibold text-[#B0E4CC] mb-2">
-              Distribution Pool
-            </div>
-            <p className="text-[#408A71] text-sm">
-              Reserved for ecosystem incentives, staking rewards, and community
-              growth.
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-[#0d1f1d]/60 border border-[#285A48]/30 rounded-xl p-6 text-center">
-          <p className="text-[#408A71] leading-relaxed">
-            Revenue distributes automatically every 60 seconds via smart contract on
-            Polygon Mainnet. Node operators claim earnings as USDT with no manual
-            intervention. Minimum claim: 1 USDT.
-          </p>
-          <p className="text-[#285A48] text-sm mt-4 font-mono">
-            ClaimsContract: 0x6987921e2453f360e314e4424F6c2789F10a1CC9
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FinalCTA() {
-  return (
-    <section className="py-24 bg-[#091413]">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-[#B0E4CC] mb-6">
-          Build on Infrastructure That Pays You Back
-        </h2>
-        <p className="text-lg text-[#408A71] max-w-2xl mx-auto mb-10">
-          Join the Satelink node network or integrate our APIs. Every request you
-          handle earns USDT, settled automatically.
-        </p>
-
-        <div className="flex flex-wrap justify-center gap-4">
-          <Link
-            href="/node/setup"
-            className="inline-flex items-center justify-center px-8 py-4 bg-[#408A71] text-[#091413] font-semibold rounded-lg hover:bg-[#4CAF8C] transition-colors"
-          >
-            Start a Node
-          </Link>
-          <a
-            href="https://docs.satelink.network"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center px-8 py-4 border border-[#408A71] text-[#B0E4CC] font-semibold rounded-lg hover:border-[#00D1FF] hover:text-[#00D1FF] transition-colors"
-          >
-            API Documentation
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toString();
+  )
 }

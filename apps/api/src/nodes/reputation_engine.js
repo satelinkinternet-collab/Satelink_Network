@@ -23,7 +23,15 @@ export class ReputationEngine {
     }
 
     // ── WEIGHTS ──────────────────────────────────────────────
-    static WEIGHTS = { uptime: 0.30, latency: 0.25, reliability: 0.20, revenue: 0.15, fraud_inv: 0.10 };
+    static get WEIGHTS() {
+        return {
+            uptime:      parseFloat(process.env.REP_WEIGHT_UPTIME      || '0.30'),
+            latency:     parseFloat(process.env.REP_WEIGHT_LATENCY     || '0.25'),
+            reliability: parseFloat(process.env.REP_WEIGHT_RELIABILITY || '0.20'),
+            revenue:     parseFloat(process.env.REP_WEIGHT_REVENUE     || '0.15'),
+            fraud_inv:   parseFloat(process.env.REP_WEIGHT_FRAUD_INV   || '0.10'),
+        };
+    }
     static TIERS = { platinum: 85, gold: 70, silver: 50 };
     static MULTIPLIERS = { platinum: 1.15, gold: 1.05, silver: 1.0, bronze: 0.85 };
 

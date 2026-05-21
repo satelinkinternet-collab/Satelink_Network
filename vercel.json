@@ -1,17 +1,44 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "buildCommand": "cd apps/web && NODE_ENV=production npm run build",
+  "buildCommand": "npm run build -- --filter=web",
   "outputDirectory": "apps/web/.next",
+  "framework": "nextjs",
   "installCommand": "npm install",
-  "headers": [
+  "rewrites": [
     {
-      "source": "/gateway/rpc/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, x-api-key" }
-      ]
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app.satelink.network" }],
+      "destination": "/satelink/os/overview/:path*"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "/_status/:path*"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.satelink.network" }],
+      "destination": "/satelink/os/overview",
+      "permanent": false
+    },
+    {
+      "source": "/status",
+      "missing": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "https://status.satelink.network/",
+      "permanent": true
+    },
+    {
+      "source": "/status/",
+      "missing": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "https://status.satelink.network/",
+      "permanent": true
+    },
+    {
+      "source": "/status/:path*",
+      "missing": [{ "type": "host", "value": "status.satelink.network" }],
+      "destination": "https://status.satelink.network/:path*",
+      "permanent": true
     }
   ]
 }

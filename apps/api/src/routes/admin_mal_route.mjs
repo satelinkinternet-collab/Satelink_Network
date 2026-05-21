@@ -78,15 +78,17 @@ export function createAdminMalRouter(pool) {
 
   router.get('/economics', async (req, res) => {
     try {
-      // Use epoch milliseconds for BIGINT created_at column
-      const dayAgoMs = Date.now() - 86400000;
-      const weekAgoMs = Date.now() - 7 * 86400000;
+      // created_at is stored as epoch SECONDS (not milliseconds)
+      const now = new Date();
+      const midnightUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const todayStartSec = Math.floor(midnightUtc.getTime() / 1000);
+      const weekAgoSec = Math.floor(Date.now() / 1000) - 7 * 86400;
 
       const [todayRevenue, weekRevenue, totalRevenue, topMethods, recentEpochs] = await Promise.all([
-        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1`, [dayAgoMs]),
-        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1`, [weekAgoMs]),
-        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2`),
-        pool.query(`SELECT method, COUNT(*) as calls, SUM(amount_usdt) as revenue FROM revenue_events_v2 GROUP BY method ORDER BY calls DESC LIMIT 10`).catch(() => ({ rows: [] })),
+        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1 AND is_test_data = false`, [todayStartSec]),
+        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE created_at > $1 AND is_test_data = false`, [weekAgoSec]),
+        pool.query(`SELECT COALESCE(SUM(amount_usdt), 0) as total, COUNT(*) as events FROM revenue_events_v2 WHERE is_test_data = false`),
+        pool.query(`SELECT method, COUNT(*) as calls, SUM(amount_usdt) as revenue FROM revenue_events_v2 WHERE is_test_data = false GROUP BY method ORDER BY calls DESC LIMIT 10`).catch(() => ({ rows: [] })),
         pool.query(`SELECT id, total_usdt, request_count, closed_at FROM epochs ORDER BY id DESC LIMIT 5`).catch(() => ({ rows: [] }))
       ]);
 

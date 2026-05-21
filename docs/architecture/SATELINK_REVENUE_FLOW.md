@@ -156,8 +156,8 @@ Smart contracts:
 
 Supported:
 
-- Fuse
-- Polygon
+- Polygon PoS (mainnet, chainId 137)
+- Polygon Amoy (testnet, chainId 80002)
 
 ---
 
