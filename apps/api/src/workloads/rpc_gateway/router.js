@@ -65,7 +65,12 @@ async function getProviderLatencies(chain, providers) {
   const keys = providers.map((p) => getLatencyKey(chain, p.id));
 
   try {
-    const values = await redis.mget(...keys);
+    const mgetPromise = redis.mget(...keys);
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve(keys.map(() => null)), 300)
+    );
+    const values = await Promise.race([mgetPromise, timeoutPromise]);
+
     return providers.map((p, i) => ({
       ...p,
       latency: values[i] ? parseFloat(values[i]) : null,
@@ -163,11 +168,25 @@ export async function routeRpcRequest(chain, method, params, id) {
 
   const providersWithLatency = await getProviderLatencies(chain, providers);
 
+  // Circuit breaker checks with timeout - fail open (allow through) if slow
   const availableProviders = [];
-  for (const p of providersWithLatency) {
-    const circuitOpen = await isOpen(chain, p.id);
-    if (!circuitOpen) {
-      availableProviders.push(p);
+  const circuitCheckPromises = providersWithLatency.map(async (p) => {
+    try {
+      const checkPromise = isOpen(chain, p.id);
+      const timeoutPromise = new Promise((resolve) =>
+        setTimeout(() => resolve(false), 200)
+      );
+      const circuitOpen = await Promise.race([checkPromise, timeoutPromise]);
+      return { provider: p, open: circuitOpen };
+    } catch {
+      return { provider: p, open: false };
+    }
+  });
+
+  const circuitResults = await Promise.all(circuitCheckPromises);
+  for (const { provider, open } of circuitResults) {
+    if (!open) {
+      availableProviders.push(provider);
     }
   }
 
@@ -197,9 +216,10 @@ export async function routeRpcRequest(chain, method, params, id) {
     );
 
     if (success) {
-      await recordSuccess(chain, provider.id);
-      await updateLatency(chain, provider.id, latency);
-      await incrementRequestCount(chain, provider.id);
+      // Post-success operations - fire and forget (non-blocking)
+      recordSuccess(chain, provider.id).catch(() => {});
+      updateLatency(chain, provider.id, latency).catch(() => {});
+      incrementRequestCount(chain, provider.id).catch(() => {});
 
       console.log(
         `[RPC Router] ${chain} → ${provider.id} (${latency}ms) [weighted]`,
@@ -214,7 +234,7 @@ export async function routeRpcRequest(chain, method, params, id) {
     }
 
     console.warn(`[RPC Router] ${provider.id} failed: ${error} (${latency}ms)`);
-    await recordFailure(chain, provider.id);
+    recordFailure(chain, provider.id).catch(() => {});
 
     remainingProviders = remainingProviders.filter((p) => p.id !== provider.id);
   }

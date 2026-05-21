@@ -157,11 +157,22 @@ export function createRpcGateway(db) {
     });
 
     router.post('/:chain', async (req, res) => {
+        const startTime = Date.now();
         const { chain } = req.params;
         const apiKey = req.headers['x-api-key'];
         const clientIp = getClientIp(req);
 
-        const rateCheck = await checkRateLimit(apiKey, clientIp);
+        // Rate limiting with 500ms timeout - fail open if slow
+        let rateCheck = { allowed: true, tier: 'free', remaining: 100, limit: 200 };
+        try {
+            const ratePromise = checkRateLimit(apiKey, clientIp);
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Rate limit timeout')), 500)
+            );
+            rateCheck = await Promise.race([ratePromise, timeoutPromise]);
+        } catch (err) {
+            console.warn('[RPC Gateway] Rate check skipped (timeout)');
+        }
 
         res.set({
             'X-RateLimit-Limit': rateCheck.limit,
@@ -210,25 +221,34 @@ export function createRpcGateway(db) {
             return res.status(400).json({ ok: false, error: 'Invalid JSON-RPC method' });
         }
 
-        await incrementUsage(apiKey, clientIp);
+        // Usage tracking - fire and forget (non-blocking)
+        incrementUsage(apiKey, clientIp).catch(() => {});
 
-        const client_id = apiKey || clientIp;
         const request_id = `rpc_${crypto.randomUUID()}`;
         const method = body.method;
         const params = body.params || [];
 
         try {
-            const cachedResponse = await getCached(chain, method, params);
+            // Cache check with 300ms timeout
+            let cachedResponse = null;
+            try {
+                const cachePromise = getCached(chain, method, params);
+                const cacheTimeout = new Promise((resolve) => setTimeout(() => resolve(null), 300));
+                cachedResponse = await Promise.race([cachePromise, cacheTimeout]);
+            } catch {
+                // Cache miss, continue
+            }
 
             if (cachedResponse) {
-                await recordRpcRevenue({
+                // Billing - fire and forget
+                recordRpcRevenue({
                     pool: db,
                     chain,
                     method,
                     apiKey,
                     source: 'edge_cache',
                     requestId: request_id
-                });
+                }).catch(() => {});
                 return res.status(200).json(cachedResponse);
             }
 
@@ -238,18 +258,23 @@ export function createRpcGateway(db) {
                 return res.status(502).json({ ok: false, error: routeResult.error });
             }
 
+            // Cache set - fire and forget
             if (isCacheable(method)) {
-                await setCached(chain, method, params, routeResult.result);
+                setCached(chain, method, params, routeResult.result).catch(() => {});
             }
 
-            await recordRpcRevenue({
+            // Billing - fire and forget
+            recordRpcRevenue({
                 pool: db,
                 chain,
                 method,
                 apiKey,
                 source: routeResult.provider || 'external_provider',
                 requestId: request_id
-            });
+            }).catch(() => {});
+
+            const elapsed = Date.now() - startTime;
+            console.log(`[RPC Gateway] ${chain}/${method} → ${routeResult.provider} (${elapsed}ms)`);
 
             res.status(200).json(routeResult.result);
         } catch (error) {
