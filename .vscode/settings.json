@@ -1,30 +1,31 @@
 {
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.tabSize": 2,
-  "files.exclude": {
-    ".claude/worktrees": true,
-    "node_modules": true,
-    "out": true,
-    "dist": true,
-    ".next": true
+  "files.watcherExclude": {
+    "**/.git/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.next/**": true,
+    "**/coverage/**": true,
+    "**/artifacts/**": true,
+    "**/cache/**": true,
+    "**/target/**": true
   },
-  "eslint.workingDirectories": [".", "web"],
-  "solidity.compileUsingRemoteVersion": "0.8.24",
-  "solidity.packageDefaultDependenciesContractsDirectory": "src",
-  "solidity.packageDefaultDependenciesDirectory": "lib",
-  "typescript.preferences.importModuleSpecifier": "relative",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
-  "terminal.integrated.env.osx": {
-    "NODE_ENV": "development"
-  },
-  "git.confirmSync": false,
+
   "search.exclude": {
-    "node_modules": true,
-    ".next": true,
-    "dist": true,
-    "out": true
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.next": true,
+    "**/artifacts": true
+  },
+
+  "typescript.disableAutomaticTypeAcquisition": true,
+  "typescript.tsserver.maxTsServerMemory": 2048,
+  "search.followSymlinks": false,
+  "editor.minimap.enabled": false,
+  "git.autorefresh": false,
+  "npm.autoDetect": "off",
+  "typescript.tsserver.watchOptions": {
+    "watchFile": "useFsEvents"
   }
 }

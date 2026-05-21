@@ -1,3 +1,10 @@
+/**
+ * Satelink Network Platform
+ * License: Business Source License 1.1
+ * See LICENSE.BSL file in repository root for full terms.
+ * Change Date: 2030-01-01 → converts to AGPL-3.0
+ */
+
 import crypto from 'crypto';
 
 export class EconomicLedger {

@@ -2,9 +2,9 @@
 import { BaseSettlementAdapter } from './BaseSettlementAdapter.js';
 import { ethers } from 'ethers';
 
-// CONSTANTS
-const MAX_BATCH_ITEMS = 20;
-const MAX_BATCH_TOTAL_USDT = 50.0; // Restrictive default
+// Batch limits — externalized for operational security
+const MAX_BATCH_ITEMS = parseInt(process.env.SETTLEMENT_MAX_BATCH_ITEMS || '20', 10);
+const MAX_BATCH_TOTAL_USDT = parseFloat(process.env.SETTLEMENT_MAX_BATCH_USDT || '50.0');
 
 // Conditional import for Defender to avoid breaking non-prod environments
 let DefenderRelayProvider, DefenderRelaySigner;
