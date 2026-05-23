@@ -357,7 +357,7 @@ export function createNodeRegistryRouter(db, redis) {
       const result = await db.query(
         `SELECT node_id, wallet, node_type, endpoint_url, region, chain_ids, hardware_json,
                 status, tier, reputation_score, uptime_pct, registered_at, last_heartbeat_at, updated_at,
-                consecutive_failures, total_requests_served, avg_latency_ms
+                consecutive_failures, total_requests_served, avg_latency_ms, last_failure_at, last_failure_reason
          FROM registered_nodes
          WHERE node_id = $1`,
         [nodeId]
@@ -388,7 +388,9 @@ export function createNodeRegistryRouter(db, redis) {
           updatedAt: row.updated_at,
           consecutiveFailures: row.consecutive_failures || 0,
           totalRequestsServed: row.total_requests_served || 0,
-          avgLatencyMs: row.avg_latency_ms || null
+          avgLatencyMs: row.avg_latency_ms || null,
+          lastFailureAt: row.last_failure_at || null,
+          lastFailureReason: row.last_failure_reason || null
         }
       });
     } catch (err) {
