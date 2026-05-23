@@ -68,7 +68,7 @@ export function createRpcGateway(db) {
         res.json({ ok: true, tiers: getTiers() });
     });
 
-    router.get('/node-routing', async (req, res) => {
+    router.get('/debug/node-routing', async (req, res) => {
         try {
             const status = await getNodeRoutingStatus();
             res.json({ ok: true, ...status });
