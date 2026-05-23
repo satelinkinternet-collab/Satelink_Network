@@ -381,6 +381,44 @@ export async function routeRpcRequest(chain, method, params, id, options = {}) {
   };
 }
 
+export async function getNodeRoutingStatus() {
+  const hasPool = pgPool !== null && typeof pgPool.query === 'function';
+  let nodeCount = 0;
+  let eligibleNodes = [];
+
+  if (hasPool) {
+    try {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const heartbeatCutoff = nowSeconds - 300;
+      const { rows } = await pgPool.query(`
+        SELECT node_id, endpoint_url, chain_ids, status, last_heartbeat_at, consecutive_failures
+        FROM registered_nodes
+        WHERE status = 'active'
+          AND last_heartbeat_at > $1
+          AND node_type = 'rpc'
+          AND consecutive_failures < 4
+        LIMIT 10
+      `, [heartbeatCutoff]);
+      nodeCount = rows.length;
+      eligibleNodes = rows.map(r => ({
+        node_id: r.node_id,
+        endpoint_url: r.endpoint_url ? (r.endpoint_url.slice(0, 30) + '...') : 'null',
+        chain_ids: r.chain_ids,
+        consecutive_failures: r.consecutive_failures
+      }));
+    } catch (e) {
+      return { hasPool, error: e.message };
+    }
+  }
+
+  return {
+    hasPool,
+    nodeCount,
+    eligibleNodes,
+    heartbeatThresholdSeconds: 300
+  };
+}
+
 export async function getRouterStats(chain) {
   const providers = getProviders(chain);
   const providersWithLatency = await getProviderLatencies(chain, providers);

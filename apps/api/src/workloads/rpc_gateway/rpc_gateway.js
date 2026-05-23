@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { routeRpcRequest, getRouterStats, initRouterWithPool } from './router.js';
+import { routeRpcRequest, getRouterStats, initRouterWithPool, getNodeRoutingStatus } from './router.js';
 import { getSupportedChains, getChainConfig, CHAIN_ALIASES } from './providers.js';
 import { getCached, setCached, isCacheable, getCacheStats } from './cache.js';
 import { checkRateLimit, incrementUsage, createApiKey, getUsageStats, getTiers } from './rate_limiter.js';
@@ -66,6 +66,15 @@ export function createRpcGateway(db) {
 
     router.get('/tiers', (req, res) => {
         res.json({ ok: true, tiers: getTiers() });
+    });
+
+    router.get('/node-routing', async (req, res) => {
+        try {
+            const status = await getNodeRoutingStatus();
+            res.json({ ok: true, ...status });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
+        }
     });
 
     router.get('/chains', (req, res) => {
