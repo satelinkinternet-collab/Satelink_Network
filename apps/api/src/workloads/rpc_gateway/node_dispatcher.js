@@ -8,7 +8,7 @@
 
 import { broadcaster } from '../../realtime/broadcaster-instance.js';
 
-const REQUEST_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 15000; // 15s to account for serverless cold starts
 const HEARTBEAT_THRESHOLD_SECONDS = 300; // 5 minutes
 
 // Method-specific pricing (USDT per call)
