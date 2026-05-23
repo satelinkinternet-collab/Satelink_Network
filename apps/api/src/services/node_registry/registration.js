@@ -487,6 +487,79 @@ export function createNodeRegistryRouter(db, redis) {
     }
   });
 
+  // PATCH /api/nodes/:nodeId — Update node configuration (admin only)
+  router.patch('/:nodeId', async (req, res) => {
+    try {
+      const { nodeId } = req.params;
+      const adminKey = req.headers['x-admin-key'];
+
+      if (adminKey !== process.env.MASTER_ADMIN_TOKEN && adminKey !== process.env.ADMIN_API_KEY) {
+        return res.status(403).json({ ok: false, error: 'Admin access required' });
+      }
+
+      if (!db || !db.query) {
+        return res.status(503).json({ ok: false, error: 'Database unavailable' });
+      }
+
+      const { endpoint_url, status, chain_ids } = req.body;
+      const updates = [];
+      const values = [];
+      let paramIndex = 1;
+
+      if (endpoint_url !== undefined) {
+        // Validate endpoint URL - reject circular references
+        const lowerUrl = endpoint_url.toLowerCase();
+        if (lowerUrl.includes('satelink.network') || lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1')) {
+          return res.status(400).json({ ok: false, error: 'Invalid endpoint: circular reference or localhost not allowed' });
+        }
+        updates.push(`endpoint_url = $${paramIndex++}`);
+        values.push(endpoint_url);
+      }
+
+      if (status !== undefined) {
+        if (!['active', 'inactive', 'suspended', 'pending'].includes(status)) {
+          return res.status(400).json({ ok: false, error: 'Invalid status' });
+        }
+        updates.push(`status = $${paramIndex++}`);
+        values.push(status);
+      }
+
+      if (chain_ids !== undefined) {
+        if (!Array.isArray(chain_ids)) {
+          return res.status(400).json({ ok: false, error: 'chain_ids must be an array' });
+        }
+        updates.push(`chain_ids = $${paramIndex++}`);
+        values.push(JSON.stringify(chain_ids));
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ ok: false, error: 'No valid fields to update' });
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      updates.push(`updated_at = $${paramIndex++}`);
+      values.push(now);
+
+      values.push(nodeId);
+
+      const result = await db.query(
+        `UPDATE registered_nodes SET ${updates.join(', ')} WHERE node_id = $${paramIndex} RETURNING node_id, endpoint_url, status, chain_ids`,
+        values
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ ok: false, error: 'Node not found' });
+      }
+
+      console.log(`[NodeRegistry] Node ${nodeId} updated:`, { endpoint_url, status, chain_ids });
+
+      res.json({ ok: true, node: result.rows[0] });
+    } catch (err) {
+      console.error('[NodeRegistry] Update error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to update node' });
+    }
+  });
+
   router.get('/:nodeId/reputation', async (req, res) => {
     try {
       const { nodeId } = req.params;
