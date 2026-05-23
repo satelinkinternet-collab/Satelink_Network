@@ -83,11 +83,12 @@ export function createApp(pool, redis) {
   // GET /api/pricing — RPC pricing catalog for machine discovery
   app.get("/api/pricing", async (req, res) => {
     try {
-      const methods = await pool.query(`
+      const result = await pool.query(`
         SELECT method, base_cost_usdt FROM rpc_method_pricing WHERE enabled = true ORDER BY method
       `);
+      const methods = Array.isArray(result) ? result : (result.rows || []);
       const rpcPricing = {};
-      for (const m of methods.rows) {
+      for (const m of methods) {
         rpcPricing[m.method] = { usdt_per_call: parseFloat(m.base_cost_usdt) };
       }
       res.json({

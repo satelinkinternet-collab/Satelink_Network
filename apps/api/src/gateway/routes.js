@@ -242,10 +242,11 @@ app.use("/gateway/rpc", createRpcGateway(db));
     // ── Public RPC Pricing (machine-readable, no auth) ──
     app.get('/api/pricing', async (req, res) => {
         try {
-            const methods = await db.query(`
+            const result = await db.query(`
                 SELECT method, category, base_cost_usdt, cacheable, cache_ttl_sec
                 FROM rpc_method_pricing WHERE enabled = 1 ORDER BY category, method
             `);
+            const methods = Array.isArray(result) ? result : (result.rows || []);
             const rpcPricing = {};
             for (const m of methods) {
                 rpcPricing[m.method] = parseFloat(m.base_cost_usdt);
