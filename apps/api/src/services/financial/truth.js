@@ -45,7 +45,7 @@ export function createFinancialTruthRouter(pool) {
       const unpaid_value_usdt = parseFloat(unpaidResult.rows[0]?.total || 0);
 
       // 4. Treasury real = live on-chain USDT balance
-      const rpcUrl = process.env.RPC_URL || 'https://polygon-rpc.com';
+      const rpcUrl = process.env.RPC_URL || 'https://polygon.drpc.org';
       const treasuryAddress = process.env.TREASURY_ADDRESS;
       const usdtContract = process.env.USDT_CONTRACT || '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
 

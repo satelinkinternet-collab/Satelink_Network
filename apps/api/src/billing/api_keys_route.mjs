@@ -17,7 +17,7 @@ import { discord } from '../services/discord_notify.mjs';
 
 const TREASURY = process.env.TREASURY_ADDRESS || '0x966E1Ae22996545015b1414B35234b10719d7Ad4';
 const USDT_POLYGON = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
-const POLYGON_RPC = 'https://polygon-rpc.com';
+const POLYGON_RPC = 'https://polygon.drpc.org';
 
 const TIER_PRICES = {
   basic: 9,

@@ -69,7 +69,7 @@ const PROVIDER_CONFIGS = {
     providers: [
       {
         id: "polygon-official",
-        url: process.env.RPC_POLYGON_1 || "https://polygon-rpc.com",
+        url: process.env.RPC_POLYGON_1 || "https://polygon.drpc.org",
         priority: 1,
         rateLimit: 100,
         type: "public",

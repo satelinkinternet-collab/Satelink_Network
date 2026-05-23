@@ -7,7 +7,7 @@ export class ProviderFallback {
     constructor() {
         this.providers = {
             ethereum: process.env.RPC_ETH_FALLBACK || 'https://eth.public-rpc.com',
-            polygon: process.env.RPC_POLYGON_FALLBACK || 'https://polygon-rpc.com',
+            polygon: process.env.RPC_POLYGON_FALLBACK || 'https://polygon.drpc.org',
             arbitrum: process.env.RPC_ARBITRUM_FALLBACK || 'https://arb1.arbitrum.io/rpc',
             base: process.env.RPC_BASE_FALLBACK || 'https://mainnet.base.org'
         };

@@ -175,7 +175,7 @@ async function executeRpcCall(providerUrl, method, params, id) {
 
 // Emergency fallback providers - ALWAYS available, no API key required
 const EMERGENCY_FALLBACKS = {
-  polygon: 'https://polygon-rpc.com',
+  polygon: 'https://polygon.drpc.org',
   ethereum: 'https://eth.llamarpc.com',
   arbitrum: 'https://arb1.arbitrum.io/rpc',
   base: 'https://mainnet.base.org',
