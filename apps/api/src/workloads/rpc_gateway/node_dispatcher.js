@@ -187,11 +187,9 @@ export async function forwardToNode(node, rpcRequest) {
 
     const data = await response.json();
 
-    // Check for RPC-level error
-    if (data.error) {
-      throw new Error(data.error.message || 'RPC error');
-    }
-
+    // RPC-level errors (like "insufficient funds", "typed transaction too short") are VALID responses
+    // The node successfully processed the request - the error is from the blockchain, not the node
+    // Only network/HTTP errors should be treated as node failures
     return {
       success: true,
       data,
