@@ -84,7 +84,7 @@ export function createApp(pool, redis) {
   app.get("/api/pricing", async (req, res) => {
     try {
       const result = await pool.query(`
-        SELECT method, base_cost_usdt FROM rpc_method_pricing WHERE enabled = true ORDER BY method
+        SELECT method, base_cost_usdt FROM rpc_method_pricing WHERE enabled = 1 ORDER BY method
       `);
       const methods = Array.isArray(result) ? result : (result.rows || []);
       const rpcPricing = {};
