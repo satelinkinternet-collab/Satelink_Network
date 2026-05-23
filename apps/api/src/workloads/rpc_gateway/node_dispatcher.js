@@ -111,7 +111,7 @@ export async function selectNodeSimple(pool, { chainId, nodeType = 'rpc', exclud
   const heartbeatCutoff = nowSeconds - HEARTBEAT_THRESHOLD_SECONDS;
 
   try {
-    // Simpler query - fetch all active nodes and filter in JS
+    // Query active nodes with circuit breaker filter
     const { rows } = await pool.query(`
       SELECT
         node_id,
@@ -120,14 +120,18 @@ export async function selectNodeSimple(pool, { chainId, nodeType = 'rpc', exclud
         region,
         chain_ids,
         reputation_score,
-        uptime_pct
+        uptime_pct,
+        consecutive_failures,
+        total_requests_served,
+        avg_latency_ms
       FROM registered_nodes
       WHERE status = 'active'
         AND last_heartbeat_at > $1
         AND node_type = $2
+        AND consecutive_failures < 4
       ORDER BY
         reputation_score DESC NULLS LAST,
-        uptime_pct DESC NULLS LAST
+        total_requests_served ASC NULLS LAST
       LIMIT 20
     `, [heartbeatCutoff, nodeType]);
 
@@ -229,12 +233,22 @@ export async function recordNodeSuccess(pool, { nodeId, latencyMs, chainId, meth
       now
     ]);
 
-    // 2. Update node stats - increment requests served, reset failures
+    // 2. Update node stats:
+    //    - Increment total_requests_served
+    //    - Reset consecutive_failures on success
+    //    - Update avg_latency_ms using exponential moving average (alpha = 0.2)
     await pool.query(`
       UPDATE registered_nodes
-      SET updated_at = $1
-      WHERE node_id = $2
-    `, [now, nodeId]);
+      SET
+        total_requests_served = total_requests_served + 1,
+        consecutive_failures = 0,
+        avg_latency_ms = CASE
+          WHEN avg_latency_ms IS NULL THEN $1
+          ELSE avg_latency_ms * 0.8 + $1 * 0.2
+        END,
+        updated_at = $2
+      WHERE node_id = $3
+    `, [latencyMs, now, nodeId]);
 
     // 3. Broadcast revenue event
     broadcaster.publish('revenue:event', {
@@ -260,16 +274,19 @@ export async function recordNodeFailure(pool, nodeId, reason) {
   const now = Math.floor(Date.now() / 1000);
 
   try {
-    // We don't have consecutive_failures column, so just log for now
-    // Future: add failure tracking columns to registered_nodes
-    console.warn(`[NodeDispatcher] ✗ ${nodeId} failed: ${reason}`);
-
-    // Update last activity timestamp
+    // Increment consecutive_failures for circuit breaker
+    // After 4 consecutive failures, node is excluded from selection
     await pool.query(`
       UPDATE registered_nodes
-      SET updated_at = $1
-      WHERE node_id = $2
-    `, [now, nodeId]);
+      SET
+        consecutive_failures = consecutive_failures + 1,
+        last_failure_at = $1,
+        last_failure_reason = $2,
+        updated_at = $1
+      WHERE node_id = $3
+    `, [now, reason.slice(0, 255), nodeId]);
+
+    console.warn(`[NodeDispatcher] ✗ ${nodeId} failed: ${reason}`);
 
   } catch (err) {
     console.error('[NodeDispatcher] recordNodeFailure error:', err.message);
