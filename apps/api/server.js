@@ -119,6 +119,14 @@ async function ensureBillingTables(pool) {
       WHERE NOT EXISTS (SELECT 1 FROM epoch_ledger WHERE status = 'OPEN')
     `).catch(() => {}); // Ignore if epoch_ledger schema differs
 
+    // Node routing columns for dispatcher circuit breaker
+    await pool.query(`ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS consecutive_failures INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+    await pool.query(`ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS total_requests_served BIGINT NOT NULL DEFAULT 0`).catch(() => {});
+    await pool.query(`ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS avg_latency_ms REAL DEFAULT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS last_failure_at BIGINT DEFAULT NULL`).catch(() => {});
+    await pool.query(`ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS last_failure_reason TEXT DEFAULT NULL`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_nodes_dispatch ON registered_nodes(status, node_type, last_heartbeat_at) WHERE status = 'active'`).catch(() => {});
+
     console.log('[STARTUP] Billing tables ensured');
   } catch (err) {
     console.error('[STARTUP] Billing migration failed:', err.message);
