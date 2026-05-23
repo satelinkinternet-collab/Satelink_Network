@@ -173,6 +173,15 @@ async function executeRpcCall(providerUrl, method, params, id) {
   }
 }
 
+// Emergency fallback providers - ALWAYS available, no API key required
+const EMERGENCY_FALLBACKS = {
+  polygon: 'https://polygon-rpc.com',
+  ethereum: 'https://eth.llamarpc.com',
+  arbitrum: 'https://arb1.arbitrum.io/rpc',
+  base: 'https://mainnet.base.org',
+  'polygon-amoy': 'https://rpc-amoy.polygon.technology'
+};
+
 export async function routeRpcRequest(chain, method, params, id, options = {}) {
   const { apiKey, requestId } = options;
 
@@ -186,65 +195,71 @@ export async function routeRpcRequest(chain, method, params, id, options = {}) {
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE 1: Try registered Satelink network nodes first
   // This is where operators earn revenue!
+  // WRAPPED IN TRY/CATCH — dispatcher errors must NEVER prevent fallback
   // ═══════════════════════════════════════════════════════════════════════════
   if (pgPool) {
-    const excludedNodes = [];
-    const maxNodeAttempts = 2;
+    try {
+      const excludedNodes = [];
+      const maxNodeAttempts = 2;
 
-    for (let attempt = 0; attempt < maxNodeAttempts; attempt++) {
-      const node = await selectNodeSimple(pgPool, {
-        chainId,
-        nodeType: 'rpc',
-        excludeIds: excludedNodes
-      });
-
-      if (node) {
-        console.log(`[RPC Router] Trying network node: ${node.node_id} (${node.region})`);
-
-        const result = await forwardToNode(node, {
-          jsonrpc: '2.0',
-          method,
-          params: params || [],
-          id: id || 1
+      for (let attempt = 0; attempt < maxNodeAttempts; attempt++) {
+        const node = await selectNodeSimple(pgPool, {
+          chainId,
+          nodeType: 'rpc',
+          excludeIds: excludedNodes
         });
 
-        if (result.success) {
-          // Fire-and-forget: record revenue attribution to node
-          setImmediate(() => {
-            recordNodeSuccess(pgPool, {
-              nodeId: node.node_id,
-              latencyMs: result.latencyMs,
-              chainId,
-              method,
-              apiKey,
-              requestId
-            }).catch(() => {});
+        if (node) {
+          console.log(`[RPC Router] Trying network node: ${node.node_id} (${node.region})`);
+
+          const result = await forwardToNode(node, {
+            jsonrpc: '2.0',
+            method,
+            params: params || [],
+            id: id || 1
           });
 
-          console.log(`[RPC Router] ✓ Network node ${node.node_id} served ${method} (${result.latencyMs}ms)`);
+          if (result.success) {
+            // Fire-and-forget: record revenue attribution to node
+            setImmediate(() => {
+              recordNodeSuccess(pgPool, {
+                nodeId: node.node_id,
+                latencyMs: result.latencyMs,
+                chainId,
+                method,
+                apiKey,
+                requestId
+              }).catch(() => {});
+            });
 
-          return {
-            success: true,
-            result: result.data,
-            provider: `node:${node.node_id}`,
-            latency: result.latencyMs,
-            source: 'network_node'
-          };
+            console.log(`[RPC Router] ✓ Network node ${node.node_id} served ${method} (${result.latencyMs}ms)`);
+
+            return {
+              success: true,
+              result: result.data,
+              provider: `node:${node.node_id}`,
+              latency: result.latencyMs,
+              source: 'network_node'
+            };
+          }
+
+          // Node failed - record failure and try another
+          console.warn(`[RPC Router] ✗ Node ${node.node_id} failed: ${result.error}`);
+          setImmediate(() => {
+            recordNodeFailure(pgPool, node.node_id, result.error).catch(() => {});
+          });
+          excludedNodes.push(node.node_id);
+        } else {
+          // No more nodes available
+          break;
         }
-
-        // Node failed - record failure and try another
-        console.warn(`[RPC Router] ✗ Node ${node.node_id} failed: ${result.error}`);
-        setImmediate(() => {
-          recordNodeFailure(pgPool, node.node_id, result.error).catch(() => {});
-        });
-        excludedNodes.push(node.node_id);
-      } else {
-        // No more nodes available
-        break;
       }
-    }
 
-    console.log('[RPC Router] No network nodes available, falling back to external providers');
+      console.log('[RPC Router] No network nodes available, falling back to external providers');
+    } catch (dispatcherErr) {
+      // Dispatcher error must NOT kill the request — fall through to providers
+      console.error('[RPC Router] Dispatcher error, falling back:', dispatcherErr.message);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -326,6 +341,37 @@ export async function routeRpcRequest(chain, method, params, id, options = {}) {
     recordFailure(chain, provider.id).catch(() => {});
 
     remainingProviders = remainingProviders.filter((p) => p.id !== provider.id);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 3: Emergency fallback — last resort before total failure
+  // ═══════════════════════════════════════════════════════════════════════════
+  const normalizedChain = CHAIN_ALIASES[chain] || chain;
+  const emergencyUrl = EMERGENCY_FALLBACKS[normalizedChain];
+
+  if (emergencyUrl) {
+    console.warn(`[RPC Router] Trying emergency fallback: ${emergencyUrl}`);
+
+    const { success, result, error, latency } = await executeRpcCall(
+      emergencyUrl,
+      method,
+      params,
+      id
+    );
+
+    if (success) {
+      console.log(`[RPC Router] ✓ Emergency fallback succeeded (${latency}ms)`);
+      return {
+        success: true,
+        result,
+        provider: 'emergency-fallback',
+        latency,
+        source: 'emergency_fallback'
+      };
+    }
+
+    console.error(`[RPC Router] Emergency fallback also failed: ${error}`);
+    attemptedProviders.push('emergency-fallback');
   }
 
   return {
