@@ -1,9 +1,14 @@
 "use client";
 
-
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import {
+    FinancialCardsSection,
+    MeteredWarningBanner,
+    ViewModeToggle,
+    useViewMode,
+    FinancialBadge
+} from "@/components/financial";
 
 const API_BASE = "https://rpc.satelink.network";
 const PASSWORD_HASH = process.env.NEXT_PUBLIC_ADMIN_HASH || "";
@@ -54,6 +59,7 @@ export default function AdminDashboard() {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { mode: viewMode, setMode: setViewMode } = useViewMode('metered');
 
   useEffect(() => {
     const stored = sessionStorage.getItem("satelink_admin_auth");
@@ -201,18 +207,30 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Revenue Overview */}
+        {/* Financial Truth Mode */}
+        <div className="flex items-center justify-between mb-4">
+          <MeteredWarningBanner />
+          <ViewModeToggle value={viewMode} onChange={setViewMode} />
+        </div>
+
+        {/* Financial Reality Cards */}
+        {viewMode === 'reality' && <FinancialCardsSection className="mb-6" />}
+
+        {/* Metered Usage Overview */}
         {metrics && (
           <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
-            <h2 className="text-xl font-semibold mb-4">Revenue Overview (Today)</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Metered Usage (Today)</h2>
+              <FinancialBadge type="METERED" />
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-gray-400 text-sm">Events Today</p>
                 <p className="text-3xl font-bold mt-1">{metrics.eventsToday.toLocaleString()}</p>
               </div>
-              <div className="bg-green-900/20 rounded-lg p-4 border border-green-900/50">
-                <p className="text-gray-400 text-sm">Revenue (USDT)</p>
-                <p className="text-3xl font-bold text-green-400 mt-1">${metrics.usdtToday.toFixed(6)}</p>
+              <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-900/50">
+                <p className="text-gray-400 text-sm">Metered Value <span className="text-[10px] text-purple-400">(ESTIMATE)</span></p>
+                <p className="text-3xl font-bold text-purple-400 mt-1">${metrics.usdtToday.toFixed(6)}</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <p className="text-gray-400 text-sm">Requests</p>
@@ -281,7 +299,7 @@ export default function AdminDashboard() {
                   <tr className="text-left text-gray-400 border-b border-[#0E838840]">
                     <th className="pb-3">Epoch</th>
                     <th className="pb-3">Status</th>
-                    <th className="pb-3">Revenue (USDT)</th>
+                    <th className="pb-3">Epoch Value <span className="text-[10px] text-zinc-500">(allocated)</span></th>
                     <th className="pb-3">Merkle Root</th>
                     <th className="pb-3">Date</th>
                   </tr>

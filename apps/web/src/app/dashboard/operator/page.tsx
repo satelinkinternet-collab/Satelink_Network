@@ -1,9 +1,8 @@
 "use client";
 
-
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { MeteredWarningBanner, FinancialBadge } from "@/components/financial";
 
 const API_BASE = "https://rpc.satelink.network";
 const DEMO_NODE_ID = "NODE-ap-south-1-a09becbb";
@@ -197,25 +196,36 @@ export default function OperatorDashboard() {
           </div>
         )}
 
+        {/* Warning Banner */}
+        <MeteredWarningBanner message="Allocated earnings are not yet distributed onchain. Only 'Claimed' amounts represent real USDT transfers." />
+
         {/* Earnings Cards */}
         {earnings && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <StatCard
-              label="Total Earned"
-              value={`$${earnings.total.toFixed(6)}`}
-              subtext="Lifetime USDT"
-            />
-            <StatCard
-              label="Pending"
-              value={`$${earnings.pending.toFixed(6)}`}
-              subtext="This epoch"
-            />
-            <StatCard
-              label="Claimable"
-              value={`$${earnings.claimable.toFixed(6)}`}
-              subtext={canClaim ? "Ready to claim!" : `Min: $${earnings.minimumClaim} USDT`}
-              highlight={!!canClaim}
-            />
+            <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-400 text-sm">Total Allocated</p>
+                <FinancialBadge type="UNPAID" />
+              </div>
+              <p className="text-2xl font-bold text-amber-400">${earnings.total.toFixed(6)}</p>
+              <p className="text-gray-500 text-sm mt-1">Lifetime (not distributed)</p>
+            </div>
+            <div className="bg-[#1A3C3C] rounded-xl p-6 border border-[#0E838840]">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-400 text-sm">This Epoch</p>
+                <FinancialBadge type="PENDING" />
+              </div>
+              <p className="text-2xl font-bold text-purple-400">${earnings.pending.toFixed(6)}</p>
+              <p className="text-gray-500 text-sm mt-1">Pending allocation</p>
+            </div>
+            <div className={`bg-[#1A3C3C] rounded-xl p-6 border ${canClaim ? 'border-emerald-500/50' : 'border-[#0E838840]'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-400 text-sm">Pending Claim</p>
+                <FinancialBadge type={canClaim ? "ONCHAIN" : "PENDING"} />
+              </div>
+              <p className={`text-2xl font-bold ${canClaim ? 'text-emerald-400' : 'text-zinc-400'}`}>${earnings.claimable.toFixed(6)}</p>
+              <p className="text-gray-500 text-sm mt-1">{canClaim ? "Ready to claim!" : `Min: $${earnings.minimumClaim} USDT`}</p>
+            </div>
             {reputation && (
               <div className={`rounded-xl p-6 border ${tierStyle.bg} border-[#0E838840]`}>
                 <p className="text-gray-400 text-sm">Node Tier</p>

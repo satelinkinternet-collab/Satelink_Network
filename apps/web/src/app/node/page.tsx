@@ -20,6 +20,7 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { EpochCountdown } from '@/components/EpochCountdown';
+import { MeteredWarningBanner, FinancialBadge, BadgeType } from '@/components/financial';
 
 export default function NodeDashboard() {
     const { user } = useAuth();
@@ -113,11 +114,11 @@ export default function NodeDashboard() {
         }
     }, [lastEvent]);
 
-    const metrics = [
-        { label: 'Uptime', value: nodeStatus.uptime, icon: Clock, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-        { label: 'Total Earned', value: `$${nodeStatus.totalEarned}`, icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-        { label: 'Claimable', value: `$${nodeStatus.claimable}`, icon: Zap, color: 'text-violet-400', bg: 'bg-violet-500/10' },
-        { label: 'Withdrawn', value: `$${nodeStatus.totalWithdrawn}`, icon: Upload, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    const metrics: { label: string; value: string; icon: any; color: string; bg: string; badge?: BadgeType }[] = [
+        { label: 'Uptime', value: nodeStatus.uptime, icon: Clock, color: 'text-emerald-400', bg: 'bg-emerald-500/10', badge: 'LIVE' },
+        { label: 'Total Allocated', value: `$${nodeStatus.totalEarned}`, icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10', badge: 'UNPAID' },
+        { label: 'Pending Claim', value: `$${nodeStatus.claimable}`, icon: Zap, color: 'text-purple-400', bg: 'bg-purple-500/10', badge: 'PENDING' },
+        { label: 'Withdrawn', value: `$${nodeStatus.totalWithdrawn}`, icon: Upload, color: 'text-emerald-400', bg: 'bg-emerald-500/10', badge: 'CLAIMED' },
     ];
 
     if (loading) {
@@ -168,19 +169,23 @@ export default function NodeDashboard() {
                 </div>
             </motion.div>
 
+            {/* Warning Banner */}
+            <MeteredWarningBanner message="Allocated earnings are not yet distributed onchain. Withdrawn amount reflects real USDT transfers." />
+
             {/* Metric Strip */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {metrics.map((m, i) => (
                     <Card key={i} className="bg-zinc-900/80 border-zinc-800/60 glow-shadow hover:border-zinc-700/80 transition-all duration-300">
                         <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-between mb-2">
                                 <div className={`w-9 h-9 rounded-lg ${m.bg} flex items-center justify-center`}>
                                     <m.icon className={`w-4 h-4 ${m.color}`} />
                                 </div>
-                                <div>
-                                    <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{m.label}</p>
-                                    <p className="text-lg font-bold text-zinc-100 mt-0.5">{m.value}</p>
-                                </div>
+                                {m.badge && <FinancialBadge type={m.badge} />}
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">{m.label}</p>
+                                <p className="text-lg font-bold text-zinc-100 mt-0.5">{m.value}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -190,8 +195,13 @@ export default function NodeDashboard() {
             {/* Earnings Chart */}
             <Card className="bg-zinc-900/80 border-zinc-800/60 glow-shadow">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-zinc-300">Earnings by Epoch</CardTitle>
-                    <CardDescription className="text-xs text-zinc-600">USDT earned per epoch</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-semibold text-zinc-300">Allocated Earnings by Epoch</CardTitle>
+                            <CardDescription className="text-xs text-zinc-600">USDT allocated per epoch (not yet distributed)</CardDescription>
+                        </div>
+                        <FinancialBadge type="UNPAID" />
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="h-[200px] sm:h-[280px]">

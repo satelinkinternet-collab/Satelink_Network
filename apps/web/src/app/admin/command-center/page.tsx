@@ -19,6 +19,13 @@ import {
 } from '@/components/admin/admin-shared';
 import { DebugToolbox } from '@/components/admin/DebugToolbox';
 import { EpochCountdown } from '@/components/EpochCountdown';
+import {
+    FinancialCardsSection,
+    MeteredWarningBanner,
+    ViewModeToggle,
+    useViewMode,
+    FinancialBadge
+} from '@/components/financial';
 
 interface SystemState {
     withdrawals_paused: boolean;
@@ -54,6 +61,7 @@ export default function CommandCenterPage() {
     const [confirmAction, setConfirmAction] = useState<{ type: string; val: boolean } | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
     const readonly = useIsReadonly();
+    const { mode: viewMode, setMode: setViewMode } = useViewMode('metered');
 
     const { status: sseStatus, lastEvent } = useSSE('/stream/admin', ['snapshot', 'revenue_batch', 'error_batch']);
 
@@ -144,7 +152,7 @@ export default function CommandCenterPage() {
         { label: 'Ops / 5min', value: kpis.ops_5m, icon: Zap, color: 'text-blue-400', bg: 'from-blue-500/10 to-blue-500/5' },
         { label: 'Success Rate', value: `${kpis.success_rate_5m}%`, icon: Activity, color: 'text-purple-400', bg: 'from-purple-500/10 to-purple-500/5' },
         { label: 'p95 Latency', value: `${kpis.p95_latency_ms_5m}ms`, icon: Clock, color: 'text-amber-400', bg: 'from-amber-500/10 to-amber-500/5' },
-        { label: 'Revenue (24h)', value: `$${kpis.revenue_24h_usdt}`, icon: TrendingUp, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
+        { label: 'Metered Value (24h)', value: `$${kpis.revenue_24h_usdt}`, icon: TrendingUp, color: 'text-purple-400', bg: 'from-purple-500/10 to-purple-500/5', badge: 'METERED' as const },
         { label: 'Open Alerts', value: alertsCount, icon: Shield, color: alertsCount > 0 ? 'text-red-400' : 'text-emerald-400', bg: alertsCount > 0 ? 'from-red-500/10 to-red-500/5' : 'from-emerald-500/10 to-emerald-500/5' },
         { label: 'Errors (1h)', value: errorsCount, icon: AlertTriangle, color: errorsCount > 0 ? 'text-amber-400' : 'text-emerald-400', bg: errorsCount > 0 ? 'from-amber-500/10 to-amber-500/5' : 'from-emerald-500/10 to-emerald-500/5' },
     ];
@@ -170,6 +178,15 @@ export default function CommandCenterPage() {
             />
 
             {error && <ErrorBanner message={error} onRetry={fetchData} />}
+
+            {/* Financial Truth Mode */}
+            <div className="flex items-center justify-between mb-4">
+                <MeteredWarningBanner />
+                <ViewModeToggle value={viewMode} onChange={setViewMode} />
+            </div>
+
+            {/* Financial Separation Cards */}
+            {viewMode === 'reality' && <FinancialCardsSection className="mb-6" />}
 
             {/* SAFE MODE BANNER (Phase 22) */}
             {system.beta_gate_enabled && ( // Wait, beta_gate_enabled is not safe mode. I need to check system.revenue_mode or new flag
@@ -327,9 +344,12 @@ export default function CommandCenterPage() {
                     {kpiCards.map((kpi, i) => (
                         <Card key={i} className={`bg-gradient-to-br ${kpi.bg} border-zinc-800/40 hover:border-zinc-700/50 transition-colors`}>
                             <CardContent className="p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                                    <span className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">{kpi.label}</span>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+                                        <span className="text-[11px] text-zinc-500 font-medium uppercase tracking-wider">{kpi.label}</span>
+                                    </div>
+                                    {(kpi as any).badge && <FinancialBadge type={(kpi as any).badge} />}
                                 </div>
                                 <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
                             </CardContent>

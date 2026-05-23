@@ -1,13 +1,12 @@
 "use client";
 
-
-
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
 import { PageHeader, ErrorBanner, DataTable } from '@/components/admin/admin-shared';
+import { MeteredWarningBanner, FinancialBadge } from '@/components/financial';
 
 export default function EarningsPage() {
     const [loading, setLoading] = useState(true);
@@ -29,15 +28,21 @@ export default function EarningsPage() {
     const columns = [
         { key: 'epoch_id', label: 'Epoch' },
         { key: 'wallet_or_node_id', label: 'Wallet / Node', render: (r: any) => <span className="font-mono text-xs text-blue-400">{r.wallet_or_node_id?.slice(0, 16)}...</span> },
-        { key: 'amount_usdt', label: 'Earned', render: (r: any) => <span className="font-mono text-sm text-emerald-400">${parseFloat(r.amount_usdt || 0).toFixed(4)}</span> },
+        { key: 'amount_usdt', label: 'Unpaid', render: (r: any) => (
+            <div className="flex items-center gap-1">
+                <span className="font-mono text-sm text-amber-400">${parseFloat(r.amount_usdt || 0).toFixed(4)}</span>
+                <FinancialBadge type="UNPAID" />
+            </div>
+        )},
         { key: 'role', label: 'Role', render: (r: any) => <span className="text-[10px] text-zinc-500 uppercase">{r.role}</span> },
     ];
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
-            <PageHeader title="Earnings" subtitle="Per-epoch earnings breakdown"
+            <PageHeader title="Unpaid Earnings" subtitle="Per-epoch earnings breakdown (not yet distributed)"
                 actions={<Button variant="ghost" size="sm" onClick={fetch} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="h-4 w-4 mr-1" /> Refresh</Button>}
             />
+            <MeteredWarningBanner message="These earnings are allocated but not yet distributed onchain." />
             {error && <ErrorBanner message={error} onRetry={fetch} />}
             <Card className="bg-zinc-900/60 border-zinc-800/60">
                 <CardContent className="p-0">
