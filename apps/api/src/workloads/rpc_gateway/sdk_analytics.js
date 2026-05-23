@@ -22,7 +22,10 @@ function getRedis() {
 
   try {
     redis = new Redis(url, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
+      commandTimeout: 500,
+      enableOfflineQueue: false,
       tls: url.startsWith('rediss://') ? {} : undefined
     });
     redis.on('error', (err) => console.error('[SDK Analytics] Redis error:', err.message));

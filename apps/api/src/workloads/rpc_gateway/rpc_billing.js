@@ -36,7 +36,10 @@ function getRedis() {
 
   try {
     redisClient = new Redis(url, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
+      commandTimeout: 500,
+      enableOfflineQueue: false,
       tls: url.startsWith('rediss://') ? {} : undefined
     });
     redisClient.on('error', (err) => console.error('[Billing] Redis error:', err.message));

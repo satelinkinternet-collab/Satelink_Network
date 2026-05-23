@@ -35,7 +35,10 @@ async function getRedis() {
 
   try {
     redisClient = new Redis(url, {
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
+      commandTimeout: 500,
+      enableOfflineQueue: false,
       retryDelayOnFailover: 100,
       tls: url.startsWith("rediss://") ? {} : undefined,
     });

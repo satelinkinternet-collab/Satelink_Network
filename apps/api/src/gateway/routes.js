@@ -270,7 +270,8 @@ app.use("/gateway/rpc", createRpcGateway(db));
                 updated_at: Date.now()
             });
         } catch (e) {
-            res.status(500).json({ ok: false, error: e.message });
+            console.error('[Pricing] Error:', e.message, e.stack);
+            res.status(500).json({ error: 'internal_error', detail: e.message });
         }
     });
 
