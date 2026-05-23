@@ -425,7 +425,7 @@ export function createNodeRegistryRouter(db, redis) {
   router.post('/:nodeId/heartbeat', async (req, res) => {
     try {
       const { nodeId } = req.params;
-      const { cpu_pct, ram_pct, uptime_seconds, rpc_calls_served } = req.body || {};
+      const { cpu_pct, ram_pct, uptime_seconds, rpc_calls_served, endpoint_url } = req.body || {};
 
       if (!db || !db.query) {
         return res.status(503).json({ ok: false, error: 'Database unavailable' });
@@ -453,12 +453,28 @@ export function createNodeRegistryRouter(db, redis) {
         newStatus = 'active';
       }
 
-      await db.query(
-        `UPDATE registered_nodes
-         SET last_heartbeat_at = $1, status = $2, updated_at = $1
-         WHERE node_id = $3`,
-        [now, newStatus, nodeId]
-      );
+      // Update node with heartbeat, optionally updating endpoint_url if provided
+      if (endpoint_url) {
+        // Validate endpoint URL - reject circular references
+        const lowerUrl = endpoint_url.toLowerCase();
+        if (lowerUrl.includes('satelink.network') || lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1')) {
+          return res.status(400).json({ ok: false, error: 'Invalid endpoint: circular reference not allowed' });
+        }
+        await db.query(
+          `UPDATE registered_nodes
+           SET last_heartbeat_at = $1, status = $2, updated_at = $1, endpoint_url = $4
+           WHERE node_id = $3`,
+          [now, newStatus, nodeId, endpoint_url]
+        );
+        console.log(`[NodeRegistry] Heartbeat with endpoint update: ${nodeId} → ${endpoint_url}`);
+      } else {
+        await db.query(
+          `UPDATE registered_nodes
+           SET last_heartbeat_at = $1, status = $2, updated_at = $1
+           WHERE node_id = $3`,
+          [now, newStatus, nodeId]
+        );
+      }
 
       if (redis) {
         try {
