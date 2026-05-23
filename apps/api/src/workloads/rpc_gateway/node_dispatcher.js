@@ -112,6 +112,7 @@ export async function selectNodeSimple(pool, { chainId, nodeType = 'rpc', exclud
 
   try {
     // Query active nodes with circuit breaker filter
+    // Exclude public RPC redirects — only select real operator endpoints
     const { rows } = await pool.query(`
       SELECT
         node_id,
@@ -129,6 +130,13 @@ export async function selectNodeSimple(pool, { chainId, nodeType = 'rpc', exclud
         AND last_heartbeat_at > $1
         AND node_type = $2
         AND consecutive_failures < 4
+        AND endpoint_url NOT LIKE '%drpc.org%'
+        AND endpoint_url NOT LIKE '%ankr.com%'
+        AND endpoint_url NOT LIKE '%llamarpc.com%'
+        AND endpoint_url NOT LIKE '%alchemy.com%'
+        AND endpoint_url NOT LIKE '%infura.io%'
+        AND endpoint_url NOT LIKE '%satelink.network%'
+        AND endpoint_url NOT LIKE '%1rpc.io%'
       ORDER BY
         reputation_score DESC NULLS LAST,
         total_requests_served ASC NULLS LAST
