@@ -120,7 +120,7 @@ export function createApp(pool, redis) {
   app.get("/api/status", async (req, res) => {
     try {
       const [nodesResult, epochStatsResult, epochResult] = await Promise.all([
-        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'active'`),
+        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'online'`),
         pool.query(`SELECT COUNT(*) as total FROM revenue_events_v2 WHERE created_at > extract(epoch from now()) - 86400 AND is_test_data = false`),
         pool.query(`SELECT id FROM epochs ORDER BY id DESC LIMIT 1`)
       ]);
