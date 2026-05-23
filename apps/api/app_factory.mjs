@@ -121,7 +121,7 @@ export function createApp(pool, redis) {
     try {
       const [nodesResult, epochStatsResult, epochResult] = await Promise.all([
         pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'active'`),
-        pool.query(`SELECT COALESCE(SUM(requests::bigint), 0) as total FROM epochs WHERE created_at > extract(epoch from now() - interval '24 hours') * 1000`),
+        pool.query(`SELECT COUNT(*) as total FROM revenue_events_v2 WHERE created_at > extract(epoch from now()) - 86400 AND is_test_data = false`),
         pool.query(`SELECT id FROM epochs ORDER BY id DESC LIMIT 1`)
       ]);
       const requests24h = epochStatsResult.rows?.[0]?.total || 0;
