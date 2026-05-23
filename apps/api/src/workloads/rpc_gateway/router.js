@@ -3,6 +3,7 @@
  * S1-RPC-002: Latency-based provider routing with Redis EMA tracking
  * S1-RPC-003: 3-state circuit breaker with Redis persistence
  * S1-RPC-005: Weighted load balancing across providers
+ * S2-NODE: Network node routing with revenue attribution
  */
 
 import { getProviders, getChainConfig, CHAIN_ALIASES } from "./providers.js";
@@ -18,7 +19,21 @@ import {
   getRequestCounts,
   getWeightsForProviders,
 } from "./load_balancer.js";
+import {
+  selectNodeSimple,
+  forwardToNode,
+  recordNodeSuccess,
+  recordNodeFailure,
+} from "./node_dispatcher.js";
 import Redis from "ioredis";
+
+// Database pool reference - set by initRouterWithPool()
+let pgPool = null;
+
+export function initRouterWithPool(pool) {
+  pgPool = pool;
+  console.log('[RPC Router] Initialized with database pool for node routing');
+}
 
 const EMA_ALPHA = 0.2;
 const REQUEST_TIMEOUT_MS = 10000;
@@ -158,12 +173,83 @@ async function executeRpcCall(providerUrl, method, params, id) {
   }
 }
 
-export async function routeRpcRequest(chain, method, params, id) {
+export async function routeRpcRequest(chain, method, params, id, options = {}) {
+  const { apiKey, requestId } = options;
+
   const chainConfig = getChainConfig(chain);
   if (!chainConfig) {
     return { success: false, error: `Unsupported chain: ${chain}` };
   }
 
+  const chainId = chainConfig.chainId;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 1: Try registered Satelink network nodes first
+  // This is where operators earn revenue!
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (pgPool) {
+    const excludedNodes = [];
+    const maxNodeAttempts = 2;
+
+    for (let attempt = 0; attempt < maxNodeAttempts; attempt++) {
+      const node = await selectNodeSimple(pgPool, {
+        chainId,
+        nodeType: 'rpc',
+        excludeIds: excludedNodes
+      });
+
+      if (node) {
+        console.log(`[RPC Router] Trying network node: ${node.node_id} (${node.region})`);
+
+        const result = await forwardToNode(node, {
+          jsonrpc: '2.0',
+          method,
+          params: params || [],
+          id: id || 1
+        });
+
+        if (result.success) {
+          // Fire-and-forget: record revenue attribution to node
+          setImmediate(() => {
+            recordNodeSuccess(pgPool, {
+              nodeId: node.node_id,
+              latencyMs: result.latencyMs,
+              chainId,
+              method,
+              apiKey,
+              requestId
+            }).catch(() => {});
+          });
+
+          console.log(`[RPC Router] ✓ Network node ${node.node_id} served ${method} (${result.latencyMs}ms)`);
+
+          return {
+            success: true,
+            result: result.data,
+            provider: `node:${node.node_id}`,
+            latency: result.latencyMs,
+            source: 'network_node'
+          };
+        }
+
+        // Node failed - record failure and try another
+        console.warn(`[RPC Router] ✗ Node ${node.node_id} failed: ${result.error}`);
+        setImmediate(() => {
+          recordNodeFailure(pgPool, node.node_id, result.error).catch(() => {});
+        });
+        excludedNodes.push(node.node_id);
+      } else {
+        // No more nodes available
+        break;
+      }
+    }
+
+    console.log('[RPC Router] No network nodes available, falling back to external providers');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHASE 2: Fallback to external providers (no node revenue attribution)
+  // ═══════════════════════════════════════════════════════════════════════════
   const providers = getProviders(chain);
   if (providers.length === 0) {
     return { success: false, error: `No providers for chain: ${chain}` };

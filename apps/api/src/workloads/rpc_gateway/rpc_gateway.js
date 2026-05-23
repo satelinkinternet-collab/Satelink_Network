@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import crypto from 'crypto';
-import { routeRpcRequest, getRouterStats } from './router.js';
+import { routeRpcRequest, getRouterStats, initRouterWithPool } from './router.js';
 import { getSupportedChains, getChainConfig, CHAIN_ALIASES } from './providers.js';
 import { getCached, setCached, isCacheable, getCacheStats } from './cache.js';
 import { checkRateLimit, incrementUsage, createApiKey, getUsageStats, getTiers } from './rate_limiter.js';
@@ -33,6 +33,9 @@ function getClientIp(req) {
 
 export function createRpcGateway(db) {
     const router = Router();
+
+    // Initialize router with database pool for network node routing
+    initRouterWithPool(db);
 
     startHealthMonitor();
     createHealthEndpoint(router);
@@ -252,7 +255,10 @@ export function createRpcGateway(db) {
                 return res.status(200).json(cachedResponse);
             }
 
-            const routeResult = await routeRpcRequest(chain, method, params, body.id);
+            const routeResult = await routeRpcRequest(chain, method, params, body.id, {
+                apiKey,
+                requestId: request_id
+            });
 
             if (!routeResult.success) {
                 return res.status(502).json({ ok: false, error: routeResult.error });
@@ -264,14 +270,17 @@ export function createRpcGateway(db) {
             }
 
             // Billing - fire and forget
-            recordRpcRevenue({
-                pool: db,
-                chain,
-                method,
-                apiKey,
-                source: routeResult.provider || 'external_provider',
-                requestId: request_id
-            }).catch(() => {});
+            // Skip if request was served by a network node (revenue already attributed in dispatcher)
+            if (routeResult.source !== 'network_node') {
+                recordRpcRevenue({
+                    pool: db,
+                    chain,
+                    method,
+                    apiKey,
+                    source: routeResult.provider || 'external_provider',
+                    requestId: request_id
+                }).catch(() => {});
+            }
 
             const elapsed = Date.now() - startTime;
             console.log(`[RPC Gateway] ${chain}/${method} → ${routeResult.provider} (${elapsed}ms)`);
