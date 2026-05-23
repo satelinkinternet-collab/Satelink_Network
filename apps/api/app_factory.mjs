@@ -18,6 +18,7 @@ import { createOsEventsRouter } from "./src/realtime/os-events-route.js";
 import nodeAuthRouter from "./src/routes/node_auth_route.mjs";
 import { createMachineAccessRouter } from "./src/machine-access/index.js";
 import { createAdminMalRouter } from "./src/routes/admin_mal_route.mjs";
+import { createFinancialTruthRouter } from "./src/services/financial/truth.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -257,6 +258,9 @@ export function createApp(pool, redis) {
 
   // Admin MAL - Founder Mode diagnostics (MASTER_ADMIN_TOKEN protected)
   app.use("/api/admin", createAdminMalRouter(pool));
+
+  // Financial Truth - canonical source for all financial metrics
+  app.use("/api/financial", createFinancialTruthRouter(pool));
 
   return app;
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
     FinancialCardsSection,
+    FinancialTruthPanel,
     MeteredWarningBanner,
     ViewModeToggle,
     useViewMode,
@@ -213,8 +214,8 @@ export default function AdminDashboard() {
           <ViewModeToggle value={viewMode} onChange={setViewMode} />
         </div>
 
-        {/* Financial Reality Cards */}
-        {viewMode === 'reality' && <FinancialCardsSection className="mb-6" />}
+        {/* Financial Truth Panel — canonical source for all financial metrics */}
+        {viewMode === 'reality' && <FinancialTruthPanel className="mb-6" />}
 
         {/* Metered Usage Overview */}
         {metrics && (

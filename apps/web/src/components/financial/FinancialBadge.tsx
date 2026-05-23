@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type BadgeType = "LIVE" | "ONCHAIN" | "UNPAID" | "METERED" | "FORECAST" | "PENDING" | "CLAIMED";
+export type BadgeType = "LIVE" | "ONCHAIN" | "UNPAID" | "METERED" | "FORECAST" | "PENDING" | "CLAIMED" | "ALLOCATED" | "SETTLED";
 
 const badgeStyles: Record<BadgeType, { bg: string; text: string; border: string }> = {
   LIVE: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/30" },
@@ -13,6 +13,8 @@ const badgeStyles: Record<BadgeType, { bg: string; text: string; border: string 
   FORECAST: { bg: "bg-zinc-500/10", text: "text-zinc-400", border: "border-zinc-500/30" },
   PENDING: { bg: "bg-yellow-500/10", text: "text-yellow-400", border: "border-yellow-500/30" },
   CLAIMED: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30" },
+  ALLOCATED: { bg: "bg-cyan-500/10", text: "text-cyan-400", border: "border-cyan-500/30" },
+  SETTLED: { bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/30" },
 };
 
 interface FinancialBadgeProps {
