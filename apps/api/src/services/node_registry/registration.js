@@ -457,7 +457,7 @@ export function createNodeRegistryRouter(db, redis) {
         newStatus = 'active';
       }
 
-      // Update node with heartbeat, optionally updating endpoint_url if provided
+      // Update node with heartbeat, reset circuit breaker, optionally update endpoint_url
       if (endpoint_url) {
         // Validate endpoint URL - reject circular references
         const lowerUrl = endpoint_url.toLowerCase();
@@ -466,15 +466,16 @@ export function createNodeRegistryRouter(db, redis) {
         }
         await db.query(
           `UPDATE registered_nodes
-           SET last_heartbeat_at = $1, status = $2, updated_at = $1, endpoint_url = $4
+           SET last_heartbeat_at = $1, status = $2, updated_at = $1, endpoint_url = $4, consecutive_failures = 0
            WHERE node_id = $3`,
           [now, newStatus, nodeId, endpoint_url]
         );
         console.log(`[NodeRegistry] Heartbeat with endpoint update: ${nodeId} → ${endpoint_url}`);
       } else {
+        // Reset consecutive_failures on heartbeat - node is alive, give it another chance
         await db.query(
           `UPDATE registered_nodes
-           SET last_heartbeat_at = $1, status = $2, updated_at = $1
+           SET last_heartbeat_at = $1, status = $2, updated_at = $1, consecutive_failures = 0
            WHERE node_id = $3`,
           [now, newStatus, nodeId]
         );
