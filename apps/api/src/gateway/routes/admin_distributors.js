@@ -1,12 +1,15 @@
-
 import express from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 /**
  * Admin Distributors Router
- * Mounted at /admin/distributors (behind verifyJWT in server.js)
+ * Mounted at /admin/distributors
  */
 export function createAdminDistributorsRouter(db) {
     const router = express.Router();
+
+    router.use(requireJWT);
+    router.use(requireRole(['admin_super', 'admin_ops']));
 
     // GET /admin/distributors/performance
     router.get('/performance', async (req, res) => {

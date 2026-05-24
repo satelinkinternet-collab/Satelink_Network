@@ -1,8 +1,12 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createAdminControlRouter(opsEngine, auditService = null) {
     const router = Router();
     const db = opsEngine.db;
+
+    router.use(requireJWT);
+    router.use(requireRole(['admin_super', 'admin_ops']));
 
     // ─── COMMAND CENTER ───
     router.get('/command/summary', async (req, res) => {

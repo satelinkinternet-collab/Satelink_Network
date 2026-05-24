@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createAdminEconomicsRouter(db, breakevenService, authenticityService, stabilityService) {
     const router = Router();
+
+    router.use(requireJWT);
+    router.use(requireRole(['admin_super', 'admin_ops']));
 
     // M1: Breakeven Analysis
 

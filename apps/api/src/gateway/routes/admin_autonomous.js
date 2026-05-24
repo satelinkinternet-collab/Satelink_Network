@@ -1,8 +1,11 @@
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 export function createAdminAutonomousRouter(db, autoOpsEngine) {
     const router = Router();
-    // express.json() applied globally in core/middleware.js — no duplicate needed
+
+    router.use(requireJWT);
+    router.use(requireRole(['admin_super', 'admin_ops']));
 
     // 1. Get Config & Status
     router.get('/config', async (req, res) => {

@@ -8,6 +8,7 @@
  */
 
 import { Router } from 'express';
+import { requireJWT, requireRole } from '../../security/auth_middleware.js';
 
 /**
  * @param {import('../../genesis/genesis_workload_engine.js').GenesisWorkloadEngine} engine
@@ -15,6 +16,9 @@ import { Router } from 'express';
  */
 export function createGenesisAdminRouter(engine) {
     const router = Router();
+
+    router.use(requireJWT);
+    router.use(requireRole(['admin_super', 'admin_ops']));
 
     router.get('/stats', (req, res) => {
         res.status(200).json({ ok: true, ...engine.getStats() });
