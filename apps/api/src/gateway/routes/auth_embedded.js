@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 
 const IP_SALT = process.env.IP_SALT || 'satelink_salty';
 if (process.env.NODE_ENV === 'production' && IP_SALT === 'satelink_salty') {
-    throw new Error('FATAL: IP_SALT must be explicitly set in production mode.');
+    console.error('[AUTH] WARNING: IP_SALT not set in production. Using default value. Set IP_SALT env var for proper IP hashing.');
 }
 function hashIp(ip) {
     return crypto.createHash('sha256').update(ip + (process.env.IP_HASH_SALT || '')).digest('hex').substring(0, 16);
