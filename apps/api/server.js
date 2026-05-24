@@ -160,6 +160,24 @@ async function ensureBillingTables(pool) {
     await pool.query(`ALTER TABLE registered_nodes ADD COLUMN IF NOT EXISTS last_failure_reason TEXT DEFAULT NULL`).catch(() => {});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_nodes_dispatch ON registered_nodes(status, node_type, last_heartbeat_at) WHERE status = 'active'`).catch(() => {});
 
+    // Create nodes table (referenced by /api/status and epoch earnings)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS nodes (
+        node_id TEXT PRIMARY KEY,
+        wallet TEXT,
+        device_type TEXT DEFAULT 'undefined',
+        status TEXT DEFAULT 'pending',
+        last_seen INTEGER,
+        created_at INTEGER
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_nodes_wallet ON nodes(wallet)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status)`).catch(() => {});
+
+    // Performance indexes for revenue queries
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rev2_created_at ON revenue_events_v2(created_at)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rev2_epoch_id ON revenue_events_v2(epoch_id)`).catch(() => {});
+
     console.log('[STARTUP] Billing tables ensured');
   } catch (err) {
     console.error('[STARTUP] Billing migration failed:', err.message);
