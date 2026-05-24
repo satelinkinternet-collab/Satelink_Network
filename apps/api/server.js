@@ -17,6 +17,7 @@ import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
 import { startDataRetentionScheduler } from "./src/jobs/data_retention_job.mjs";
+import { createSettlementAnchorJob } from "./src/scheduler/jobs/settlement_anchor_job.js";
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import Redis from "ioredis";
@@ -408,6 +409,22 @@ async function start() {
     console.error('[BOOT] ⚠️ Data retention job failed (non-fatal):', err.message);
   }
 
+  // Step 12d: Start settlement anchor job (anchors closed epochs to blockchain every 5 min)
+  let settlementAnchor;
+  try {
+    const anchorJob = createSettlementAnchorJob(pool);
+    settlementAnchor = setInterval(async () => {
+      try {
+        await anchorJob.run();
+      } catch (err) {
+        console.error('[SettlementAnchor] Scheduled run failed:', err.message);
+      }
+    }, 5 * 60 * 1000);
+    console.log('[BOOT] ✅ Settlement anchor job started (5min interval)');
+  } catch (err) {
+    console.error('[BOOT] ⚠️ Settlement anchor job failed (non-fatal):', err.message);
+  }
+
   // Step 13: Bind to port FIRST (Railway healthcheck needs this fast)
   const PORT = process.env.PORT || 8080;
   try {
@@ -441,6 +458,7 @@ async function start() {
       console.log(`📊 Capacity-alerter started (2min interval)`);
       console.log(`💸 Treasury-settlement started (5min interval)`);
       console.log(`🗑️ Data-retention started (daily at 3:00 UTC)`);
+      console.log(`⚓ Settlement-anchor started (5min interval)`);
     });
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);

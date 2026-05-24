@@ -25,8 +25,8 @@ const ERC20_ABI = [
 ];
 
 export class SettlementAnchorJob {
-    constructor(db) {
-        this.db = db;
+    constructor(pool) {
+        this.pool = pool;
         this.provider = null;
         this.wallet = null;
         this.contract = null;
@@ -62,7 +62,7 @@ export class SettlementAnchorJob {
         console.log('[SettlementAnchor] Running...');
 
         // 1. Find closed epochs without settlement_batches
-        const unanchored = await this.db.prepare(`
+        const result = await this.pool.query(`
             SELECT e.id, e.total_revenue_usdt, e.platform_share_usdt, e.ends_at
             FROM epochs e
             LEFT JOIN settlement_batches sb ON sb.epoch_id = e.id
@@ -71,7 +71,8 @@ export class SettlementAnchorJob {
               AND e.total_revenue_usdt > 0
             ORDER BY e.id ASC
             LIMIT 10
-        `).all([]);
+        `);
+        const unanchored = result.rows;
 
         if (unanchored.length === 0) {
             console.log('[SettlementAnchor] No unanchored epochs found');
@@ -103,11 +104,11 @@ export class SettlementAnchorJob {
         const treasuryAddress = process.env.TREASURY_ADDRESS;
 
         // 2. Create pending settlement_batches row
-        await this.db.prepare(`
+        await this.pool.query(`
             INSERT INTO settlement_batches
             (batch_id, epoch_id, chain_id, adapter_type, total_amount_usdt, item_count, status, created_at)
-            VALUES (?, ?, ?, 'polygon_anchor', ?, 1, 'pending', ?)
-        `).run([batchId, epoch.id, chainId, epoch.platform_share_usdt || 0, now]);
+            VALUES ($1, $2, $3, 'polygon_anchor', $4, 1, 'pending', $5)
+        `, [batchId, epoch.id, chainId, epoch.platform_share_usdt || 0, now]);
 
         console.log(`[SettlementAnchor] Created batch ${batchId} for epoch ${epoch.id}`);
 
@@ -179,11 +180,11 @@ export class SettlementAnchorJob {
         const confirmedAt = txHash && !errorMessage ? now : null;
         const status = errorMessage ? 'failed' : (txHash ? 'confirmed' : 'pending');
 
-        await this.db.prepare(`
+        await this.pool.query(`
             UPDATE settlement_batches
-            SET tx_hash = ?, submitted_at = ?, confirmed_at = ?, status = ?, error_message = ?
-            WHERE batch_id = ?
-        `).run([txHash, now, confirmedAt, status, errorMessage, batchId]);
+            SET tx_hash = $1, submitted_at = $2, confirmed_at = $3, status = $4, error_message = $5
+            WHERE batch_id = $6
+        `, [txHash, now, confirmedAt, status, errorMessage, batchId]);
 
         console.log(`[SettlementAnchor] Epoch ${epoch.id} anchored — status: ${status}, tx: ${txHash?.substring(0, 20)}...`);
 
@@ -194,19 +195,22 @@ export class SettlementAnchorJob {
      * Manually anchor a specific epoch (for testing/admin).
      */
     async anchorEpochById(epochId) {
-        const epoch = await this.db.prepare(`
+        const epochResult = await this.pool.query(`
             SELECT id, total_revenue_usdt, platform_share_usdt, ends_at
-            FROM epochs WHERE id = ? AND status = 'CLOSED'
-        `).get([epochId]);
+            FROM epochs WHERE id = $1 AND status = 'CLOSED'
+        `, [epochId]);
+        const epoch = epochResult.rows[0];
 
         if (!epoch) {
             throw new Error(`Epoch ${epochId} not found or not closed`);
         }
 
         // Check if already anchored
-        const existing = await this.db.prepare(
-            "SELECT batch_id FROM settlement_batches WHERE epoch_id = ?"
-        ).get([epochId]);
+        const existingResult = await this.pool.query(
+            "SELECT batch_id FROM settlement_batches WHERE epoch_id = $1",
+            [epochId]
+        );
+        const existing = existingResult.rows[0];
 
         if (existing) {
             throw new Error(`Epoch ${epochId} already has settlement batch: ${existing.batch_id}`);
@@ -219,6 +223,6 @@ export class SettlementAnchorJob {
 /**
  * Factory for use in server.js or scheduler
  */
-export function createSettlementAnchorJob(db) {
-    return new SettlementAnchorJob(db);
+export function createSettlementAnchorJob(pool) {
+    return new SettlementAnchorJob(pool);
 }
