@@ -94,7 +94,7 @@ const PROVIDER_CONFIGS = {
         priority: 3,
         rateLimit: 100,
         type: "ankr",
-        enabled: ANKR_VALID || !!process.env.ANKR_POLYGON_URL,
+        enabled: false,
       },
       {
         id: "llamarpc-polygon",

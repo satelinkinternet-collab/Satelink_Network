@@ -190,8 +190,8 @@ app.get("/api/mode", (req, res) => {
   // Node operator auth endpoint (public, rate-limited)
   app.use("/api/auth", nodeAuthRouter);
 
-  // RPC Gateway with latency-based routing
-  app.use("/rpc", createRpcGateway(pool));
+  // RPC Gateway with latency-based routing (50mb limit for batch requests)
+  app.use("/rpc", express.json({ limit: '50mb' }), createRpcGateway(pool));
 
   // MEV Private Relay (S3-001) — 10x pricing, requires API key
   app.use("/rpc/mev", createMevRelayRouter(pool, redis));
