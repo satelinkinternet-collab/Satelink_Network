@@ -7,7 +7,7 @@
  *                     amount_usdt, status, request_id, created_at, ...)
  */
 
-import Redis from 'ioredis';
+import { getSharedRedis } from './shared_redis.js';
 import { broadcaster } from '../../realtime/broadcaster-instance.js';
 
 const CHAIN_PRICING_USDT = {
@@ -24,30 +24,9 @@ const CHAIN_PRICING_USDT = {
 
 const DEFAULT_RPC_COST_USDT = 0.00003;
 
-let redisClient = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 function getRedis() {
-  if (redisClient) return redisClient;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
-    return null;
-  }
-
-  try {
-    redisClient = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      commandTimeout: 500,
-      enableOfflineQueue: false,
-      tls: url.startsWith('rediss://') ? {} : undefined
-    });
-    redisClient.on('error', (err) => console.error('[Billing] Redis error:', err.message));
-    return redisClient;
-  } catch (err) {
-    console.error('[Billing] Redis init failed:', err.message);
-    return null;
-  }
+  return getSharedRedis();
 }
 
 export async function recordRpcRevenue({ pool, chain, method, apiKey, source, requestId }) {

@@ -14,7 +14,7 @@
  * - HALF_OPEN → OPEN: on failure
  */
 
-import Redis from 'ioredis';
+import { getSharedRedis } from './shared_redis.js';
 import { CHAIN_ALIASES } from './providers.js';
 
 const FAILURE_THRESHOLD = 5;
@@ -26,35 +26,9 @@ const STATE = {
   HALF_OPEN: 'HALF_OPEN'
 };
 
-let redis = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 function getRedis() {
-  if (redis) return redis;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
-    return null;
-  }
-
-  try {
-    redis = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      commandTimeout: 500,
-      enableOfflineQueue: false,
-      retryDelayOnFailover: 100,
-      tls: url.startsWith('rediss://') ? {} : undefined
-    });
-
-    redis.on('error', (err) => {
-      console.error('[CircuitBreaker] Redis error:', err.message);
-    });
-
-    return redis;
-  } catch (err) {
-    console.error('[CircuitBreaker] Redis init failed:', err.message);
-    return null;
-  }
+  return getSharedRedis();
 }
 
 function getCircuitKey(chain, providerId) {

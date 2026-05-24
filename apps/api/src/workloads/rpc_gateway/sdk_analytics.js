@@ -8,32 +8,11 @@
  */
 
 import { Router } from 'express';
-import Redis from 'ioredis';
+import { getSharedRedis } from './shared_redis.js';
 
-let redis = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 function getRedis() {
-  if (redis) return redis;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
-    return null;
-  }
-
-  try {
-    redis = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      commandTimeout: 500,
-      enableOfflineQueue: false,
-      tls: url.startsWith('rediss://') ? {} : undefined
-    });
-    redis.on('error', (err) => console.error('[SDK Analytics] Redis error:', err.message));
-    return redis;
-  } catch (err) {
-    console.error('[SDK Analytics] Redis init failed:', err.message);
-    return null;
-  }
+  return getSharedRedis();
 }
 
 export function createSdkAnalyticsRouter() {

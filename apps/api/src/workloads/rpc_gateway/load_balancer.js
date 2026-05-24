@@ -13,42 +13,16 @@
  * - Still favors faster, more reliable providers
  */
 
-import Redis from "ioredis";
+import { getSharedRedis } from "./shared_redis.js";
 import { CHAIN_ALIASES } from "./providers.js";
 
 const DEFAULT_LATENCY = 500;
 const MIN_WEIGHT = 1;
 const MAX_WEIGHT = 100;
 
-let redis = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 function getRedis() {
-  if (redis) return redis;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === "redis://") {
-    return null;
-  }
-
-  try {
-    redis = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      commandTimeout: 500,
-      enableOfflineQueue: false,
-      retryDelayOnFailover: 100,
-      tls: url.startsWith("rediss://") ? {} : undefined,
-    });
-
-    redis.on("error", (err) => {
-      console.error("[LoadBalancer] Redis error:", err.message);
-    });
-
-    return redis;
-  } catch (err) {
-    console.error("[LoadBalancer] Redis init failed:", err.message);
-    return null;
-  }
+  return getSharedRedis();
 }
 
 function getRequestCountKey(chain, providerId) {

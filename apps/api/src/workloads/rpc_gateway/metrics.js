@@ -7,7 +7,7 @@
  */
 
 import { Router } from 'express';
-import Redis from 'ioredis';
+import { getSharedRedis } from './shared_redis.js';
 import { getSupportedChains, getProviders, PROVIDER_CONFIGS } from './providers.js';
 import { getCacheStats } from './cache.js';
 import { getCircuitStats, STATE } from './circuit_breaker.js';
@@ -16,35 +16,9 @@ import { getWsStats } from './ws_gateway.js';
 
 const startTime = Date.now();
 
-let redis = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 function getRedis() {
-  if (redis) return redis;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
-    return null;
-  }
-
-  try {
-    redis = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      commandTimeout: 500,
-      enableOfflineQueue: false,
-      retryDelayOnFailover: 100,
-      tls: url.startsWith('rediss://') ? {} : undefined
-    });
-
-    redis.on('error', (err) => {
-      console.error('[Metrics] Redis error:', err.message);
-    });
-
-    return redis;
-  } catch (err) {
-    console.error('[Metrics] Redis init failed:', err.message);
-    return null;
-  }
+  return getSharedRedis();
 }
 
 async function getRedisCounter(key) {
