@@ -11,7 +11,7 @@
 
 import { Router } from 'express';
 import crypto from 'crypto';
-import Redis from 'ioredis';
+import { getSharedRedis } from '../../workloads/rpc_gateway/shared_redis.js';
 
 const PLAN_LIMITS = {
   free: { limit: 200, tier: 'free' },
@@ -22,24 +22,9 @@ const PLAN_LIMITS = {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-let redis = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 function getRedis() {
-  if (redis) return redis;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') return null;
-
-  try {
-    redis = new Redis(url, {
-      maxRetriesPerRequest: 3,
-      tls: url.startsWith('rediss://') ? {} : undefined
-    });
-    redis.on('error', (err) => console.error('[ApiKeys] Redis error:', err.message));
-    return redis;
-  } catch (err) {
-    return null;
-  }
+  return getSharedRedis();
 }
 
 function generateApiKey() {

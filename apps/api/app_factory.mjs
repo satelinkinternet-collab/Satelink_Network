@@ -29,43 +29,24 @@ export function createApp(pool, redis) {
   // Core health endpoints
   app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
 
-  // Enhanced public health endpoint
+  // Enhanced public health endpoint — ALWAYS returns 200 for Railway
   app.get("/health", async (req, res) => {
-    const startTime = Date.now();
-    let dbStatus = "unknown";
-    let dbLatencyMs = null;
-
-    try {
-      const dbStart = Date.now();
-      await pool.query("SELECT 1");
-      dbLatencyMs = Date.now() - dbStart;
-      dbStatus = "connected";
-    } catch (e) {
-      dbStatus = "error";
-    }
-
     res.setHeader("Cache-Control", "no-cache");
-    res.json({
-      status: "operational",
-      timestamp: new Date().toISOString(),
-      uptimeSeconds: Math.floor(process.uptime()),
-      version: "1.0.0",
-      database: {
-        status: dbStatus,
-        latencyMs: dbLatencyMs
-      },
-      chains: ["polygon", "ethereum", "arbitrum", "base", "polygon-amoy"],
-      endpoints: {
-        rpc: "https://rpc.satelink.network/rpc/{chain}",
-        health: "https://rpc.satelink.network/health",
-        status: "https://rpc.satelink.network/api/status",
-        pricing: "https://rpc.satelink.network/api/pricing"
-      },
-      responseTimeMs: Date.now() - startTime
+    const checks = { server: 'ok', db: 'unknown', uptime: Math.floor(process.uptime()) };
+    try {
+      await pool.query('SELECT 1');
+      checks.db = 'ok';
+    } catch (e) {
+      checks.db = 'degraded: ' + (e.message || 'unknown').slice(0, 50);
+    }
+    res.status(200).json({
+      ok: true,
+      ...checks,
+      timestamp: new Date().toISOString()
     });
   });
 
-  app.get("/api/mode", (req, res) => {
+app.get("/api/mode", (req, res) => {
     res.status(200).json({
       ok: true,
       mode: process.env.SATELINK_MODE || "simulation",

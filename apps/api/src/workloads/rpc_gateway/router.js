@@ -25,7 +25,7 @@ import {
   recordNodeSuccess,
   recordNodeFailure,
 } from "./node_dispatcher.js";
-import Redis from "ioredis";
+import { getSharedRedis } from "./shared_redis.js";
 
 // Database pool reference - set by initRouterWithPool()
 let pgPool = null;
@@ -38,35 +38,9 @@ export function initRouterWithPool(pool) {
 const EMA_ALPHA = 0.2;
 const REQUEST_TIMEOUT_MS = 10000;
 
-let redisClient = null;
-
+// Use shared Redis client to avoid connection pool exhaustion
 async function getRedis() {
-  if (redisClient) return redisClient;
-
-  const url = process.env.REDIS_URL;
-  if (!url || url === "redis://") {
-    return null;
-  }
-
-  try {
-    redisClient = new Redis(url, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      commandTimeout: 500,
-      enableOfflineQueue: false,
-      retryDelayOnFailover: 100,
-      tls: url.startsWith("rediss://") ? {} : undefined,
-    });
-
-    redisClient.on("error", (err) => {
-      console.error("[RPC Router] Redis error:", err.message);
-    });
-
-    return redisClient;
-  } catch (err) {
-    console.error("[RPC Router] Redis connect failed:", err.message);
-    return null;
-  }
+  return getSharedRedis();
 }
 
 function getLatencyKey(chain, providerId) {

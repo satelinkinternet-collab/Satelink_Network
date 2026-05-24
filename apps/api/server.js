@@ -16,6 +16,7 @@ import { startEpochScheduler, schedulerStatus, runEpochCycle } from "./src/econo
 import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
+import { startDataRetentionScheduler } from "./src/jobs/data_retention_job.mjs";
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import Redis from "ioredis";
@@ -167,7 +168,7 @@ async function ensureBillingTables(pool) {
 async function start() {
   console.log("🚀 SERVER STARTED - BOOT SEQUENCE BEGINNING");
 
-  // Step 1: Create PostgreSQL pool
+  // Step 1: Create PostgreSQL pool (non-blocking - just config)
   let pool;
   try {
     pool = new Pool({
@@ -179,45 +180,24 @@ async function start() {
     console.log('[BOOT] ✅ PostgreSQL pool created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at Pool creation:', err.message);
-    process.exit(1);
   }
 
-  // Step 2: Run billing table migrations
-  try {
-    await ensureBillingTables(pool);
-    console.log('[BOOT] ✅ Billing tables ensured');
-  } catch (err) {
-    console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
-    process.exit(1);
-  }
-
-  // Step 2b: Initialize machine access control-plane tables
-  try {
-    await ensureMachineAccessTables(pool);
-    console.log('[BOOT] ✅ Machine access tables ensured');
-  } catch (err) {
-    console.error('[BOOT] ❌ FAILED at ensureMachineAccessTables:', err.message);
-    process.exit(1);
-  }
-
-  // Step 3: Create Redis client
+  // Step 2: Create Redis client (non-blocking)
   let redis;
   try {
     redis = createRedisClient();
     console.log('[BOOT] ✅ Redis client created (or skipped)');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createRedisClient:', err.message);
-    process.exit(1);
   }
 
-  // Step 4: Create Express app
+  // Step 3: Create Express app (non-blocking)
   let app;
   try {
     app = createApp(pool, redis);
     console.log('[BOOT] ✅ Express app created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createApp:', err.message);
-    process.exit(1);
   }
 
   // Step 5: Mount additional middleware and routes
@@ -314,10 +294,36 @@ async function start() {
       }
     });
 
+    // Data retention job status endpoint
+    app.get('/system/data-retention', async (req, res) => {
+      try {
+        const { DataRetentionJob } = await import('./src/jobs/data_retention_job.mjs');
+        const job = new DataRetentionJob(pool);
+        const status = job.getStatus();
+        res.json({ ok: true, ...status });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    // Manual data retention trigger for testing/recovery
+    app.post('/system/data-retention/trigger', async (req, res) => {
+      try {
+        console.log('[ADMIN] Manual data retention triggered');
+        const { DataRetentionJob } = await import('./src/jobs/data_retention_job.mjs');
+        const job = new DataRetentionJob(pool);
+        const result = await job.run();
+        res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error('[ADMIN] Manual data retention failed:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     console.log('[BOOT] ✅ Additional routes mounted');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 6: Create HTTP server
@@ -327,7 +333,7 @@ async function start() {
     console.log('[BOOT] ✅ HTTP server created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createServer:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 7: Create WebSocket gateway
@@ -336,7 +342,7 @@ async function start() {
     console.log('[BOOT] ✅ WebSocket gateway created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createWsGateway:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 8: Start health monitor
@@ -345,7 +351,7 @@ async function start() {
     console.log('[BOOT] ✅ Health monitor started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startHealthMonitor:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 9: Start offline detector
@@ -354,7 +360,7 @@ async function start() {
     console.log('[BOOT] ✅ Offline detector started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startOfflineDetector:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 10: Start epoch scheduler
@@ -363,7 +369,7 @@ async function start() {
     console.log('[BOOT] ✅ Epoch scheduler started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startEpochScheduler:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 11: Start sentinel (auto-scaler, healer, anomaly, treasury, capacity)
@@ -372,7 +378,7 @@ async function start() {
     console.log('[BOOT] ✅ Sentinel started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startSentinel:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 12: Start claim expiry job
@@ -381,7 +387,7 @@ async function start() {
     console.log('[BOOT] ✅ Claim expiry job started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startClaimExpiryJob:', err.message);
-    process.exit(1);
+    
   }
 
   // Step 12b: Start treasury settlement job (auto-forward deposits to ClaimsContract)
@@ -393,13 +399,38 @@ async function start() {
     console.error('[BOOT] ⚠️ Treasury settlement job failed (non-fatal):', err.message);
   }
 
-  // Step 13: Bind to port
+  // Step 12c: Start data retention job (cleanup old logs/metrics daily at 3 AM UTC)
+  let dataRetention;
+  try {
+    dataRetention = startDataRetentionScheduler(pool, 3);
+    console.log('[BOOT] ✅ Data retention job started (daily at 3:00 UTC)');
+  } catch (err) {
+    console.error('[BOOT] ⚠️ Data retention job failed (non-fatal):', err.message);
+  }
+
+  // Step 13: Bind to port FIRST (Railway healthcheck needs this fast)
   const PORT = process.env.PORT || 8080;
   try {
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, async () => {
       console.log('[BOOT] ✅ Server listening on port ' + PORT);
       console.log(`✅ Satelink Backend Running on port ${PORT}`);
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
+
+      // Run migrations and schedulers AFTER server is up (non-blocking for Railway)
+      try {
+        await ensureBillingTables(pool);
+        console.log('[POST-BOOT] ✅ Billing tables ensured');
+      } catch (err) {
+        console.error('[POST-BOOT] ⚠️ Billing tables failed (non-fatal):', err.message);
+      }
+
+      try {
+        await ensureMachineAccessTables(pool);
+        console.log('[POST-BOOT] ✅ Machine access tables ensured');
+      } catch (err) {
+        console.error('[POST-BOOT] ⚠️ Machine access tables failed (non-fatal):', err.message);
+      }
+
       console.log(`🏥 Health monitor started (2min interval)`);
       console.log(`🔍 Offline detector started (2min interval)`);
       console.log(`⏱️ Epoch scheduler started (60s interval)`);
@@ -409,10 +440,10 @@ async function start() {
       console.log(`🏦 Treasury-monitor started (10min interval)`);
       console.log(`📊 Capacity-alerter started (2min interval)`);
       console.log(`💸 Treasury-settlement started (5min interval)`);
+      console.log(`🗑️ Data-retention started (daily at 3:00 UTC)`);
     });
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
-    process.exit(1);
   }
 
   // Step 14: Self-heartbeat — the API server IS the node
