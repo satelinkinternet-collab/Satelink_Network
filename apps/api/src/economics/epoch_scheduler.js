@@ -127,6 +127,7 @@ export async function runEpochCycle(dbOrPool) {
               AND epochs.status = 'OPEN'
             RETURNING
                 epochs.id,
+                epochs.starts_at,
                 epochs.total_revenue_usdt,
                 epochs.node_pool_usdt,
                 epochs.platform_share_usdt,
@@ -140,6 +141,32 @@ export async function runEpochCycle(dbOrPool) {
             schedulerStatus.last_error = null;
             return { ok: true, status: 'skipped_already_closed', epoch_id: epoch.id };
         }
+
+        const closedEpochData = closed.rows[0];
+
+        // CRITICAL: Also sync to epoch_ledger table (truth.js queries this table)
+        // The epochs table and epoch_ledger table must be kept in sync
+        await client.query(`
+            INSERT INTO epoch_ledger (epoch_id, status, started_at, closed_at, total_revenue, node_pool, platform_fee, distribution_pool, created_at)
+            VALUES ($1, 'CLOSED', $2, $3, $4, $5, $6, $7, $3)
+            ON CONFLICT (epoch_id) DO UPDATE SET
+                status = 'CLOSED',
+                closed_at = EXCLUDED.closed_at,
+                total_revenue = EXCLUDED.total_revenue,
+                node_pool = EXCLUDED.node_pool,
+                platform_fee = EXCLUDED.platform_fee,
+                distribution_pool = EXCLUDED.distribution_pool
+        `, [
+            `epoch-${epoch.id}`,
+            (closedEpochData.starts_at || nowSeconds) * 1000,
+            nowSeconds * 1000,
+            closedEpochData.total_revenue_usdt,
+            closedEpochData.node_pool_usdt,
+            closedEpochData.platform_share_usdt,
+            closedEpochData.distributor_share_usdt
+        ]);
+
+        console.log(`[EpochScheduler] Synced epoch ${epoch.id} to epoch_ledger (revenue: ${closedEpochData.total_revenue_usdt} USDT)`);
 
         const earnings = await finalizeClosedEpochEarningsInTransaction(client, Number(epoch.id), nowSeconds);
 
