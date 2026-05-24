@@ -176,7 +176,7 @@ async function start() {
 
   // Step 2: Run billing table migrations
   try {
-    await ensureBillingTables(pool);
+    ensureBillingTables(pool).catch(console.error);
     console.log('[BOOT] ✅ Billing tables ensured');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
@@ -185,7 +185,7 @@ async function start() {
 
   // Step 2b: Initialize machine access control-plane tables
   try {
-    await ensureMachineAccessTables(pool).catch(console.error);
+    ensureMachineAccessTables(pool).catch(console.error);
     console.log('[BOOT] ✅ Machine access tables ensured');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at ensureMachineAccessTables:', err.message);

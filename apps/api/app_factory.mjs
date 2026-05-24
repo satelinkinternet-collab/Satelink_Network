@@ -30,42 +30,18 @@ export function createApp(pool, redis) {
   app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
 
   // Enhanced public health endpoint
-  app.get("/health", async (req, res) => {
-    const startTime = Date.now();
-    let dbStatus = "unknown";
-    let dbLatencyMs = null;
-
-    try {
-      const dbStart = Date.now();
-      await pool.query("SELECT 1");
-      dbLatencyMs = Date.now() - dbStart;
-      dbStatus = "connected";
-    } catch (e) {
-      dbStatus = "error";
-    }
-
+  
+  app.get("/health", (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
-    res.json({
-      status: "operational",
+    res.status(200).json({
+      status: "ok",
+      booted: true,
       timestamp: new Date().toISOString(),
-      uptimeSeconds: Math.floor(process.uptime()),
-      version: "1.0.0",
-      database: {
-        status: dbStatus,
-        latencyMs: dbLatencyMs
-      },
-      chains: ["polygon", "ethereum", "arbitrum", "base", "polygon-amoy"],
-      endpoints: {
-        rpc: "https://rpc.satelink.network/rpc/{chain}",
-        health: "https://rpc.satelink.network/health",
-        status: "https://rpc.satelink.network/api/status",
-        pricing: "https://rpc.satelink.network/api/pricing"
-      },
-      responseTimeMs: Date.now() - startTime
+      uptimeSeconds: Math.floor(process.uptime())
     });
   });
 
-  app.get("/api/mode", (req, res) => {
+app.get("/api/mode", (req, res) => {
     res.status(200).json({
       ok: true,
       mode: process.env.SATELINK_MODE || "simulation",
