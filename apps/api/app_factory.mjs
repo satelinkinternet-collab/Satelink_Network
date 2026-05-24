@@ -29,15 +29,20 @@ export function createApp(pool, redis) {
   // Core health endpoints
   app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
 
-  // Enhanced public health endpoint
-  
-  app.get("/health", (req, res) => {
+  // Enhanced public health endpoint — ALWAYS returns 200 for Railway
+  app.get("/health", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
+    const checks = { server: 'ok', db: 'unknown', uptime: Math.floor(process.uptime()) };
+    try {
+      await pool.query('SELECT 1');
+      checks.db = 'ok';
+    } catch (e) {
+      checks.db = 'degraded: ' + (e.message || 'unknown').slice(0, 50);
+    }
     res.status(200).json({
-      status: "ok",
-      booted: true,
-      timestamp: new Date().toISOString(),
-      uptimeSeconds: Math.floor(process.uptime())
+      ok: true,
+      ...checks,
+      timestamp: new Date().toISOString()
     });
   });
 

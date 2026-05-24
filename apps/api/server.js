@@ -159,7 +159,7 @@ async function ensureBillingTables(pool) {
 async function start() {
   console.log("🚀 SERVER STARTED - BOOT SEQUENCE BEGINNING");
 
-  // Step 1: Create PostgreSQL pool
+  // Step 1: Create PostgreSQL pool (non-blocking - just config)
   let pool;
   try {
     pool = new Pool({
@@ -171,45 +171,24 @@ async function start() {
     console.log('[BOOT] ✅ PostgreSQL pool created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at Pool creation:', err.message);
-    
   }
 
-  // Step 2: Run billing table migrations
-  try {
-    ensureBillingTables(pool).catch(console.error);
-    console.log('[BOOT] ✅ Billing tables ensured');
-  } catch (err) {
-    console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
-    
-  }
-
-  // Step 2b: Initialize machine access control-plane tables
-  try {
-    ensureMachineAccessTables(pool).catch(console.error);
-    console.log('[BOOT] ✅ Machine access tables ensured');
-  } catch (err) {
-    console.error('[BOOT] ❌ FAILED at ensureMachineAccessTables:', err.message);
-    
-  }
-
-  // Step 3: Create Redis client
+  // Step 2: Create Redis client (non-blocking)
   let redis;
   try {
     redis = createRedisClient();
     console.log('[BOOT] ✅ Redis client created (or skipped)');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createRedisClient:', err.message);
-    
   }
 
-  // Step 4: Create Express app
+  // Step 3: Create Express app (non-blocking)
   let app;
   try {
     app = createApp(pool, redis);
     console.log('[BOOT] ✅ Express app created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createApp:', err.message);
-    
   }
 
   // Step 5: Mount additional middleware and routes
@@ -385,13 +364,29 @@ async function start() {
     console.error('[BOOT] ⚠️ Treasury settlement job failed (non-fatal):', err.message);
   }
 
-  // Step 13: Bind to port
+  // Step 13: Bind to port FIRST (Railway healthcheck needs this fast)
   const PORT = process.env.PORT || 8080;
   try {
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, async () => {
       console.log('[BOOT] ✅ Server listening on port ' + PORT);
       console.log(`✅ Satelink Backend Running on port ${PORT}`);
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
+
+      // Run migrations and schedulers AFTER server is up (non-blocking for Railway)
+      try {
+        await ensureBillingTables(pool);
+        console.log('[POST-BOOT] ✅ Billing tables ensured');
+      } catch (err) {
+        console.error('[POST-BOOT] ⚠️ Billing tables failed (non-fatal):', err.message);
+      }
+
+      try {
+        await ensureMachineAccessTables(pool);
+        console.log('[POST-BOOT] ✅ Machine access tables ensured');
+      } catch (err) {
+        console.error('[POST-BOOT] ⚠️ Machine access tables failed (non-fatal):', err.message);
+      }
+
       console.log(`🏥 Health monitor started (2min interval)`);
       console.log(`🔍 Offline detector started (2min interval)`);
       console.log(`⏱️ Epoch scheduler started (60s interval)`);
@@ -404,7 +399,6 @@ async function start() {
     });
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
-    
   }
 
   // Step 14: Self-heartbeat — the API server IS the node
