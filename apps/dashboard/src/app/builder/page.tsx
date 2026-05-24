@@ -23,8 +23,29 @@ export default function BuilderDashboard() {
     const [creatingKey, setCreatingKey] = useState(false);
     const [newKeyName, setNewKeyName] = useState('');
     const [revealedKey, setRevealedKey] = useState<string | null>(null);
+    const [health, setHealth] = useState<{ status: string; latencyMs: number | null; dbStatus: string } | null>(null);
 
     const { lastEvent } = useSSE('/stream/builder', ['usage_log']);
+
+    const fetchHealth = async () => {
+        const start = performance.now();
+        try {
+            const res = await fetch('/health');
+            const latencyMs = Math.round(performance.now() - start);
+            if (res.ok) {
+                const data = await res.json();
+                setHealth({
+                    status: data.db_status === 'ok' ? 'HEALTHY' : 'DEGRADED',
+                    latencyMs,
+                    dbStatus: data.db_status
+                });
+            } else {
+                setHealth({ status: 'ERROR', latencyMs: null, dbStatus: 'unknown' });
+            }
+        } catch {
+            setHealth({ status: 'ERROR', latencyMs: null, dbStatus: 'unreachable' });
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -37,7 +58,12 @@ export default function BuilderDashboard() {
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        fetchData();
+        fetchHealth();
+        const healthInterval = setInterval(fetchHealth, 30000);
+        return () => clearInterval(healthInterval);
+    }, []);
 
     useEffect(() => {
         if (!lastEvent) return;
@@ -176,13 +202,27 @@ export default function BuilderDashboard() {
                     <CardContent className="p-4 sm:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">System Health</span>
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                                <CheckCircle className="w-4 h-4 text-emerald-400" />
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                health?.status === 'HEALTHY' ? 'bg-emerald-500/10' :
+                                health?.status === 'DEGRADED' ? 'bg-amber-500/10' :
+                                health?.status === 'ERROR' ? 'bg-red-500/10' : 'bg-zinc-800'
+                            }`}>
+                                {health?.status === 'HEALTHY' ? <CheckCircle className="w-4 h-4 text-emerald-400" /> :
+                                 health?.status === 'DEGRADED' ? <AlertCircle className="w-4 h-4 text-amber-400" /> :
+                                 health?.status === 'ERROR' ? <AlertCircle className="w-4 h-4 text-red-400" /> :
+                                 <Loader2 className="w-4 h-4 text-zinc-500 animate-spin" />}
                             </div>
                         </div>
-                        <div className="text-2xl sm:text-3xl font-bold text-emerald-400 tracking-tight">OPTIMAL</div>
+                        <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${
+                            health?.status === 'HEALTHY' ? 'text-emerald-400' :
+                            health?.status === 'DEGRADED' ? 'text-amber-400' :
+                            health?.status === 'ERROR' ? 'text-red-400' : 'text-zinc-500'
+                        }`}>
+                            {health?.status || 'Checking...'}
+                        </div>
                         <p className="text-[11px] text-zinc-600 mt-2 flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Lat: 42ms • Reli: 99.98%
+                            <Clock className="w-3 h-3" />
+                            {health && health.latencyMs !== null ? `Lat: ${health.latencyMs}ms` : 'Lat: --'} • DB: {health?.dbStatus || '--'}
                         </p>
                     </CardContent>
                 </Card>

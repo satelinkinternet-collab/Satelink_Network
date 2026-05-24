@@ -4,7 +4,7 @@ import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, DollarSign, Wallet, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Loader2, DollarSign, Wallet, CheckCircle, ShieldAlert, Clock } from 'lucide-react';
 // Usually we'd import ethers or viem to interact with the wallet for EVM integration.
 // Assuming we use ethers and have a provider available in the window or similar for production
 import { ethers } from 'ethers';
@@ -97,29 +97,9 @@ export default function NodeClaimPage() {
     }
   };
 
-  const executeWithdraw = async () => {
-    if (!provider) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CLAIMS_CONTRACT_ADDRESS, CLAIMS_ABI, signer);
-
-      // For Phase 3 MVP we're withdrawing the entire available balance. 
-      // The claimId needs to be constructed or fetched. Alternatively, the contract can be modified to withdraw all, 
-      // but the requirement says `withdraw(claimId, amount)`. We will construct it client side if possible
-      // claimId = keccak256(abi.encodePacked(msg.sender, epochId, timestamp))
-      // Because claimId is specific, in a real UI we fetch unwithdrawn claims. 
-      // For MVP: assume claimId is fetched or we just show a simplified interaction.
-      alert("Withdraw interaction triggered. Requires selecting a specific claimId from the backend.");
-      // Record mock withdrawal
-      await api.post('/node/me/withdraw', { claimId: 'mock-claim', amount: availableBalance, txHash: '0xMockHash' });
-    } catch (err: any) {
-      setError(err.message || "Smart contract execution failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Withdrawal functionality is not yet implemented on the backend
+  // The smart contract withdraw flow requires a proper claimId fetching endpoint
+  const withdrawalEnabled = false;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
@@ -204,12 +184,15 @@ export default function NodeClaimPage() {
             </p>
             <Button
               className="w-full"
-              disabled={loading || Number(availableBalance) <= 0 || !walletAddress}
-              onClick={executeWithdraw}
+              disabled={true}
+              variant="secondary"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <DollarSign className="w-4 h-4 mr-2" />}
-              Withdraw to Wallet
+              <Clock className="w-4 h-4 mr-2" />
+              Withdrawal Coming Soon
             </Button>
+            <p className="text-xs text-center text-zinc-500 mt-2">
+              On-chain withdrawal will be enabled after smart contract audit completion.
+            </p>
           </CardContent>
         </Card>
       </div>
