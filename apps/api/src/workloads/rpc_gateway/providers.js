@@ -82,7 +82,7 @@ const PROVIDER_CONFIGS = {
             ? `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY}`
             : null),
         priority: 2,
-        rateLimit: 300,
+        rateLimit: 25,
         type: "alchemy",
         enabled: !!(process.env.ALCHEMY_POLYGON_URL || process.env.ALCHEMY_POLYGON_KEY || process.env.ALCHEMY_API_KEY),
       },
