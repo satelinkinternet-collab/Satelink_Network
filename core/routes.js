@@ -7,6 +7,9 @@ import { createUnifiedAuthRouter, verifyJWT } from '../src/routes/auth_v2.js';
 import { createEmbeddedAuthRouter } from '../apps/api/src/gateway/routes/auth_embedded.js';
 import { createAuthSecurityRouter } from '../src/routes/auth_security.js';
 import { createBuilderAuthRouter } from '../src/routes/builder_auth.js';
+import { createStagingAuthRouter } from '../apps/api/src/gateway/routes/staging_auth.js';
+import { createDevAuthRouter } from '../apps/api/src/gateway/routes/dev_auth_tokens.js';
+import { createDevSeedRouter } from '../apps/api/src/gateway/routes/dev_seed.js';
 
 // ── Main dashboard API routers ────────────────────────────────
 import { createAdminApiRouter } from '../src/routes/admin_api_v2.js';
@@ -44,56 +47,6 @@ import { getAggregatedNodeEarnings } from './node_earnings.js';
 import { getNetworkStats } from './network_stats.js';
 import { getEconomicsSummary } from './economics_stats.js';
 
-export function attachRoutes(app, db) {
-  const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');
-  app.use('/rpc', createRpcGateway(db));
-    const requireAdmin = [requireJWT, requireRole(['admin_super', 'admin_ops'])];
-    const requireEnterprise = [requireJWT, requireRole('enterprise')];
-    const requireNode = [requireJWT, requireRole('node_operator')];
-
-    // --- 0. Infrastructure / smoke-test endpoints (unauthenticated) ---
-    app.get("/health", (req, res) => {
-        res.status(200).json({ status: "ok", uptime: process.uptime(), db: "connected" });
-    });
-
-    app.get("/healthz", (req, res) => res.status(200).json({ status: "ok" }));
-
-    app.get("/api/mode", (req, res) => {
-        res.status(200).json({ mode: process.env.SATELINK_MODE || "simulation", env: process.env.NODE_ENV || "development" });
-    });
-
-    app.get("/api/runtime-info", (req, res) => {
-        res.status(200).json({ ok: true, version: "1.0.0", uptime: process.uptime(), mode: process.env.SATELINK_MODE || "simulation" });
-    });
-
-    app.get("/api/config-snapshot", (req, res) => {
-        res.status(200).json({ ok: true, flags: { FLAG_DISABLE_RPC: false, FLAG_DISABLE_ADMIN_DIAGNOSTICS: false, FLAG_DISABLE_SIMULATION_ROUTES: false, FLAG_READONLY_MODE: false } });
-    });
-
-    const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');app.use('/rpc', createRpcGateway(db));
-
-    app.get("/simulation/status", (req, res) => res.status(200).json({ ok: true, mode: "simulation", active: true }));
-
-    app.get("/admin-api/diagnostics/surface-audit", (req, res) => res.status(200).json({ ok: true, audit: "pass" }));
-
-    // --- 1. Auth middleware / routes ---
-    app.use('/me', createUserSettingsRouter(db));
-    app.use(createUnifiedAuthRouter({ db }));
-
-    // --- 2. Generic API routes ---
-    app.use('/stream', createStreamApiRouter({ db }));
-
-    // Global Stats
-    app.get("/api/network/stats", (req, res) => {
-        try {
-            const stats = getNetworkStats(db);
-            res.status(200).json(stats);
-        } catch (error) {
-            console.error("[NetworkStats] Read failed:", error);
-            res.status(500).json({ ok: false, error: "Internal Server Error" });
-        }
-    });
-
 // ── Production guard ──────────────────────────────────────────
 import { createProdGuard } from '../src/middleware/prod_guard.js';
 
@@ -116,7 +69,7 @@ function safeMountRouter(app, path, routerFn, label) {
 
 export function attachRoutes(app, rawDb) {
   const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');
-  app.use('/rpc', createRpcGateway(db));
+  app.use('/rpc', createRpcGateway(rawDb));
     // ─── 1. Create opsEngine with async db wrapper ───────────────
     const opsEngine = createOpsEngine(rawDb);
     const stubs = createServiceStubs(rawDb, opsEngine);
