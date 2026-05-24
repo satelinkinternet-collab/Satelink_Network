@@ -12,7 +12,7 @@ import { createApp } from "./app_factory.mjs";
 import { createWsGateway, getWsStats } from "./src/workloads/rpc_gateway/ws_gateway.js";
 import { startHealthMonitor, healthMonitorStatus } from "./src/scheduler/node_health_monitor.js";
 import { startOfflineDetector, offlineDetectorStatus } from "./src/services/node_registry/offline_detector.js";
-import { startEpochScheduler, schedulerStatus } from "./src/economics/epoch_scheduler.js";
+import { startEpochScheduler, schedulerStatus, runEpochCycle } from "./src/economics/epoch_scheduler.js";
 import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
@@ -56,6 +56,37 @@ async function ensureBillingTables(pool) {
   }
 
   try {
+    // Create epochs table FIRST — epoch_scheduler depends on this
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS epochs (
+        id SERIAL PRIMARY KEY,
+        starts_at BIGINT NOT NULL,
+        ends_at BIGINT,
+        status TEXT DEFAULT 'OPEN',
+        total_revenue_usdt NUMERIC(18,8) DEFAULT 0,
+        node_pool_usdt NUMERIC(18,8) DEFAULT 0,
+        platform_share_usdt NUMERIC(18,8) DEFAULT 0,
+        distributor_share_usdt NUMERIC(18,8) DEFAULT 0,
+        total_node_weight REAL DEFAULT 0,
+        closed_at TEXT
+      )
+    `);
+    console.log('[STARTUP] epochs table ensured');
+
+    // Create epoch_earnings table — earnings pipeline depends on this
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS epoch_earnings (
+        epoch_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        wallet_or_node_id TEXT NOT NULL,
+        amount_usdt NUMERIC(18,8) NOT NULL,
+        status TEXT NOT NULL DEFAULT 'UNPAID',
+        created_at BIGINT NOT NULL,
+        PRIMARY KEY (epoch_id, role, wallet_or_node_id)
+      )
+    `);
+    console.log('[STARTUP] epoch_earnings table ensured');
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS epoch_ledger (
         id SERIAL PRIMARY KEY,
@@ -208,6 +239,18 @@ async function start() {
 
     app.get('/system/epoch-scheduler', (req, res) => {
       res.json({ ok: true, ...schedulerStatus });
+    });
+
+    // Manual epoch trigger for testing/recovery
+    app.post('/system/epoch-scheduler/trigger', async (req, res) => {
+      try {
+        console.log('[ADMIN] Manual epoch cycle triggered');
+        const result = await runEpochCycle(pool);
+        res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error('[ADMIN] Manual epoch trigger failed:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+      }
     });
 
     app.get('/system/scaling-stats', async (req, res) => {
