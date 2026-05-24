@@ -171,7 +171,7 @@ async function start() {
     console.log('[BOOT] ✅ PostgreSQL pool created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at Pool creation:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 2: Run billing table migrations
@@ -180,16 +180,16 @@ async function start() {
     console.log('[BOOT] ✅ Billing tables ensured');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at ensureBillingTables:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 2b: Initialize machine access control-plane tables
   try {
-    await ensureMachineAccessTables(pool).catch(console.error);
+    await ensureMachineAccessTables(pool);
     console.log('[BOOT] ✅ Machine access tables ensured');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at ensureMachineAccessTables:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 3: Create Redis client
@@ -199,7 +199,7 @@ async function start() {
     console.log('[BOOT] ✅ Redis client created (or skipped)');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createRedisClient:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 4: Create Express app
@@ -209,7 +209,7 @@ async function start() {
     console.log('[BOOT] ✅ Express app created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createApp:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 5: Mount additional middleware and routes
@@ -309,7 +309,7 @@ async function start() {
     console.log('[BOOT] ✅ Additional routes mounted');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 6: Create HTTP server
@@ -319,7 +319,7 @@ async function start() {
     console.log('[BOOT] ✅ HTTP server created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createServer:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 7: Create WebSocket gateway
@@ -328,7 +328,7 @@ async function start() {
     console.log('[BOOT] ✅ WebSocket gateway created');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at createWsGateway:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 8: Start health monitor
@@ -337,7 +337,7 @@ async function start() {
     console.log('[BOOT] ✅ Health monitor started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startHealthMonitor:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 9: Start offline detector
@@ -346,7 +346,7 @@ async function start() {
     console.log('[BOOT] ✅ Offline detector started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startOfflineDetector:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 10: Start epoch scheduler
@@ -355,7 +355,7 @@ async function start() {
     console.log('[BOOT] ✅ Epoch scheduler started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startEpochScheduler:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 11: Start sentinel (auto-scaler, healer, anomaly, treasury, capacity)
@@ -364,7 +364,7 @@ async function start() {
     console.log('[BOOT] ✅ Sentinel started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startSentinel:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 12: Start claim expiry job
@@ -373,7 +373,7 @@ async function start() {
     console.log('[BOOT] ✅ Claim expiry job started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startClaimExpiryJob:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 12b: Start treasury settlement job (auto-forward deposits to ClaimsContract)
@@ -404,7 +404,7 @@ async function start() {
     });
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
-    
+    process.exit(1);
   }
 
   // Step 14: Self-heartbeat — the API server IS the node
