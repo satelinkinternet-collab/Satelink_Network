@@ -4,7 +4,7 @@ import { createServiceStubs } from './service_stubs.js';
 // ── Auth routers ──────────────────────────────────────────────
 import { createUserSettingsRouter } from '../src/routes/user_settings.js';
 import { createUnifiedAuthRouter, verifyJWT } from '../src/routes/auth_v2.js';
-import { createEmbeddedAuthRouter } from '../src/routes/auth_embedded.js';
+import { createEmbeddedAuthRouter } from '../apps/api/src/gateway/routes/auth_embedded.js';
 import { createAuthSecurityRouter } from '../src/routes/auth_security.js';
 import { createBuilderAuthRouter } from '../src/routes/builder_auth.js';
 
