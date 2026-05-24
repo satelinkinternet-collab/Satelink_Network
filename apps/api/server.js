@@ -16,6 +16,7 @@ import { startEpochScheduler, schedulerStatus, runEpochCycle } from "./src/econo
 import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
+import { startDataRetentionScheduler } from "./src/jobs/data_retention_job.mjs";
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import Redis from "ioredis";
@@ -285,6 +286,32 @@ async function start() {
       }
     });
 
+    // Data retention job status endpoint
+    app.get('/system/data-retention', async (req, res) => {
+      try {
+        const { DataRetentionJob } = await import('./src/jobs/data_retention_job.mjs');
+        const job = new DataRetentionJob(pool);
+        const status = job.getStatus();
+        res.json({ ok: true, ...status });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    // Manual data retention trigger for testing/recovery
+    app.post('/system/data-retention/trigger', async (req, res) => {
+      try {
+        console.log('[ADMIN] Manual data retention triggered');
+        const { DataRetentionJob } = await import('./src/jobs/data_retention_job.mjs');
+        const job = new DataRetentionJob(pool);
+        const result = await job.run();
+        res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error('[ADMIN] Manual data retention failed:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     console.log('[BOOT] ✅ Additional routes mounted');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
@@ -364,6 +391,15 @@ async function start() {
     console.error('[BOOT] ⚠️ Treasury settlement job failed (non-fatal):', err.message);
   }
 
+  // Step 12c: Start data retention job (cleanup old logs/metrics daily at 3 AM UTC)
+  let dataRetention;
+  try {
+    dataRetention = startDataRetentionScheduler(pool, 3);
+    console.log('[BOOT] ✅ Data retention job started (daily at 3:00 UTC)');
+  } catch (err) {
+    console.error('[BOOT] ⚠️ Data retention job failed (non-fatal):', err.message);
+  }
+
   // Step 13: Bind to port FIRST (Railway healthcheck needs this fast)
   const PORT = process.env.PORT || 8080;
   try {
@@ -396,6 +432,7 @@ async function start() {
       console.log(`🏦 Treasury-monitor started (10min interval)`);
       console.log(`📊 Capacity-alerter started (2min interval)`);
       console.log(`💸 Treasury-settlement started (5min interval)`);
+      console.log(`🗑️ Data-retention started (daily at 3:00 UTC)`);
     });
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at httpServer.listen:', err.message);
