@@ -34,10 +34,11 @@ export default function BuilderDashboard() {
             const latencyMs = Math.round(performance.now() - start);
             if (res.ok) {
                 const data = await res.json();
+                // API returns: { ok: true, server: "ok", db: "ok", uptime: 19 }
                 setHealth({
-                    status: data.db_status === 'ok' ? 'HEALTHY' : 'DEGRADED',
+                    status: data.ok === true ? 'HEALTHY' : 'DEGRADED',
                     latencyMs,
-                    dbStatus: data.db_status
+                    dbStatus: data.db === 'ok' ? 'ok' : 'error'
                 });
             } else {
                 setHealth({ status: 'ERROR', latencyMs: null, dbStatus: 'unknown' });
