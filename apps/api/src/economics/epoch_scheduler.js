@@ -16,7 +16,8 @@ export const schedulerStatus = {
     last_closed_epoch_id: null,
     last_open_epoch_id: null,
     last_total_revenue_usdt: null,
-    last_event_count: null
+    last_event_count: null,
+    last_orphan_events_assigned: null
 };
 
 function getPool(dbOrPool) {
@@ -76,6 +77,23 @@ export async function runEpochCycle(dbOrPool) {
             schedulerStatus.last_error = null;
             schedulerStatus.last_open_epoch_id = epoch?.id || null;
             return { ok: true, status: 'created_open_epoch', open_epoch_id: epoch?.id || null };
+        }
+
+        // CRITICAL FIX: Assign all untagged revenue events to this epoch BEFORE closing
+        // Revenue events are inserted without epoch_id — claim them now for aggregation
+        const assigned = await client.query(`
+            UPDATE revenue_events_v2
+            SET epoch_id = $1
+            WHERE epoch_id IS NULL
+              AND (is_test_data = FALSE OR is_test_data IS NULL)
+            RETURNING id
+        `, [epoch.id]);
+
+        const orphanCount = assigned.rowCount || 0;
+        schedulerStatus.last_orphan_events_assigned = orphanCount;
+
+        if (orphanCount > 0) {
+            console.log(`[EpochScheduler] Assigned ${orphanCount} orphan events to epoch ${epoch.id}`);
         }
 
         const aggregate = await client.query(`
@@ -164,6 +182,7 @@ export async function runEpochCycle(dbOrPool) {
             closed_epoch_id: closedEpoch.id,
             open_epoch_id: openEpoch.id,
             event_count: eventCount,
+            orphan_events_assigned: orphanCount,
             total_revenue_usdt: Number(closedEpoch.total_revenue_usdt),
             node_pool_usdt: Number(closedEpoch.node_pool_usdt),
             platform_share_usdt: Number(closedEpoch.platform_share_usdt),
@@ -194,6 +213,21 @@ export function startEpochScheduler(dbOrPool, options = {}) {
     global.__SATELINK_EPOCH_SCHEDULER_STARTED__ = true;
 
     console.log(`[EpochScheduler] Started (interval: ${intervalMs}ms)`);
+
+    // Run immediately on startup to create first OPEN epoch
+    setImmediate(async () => {
+        if (isRunning) return;
+        isRunning = true;
+        try {
+            console.log('[EpochScheduler] Running initial cycle on startup...');
+            const result = await runEpochCycle(dbOrPool);
+            console.log('[EpochScheduler] Initial cycle result:', result.status);
+        } catch (error) {
+            console.error('[EpochScheduler] Initial cycle failed:', error.message);
+        } finally {
+            isRunning = false;
+        }
+    });
 
     schedulerHandle = setInterval(async () => {
         if (isRunning) return;
