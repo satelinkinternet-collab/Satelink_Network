@@ -59,11 +59,16 @@ function safeMountRouter(app, path, routerFn, label) {
         const router = typeof routerFn === 'function' ? routerFn() : routerFn;
         if (router && typeof router === 'function') {
             app.use(path, router);
+            console.log(`[ROUTES] ✓ Mounted ${label} at ${path}`);
         } else if (router && router.stack) {
             app.use(path, router);
+            console.log(`[ROUTES] ✓ Mounted ${label} at ${path} (${router.stack.length} routes)`);
+        } else {
+            console.error(`[ROUTES] ✗ ${label} returned invalid router:`, typeof router, router);
         }
     } catch (e) {
-        console.error(`[ROUTES] Failed to mount ${label} at ${path}:`, e.message);
+        console.error(`[ROUTES] ✗ Failed to mount ${label} at ${path}:`);
+        console.error(e.stack || e);
     }
 }
 
@@ -164,4 +169,26 @@ export function attachRoutes(app, rawDb) {
     // ═══════════════════════════════════════════════════════════
     safeMountRouter(app, '/__test/auth', () => createDevAuthRouter(opsEngine), 'dev_auth');
     safeMountRouter(app, '/__test/seed', () => createDevSeedRouter(opsEngine), 'dev_seed');
+
+    // Log all registered routes for debugging
+    console.log('[ROUTES] === Registered Routes ===');
+    const registeredRoutes = [];
+    app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+            const methods = Object.keys(middleware.route.methods).join(',').toUpperCase();
+            registeredRoutes.push(`${methods} ${middleware.route.path}`);
+        } else if (middleware.name === 'router' && middleware.handle.stack) {
+            const mountPath = middleware.regexp.source.replace('\\/?(?=\\/|$)', '').replace(/\\\//g, '/').replace(/\^/g, '').replace(/\?\(\?=.*\)/g, '');
+            middleware.handle.stack.forEach((handler) => {
+                if (handler.route) {
+                    const methods = Object.keys(handler.route.methods).join(',').toUpperCase();
+                    const fullPath = mountPath === '/' ? handler.route.path : mountPath + handler.route.path;
+                    registeredRoutes.push(`${methods} ${fullPath}`);
+                }
+            });
+        }
+    });
+    registeredRoutes.filter(r => r.includes('/start') || r.includes('/finish') || r.includes('/login') || r.includes('/health'))
+        .forEach(r => console.log(`[ROUTES]   ${r}`));
+    console.log(`[ROUTES] Total: ${registeredRoutes.length} routes`);
 }
