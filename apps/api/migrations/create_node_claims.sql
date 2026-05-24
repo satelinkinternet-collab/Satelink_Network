@@ -1,5 +1,6 @@
--- 010_node_claims.sql
+-- create_node_claims.sql
 -- PostgreSQL-compatible node claims table for operator withdrawals
+-- Safe to run multiple times (uses IF NOT EXISTS)
 
 CREATE TABLE IF NOT EXISTS node_claims (
     id BIGSERIAL PRIMARY KEY,
