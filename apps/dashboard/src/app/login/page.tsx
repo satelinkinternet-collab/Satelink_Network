@@ -12,7 +12,7 @@ export default function LoginPage() {
     const handleLogin = async (role: string, wallet: string) => {
         setLoading(true);
         try {
-            const res = await api.post("/auth/login", { wallet, role });
+            const res = await api.post("/__test/auth/login", { wallet, role });
 
             if (res.data?.token) {
                 toast.success(`Logged in as ${role}`);
