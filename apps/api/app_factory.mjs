@@ -19,6 +19,7 @@ import nodeAuthRouter from "./src/routes/node_auth_route.mjs";
 import { createMachineAccessRouter } from "./src/machine-access/index.js";
 import { createAdminMalRouter } from "./src/routes/admin_mal_route.mjs";
 import { createFinancialTruthRouter } from "./src/services/financial/truth.js";
+import { createCreditsRouter } from "./src/routes/credits.js";
 
 export function createApp(pool, redis) {
   const app = express();
@@ -242,6 +243,9 @@ app.get("/api/mode", (req, res) => {
 
   // Financial Truth - canonical source for all financial metrics
   app.use("/api/financial", createFinancialTruthRouter(pool));
+
+  // Credits API - autonomous payer balance and deposit queries
+  app.use("/credits", createCreditsRouter(pool, console));
 
   return app;
 }

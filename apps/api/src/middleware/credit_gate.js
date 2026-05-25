@@ -87,7 +87,7 @@ export function createCreditGate(db, logger) {
           required_usdt: cost,
           rpc_method: method,
           deposit_address: process.env.REVENUE_VAULT_ADDRESS || 'not deployed yet',
-          network: 'Polygon Amoy (chainId: 80002)',
+          network: 'Polygon Mainnet (chainId: 137)',
           usdt_contract: process.env.USDT_CONTRACT_ADDRESS || 'not deployed yet',
           message: 'Deposit USDT to RevenueVault to continue. Low-balance auto-refill recommended.'
         });

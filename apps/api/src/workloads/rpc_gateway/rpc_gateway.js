@@ -7,6 +7,7 @@ import { checkRateLimit, incrementUsage, createApiKey, getUsageStats, getTiers }
 import { createHealthEndpoint, startHealthMonitor } from './health_monitor.js';
 import { createMetricsRouter } from './metrics.js';
 import { recordRpcRevenue } from './rpc_billing.js';
+import { createCreditGate } from '../../middleware/credit_gate.js';
 
 const SUPPORTED_CHAINS = new Set([...getSupportedChains(), ...Object.keys(CHAIN_ALIASES)]);
 
@@ -36,6 +37,9 @@ export function createRpcGateway(db) {
 
     // Initialize router with database pool for network node routing
     initRouterWithPool(db);
+
+    // ── Autonomous payer: credit gate middleware (402 on low balance)
+    const creditGate = createCreditGate(db, console);
 
     startHealthMonitor();
     createHealthEndpoint(router);
@@ -168,7 +172,7 @@ export function createRpcGateway(db) {
         });
     });
 
-    router.post('/:chain', async (req, res) => {
+    router.post('/:chain', creditGate, async (req, res) => {
         const startTime = Date.now();
         const { chain } = req.params;
         const apiKey = req.headers['x-api-key'];

@@ -35,7 +35,7 @@ export function createCreditsRouter(db, logger) {
           last_deposit_tx: null,
           status: 'no_account',
           deposit_address: process.env.REVENUE_VAULT_ADDRESS,
-          network: 'Polygon Amoy (chainId: 80002)'
+          network: 'Polygon Mainnet (chainId: 137)'
         });
       }
 
@@ -49,7 +49,7 @@ export function createCreditsRouter(db, logger) {
         last_deposit_at: row.last_deposit_at,
         status: parseFloat(row.balance_usdt) > 0 ? 'funded' : 'empty',
         deposit_address: process.env.REVENUE_VAULT_ADDRESS,
-        network: 'Polygon Amoy (chainId: 80002)'
+        network: 'Polygon Mainnet (chainId: 137)'
       });
     } catch (err) {
       log.error('[Credits] balance error:', err.message);

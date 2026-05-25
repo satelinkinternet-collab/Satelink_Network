@@ -11,6 +11,7 @@ import { NodeLeaderboard } from "./src/monitoring/node_leaderboard.js";
 import { TreasuryMonitor } from "./src/monitoring/treasury_monitor.js";
 import { BackupService } from "./src/utils/backup_service.js";
 import { NodeopsWaterfallService } from "./src/ops-agent/nodeops_waterfall.js";
+import { DepositListener } from "./src/services/deposit_listener.js";
 
 // Global error handlers
 process.on("unhandledRejection", (reason) => {
@@ -65,9 +66,23 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
         logger.info("[BOOT] Modules initialized");
 
-        const app = await createApp(db);
+        // ── Autonomous payer: watch Polygon Mainnet for USDT deposits
+        const depositListener = new DepositListener(db.pool, logger);
+        await depositListener.start();
+        logger.info("[BOOT] DepositListener active — watching Polygon Mainnet for USDT deposits");
+
+        const app = await createApp(db.pool);
         logger.info("[BOOT] App initialized");
     const PORT = process.env.PORT || 8081;
+
+        // ── Graceful shutdown
+        const shutdown = async (signal) => {
+            logger.info(`Received ${signal} — shutting down gracefully`);
+            await depositListener.stop();
+            process.exit(0);
+        };
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
+        process.on('SIGINT', () => shutdown('SIGINT'));
 
     
 
