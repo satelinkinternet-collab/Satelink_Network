@@ -17,6 +17,7 @@ import { startClaimExpiryJob } from "./src/scheduler/jobs/claim_expiry_job.js";
 import { ensureMachineAccessTables } from "./src/machine-access/index.js";
 import { startTreasurySettlementScheduler } from "./src/jobs/treasury_settlement_job.mjs";
 import { startDataRetentionScheduler } from "./src/jobs/data_retention_job.mjs";
+import { startRpcAggregationScheduler } from "./src/jobs/rpc_aggregation_job.mjs";
 import { createSettlementAnchorJob } from "./src/scheduler/jobs/settlement_anchor_job.js";
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
@@ -177,6 +178,26 @@ async function ensureBillingTables(pool) {
     // Performance indexes for revenue queries
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_rev2_created_at ON revenue_events_v2(created_at)`).catch(() => {});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_rev2_epoch_id ON revenue_events_v2(epoch_id)`).catch(() => {});
+
+    // RPC usage hourly aggregates table (for rpc_aggregation_job)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rpc_usage_hourly (
+        id SERIAL PRIMARY KEY,
+        hour_start BIGINT NOT NULL,
+        client_id TEXT,
+        method TEXT NOT NULL,
+        chain_id INTEGER NOT NULL,
+        request_count INTEGER DEFAULT 0,
+        error_count INTEGER DEFAULT 0,
+        cached_count INTEGER DEFAULT 0,
+        total_cost_usdt NUMERIC(18,8) DEFAULT 0,
+        avg_latency_ms NUMERIC DEFAULT 0,
+        p99_latency_ms INTEGER DEFAULT 0,
+        UNIQUE(hour_start, client_id, method, chain_id)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rpc_usage_hour ON rpc_usage_hourly(hour_start)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rpc_usage_client ON rpc_usage_hourly(client_id)`).catch(() => {});
 
     console.log('[STARTUP] Billing tables ensured');
   } catch (err) {
@@ -339,6 +360,32 @@ async function start() {
       }
     });
 
+    // RPC aggregation job status endpoint
+    app.get('/system/rpc-aggregation', async (req, res) => {
+      try {
+        const { RpcAggregationJob } = await import('./src/jobs/rpc_aggregation_job.mjs');
+        const job = new RpcAggregationJob(pool);
+        const status = job.getStatus();
+        res.json({ ok: true, ...status });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
+    // Manual RPC aggregation trigger
+    app.post('/system/rpc-aggregation/trigger', async (req, res) => {
+      try {
+        console.log('[ADMIN] Manual RPC aggregation triggered');
+        const { RpcAggregationJob } = await import('./src/jobs/rpc_aggregation_job.mjs');
+        const job = new RpcAggregationJob(pool);
+        const result = await job.run();
+        res.json({ ok: true, ...result });
+      } catch (e) {
+        console.error('[ADMIN] Manual RPC aggregation failed:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     console.log('[BOOT] ✅ Additional routes mounted');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at route mounting:', err.message);
@@ -427,7 +474,16 @@ async function start() {
     console.error('[BOOT] ⚠️ Data retention job failed (non-fatal):', err.message);
   }
 
-  // Step 12d: Start settlement anchor job (anchors closed epochs to blockchain every 5 min)
+  // Step 12d: Start RPC aggregation job (aggregate revenue_events_v2 into rpc_usage_hourly)
+  let rpcAggregation;
+  try {
+    rpcAggregation = startRpcAggregationScheduler(pool, 60);
+    console.log('[BOOT] ✅ RPC aggregation job started (60min interval)');
+  } catch (err) {
+    console.error('[BOOT] ⚠️ RPC aggregation job failed (non-fatal):', err.message);
+  }
+
+  // Step 12e: Start settlement anchor job (anchors closed epochs to blockchain every 5 min)
   let settlementAnchor;
   try {
     const anchorJob = createSettlementAnchorJob(pool);
@@ -476,6 +532,7 @@ async function start() {
       console.log(`📊 Capacity-alerter started (2min interval)`);
       console.log(`💸 Treasury-settlement started (5min interval)`);
       console.log(`🗑️ Data-retention started (daily at 3:00 UTC)`);
+      console.log(`📊 RPC-aggregation started (60min interval)`);
       console.log(`⚓ Settlement-anchor started (5min interval)`);
     });
   } catch (err) {
