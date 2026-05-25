@@ -22,6 +22,7 @@ import { createSettlementAnchorJob } from "./src/scheduler/jobs/settlement_ancho
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import Redis from "ioredis";
+import { DepositListener } from "./src/services/deposit_listener.js";
 
 const { Pool } = pkg;
 
@@ -426,7 +427,17 @@ async function start() {
     console.log('[BOOT] ✅ Offline detector started');
   } catch (err) {
     console.error('[BOOT] ❌ FAILED at startOfflineDetector:', err.message);
-    
+
+  }
+
+  // Step 9b: Start DepositListener — watches Polygon Mainnet for USDT deposits to RevenueVault
+  let depositListener;
+  try {
+    depositListener = new DepositListener(pool, console);
+    await depositListener.start();
+    console.log('[BOOT] ✅ DepositListener started — watching Polygon Mainnet for USDT deposits');
+  } catch (err) {
+    console.error('[BOOT] ⚠️ DepositListener failed (non-fatal):', err.message);
   }
 
   // Step 10: Start epoch scheduler
@@ -557,7 +568,19 @@ async function start() {
   }, 300000); // Every 5 minutes
   console.log(`[BOOT] ✅ Self-heartbeat started for ${SELF_NODE_ID} (5min interval)`);
 
-  // Step 15: Discord daily summary scheduler (8:00 AM UTC)
+  // Step 15: Graceful shutdown handler
+  const shutdown = async (signal) => {
+    console.log(`[SHUTDOWN] Received ${signal} — shutting down gracefully`);
+    if (depositListener) {
+      await depositListener.stop();
+      console.log('[SHUTDOWN] DepositListener stopped');
+    }
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
+  // Step 16: Discord daily summary scheduler (8:00 AM UTC)
   if (discord.isEnabled()) {
     const scheduleDailySummary = () => {
       const now = new Date();
