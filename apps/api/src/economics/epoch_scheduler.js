@@ -1,6 +1,6 @@
 import { finalizeClosedEpochEarningsInTransaction } from './epoch_finalizer.js';
 import { broadcaster } from '../realtime/broadcaster-instance.js';
-import { getSharedRedis } from '../workloads/rpc_gateway/shared_redis.js';
+import { getAndClearEpochCounters } from '../workloads/rpc_gateway/rpc_billing.js';
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const EPOCH_LOCK_ID = 738_291;
@@ -20,52 +20,14 @@ export const schedulerStatus = {
     last_total_revenue_usdt: null,
     last_event_count: null,
     last_orphan_events_assigned: null,
-    last_redis_calls: null,
-    last_redis_revenue: null
+    last_memory_calls: null,
+    last_memory_revenue: null
 };
 
 function getPool(dbOrPool) {
     if (dbOrPool?.connect && dbOrPool?.query) return dbOrPool;
     if (dbOrPool?.pool?.connect && dbOrPool?.pool?.query) return dbOrPool.pool;
     throw new Error('[EpochScheduler] A PostgreSQL pool or PgDatabase instance is required');
-}
-
-/**
- * Read and clear Redis epoch counters for a given time bucket.
- * Returns { calls: number, revenue: number }
- */
-async function readAndClearRedisEpochCounters(epochStartsAt) {
-    const result = { calls: 0, revenue: 0 };
-
-    try {
-        const redis = getSharedRedis();
-        if (!redis) {
-            return result;
-        }
-
-        // Align to bucket boundary (same logic as rpc_billing.js)
-        const epochBucket = Math.floor(epochStartsAt / EPOCH_BUCKET_SECONDS) * EPOCH_BUCKET_SECONDS;
-        const epochKey = `satelink:billing:epoch:${epochBucket}`;
-
-        // Read counters atomically
-        const [calls, revenue] = await Promise.all([
-            redis.hget(epochKey, 'calls'),
-            redis.hget(epochKey, 'revenue')
-        ]);
-
-        result.calls = parseInt(calls || '0', 10);
-        result.revenue = parseFloat(revenue || '0');
-
-        // Delete the key after reading (cleanup)
-        if (result.calls > 0 || result.revenue > 0) {
-            await redis.del(epochKey);
-            console.log(`[EpochScheduler] Redis bucket ${epochBucket}: ${result.calls} calls, $${result.revenue.toFixed(6)} — cleared`);
-        }
-    } catch (err) {
-        console.error('[EpochScheduler] Redis read error (continuing with Postgres only):', err.message);
-    }
-
-    return result;
 }
 
 async function ensureOpenEpoch(client, nowSeconds) {
@@ -121,12 +83,12 @@ export async function runEpochCycle(dbOrPool) {
             return { ok: true, status: 'created_open_epoch', open_epoch_id: epoch?.id || null };
         }
 
-        // === NEW: Read Redis epoch counters before closing ===
-        const redisCounters = await readAndClearRedisEpochCounters(epoch.starts_at);
-        schedulerStatus.last_redis_calls = redisCounters.calls;
-        schedulerStatus.last_redis_revenue = redisCounters.revenue;
+        // === READ FROM IN-MEMORY COUNTERS (replaces Redis) ===
+        const memoryCounters = getAndClearEpochCounters(epoch.starts_at);
+        schedulerStatus.last_memory_calls = memoryCounters.calls;
+        schedulerStatus.last_memory_revenue = memoryCounters.revenue;
 
-        // Assign orphan Postgres events (premium calls only now) to this epoch
+        // Assign orphan Postgres events (premium calls only) to this epoch
         const assigned = await client.query(`
             UPDATE revenue_events_v2
             SET epoch_id = $1
@@ -155,11 +117,11 @@ export async function runEpochCycle(dbOrPool) {
         const pgEventCount = Number(pgAggregate.rows[0]?.event_count || 0);
         const pgRevenue = Number(pgAggregate.rows[0]?.total_revenue_usdt || 0);
 
-        // === COMBINE: Redis counters + Postgres premium calls ===
-        const totalEventCount = redisCounters.calls + pgEventCount;
-        const totalRevenue = redisCounters.revenue + pgRevenue;
+        // === COMBINE: In-memory counters + Postgres premium calls ===
+        const totalEventCount = memoryCounters.calls + pgEventCount;
+        const totalRevenue = memoryCounters.revenue + pgRevenue;
 
-        console.log(`[EpochScheduler] Epoch ${epoch.id} totals: Redis(${redisCounters.calls} calls, $${redisCounters.revenue.toFixed(6)}) + Postgres(${pgEventCount} premium, $${pgRevenue.toFixed(6)}) = ${totalEventCount} calls, $${totalRevenue.toFixed(6)}`);
+        console.log(`[EpochScheduler] Epoch ${epoch.id} totals: Memory(${memoryCounters.calls} calls, $${memoryCounters.revenue.toFixed(6)}) + Postgres(${pgEventCount} premium, $${pgRevenue.toFixed(6)}) = ${totalEventCount} calls, $${totalRevenue.toFixed(6)}`);
 
         // Close epoch with combined totals
         const closed = await client.query(`
@@ -247,8 +209,8 @@ export async function runEpochCycle(dbOrPool) {
             platform_fee: Number(closedEpoch.platform_share_usdt),
             distribution_pool: Number(closedEpoch.distributor_share_usdt),
             event_count: totalEventCount,
-            redis_calls: redisCounters.calls,
-            redis_revenue: redisCounters.revenue,
+            memory_calls: memoryCounters.calls,
+            memory_revenue: memoryCounters.revenue,
             postgres_premium_calls: pgEventCount,
             timestamp: new Date().toISOString()
         });
@@ -259,8 +221,8 @@ export async function runEpochCycle(dbOrPool) {
             closed_epoch_id: closedEpoch.id,
             open_epoch_id: openEpoch.id,
             event_count: totalEventCount,
-            redis_calls: redisCounters.calls,
-            redis_revenue: redisCounters.revenue,
+            memory_calls: memoryCounters.calls,
+            memory_revenue: memoryCounters.revenue,
             postgres_premium_calls: pgEventCount,
             orphan_events_assigned: orphanCount,
             total_revenue_usdt: Number(closedEpoch.total_revenue_usdt),

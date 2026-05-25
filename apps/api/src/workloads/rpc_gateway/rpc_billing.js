@@ -1,19 +1,16 @@
 /**
  * RPC Billing Helper
- * Records revenue to Redis counters (primary) + PostgreSQL (premium only)
+ * Records revenue to in-memory counters, flushed once per epoch close
  *
  * Architecture (2026-05):
- * - All RPC calls increment Redis epoch counters via Lua script (1 command)
- * - Dedup check uses SET NX (1 command)
- * - Total: 2 Redis commands per call (down from 10)
+ * - All RPC calls accumulate in-memory (0 Redis commands per call)
+ * - epoch_scheduler calls getAndClearEpochCounters() when closing epoch
+ * - Dedup uses in-memory Set with TTL cleanup
  * - Only premium calls (> $0.001) write to PostgreSQL for audit trail
- * - epoch_scheduler reads Redis counters when closing epochs
  *
- * Resilience: If Redis is unavailable, falls back to direct Postgres INSERT
- * so billing NEVER stops working.
+ * Result: 0 Redis commands per RPC call (down from 10 → 2 → 0)
  */
 
-import { getSharedRedis, isRedisHealthy } from './shared_redis.js';
 import { broadcaster } from '../../realtime/broadcaster-instance.js';
 
 const CHAIN_PRICING_USDT = {
@@ -31,71 +28,135 @@ const CHAIN_PRICING_USDT = {
 const DEFAULT_RPC_COST_USDT = 0.00003;
 const PREMIUM_THRESHOLD_USDT = 0.001;
 const EPOCH_BUCKET_SECONDS = 60;
-const REDIS_TTL_SECONDS = 48 * 60 * 60; // 48 hours
+const DEDUP_TTL_MS = 60_000; // 60 seconds
+const DEDUP_CLEANUP_INTERVAL_MS = 30_000; // Cleanup every 30 seconds
 
 /**
- * Lua script to increment all billing counters in a single command.
- * This reduces 8 Redis commands to 1.
- *
- * KEYS[1] = epochKey (e.g., satelink:billing:epoch:1234567890)
- * KEYS[2] = clientKey (e.g., satelink:billing:epoch:1234567890:client:public)
- * KEYS[3] = dailyRequestsKey (e.g., rpc:requests:2026-05-25)
- * KEYS[4] = dailyRevenueKey (e.g., rpc:revenue:2026-05-25)
- * ARGV[1] = costUsdt (as string)
- * ARGV[2] = ttlSeconds
+ * In-memory epoch counters
+ * Key: epochBucket (timestamp aligned to 60s)
+ * Value: { calls, revenue, clients: Map<clientId, { calls, revenue }> }
  */
-const BILLING_LUA_SCRIPT = `
-redis.call('HINCRBY', KEYS[1], 'calls', 1)
-redis.call('HINCRBYFLOAT', KEYS[1], 'revenue', ARGV[1])
-redis.call('EXPIRE', KEYS[1], ARGV[2])
-redis.call('HINCRBY', KEYS[2], 'calls', 1)
-redis.call('HINCRBYFLOAT', KEYS[2], 'revenue', ARGV[1])
-redis.call('EXPIRE', KEYS[2], ARGV[2])
-redis.call('INCR', KEYS[3])
-redis.call('INCRBYFLOAT', KEYS[4], ARGV[1])
-return 1
-`;
+const epochCounters = new Map();
 
-// Cache the script SHA for EVALSHA (faster than EVAL)
-let billingScriptSha = null;
+/**
+ * In-memory dedup set
+ * Key: requestId
+ * Value: expiresAt timestamp
+ */
+const dedupSet = new Map();
 
-async function runBillingScript(redis, epochKey, clientKey, dailyRequestsKey, dailyRevenueKey, costUsdt, ttlSeconds) {
-  const keys = [epochKey, clientKey, dailyRequestsKey, dailyRevenueKey];
-  const args = [costUsdt.toString(), ttlSeconds.toString()];
+/**
+ * Daily counters for metrics endpoint compatibility
+ * Key: date string (YYYY-MM-DD)
+ * Value: { requests, revenue }
+ */
+const dailyCounters = new Map();
 
-  try {
-    // Try EVALSHA first (cached script)
-    if (billingScriptSha) {
-      try {
-        return await redis.evalsha(billingScriptSha, keys.length, ...keys, ...args);
-      } catch (err) {
-        if (!err.message.includes('NOSCRIPT')) {
-          throw err;
-        }
-        // Script not cached, fall through to EVAL
-        billingScriptSha = null;
+// Cleanup dedup set periodically
+let dedupCleanupHandle = null;
+
+function startDedupCleanup() {
+  if (dedupCleanupHandle) return;
+
+  dedupCleanupHandle = setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+
+    for (const [key, expiresAt] of dedupSet) {
+      if (expiresAt < now) {
+        dedupSet.delete(key);
+        cleaned++;
       }
     }
 
-    // Load and run script, cache SHA for future calls
-    const result = await redis.eval(BILLING_LUA_SCRIPT, keys.length, ...keys, ...args);
-
-    // Cache the SHA for next time
-    try {
-      const sha = await redis.script('LOAD', BILLING_LUA_SCRIPT);
-      billingScriptSha = sha;
-    } catch (_) {
-      // Ignore caching errors
+    if (cleaned > 0) {
+      console.log(`[Billing] Cleaned ${cleaned} expired dedup entries`);
     }
+  }, DEDUP_CLEANUP_INTERVAL_MS);
 
-    return result;
-  } catch (err) {
-    throw err;
-  }
+  dedupCleanupHandle.unref?.();
 }
 
-function getRedis() {
-  return getSharedRedis();
+// Start cleanup on module load
+startDedupCleanup();
+
+/**
+ * Get or create epoch counter bucket
+ */
+function getEpochBucket(epochBucket) {
+  let bucket = epochCounters.get(epochBucket);
+  if (!bucket) {
+    bucket = {
+      calls: 0,
+      revenue: 0,
+      clients: new Map()
+    };
+    epochCounters.set(epochBucket, bucket);
+  }
+  return bucket;
+}
+
+/**
+ * Get or create daily counter
+ */
+function getDailyBucket(date) {
+  let bucket = dailyCounters.get(date);
+  if (!bucket) {
+    bucket = { requests: 0, revenue: 0 };
+    dailyCounters.set(date, bucket);
+  }
+  return bucket;
+}
+
+/**
+ * Called by epoch_scheduler when closing an epoch.
+ * Returns accumulated counters and clears them from memory.
+ */
+export function getAndClearEpochCounters(epochStartsAt) {
+  const epochBucket = Math.floor(epochStartsAt / EPOCH_BUCKET_SECONDS) * EPOCH_BUCKET_SECONDS;
+  const bucket = epochCounters.get(epochBucket);
+
+  if (!bucket) {
+    return { calls: 0, revenue: 0, clients: new Map() };
+  }
+
+  // Remove from memory after reading
+  epochCounters.delete(epochBucket);
+
+  console.log(`[Billing] Epoch ${epochBucket}: ${bucket.calls} calls, $${bucket.revenue.toFixed(6)} — cleared from memory`);
+
+  return bucket;
+}
+
+/**
+ * Get daily counters for metrics endpoint
+ */
+export function getDailyCounters(date) {
+  const bucket = dailyCounters.get(date);
+  return bucket || { requests: 0, revenue: 0 };
+}
+
+/**
+ * Clear old daily counters (call periodically)
+ */
+export function cleanupOldCounters(daysToKeep = 2) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysToKeep);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+
+  for (const date of dailyCounters.keys()) {
+    if (date < cutoffStr) {
+      dailyCounters.delete(date);
+    }
+  }
+
+  // Also cleanup old epoch buckets (older than 2 hours)
+  const epochCutoff = Math.floor(Date.now() / 1000) - (2 * 60 * 60);
+  for (const bucket of epochCounters.keys()) {
+    if (bucket < epochCutoff) {
+      epochCounters.delete(bucket);
+    }
+  }
 }
 
 export async function recordRpcRevenue({ pool, chain, method, apiKey, source, requestId }) {
@@ -105,74 +166,51 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   const epochBucket = Math.floor(now / EPOCH_BUCKET_SECONDS) * EPOCH_BUCKET_SECONDS;
   const today = new Date().toISOString().split('T')[0];
 
-  const redis = getRedis();
-  let redisSuccess = false;
-
-  // 1. DEDUP CHECK: Single SET NX command (1 Redis command)
-  // Returns 'OK' if set, null if already exists
-  if (redis && isRedisHealthy() && requestId) {
-    try {
-      const dedupKey = `billing:dedup:${requestId}`;
-      const wasSet = await redis.set(dedupKey, '1', 'EX', 60, 'NX');
-      if (!wasSet) {
-        return; // Already billed this requestId
-      }
-    } catch (err) {
-      // Continue even if dedup check fails
+  // 1. DEDUP CHECK: In-memory (0 Redis commands)
+  if (requestId) {
+    const existingExpiry = dedupSet.get(requestId);
+    if (existingExpiry && existingExpiry > Date.now()) {
+      return; // Already billed this requestId
     }
+    dedupSet.set(requestId, Date.now() + DEDUP_TTL_MS);
   }
 
-  // 2. EPOCH COUNTERS: Single Lua script (1 Redis command)
-  // Replaces 8 separate commands with 1 EVAL
-  if (redis && isRedisHealthy()) {
-    try {
-      const epochKey = `satelink:billing:epoch:${epochBucket}`;
-      const clientKey = `${epochKey}:client:${clientId}`;
-      const dailyRequestsKey = `rpc:requests:${today}`;
-      const dailyRevenueKey = `rpc:revenue:${today}`;
+  // 2. ACCUMULATE IN MEMORY: Epoch counters (0 Redis commands)
+  const bucket = getEpochBucket(epochBucket);
+  bucket.calls++;
+  bucket.revenue += costUsdt;
 
-      await runBillingScript(
-        redis,
-        epochKey,
-        clientKey,
-        dailyRequestsKey,
-        dailyRevenueKey,
-        costUsdt,
-        REDIS_TTL_SECONDS
-      );
-      redisSuccess = true;
-    } catch (err) {
-      console.error('[Billing] Redis Lua script error, falling back to Postgres:', err.message);
-      redisSuccess = false;
-    }
+  // Client-level tracking
+  let clientBucket = bucket.clients.get(clientId);
+  if (!clientBucket) {
+    clientBucket = { calls: 0, revenue: 0 };
+    bucket.clients.set(clientId, clientBucket);
   }
+  clientBucket.calls++;
+  clientBucket.revenue += costUsdt;
 
-  // 3. POSTGRES FALLBACK: Write if Redis failed OR if premium call
-  const shouldWritePostgres = !redisSuccess || costUsdt > PREMIUM_THRESHOLD_USDT;
+  // 3. DAILY COUNTERS: For metrics endpoint
+  const daily = getDailyBucket(today);
+  daily.requests++;
+  daily.revenue += costUsdt;
 
-  if (shouldWritePostgres) {
-    if (!pool || !pool.query) {
-      console.error('[Billing] CRITICAL: pool is undefined and Redis failed — revenue lost!');
-      return;
-    }
-
-    try {
-      await pool.query(
-        `INSERT INTO revenue_events_v2 (op_type, client_id, amount_usdt, status, request_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        ['rpc_call', clientId, costUsdt, 'completed', requestId || String(Date.now()), now]
-      );
-      if (!redisSuccess) {
-        console.log(`[Billing] ✓ $${costUsdt} (Postgres fallback — Redis unavailable)`);
-      } else {
+  // 4. POSTGRES: Only for premium calls (> $0.001)
+  if (costUsdt > PREMIUM_THRESHOLD_USDT) {
+    if (pool && pool.query) {
+      try {
+        await pool.query(
+          `INSERT INTO revenue_events_v2 (op_type, client_id, amount_usdt, status, request_id, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          ['rpc_call', clientId, costUsdt, 'completed', requestId || String(Date.now()), now]
+        );
         console.log(`[Billing] ✓ Premium call $${costUsdt} written to Postgres`);
+      } catch (err) {
+        console.error('[Billing] Premium INSERT failed:', err.message);
       }
-    } catch (err) {
-      console.error('[Billing] INSERT failed:', err.message);
     }
   }
 
-  // 4. Real-time broadcast (always, for live dashboards)
+  // 5. Real-time broadcast (always, for live dashboards)
   broadcaster.publish('revenue:event', {
     amount_usdt: costUsdt,
     method: method || 'rpc_call',
@@ -185,4 +223,30 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
 
 export function getDefaultCost(chain) {
   return CHAIN_PRICING_USDT[chain] || DEFAULT_RPC_COST_USDT;
+}
+
+// For monitoring/debugging
+export function getBillingStats() {
+  let totalCalls = 0;
+  let totalRevenue = 0;
+
+  for (const bucket of epochCounters.values()) {
+    totalCalls += bucket.calls;
+    totalRevenue += bucket.revenue;
+  }
+
+  return {
+    epochBuckets: epochCounters.size,
+    dedupEntries: dedupSet.size,
+    dailyBuckets: dailyCounters.size,
+    pendingCalls: totalCalls,
+    pendingRevenue: totalRevenue
+  };
+}
+
+export function stopDedupCleanup() {
+  if (dedupCleanupHandle) {
+    clearInterval(dedupCleanupHandle);
+    dedupCleanupHandle = null;
+  }
 }
