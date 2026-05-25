@@ -7,9 +7,12 @@
  * - Only premium calls (> $0.001) write to PostgreSQL for audit trail
  * - epoch_scheduler reads Redis counters when closing epochs
  * - Reduces Postgres writes from 474K/day to ~1440/day
+ *
+ * Resilience: If Redis is unavailable, falls back to direct Postgres INSERT
+ * so billing NEVER stops working.
  */
 
-import { getSharedRedis } from './shared_redis.js';
+import { getSharedRedis, isRedisHealthy } from './shared_redis.js';
 import { broadcaster } from '../../realtime/broadcaster-instance.js';
 
 const CHAIN_PRICING_USDT = {
@@ -41,9 +44,10 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   const today = new Date().toISOString().split('T')[0];
 
   const redis = getRedis();
+  let redisSuccess = false;
 
   // 0. Redis-based dedup — skip if already billed this requestId
-  if (redis && requestId) {
+  if (redis && isRedisHealthy() && requestId) {
     const dedupKey = `billing:dedup:${requestId}`;
     try {
       const alreadyBilled = await redis.get(dedupKey);
@@ -58,7 +62,7 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
 
   // 1. PRIMARY PATH: Increment Redis epoch counters
   // Keys: satelink:billing:epoch:{bucket} and satelink:billing:epoch:{bucket}:client:{clientId}
-  if (redis) {
+  if (redis && isRedisHealthy()) {
     try {
       const epochKey = `satelink:billing:epoch:${epochBucket}`;
       const clientKey = `${epochKey}:client:${clientId}`;
@@ -78,15 +82,20 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
         redis.incr(`rpc:requests:${today}`),
         redis.incrbyfloat(`rpc:revenue:${today}`, costUsdt)
       ]);
+      redisSuccess = true;
     } catch (err) {
-      console.error('[Billing] Redis counter error:', err.message);
+      console.error('[Billing] Redis counter error, falling back to Postgres:', err.message);
+      redisSuccess = false;
     }
   }
 
-  // 2. PREMIUM PATH: Write to PostgreSQL only for high-value calls (audit trail)
-  if (costUsdt > PREMIUM_THRESHOLD_USDT) {
+  // 2. POSTGRES PATH: Write if Redis failed OR if premium call (> $0.001)
+  // This ensures billing NEVER stops working even if Redis is completely down
+  const shouldWritePostgres = !redisSuccess || costUsdt > PREMIUM_THRESHOLD_USDT;
+
+  if (shouldWritePostgres) {
     if (!pool || !pool.query) {
-      console.error('[Billing] CRITICAL: pool is undefined for premium call!');
+      console.error('[Billing] CRITICAL: pool is undefined and Redis failed — revenue lost!');
       return;
     }
 
@@ -96,9 +105,13 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
          VALUES ($1, $2, $3, $4, $5, $6)`,
         ['rpc_call', clientId, costUsdt, 'completed', requestId || String(Date.now()), now]
       );
-      console.log(`[Billing] ✓ Premium call $${costUsdt} written to Postgres`);
+      if (!redisSuccess) {
+        console.log(`[Billing] ✓ $${costUsdt} (Postgres fallback — Redis unavailable)`);
+      } else {
+        console.log(`[Billing] ✓ Premium call $${costUsdt} written to Postgres`);
+      }
     } catch (err) {
-      console.error('[Billing] Premium INSERT failed:', err.message);
+      console.error('[Billing] INSERT failed:', err.message);
     }
   }
 
