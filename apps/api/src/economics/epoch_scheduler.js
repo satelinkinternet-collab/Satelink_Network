@@ -1,8 +1,10 @@
 import { finalizeClosedEpochEarningsInTransaction } from './epoch_finalizer.js';
 import { broadcaster } from '../realtime/broadcaster-instance.js';
+import { getSharedRedis } from '../workloads/rpc_gateway/shared_redis.js';
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const EPOCH_LOCK_ID = 738_291;
+const EPOCH_BUCKET_SECONDS = 60; // Must match rpc_billing.js
 
 let isRunning = false;
 let schedulerHandle = null;
@@ -17,13 +19,53 @@ export const schedulerStatus = {
     last_open_epoch_id: null,
     last_total_revenue_usdt: null,
     last_event_count: null,
-    last_orphan_events_assigned: null
+    last_orphan_events_assigned: null,
+    last_redis_calls: null,
+    last_redis_revenue: null
 };
 
 function getPool(dbOrPool) {
     if (dbOrPool?.connect && dbOrPool?.query) return dbOrPool;
     if (dbOrPool?.pool?.connect && dbOrPool?.pool?.query) return dbOrPool.pool;
     throw new Error('[EpochScheduler] A PostgreSQL pool or PgDatabase instance is required');
+}
+
+/**
+ * Read and clear Redis epoch counters for a given time bucket.
+ * Returns { calls: number, revenue: number }
+ */
+async function readAndClearRedisEpochCounters(epochStartsAt) {
+    const result = { calls: 0, revenue: 0 };
+
+    try {
+        const redis = getSharedRedis();
+        if (!redis) {
+            return result;
+        }
+
+        // Align to bucket boundary (same logic as rpc_billing.js)
+        const epochBucket = Math.floor(epochStartsAt / EPOCH_BUCKET_SECONDS) * EPOCH_BUCKET_SECONDS;
+        const epochKey = `satelink:billing:epoch:${epochBucket}`;
+
+        // Read counters atomically
+        const [calls, revenue] = await Promise.all([
+            redis.hget(epochKey, 'calls'),
+            redis.hget(epochKey, 'revenue')
+        ]);
+
+        result.calls = parseInt(calls || '0', 10);
+        result.revenue = parseFloat(revenue || '0');
+
+        // Delete the key after reading (cleanup)
+        if (result.calls > 0 || result.revenue > 0) {
+            await redis.del(epochKey);
+            console.log(`[EpochScheduler] Redis bucket ${epochBucket}: ${result.calls} calls, $${result.revenue.toFixed(6)} — cleared`);
+        }
+    } catch (err) {
+        console.error('[EpochScheduler] Redis read error (continuing with Postgres only):', err.message);
+    }
+
+    return result;
 }
 
 async function ensureOpenEpoch(client, nowSeconds) {
@@ -59,7 +101,7 @@ export async function runEpochCycle(dbOrPool) {
         }
 
         const epochResult = await client.query(`
-            SELECT id
+            SELECT id, starts_at
             FROM epochs
             WHERE status = 'OPEN'
             ORDER BY id ASC
@@ -79,8 +121,12 @@ export async function runEpochCycle(dbOrPool) {
             return { ok: true, status: 'created_open_epoch', open_epoch_id: epoch?.id || null };
         }
 
-        // CRITICAL FIX: Assign all untagged revenue events to this epoch BEFORE closing
-        // Revenue events are inserted without epoch_id — claim them now for aggregation
+        // === NEW: Read Redis epoch counters before closing ===
+        const redisCounters = await readAndClearRedisEpochCounters(epoch.starts_at);
+        schedulerStatus.last_redis_calls = redisCounters.calls;
+        schedulerStatus.last_redis_revenue = redisCounters.revenue;
+
+        // Assign orphan Postgres events (premium calls only now) to this epoch
         const assigned = await client.query(`
             UPDATE revenue_events_v2
             SET epoch_id = $1
@@ -93,10 +139,11 @@ export async function runEpochCycle(dbOrPool) {
         schedulerStatus.last_orphan_events_assigned = orphanCount;
 
         if (orphanCount > 0) {
-            console.log(`[EpochScheduler] Assigned ${orphanCount} orphan events to epoch ${epoch.id}`);
+            console.log(`[EpochScheduler] Assigned ${orphanCount} premium events to epoch ${epoch.id}`);
         }
 
-        const aggregate = await client.query(`
+        // Aggregate Postgres premium calls for this epoch
+        const pgAggregate = await client.query(`
             SELECT
                 COUNT(*)::integer AS event_count,
                 COALESCE(SUM(amount_usdt), 0)::numeric AS total_revenue_usdt
@@ -105,34 +152,35 @@ export async function runEpochCycle(dbOrPool) {
               AND (is_test_data = FALSE OR is_test_data IS NULL)
         `, [epoch.id]);
 
-        const eventCount = Number(aggregate.rows[0]?.event_count || 0);
-        const totalRevenue = aggregate.rows[0]?.total_revenue_usdt || '0';
+        const pgEventCount = Number(pgAggregate.rows[0]?.event_count || 0);
+        const pgRevenue = Number(pgAggregate.rows[0]?.total_revenue_usdt || 0);
 
+        // === COMBINE: Redis counters + Postgres premium calls ===
+        const totalEventCount = redisCounters.calls + pgEventCount;
+        const totalRevenue = redisCounters.revenue + pgRevenue;
+
+        console.log(`[EpochScheduler] Epoch ${epoch.id} totals: Redis(${redisCounters.calls} calls, $${redisCounters.revenue.toFixed(6)}) + Postgres(${pgEventCount} premium, $${pgRevenue.toFixed(6)}) = ${totalEventCount} calls, $${totalRevenue.toFixed(6)}`);
+
+        // Close epoch with combined totals
         const closed = await client.query(`
             UPDATE epochs
             SET
                 status = 'CLOSED',
                 ends_at = $2,
-                total_revenue_usdt = totals.total_revenue_usdt,
-                node_pool_usdt = totals.total_revenue_usdt * 0.50,
-                platform_share_usdt = totals.total_revenue_usdt * 0.30,
-                distributor_share_usdt = totals.total_revenue_usdt * 0.20
-            FROM (
-                SELECT COALESCE(SUM(amount_usdt), 0)::numeric AS total_revenue_usdt
-                FROM revenue_events_v2
-                WHERE epoch_id = $1
-                  AND (is_test_data = FALSE OR is_test_data IS NULL)
-            ) AS totals
-            WHERE epochs.id = $1
-              AND epochs.status = 'OPEN'
+                total_revenue_usdt = $3,
+                node_pool_usdt = $3 * 0.50,
+                platform_share_usdt = $3 * 0.30,
+                distributor_share_usdt = $3 * 0.20
+            WHERE id = $1
+              AND status = 'OPEN'
             RETURNING
-                epochs.id,
-                epochs.starts_at,
-                epochs.total_revenue_usdt,
-                epochs.node_pool_usdt,
-                epochs.platform_share_usdt,
-                epochs.distributor_share_usdt
-        `, [epoch.id, nowSeconds]);
+                id,
+                starts_at,
+                total_revenue_usdt,
+                node_pool_usdt,
+                platform_share_usdt,
+                distributor_share_usdt
+        `, [epoch.id, nowSeconds, totalRevenue]);
 
         if (closed.rowCount !== 1) {
             await client.query('ROLLBACK');
@@ -144,8 +192,7 @@ export async function runEpochCycle(dbOrPool) {
 
         const closedEpochData = closed.rows[0];
 
-        // CRITICAL: Also sync to epoch_ledger table (truth.js queries this table)
-        // The epochs table and epoch_ledger table must be kept in sync
+        // Sync to epoch_ledger table (truth.js queries this table)
         await client.query(`
             INSERT INTO epoch_ledger (epoch_id, status, started_at, closed_at, total_revenue, node_pool, platform_fee, distribution_pool, created_at)
             VALUES ($1, 'CLOSED', $2, $3, $4, $5, $6, $7, $3)
@@ -186,11 +233,11 @@ export async function runEpochCycle(dbOrPool) {
         schedulerStatus.last_error = null;
         schedulerStatus.last_closed_epoch_id = closedEpoch.id;
         schedulerStatus.last_open_epoch_id = openEpoch.id;
-        schedulerStatus.last_total_revenue_usdt = Number(totalRevenue);
-        schedulerStatus.last_event_count = eventCount;
+        schedulerStatus.last_total_revenue_usdt = totalRevenue;
+        schedulerStatus.last_event_count = totalEventCount;
 
         console.log(
-            `[EpochScheduler] Closed epoch ${closedEpoch.id}: ${eventCount} events, ${totalRevenue} USDT; opened epoch ${openEpoch.id}`
+            `[EpochScheduler] Closed epoch ${closedEpoch.id}: ${totalEventCount} events, $${totalRevenue.toFixed(6)} USDT; opened epoch ${openEpoch.id}`
         );
 
         broadcaster.publish('epoch:closed', {
@@ -199,7 +246,10 @@ export async function runEpochCycle(dbOrPool) {
             node_pool: Number(closedEpoch.node_pool_usdt),
             platform_fee: Number(closedEpoch.platform_share_usdt),
             distribution_pool: Number(closedEpoch.distributor_share_usdt),
-            event_count: eventCount,
+            event_count: totalEventCount,
+            redis_calls: redisCounters.calls,
+            redis_revenue: redisCounters.revenue,
+            postgres_premium_calls: pgEventCount,
             timestamp: new Date().toISOString()
         });
 
@@ -208,7 +258,10 @@ export async function runEpochCycle(dbOrPool) {
             status: 'success',
             closed_epoch_id: closedEpoch.id,
             open_epoch_id: openEpoch.id,
-            event_count: eventCount,
+            event_count: totalEventCount,
+            redis_calls: redisCounters.calls,
+            redis_revenue: redisCounters.revenue,
+            postgres_premium_calls: pgEventCount,
             orphan_events_assigned: orphanCount,
             total_revenue_usdt: Number(closedEpoch.total_revenue_usdt),
             node_pool_usdt: Number(closedEpoch.node_pool_usdt),
