@@ -52,7 +52,7 @@ export class RpcAggregationJob {
         SELECT
           (created_at / 3600) * 3600 AS hour_start,
           COALESCE(client_id, 'public') AS client_id,
-          COALESCE(method, op_type, 'rpc_call') AS method,
+          COALESCE(method, 'rpc_call') AS method,
           COALESCE(
             CASE
               WHEN chain = 'polygon' OR chain = 'matic' THEN 137
