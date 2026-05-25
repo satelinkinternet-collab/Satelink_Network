@@ -2,11 +2,12 @@
  * RPC Billing Helper
  * Records revenue to Redis counters (primary) + PostgreSQL (premium only)
  *
- * Architecture change (2026-05):
- * - All RPC calls increment Redis epoch counters (fast, no Postgres row per call)
+ * Architecture (2026-05):
+ * - All RPC calls increment Redis epoch counters via Lua script (1 command)
+ * - Dedup check uses SET NX (1 command)
+ * - Total: 2 Redis commands per call (down from 10)
  * - Only premium calls (> $0.001) write to PostgreSQL for audit trail
  * - epoch_scheduler reads Redis counters when closing epochs
- * - Reduces Postgres writes from 474K/day to ~1440/day
  *
  * Resilience: If Redis is unavailable, falls back to direct Postgres INSERT
  * so billing NEVER stops working.
@@ -28,9 +29,70 @@ const CHAIN_PRICING_USDT = {
 };
 
 const DEFAULT_RPC_COST_USDT = 0.00003;
-const PREMIUM_THRESHOLD_USDT = 0.001; // Only write to Postgres above this amount
-const EPOCH_BUCKET_SECONDS = 60; // Aligns with epoch_scheduler interval
-const REDIS_TTL_HOURS = 48;
+const PREMIUM_THRESHOLD_USDT = 0.001;
+const EPOCH_BUCKET_SECONDS = 60;
+const REDIS_TTL_SECONDS = 48 * 60 * 60; // 48 hours
+
+/**
+ * Lua script to increment all billing counters in a single command.
+ * This reduces 8 Redis commands to 1.
+ *
+ * KEYS[1] = epochKey (e.g., satelink:billing:epoch:1234567890)
+ * KEYS[2] = clientKey (e.g., satelink:billing:epoch:1234567890:client:public)
+ * KEYS[3] = dailyRequestsKey (e.g., rpc:requests:2026-05-25)
+ * KEYS[4] = dailyRevenueKey (e.g., rpc:revenue:2026-05-25)
+ * ARGV[1] = costUsdt (as string)
+ * ARGV[2] = ttlSeconds
+ */
+const BILLING_LUA_SCRIPT = `
+redis.call('HINCRBY', KEYS[1], 'calls', 1)
+redis.call('HINCRBYFLOAT', KEYS[1], 'revenue', ARGV[1])
+redis.call('EXPIRE', KEYS[1], ARGV[2])
+redis.call('HINCRBY', KEYS[2], 'calls', 1)
+redis.call('HINCRBYFLOAT', KEYS[2], 'revenue', ARGV[1])
+redis.call('EXPIRE', KEYS[2], ARGV[2])
+redis.call('INCR', KEYS[3])
+redis.call('INCRBYFLOAT', KEYS[4], ARGV[1])
+return 1
+`;
+
+// Cache the script SHA for EVALSHA (faster than EVAL)
+let billingScriptSha = null;
+
+async function runBillingScript(redis, epochKey, clientKey, dailyRequestsKey, dailyRevenueKey, costUsdt, ttlSeconds) {
+  const keys = [epochKey, clientKey, dailyRequestsKey, dailyRevenueKey];
+  const args = [costUsdt.toString(), ttlSeconds.toString()];
+
+  try {
+    // Try EVALSHA first (cached script)
+    if (billingScriptSha) {
+      try {
+        return await redis.evalsha(billingScriptSha, keys.length, ...keys, ...args);
+      } catch (err) {
+        if (!err.message.includes('NOSCRIPT')) {
+          throw err;
+        }
+        // Script not cached, fall through to EVAL
+        billingScriptSha = null;
+      }
+    }
+
+    // Load and run script, cache SHA for future calls
+    const result = await redis.eval(BILLING_LUA_SCRIPT, keys.length, ...keys, ...args);
+
+    // Cache the SHA for next time
+    try {
+      const sha = await redis.script('LOAD', BILLING_LUA_SCRIPT);
+      billingScriptSha = sha;
+    } catch (_) {
+      // Ignore caching errors
+    }
+
+    return result;
+  } catch (err) {
+    throw err;
+  }
+}
 
 function getRedis() {
   return getSharedRedis();
@@ -46,51 +108,46 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
   const redis = getRedis();
   let redisSuccess = false;
 
-  // 0. Redis-based dedup — skip if already billed this requestId
+  // 1. DEDUP CHECK: Single SET NX command (1 Redis command)
+  // Returns 'OK' if set, null if already exists
   if (redis && isRedisHealthy() && requestId) {
-    const dedupKey = `billing:dedup:${requestId}`;
     try {
-      const alreadyBilled = await redis.get(dedupKey);
-      if (alreadyBilled) {
-        return;
+      const dedupKey = `billing:dedup:${requestId}`;
+      const wasSet = await redis.set(dedupKey, '1', 'EX', 60, 'NX');
+      if (!wasSet) {
+        return; // Already billed this requestId
       }
-      await redis.set(dedupKey, '1', 'EX', 60);
     } catch (err) {
       // Continue even if dedup check fails
     }
   }
 
-  // 1. PRIMARY PATH: Increment Redis epoch counters
-  // Keys: satelink:billing:epoch:{bucket} and satelink:billing:epoch:{bucket}:client:{clientId}
+  // 2. EPOCH COUNTERS: Single Lua script (1 Redis command)
+  // Replaces 8 separate commands with 1 EVAL
   if (redis && isRedisHealthy()) {
     try {
       const epochKey = `satelink:billing:epoch:${epochBucket}`;
       const clientKey = `${epochKey}:client:${clientId}`;
-      const ttlSeconds = REDIS_TTL_HOURS * 60 * 60;
+      const dailyRequestsKey = `rpc:requests:${today}`;
+      const dailyRevenueKey = `rpc:revenue:${today}`;
 
-      await Promise.all([
-        // Epoch-level counters
-        redis.hincrby(epochKey, 'calls', 1),
-        redis.hincrbyfloat(epochKey, 'revenue', costUsdt),
-        // Client-level counters within epoch
-        redis.hincrby(clientKey, 'calls', 1),
-        redis.hincrbyfloat(clientKey, 'revenue', costUsdt),
-        // Set TTL (idempotent — resets on each call, which is fine)
-        redis.expire(epochKey, ttlSeconds),
-        redis.expire(clientKey, ttlSeconds),
-        // Daily counters (backwards compat with dashboards)
-        redis.incr(`rpc:requests:${today}`),
-        redis.incrbyfloat(`rpc:revenue:${today}`, costUsdt)
-      ]);
+      await runBillingScript(
+        redis,
+        epochKey,
+        clientKey,
+        dailyRequestsKey,
+        dailyRevenueKey,
+        costUsdt,
+        REDIS_TTL_SECONDS
+      );
       redisSuccess = true;
     } catch (err) {
-      console.error('[Billing] Redis counter error, falling back to Postgres:', err.message);
+      console.error('[Billing] Redis Lua script error, falling back to Postgres:', err.message);
       redisSuccess = false;
     }
   }
 
-  // 2. POSTGRES PATH: Write if Redis failed OR if premium call (> $0.001)
-  // This ensures billing NEVER stops working even if Redis is completely down
+  // 3. POSTGRES FALLBACK: Write if Redis failed OR if premium call
   const shouldWritePostgres = !redisSuccess || costUsdt > PREMIUM_THRESHOLD_USDT;
 
   if (shouldWritePostgres) {
@@ -115,7 +172,7 @@ export async function recordRpcRevenue({ pool, chain, method, apiKey, source, re
     }
   }
 
-  // 3. Real-time broadcast (always, for live dashboards)
+  // 4. Real-time broadcast (always, for live dashboards)
   broadcaster.publish('revenue:event', {
     amount_usdt: costUsdt,
     method: method || 'rpc_call',
