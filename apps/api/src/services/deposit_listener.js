@@ -112,11 +112,12 @@ export class DepositListener {
     this.log.info(`${LOG_PREFIX} stopped`);
   }
 
-  async _handleDeposit(from, amount, event) {
+  async _handleDeposit(from, amount, event, manualChainId = null) {
     const wallet = from.toLowerCase();
     const txHash = event.log.transactionHash;
     const blockNumber = event.log.blockNumber;
-    const chainId = Number((await this.provider.getNetwork()).chainId);
+    // Use provided chainId for manual mode, or get from provider
+    const chainId = manualChainId || (this.provider ? Number((await this.provider.getNetwork()).chainId) : 137);
 
     // Convert from smallest unit (6 decimals for USDT) to human USDT
     const amountUsdt = parseFloat(ethers.formatUnits(amount, USDT_DECIMALS));
@@ -178,7 +179,7 @@ export class DepositListener {
   }
 
   // Manual credit for testing (does not require on-chain event)
-  async creditManual({ walletAddress, amountUsdt, txHash, blockNumber }) {
+  async creditManual({ walletAddress, amountUsdt, txHash, blockNumber, chainId = 137 }) {
     const wallet = walletAddress.toLowerCase();
     if (!wallet.match(/^0x[0-9a-f]{40}$/)) throw new Error('Invalid wallet address');
     if (amountUsdt <= 0) throw new Error('Amount must be positive');
@@ -190,7 +191,8 @@ export class DepositListener {
       }
     };
 
-    await this._handleDeposit(wallet, ethers.parseUnits(String(amountUsdt), USDT_DECIMALS), fakeEvent);
+    // Pass chainId for manual mode (no provider available)
+    await this._handleDeposit(wallet, ethers.parseUnits(String(amountUsdt), USDT_DECIMALS), fakeEvent, chainId);
     return { ok: true, wallet, amountUsdt };
   }
 }
