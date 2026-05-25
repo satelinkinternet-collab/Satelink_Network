@@ -1,6 +1,15 @@
+// Updated: Polygon Amoy (chainId: 80002) | Polygon Mainnet (chainId: 137)
+// Fuse Network references removed — Polygon is the primary settlement chain
 import { ethers } from "ethers";
 import "dotenv/config";
 import { main as deploy, readArtifact } from "./deploy_settlement.js";
+
+// Network configuration — Polygon only
+const NETWORKS = {
+  amoy:      'https://rpc-amoy.polygon.technology',   // Polygon testnet (chainId: 80002)
+  polygon:   'https://polygon-rpc.com',               // Polygon mainnet (chainId: 137)
+  localhost: 'http://127.0.0.1:8545'
+};
 
 async function main() {
   console.log("Starting smoke test for settlement...\n");
@@ -11,9 +20,7 @@ async function main() {
   console.log("\n--- Smoke Test Execution ---");
 
   const network = process.env.NETWORK || "localhost";
-  let rpcUrl = "http://127.0.0.1:8545";
-  if (network === "sparknet") rpcUrl = process.env.FUSE_SPARKNET_RPC_URL || "https://rpc.fusespark.io";
-  if (network === "fuse") rpcUrl = process.env.FUSE_RPC_URL || "https://rpc.fuse.io";
+  const rpcUrl = NETWORKS[network] || NETWORKS.localhost;
 
   console.log(`Connecting to network [${network}] at:`, rpcUrl);
   const provider = new ethers.JsonRpcProvider(rpcUrl);

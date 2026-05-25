@@ -1,3 +1,5 @@
+// Updated: Polygon Amoy (chainId: 80002) | Polygon Mainnet (chainId: 137)
+// Fuse Network references removed — Polygon is the primary settlement chain
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -6,17 +8,30 @@ import "dotenv/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Network configuration — Polygon only
+const NETWORKS = {
+    amoy:      'https://rpc-amoy.polygon.technology',   // Polygon testnet (chainId: 80002)
+    polygon:   'https://polygon-rpc.com',               // Polygon mainnet (chainId: 137)
+    localhost: 'http://127.0.0.1:8545'
+};
+
 export async function readArtifact(contractName) {
-    const artifactPath = path.join(__dirname, `../artifacts/contracts/${contractName}.sol/${contractName}.json`);
-    const raw = await fs.readFile(artifactPath, "utf8");
-    return JSON.parse(raw);
+    // Try Foundry output first (out/), fallback to artifacts/ for compatibility
+    const foundryPath = path.join(__dirname, `../out/${contractName}.sol/${contractName}.json`);
+    const artifactsPath = path.join(__dirname, `../artifacts/contracts/${contractName}.sol/${contractName}.json`);
+
+    try {
+        const raw = await fs.readFile(foundryPath, "utf8");
+        return JSON.parse(raw);
+    } catch {
+        const raw = await fs.readFile(artifactsPath, "utf8");
+        return JSON.parse(raw);
+    }
 }
 
 export async function main() {
     const network = process.env.NETWORK || "localhost";
-    let rpcUrl = "http://127.0.0.1:8545";
-    if (network === "sparknet") rpcUrl = process.env.FUSE_SPARKNET_RPC_URL || "https://rpc.fusespark.io";
-    if (network === "fuse") rpcUrl = process.env.FUSE_RPC_URL || "https://rpc.fuse.io";
+    const rpcUrl = NETWORKS[network] || NETWORKS.localhost;
 
     console.log(`Connecting to network [${network}] at:`, rpcUrl);
     const provider = new ethers.JsonRpcProvider(rpcUrl);

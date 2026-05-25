@@ -2,11 +2,10 @@ console.log("REVENUE_ROUTE_LOADED");
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
-import { validateEnv } from "./src/config/env.js";
+import { validateEnv } from "./utils/validateEnv.js";
 import { logger } from "./utils/logger.js";
 import { createApp } from "./app_factory.mjs";
-import Database from "better-sqlite3";
-import { DepositDetector } from "./src/services/deposit_detector.js";
+import { PgDatabase } from "./apps/api/src/database/pg_adapter.js";
 
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
@@ -25,26 +24,29 @@ export default createApp;
 
 // If we are not running under Mocha (tests), boot the server
 if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
-    // Only SQLite currently instantiated natively here. In true Prod, Db connection should route 
-    // to PostgreSQL based on DB_TYPE. However, we simply mount it safely for now
-    const db = new Database(process.env.SQLITE_PATH || "satelink.db");
-    const app = createApp(db);
-    const PORT = process.env.PORT || 8080;
+    (async () => {
+        try {
+            // PostgreSQL connection (replaces SQLite — NO SQLITE ANYWHERE per CLAUDE.md)
+            const db = await PgDatabase.create(process.env.DATABASE_URL);
+            logger.info("PostgreSQL connected successfully");
 
-    app.listen(PORT, async () => {
-        logger.info(`🚀 Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: process.env.DB_TYPE });
+            const app = createApp(db);
+            const PORT = process.env.PORT || 8080;
 
-        // Start Deposit Detector if Real Settlement is enabled
-        if (process.env.FEATURE_REAL_SETTLEMENT === 'true') {
-            try {
-                const detector = new DepositDetector(db);
-                await detector.start();
-                logger.info("Deposit Detector activated natively on-chain");
-            } catch (e) {
-                logger.error("Failed to start Deposit Detector", { error: e.message });
-            }
-        } else {
-            logger.info("Simulated mode - Deposit Detector offline.");
+            app.listen(PORT, () => {
+                logger.info(`🚀 Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: 'postgresql' });
+
+                // Note: DepositListener wiring will be added in PROMPT 5
+                // after credit_gate and credits router are mounted
+                if (process.env.FEATURE_REAL_SETTLEMENT === 'true') {
+                    logger.info("Real settlement mode — DepositListener pending wiring");
+                } else {
+                    logger.info("Simulated mode — DepositListener offline");
+                }
+            });
+        } catch (err) {
+            logger.error("Server startup failed", { error: err.message });
+            process.exit(1);
         }
-    });
+    })();
 }
