@@ -23,6 +23,7 @@ import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import { DepositListener } from "./src/services/deposit_listener.js";
 import { runMigrations } from "./src/db/migrate.js";
+import { createCreditsRouter } from "./src/routes/credits.js";
 
 const { Pool } = pkg;
 
@@ -223,6 +224,7 @@ async function start() {
   try {
     app.use(express.json());
     app.use("/", createPhase3Router());
+    app.use("/credits", createCreditsRouter(pool, console));
 
     app.get('/ws/stats', (req, res) => {
       res.json({ ok: true, ...getWsStats() });

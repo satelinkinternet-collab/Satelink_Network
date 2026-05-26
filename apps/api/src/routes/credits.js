@@ -18,13 +18,14 @@ export function createCreditsRouter(db, logger) {
     }
 
     try {
-      const rows = await db.query(
+      const result = await db.query(
         `SELECT wallet_address, balance_usdt, total_deposited, total_spent,
                 last_deposit_tx, last_deposit_at, created_at
          FROM credit_balances
          WHERE lower(wallet_address) = $1`,
         [wallet]
       );
+      const rows = result.rows || result;
 
       if (rows.length === 0) {
         return res.json({
@@ -67,7 +68,7 @@ export function createCreditsRouter(db, logger) {
     }
 
     try {
-      const rows = await db.query(
+      const result = await db.query(
         `SELECT tx_hash, amount_usdt, block_number, chain_id, confirmed_at
          FROM credit_deposits
          WHERE lower(wallet_address) = $1
@@ -75,6 +76,7 @@ export function createCreditsRouter(db, logger) {
          LIMIT $2`,
         [wallet, limit]
       );
+      const rows = result.rows || result;
 
       return res.json({
         wallet,
@@ -103,7 +105,7 @@ export function createCreditsRouter(db, logger) {
     const count = parseInt(call_count) || 1;
 
     try {
-      const [balRows, priceRows] = await Promise.all([
+      const [balResult, priceResult] = await Promise.all([
         db.query(
           'SELECT balance_usdt FROM credit_balances WHERE lower(wallet_address) = $1',
           [cleanWallet]
@@ -113,6 +115,8 @@ export function createCreditsRouter(db, logger) {
           [method || 'eth_call']
         )
       ]);
+      const balRows = balResult.rows || balResult;
+      const priceRows = priceResult.rows || priceResult;
 
       const balance = parseFloat(balRows[0]?.balance_usdt ?? 0);
       const costPerCall = parseFloat(priceRows[0]?.price_usdt ?? 0.00003);
