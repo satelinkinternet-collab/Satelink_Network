@@ -20,8 +20,11 @@ import { createMachineAccessRouter } from "./src/machine-access/index.js";
 import { createAdminMalRouter } from "./src/routes/admin_mal_route.mjs";
 import { createFinancialTruthRouter } from "./src/services/financial/truth.js";
 import { createCreditsRouter } from "./src/routes/credits.js";
+import { createFreeTierGate, getFreeTierStats } from "./src/middleware/free_tier_gate.js";
 
 export function createApp(pool, redis) {
+  // Initialize free tier gate (Path C: 500 free calls/day per IP)
+  const freeTierGate = createFreeTierGate(console);
   const app = express();
 
   // Attach base middleware (CORS, helmet, security headers)
@@ -192,7 +195,11 @@ app.get("/api/mode", (req, res) => {
   app.use("/api/auth", nodeAuthRouter);
 
   // RPC Gateway with latency-based routing (50mb limit for batch requests)
-  app.use("/rpc", express.json({ limit: '50mb' }), createRpcGateway(pool));
+  // Path C: freeTierGate → 500 free/day per IP, wallet header bypasses to creditGate
+  app.use("/rpc", express.json({ limit: '50mb' }), freeTierGate, createRpcGateway(pool));
+
+  // Free tier monitoring endpoint
+  app.get("/rpc/tier-stats", (req, res) => res.json(getFreeTierStats()));
 
   // MEV Private Relay (S3-001) — 10x pricing, requires API key
   app.use("/rpc/mev", createMevRelayRouter(pool, redis));
