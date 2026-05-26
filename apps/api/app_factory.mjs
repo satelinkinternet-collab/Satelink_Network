@@ -194,12 +194,12 @@ app.get("/api/mode", (req, res) => {
   // Node operator auth endpoint (public, rate-limited)
   app.use("/api/auth", nodeAuthRouter);
 
+  // Free tier monitoring endpoint (must be before /rpc catch-all)
+  app.get("/rpc/tier-stats", (req, res) => res.json(getFreeTierStats()));
+
   // RPC Gateway with latency-based routing (50mb limit for batch requests)
   // Path C: freeTierGate → 500 free/day per IP, wallet header bypasses to creditGate
   app.use("/rpc", express.json({ limit: '50mb' }), freeTierGate, createRpcGateway(pool));
-
-  // Free tier monitoring endpoint
-  app.get("/rpc/tier-stats", (req, res) => res.json(getFreeTierStats()));
 
   // MEV Private Relay (S3-001) — 10x pricing, requires API key
   app.use("/rpc/mev", createMevRelayRouter(pool, redis));
