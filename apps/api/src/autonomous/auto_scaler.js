@@ -15,16 +15,30 @@ const OVERLOAD_THRESHOLD = 0.8;
 const UNDERLOAD_THRESHOLD = 0.3;
 const WEIGHT_UPDATE_INTERVAL = 30000; // 30s
 
+// In-memory load tracking (replaces Redis)
+const _nodeLoadStore = new Map(); // nodeId → { count, windowStart }
+
 export async function getNodeLoad(redis, nodeId) {
-  const key = `node:load:${nodeId}`;
-  const load = await redis.get(key);
-  return parseInt(load) || 0;
+  // Redis eliminated — use in-memory
+  const entry = _nodeLoadStore.get(nodeId);
+  if (!entry) return 0;
+  // Clear if window expired (2 min)
+  if (Date.now() - entry.windowStart > 120000) {
+    _nodeLoadStore.delete(nodeId);
+    return 0;
+  }
+  return entry.count;
 }
 
 export async function incrementNodeLoad(redis, nodeId) {
-  const key = `node:load:${nodeId}`;
-  await redis.incr(key);
-  await redis.expire(key, 120); // 2-min sliding window
+  // Redis eliminated — use in-memory
+  const now = Date.now();
+  const entry = _nodeLoadStore.get(nodeId);
+  if (!entry || now - entry.windowStart > 120000) {
+    _nodeLoadStore.set(nodeId, { count: 1, windowStart: now });
+  } else {
+    entry.count++;
+  }
 }
 
 export async function getNodeCapacity(pool, nodeId) {
@@ -95,6 +109,10 @@ export async function getActiveNodes(pool, region = null) {
   return result.rows;
 }
 
+// In-memory weights store (replaces Redis hset/set)
+const _nodeWeightsStore = new Map();
+let _weightsLastUpdated = 0;
+
 export async function updateNodeWeights(pool, redis) {
   const nodes = await getActiveNodes(pool);
   const weights = {};
@@ -112,10 +130,11 @@ export async function updateNodeWeights(pool, redis) {
       weight: dynamicWeight
     };
 
-    await redis.hset('node:weights', node.node_id, dynamicWeight);
+    // Redis eliminated — use in-memory
+    _nodeWeightsStore.set(node.node_id, dynamicWeight);
   }
 
-  await redis.set('node:weights:updated', Date.now());
+  _weightsLastUpdated = Date.now();
   return weights;
 }
 
@@ -155,8 +174,11 @@ export async function getScalingStats(pool, redis) {
   return stats;
 }
 
+// In-memory last run tracker
+let _autoScalerLastRun = 0;
+
 export async function startAutoScaler(pool, redis) {
-  console.log('[AutoScaler] Started — monitoring node load every 30s');
+  console.log('[AutoScaler] Started — monitoring node load every 30s (in-memory)');
 
   setInterval(async () => {
     try {
@@ -169,7 +191,7 @@ export async function startAutoScaler(pool, redis) {
         console.log(`[AutoScaler] ${overloaded} node(s) overloaded — scaling traffic`);
       }
 
-      await redis.set('autoscaler:last_run', Date.now());
+      _autoScalerLastRun = Date.now();
     } catch (e) {
       console.error('[AutoScaler] Error:', e.message);
     }

@@ -21,31 +21,12 @@ import { startRpcAggregationScheduler } from "./src/jobs/rpc_aggregation_job.mjs
 import { createSettlementAnchorJob } from "./src/scheduler/jobs/settlement_anchor_job.js";
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
-import Redis from "ioredis";
 import { DepositListener } from "./src/services/deposit_listener.js";
 
 const { Pool } = pkg;
 
-function createRedisClient() {
-  const url = process.env.REDIS_URL;
-  if (!url || url === 'redis://') {
-    console.log('[Redis] No REDIS_URL configured, running without Redis');
-    return null;
-  }
-
-  try {
-    const redis = new Redis(url, {
-      maxRetriesPerRequest: 3,
-      tls: url.startsWith('rediss://') ? {} : undefined
-    });
-    redis.on('error', (err) => console.error('[Redis] Error:', err.message));
-    redis.on('connect', () => console.log('[Redis] Connected'));
-    return redis;
-  } catch (err) {
-    console.error('[Redis] Failed to create client:', err.message);
-    return null;
-  }
-}
+// Redis eliminated — all caching/rate-limiting/circuit-breaker is in-memory
+// This saves ~865k commands/month on Upstash free tier
 
 async function ensureBillingTables(pool) {
   // CRITICAL: Drop NOT NULL on node_id FIRST (runs independently)
@@ -223,14 +204,10 @@ async function start() {
     console.error('[BOOT] ❌ FAILED at Pool creation:', err.message);
   }
 
-  // Step 2: Create Redis client (non-blocking)
-  let redis;
-  try {
-    redis = createRedisClient();
-    console.log('[BOOT] ✅ Redis client created (or skipped)');
-  } catch (err) {
-    console.error('[BOOT] ❌ FAILED at createRedisClient:', err.message);
-  }
+  // Step 2: Redis ELIMINATED — using in-memory Maps instead
+  // Saves ~865k commands/month on Upstash free tier
+  const redis = null;
+  console.log('[BOOT] ✅ Redis disabled — all caching/rate-limiting in-memory');
 
   // Step 3: Create Express app (non-blocking)
   let app;
