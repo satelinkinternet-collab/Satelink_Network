@@ -74,7 +74,10 @@ function safeMountRouter(app, path, routerFn, label) {
 
 export function attachRoutes(app, rawDb) {
   const { createRpcGateway } = require('../apps/api/src/workloads/rpc_gateway/rpc_gateway.js');
+  const { createCreditsRouter } = require('../apps/api/src/routes/credits.js');
+
   app.use('/rpc', createRpcGateway(rawDb));
+  app.use('/credits', createCreditsRouter(rawDb, console));
     // ─── 1. Create opsEngine with async db wrapper ───────────────
     const opsEngine = createOpsEngine(rawDb);
     const stubs = createServiceStubs(rawDb, opsEngine);
