@@ -303,6 +303,16 @@ async function start() {
       }
     });
 
+    // Free tier usage stats (Path C monitoring)
+    app.get('/system/free-tier', async (req, res) => {
+      try {
+        const { getFreeTierStats } = await import('./src/middleware/free_tier_gate.js');
+        res.json({ ok: true, ...getFreeTierStats() });
+      } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+      }
+    });
+
     // Treasury settlement status endpoint (mounted early, uses job instance later)
     app.get('/system/treasury-settlement', async (req, res) => {
       try {
