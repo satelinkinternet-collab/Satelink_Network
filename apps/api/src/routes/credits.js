@@ -18,7 +18,7 @@ export function createCreditsRouter(db, logger) {
     }
 
     try {
-      const result = await db.query(
+      const rows = await db.query(
         `SELECT wallet_address, balance_usdt, total_deposited, total_spent,
                 last_deposit_tx, last_deposit_at, created_at
          FROM credit_balances
@@ -26,7 +26,7 @@ export function createCreditsRouter(db, logger) {
         [wallet]
       );
 
-      if (result.rows.length === 0) {
+      if (rows.length === 0) {
         return res.json({
           wallet,
           balance_usdt: 0,
@@ -39,7 +39,7 @@ export function createCreditsRouter(db, logger) {
         });
       }
 
-      const row = result.rows[0];
+      const row = rows[0];
       return res.json({
         wallet: row.wallet_address,
         balance_usdt: parseFloat(row.balance_usdt),
@@ -67,7 +67,7 @@ export function createCreditsRouter(db, logger) {
     }
 
     try {
-      const result = await db.query(
+      const rows = await db.query(
         `SELECT tx_hash, amount_usdt, block_number, chain_id, confirmed_at
          FROM credit_deposits
          WHERE lower(wallet_address) = $1
@@ -78,15 +78,15 @@ export function createCreditsRouter(db, logger) {
 
       return res.json({
         wallet,
-        deposits: result.rows.map(r => ({
+        deposits: rows.map(r => ({
           tx_hash: r.tx_hash,
           amount_usdt: parseFloat(r.amount_usdt),
           block_number: r.block_number,
           chain_id: r.chain_id,
           confirmed_at: r.confirmed_at,
-          polygonscan: `https://amoy.polygonscan.com/tx/${r.tx_hash}`
+          polygonscan: `https://polygonscan.com/tx/${r.tx_hash}`
         })),
-        total: result.rows.length
+        total: rows.length
       });
     } catch (err) {
       log.error('[Credits] deposits error:', err.message);
@@ -103,7 +103,7 @@ export function createCreditsRouter(db, logger) {
     const count = parseInt(call_count) || 1;
 
     try {
-      const [balResult, priceResult] = await Promise.all([
+      const [balRows, priceRows] = await Promise.all([
         db.query(
           'SELECT balance_usdt FROM credit_balances WHERE lower(wallet_address) = $1',
           [cleanWallet]
@@ -114,8 +114,8 @@ export function createCreditsRouter(db, logger) {
         )
       ]);
 
-      const balance = parseFloat(balResult.rows[0]?.balance_usdt ?? 0);
-      const costPerCall = parseFloat(priceResult.rows[0]?.price_usdt ?? 0.00003);
+      const balance = parseFloat(balRows[0]?.balance_usdt ?? 0);
+      const costPerCall = parseFloat(priceRows[0]?.price_usdt ?? 0.00003);
       const totalCost = costPerCall * count;
       const canAfford = balance >= totalCost;
       const callsAffordable = Math.floor(balance / costPerCall);
