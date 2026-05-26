@@ -32,10 +32,13 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
         try {
             // PostgreSQL connection (replaces SQLite — NO SQLITE ANYWHERE per CLAUDE.md)
             const db = await PgDatabase.create(process.env.DATABASE_URL);
+            console.log('[server.js] DB connected, about to run migrations');
             logger.info("PostgreSQL connected successfully");
 
             // ── Run migrations (idempotent — safe to run every startup)
+            console.log('[server.js] Calling runMigrations now...');
             await runMigrations(db.pool);
+            console.log('[server.js] runMigrations completed successfully');
 
             // ── Autonomous payer: watch Polygon Mainnet for USDT deposits
             depositListener = new DepositListener(db.pool, logger);

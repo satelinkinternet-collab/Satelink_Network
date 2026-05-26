@@ -1,5 +1,6 @@
 // apps/api/src/db/migrate.js
 // Auto-runs on server startup — idempotent (safe to run multiple times)
+console.log('[migrate.js] MODULE LOADED at', new Date().toISOString());
 
 export async function runMigrations(pool) {
   console.log('\n\n========== MIGRATE START ==========');
