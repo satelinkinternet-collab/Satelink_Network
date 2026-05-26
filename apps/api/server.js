@@ -22,6 +22,7 @@ import { createSettlementAnchorJob } from "./src/scheduler/jobs/settlement_ancho
 import { discord } from "./src/services/discord_notify.mjs";
 import pkg from "pg";
 import { DepositListener } from "./src/services/deposit_listener.js";
+import { runMigrations } from "./src/db/migrate.js";
 
 const { Pool } = pkg;
 
@@ -501,6 +502,13 @@ async function start() {
         console.log('[POST-BOOT] ✅ Billing tables ensured');
       } catch (err) {
         console.error('[POST-BOOT] ⚠️ Billing tables failed (non-fatal):', err.message);
+      }
+
+      try {
+        await runMigrations(pool);
+        console.log('[POST-BOOT] ✅ Credit tables migrated');
+      } catch (err) {
+        console.error('[POST-BOOT] ⚠️ Credit tables migration failed:', err.message);
       }
 
       try {
