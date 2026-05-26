@@ -1,14 +1,11 @@
 // apps/api/src/db/migrate.js
 // Auto-runs on server startup — idempotent (safe to run multiple times)
 
-import { logger } from "../../../../utils/logger.js";
-
 export async function runMigrations(pool) {
-  logger.info('========================================');
-  logger.info('[Migrate] STARTING MIGRATIONS');
-  logger.info('========================================');
+  console.log('\n\n========== MIGRATE START ==========');
+  console.log('[Migrate] RUNNING MIGRATIONS NOW at', new Date().toISOString());
   try {
-    logger.info('[Migrate] Executing CREATE TABLE statements...');
+    console.log('[Migrate] About to execute SQL...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS credit_balances (
         id SERIAL PRIMARY KEY,
@@ -71,14 +68,12 @@ export async function runMigrations(pool) {
       WHERE credit_balances.total_deposited < 0.500000;
     `);
     const verify = await pool.query(`SELECT COUNT(*) as cnt FROM credit_balances`);
-    logger.info('[Migrate] Table verified: credit_balances exists', { count: verify.rows[0].cnt });
-    logger.info('========================================');
-    logger.info('[Migrate] ALL MIGRATIONS COMPLETE');
-    logger.info('========================================');
+    console.log('[Migrate] Tables created. Rows in credit_balances:', verify.rows[0]?.cnt);
+    console.log('========== MIGRATE DONE ==========\n\n');
   } catch (err) {
-    logger.error('========================================');
-    logger.error('[Migrate] MIGRATION FAILED', { error: err.message, stack: err.stack });
-    logger.error('========================================');
+    console.error('========== MIGRATE FAILED ==========');
+    console.error('[Migrate] Error:', err.message);
+    console.error('========== END ERROR ==========');
     throw err;
   }
 }
