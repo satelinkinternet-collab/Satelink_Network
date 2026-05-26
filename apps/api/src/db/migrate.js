@@ -4,8 +4,11 @@
 import { logger } from "../../../../utils/logger.js";
 
 export async function runMigrations(pool) {
-  logger.info('[Migrate] Running startup migrations...');
+  logger.info('========================================');
+  logger.info('[Migrate] STARTING MIGRATIONS');
+  logger.info('========================================');
   try {
+    logger.info('[Migrate] Executing CREATE TABLE statements...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS credit_balances (
         id SERIAL PRIMARY KEY,
@@ -67,9 +70,15 @@ export async function runMigrations(pool) {
         last_deposit_at = NOW()
       WHERE credit_balances.total_deposited < 0.500000;
     `);
-    logger.info('[Migrate] All migrations complete');
+    const verify = await pool.query(`SELECT COUNT(*) as cnt FROM credit_balances`);
+    logger.info('[Migrate] Table verified: credit_balances exists', { count: verify.rows[0].cnt });
+    logger.info('========================================');
+    logger.info('[Migrate] ALL MIGRATIONS COMPLETE');
+    logger.info('========================================');
   } catch (err) {
-    logger.error('[Migrate] Migration failed', { error: err.message });
+    logger.error('========================================');
+    logger.error('[Migrate] MIGRATION FAILED', { error: err.message, stack: err.stack });
+    logger.error('========================================');
     throw err;
   }
 }
