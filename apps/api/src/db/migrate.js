@@ -1,8 +1,10 @@
 // apps/api/src/db/migrate.js
 // Auto-runs on server startup — idempotent (safe to run multiple times)
 
+import { logger } from "../../../../utils/logger.js";
+
 export async function runMigrations(pool) {
-  console.log('[Migrate] Running startup migrations...');
+  logger.info('[Migrate] Running startup migrations...');
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS credit_balances (
@@ -65,9 +67,9 @@ export async function runMigrations(pool) {
         last_deposit_at = NOW()
       WHERE credit_balances.total_deposited < 0.500000;
     `);
-    console.log('[Migrate] All migrations complete');
+    logger.info('[Migrate] All migrations complete');
   } catch (err) {
-    console.error('[Migrate] Migration failed:', err.message);
+    logger.error('[Migrate] Migration failed', { error: err.message });
     throw err;
   }
 }
