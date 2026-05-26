@@ -10,7 +10,7 @@ import { ethers } from 'ethers';
 const POLYGON_RPC = 'https://polygon-bor-rpc.publicnode.com';
 const REVENUE_VAULT = '0x80AFEaC3B77CbeC1f7B9f24a50319DC72785DdA3';
 const USDT_CONTRACT = '0xc2132D05D31c914a87C6611C10748AEb04B58e8F';
-const SATELINK_API = process.env.SATELINK_API || 'http://localhost:8080';
+const API_BASE = process.env.API_BASE_URL || 'http://localhost:8080';
 const TEST_AMOUNT_USDT = 0.50; // $0.50
 
 // ── ABIs
@@ -30,12 +30,12 @@ function log(msg) {
 }
 
 async function checkBalance(wallet) {
-  const res = await fetch(`${SATELINK_API}/credits/balance?wallet=${wallet}`);
+  const res = await fetch(`${API_BASE}/credits/balance?wallet=${wallet}`);
   return res.json();
 }
 
 async function testRpcCall(wallet) {
-  const res = await fetch(`${SATELINK_API}/rpc/polygon`, {
+  const res = await fetch(`${API_BASE}/rpc/polygon`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ async function main() {
   log(`Network: Polygon Mainnet (137)`);
   log(`USDT Contract: ${USDT_CONTRACT}`);
   log(`Revenue Vault: ${REVENUE_VAULT}`);
-  log(`API: ${SATELINK_API}`);
+  log(`API: ${API_BASE}`);
   log(`Test Amount: $${TEST_AMOUNT_USDT} USDT`);
   log('='.repeat(60));
 
@@ -78,8 +78,8 @@ async function main() {
     log('You can manually test by:');
     log('1. Sending $0.50 USDT directly to the RevenueVault contract');
     log('2. Watching the server logs for "[DepositListener] Deposit detected"');
-    log('3. Checking balance: curl "http://localhost:8080/credits/balance?wallet=YOUR_WALLET"');
-    log('4. Testing RPC: curl -X POST http://localhost:8080/rpc/polygon \\');
+    log('3. Checking balance: curl "$API_BASE_URL/credits/balance?wallet=YOUR_WALLET"');
+    log('4. Testing RPC: curl -X POST $API_BASE_URL/rpc/polygon \\');
     log('     -H "Content-Type: application/json" \\');
     log('     -H "X-Wallet-Address: YOUR_WALLET" \\');
     log('     -d \'{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}\'');

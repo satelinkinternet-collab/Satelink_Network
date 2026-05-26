@@ -35,13 +35,27 @@ export default function revenueRoutes(pool) {
 
   router.get("/epochs", async (req, res) => {
     try {
+      // Query actual epochs table (status is 'OPEN' or 'CLOSED')
       const result = await pool.query(`
-        SELECT epoch_id, COUNT(*) AS requests,
-               SUM(amount_usdt) AS total
-        FROM revenue_events_v2
-        GROUP BY epoch_id
-        ORDER BY epoch_id DESC
-        LIMIT 10
+        SELECT
+          e.id AS epoch_id,
+          e.status,
+          e.starts_at,
+          e.ends_at,
+          e.total_revenue_usdt AS total,
+          e.node_pool_usdt,
+          e.platform_share_usdt,
+          e.distributor_share_usdt,
+          COALESCE(r.request_count, 0) AS requests
+        FROM epochs e
+        LEFT JOIN (
+          SELECT epoch_id, COUNT(*) AS request_count
+          FROM revenue_events_v2
+          WHERE epoch_id IS NOT NULL
+          GROUP BY epoch_id
+        ) r ON r.epoch_id = e.id
+        ORDER BY e.id DESC
+        LIMIT 20
       `);
 
       res.json({ ok: true, epochs: result.rows });
