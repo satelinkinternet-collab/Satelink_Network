@@ -15,13 +15,13 @@ import { createWebhookRouter, ensureWebhookTable } from "./src/workloads/webhook
 import { createOracleRouter } from "./src/workloads/oracle/index.js";
 import { createClaimsRouter } from "./src/routes/claims_route.mjs";
 import { createOsEventsRouter } from "./src/realtime/os-events-route.js";
-import nodeAuthRouter from "./src/routes/node_auth_route.mjs";
 import { createMachineAccessRouter } from "./src/machine-access/index.js";
 import { createAdminMalRouter } from "./src/routes/admin_mal_route.mjs";
 import { createFinancialTruthRouter } from "./src/services/financial/truth.js";
 import { createCreditsRouter } from "./src/routes/credits.js";
 import { createFreeTierGate, getFreeTierStats } from "./src/middleware/free_tier_gate.js";
-import { createUnifiedAuthRouter } from "./src/gateway/routes/auth_v2.js";
+import { createUnifiedAuthRouter as createUserAuthRouter } from "./src/gateway/routes/auth_v2.js";
+import { createUnifiedAuthRouter } from './src/routes/node_auth_route.mjs';
 
 export function createApp(pool, redis) {
   // Initialize free tier gate (Path C: 500 free calls/day per IP)
@@ -193,7 +193,7 @@ app.get("/api/mode", (req, res) => {
   });
 
   // Node operator auth endpoint (public, rate-limited)
-  app.use("/api/auth", nodeAuthRouter);
+  app.use("/api/auth", createUnifiedAuthRouter());
 
   // Unified auth router — login, register, /me
   // auth_v2 uses SQLite-style prepare().get() — adapt pg pool to match
@@ -206,7 +206,7 @@ app.get("/api/mode", (req, res) => {
       run: async (params) => pool.query(sql, params)
     })
   };
-  app.use("/auth", createUnifiedAuthRouter({ db: pgDbAdapter }));
+  app.use("/auth", createUserAuthRouter({ db: pgDbAdapter }));
 
   // Free tier monitoring endpoint (outside /api to avoid router conflicts)
   app.get("/stats/free-tier", (req, res) => res.json(getFreeTierStats()));

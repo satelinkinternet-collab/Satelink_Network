@@ -77,4 +77,8 @@ router.post('/node-token', async (req, res) => {
   }
 });
 
+export function createUnifiedAuthRouter() {
+  return router;
+}
+
 export default router;
