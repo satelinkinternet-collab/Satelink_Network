@@ -33,8 +33,9 @@ satelink-keys/
 satelink-env/
 
 # ── AGENT STATE (persistent memory) ──
+# Note: PROGRESS.md and task files are now version controlled
+# for rotational agent system to work
 agent/memory/CURRENT_TASK.md
-agent/memory/PROGRESS.md
 
 # ── CLAUDE CODE ──────────────────────
 .claude/
@@ -144,18 +145,16 @@ logs/
 .claude-flow/
 .swarm/
 paperclip-org/
-agents/
-tasks/
-memory/
-reports/
+paperclip_backup.sql
 
+# Keep agent memory structure in git (org state versioned)
+# but ignore archives and reports
+agent/memory/archive/
+agent/memory/reports/
 
+# Legacy agents directory (with node_modules)
 agents/node-agent/node_modules/
 
-
 .mcp.json
-CLAUDE.md
-CURRENT_TASK.md
-PROGRESS.md
 scripts/health_check.sh
 

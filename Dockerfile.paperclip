@@ -1,0 +1,18 @@
+FROM node:20-alpine
+LABEL description="Satelink Paperclip — AI Agent Orchestration Layer"
+WORKDIR /app
+
+# Install paperclipai globally
+RUN npm install -g paperclipai@latest --prefix /usr/local
+
+# Copy agent memory (org state)
+COPY agent/ ./agent/
+COPY start-cloud.sh ./
+
+RUN chmod +x start-cloud.sh
+
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD wget -qO- http://localhost:8080/health || exit 1
+
+CMD ["sh", "start-cloud.sh"]
