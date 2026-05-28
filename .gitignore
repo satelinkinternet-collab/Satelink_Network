@@ -139,3 +139,23 @@ out
 logs/
 .vercel
 .env*.local
+
+# AI orchestration
+.claude-flow/
+.swarm/
+paperclip-org/
+agents/
+tasks/
+memory/
+reports/
+
+
+agents/node-agent/node_modules/
+
+
+.mcp.json
+CLAUDE.md
+CURRENT_TASK.md
+PROGRESS.md
+scripts/health_check.sh
+
