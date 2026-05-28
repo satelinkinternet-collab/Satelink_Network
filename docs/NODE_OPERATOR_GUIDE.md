@@ -1,82 +1,107 @@
 # Satelink Node Operator Guide
 
-## What is a Satelink Node?
-A Satelink node is a server that processes RPC requests for DeFi protocols,
-AI agents, and machine workloads. You earn 50% of all revenue your node generates,
-paid in USDT on Polygon. No staking required.
+## 1. What is a Satelink Node?
 
-## Earnings Model
-- You earn 50% of every RPC call routed through your node
-- Rate: $0.00003 USDT per RPC call (varies by chain and method)
-- At 10,000 calls/day: ~$0.15/day = ~$4.50/month
-- At 100,000 calls/day: ~$1.50/day = ~$45/month
-- Tier multipliers: Bronze 0.9x | Silver 0.95x | Gold 1.0x | Platinum 1.1x
-- Minimum claim: 1 USDT | Paid on Polygon mainnet
+A Satelink node is a router or VPS that earns USDT by serving RPC calls on behalf of the Satelink Network. Operators connect their machines to the network and are compensated based on the volume and quality of traffic they handle.
 
-## Hardware Requirements
-| Resource | Minimum | Recommended |
-|----------|---------|-------------|
-| CPU | 1 core | 2+ cores |
-| RAM | 512 MB | 2 GB |
-| Bandwidth | 10 Mbps | 100 Mbps |
-| Uptime | 95%+ | 99%+ |
-| OS | Ubuntu 20.04+ | Ubuntu 22.04 |
+---
 
-## Reputation Tiers
-Your reputation score (0-1000) determines your tier and earnings multiplier:
-- Bronze (0-199): 1,000 RPC calls/day limit, 0.9x earnings
-- Silver (200-399): 5,000 calls/day, 0.95x earnings
-- Gold (400-699): 20,000 calls/day, 1.0x earnings
-- Platinum (700-1000): Unlimited calls, 1.1x earnings bonus
+## 2. Requirements
 
-Score increases by sending regular heartbeats and serving RPC calls.
+| Item | Requirement |
+|------|-------------|
+| Internet | Stable connection required |
+| IP Address | Static IP preferred |
+| Runtime | Node.js 20+ |
+| RAM | 512 MB minimum |
 
-## Quick Setup
+---
 
-### Step 1: Register your node
-```bash
+## 3. How to Register
+
+Send a `POST` request to register your node:
+
+```
 POST https://rpc.satelink.network/api/nodes/register
+```
+
+**Request body:**
+```json
 {
-  "wallet_address": "0xYOUR_WALLET",
-  "node_type": "rpc",
-  "endpoint_url": "https://your-server.com",
-  "region": "ap-south-1",
-  "chain_ids": [80002, 137, 1]
+  "wallet": "0xYOUR_POLYGON_WALLET",
+  "region": "your-region",
+  "endpoint": "your-rpc-url"
 }
 ```
 
-### Step 2: Send heartbeats (every 2 minutes)
-```bash
-POST https://rpc.satelink.network/api/nodes/{nodeId}/heartbeat
+**Response:**
+```json
 {
-  "cpu_pct": 12,
-  "ram_pct": 34,
-  "uptime_seconds": 86400,
-  "rpc_calls_served": 1000
+  "nodeId": "...",
+  "status": "registered"
 }
 ```
 
-### Step 3: Monitor earnings
-```bash
-GET https://rpc.satelink.network/api/nodes/{nodeId}/earnings
-GET https://rpc.satelink.network/api/nodes/{nodeId}/reputation
+Save the `nodeId` — you will need it for heartbeats and claims.
+
+---
+
+## 4. How Heartbeat Works
+
+Your node must send a heartbeat every **60 seconds** to stay active:
+
+```
+POST https://rpc.satelink.network/api/nodes/heartbeat
 ```
 
-### Step 4: Claim when ready (minimum 1 USDT)
-Claims processed within 24 hours of epoch close.
-Paid in USDT to your registered wallet on Polygon.
+**Request body:**
+```json
+{
+  "nodeId": "...",
+  "metrics": {
+    "latency": 42,
+    "uptime": 86400
+  }
+}
+```
 
-## API Endpoints Reference
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| /api/nodes/register | POST | Register a new node |
-| /api/nodes/{id}/heartbeat | POST | Send heartbeat |
-| /api/nodes/{id}/earnings | GET | View earnings |
-| /api/nodes/{id}/reputation | GET | View score + tier |
-| /api/nodes/{id}/health | GET | View health history |
-| /api/nodes | GET | Browse all nodes |
+- `latency`: response time in milliseconds
+- `uptime`: total uptime in seconds
+
+> **Important:** Nodes that miss heartbeats for more than **5 minutes** are marked inactive and stop earning until heartbeats resume.
+
+---
+
+## 5. How Earnings Work
+
+- **50%** of all platform revenue is distributed to active nodes each epoch.
+- Your share is calculated as:
+
+```
+Your share = (your ops ÷ total network ops) × operator pool
+```
+
+- A higher **NETS reputation score** increases your proportional share of the operator pool.
+
+---
+
+## 6. How to Claim
+
+**Check your balance:**
+```
+GET https://rpc.satelink.network/api/nodes/:nodeId/earnings
+```
+
+**Claim to your wallet:**
+```
+POST https://rpc.satelink.network/api/nodes/:nodeId/claim
+```
+
+> **Note:** There is a **48-day claim window** per epoch. Unclaimed earnings are returned to the treasury after the window closes.
+
+---
 
 ## Support
-- Discord: Coming soon (satelink.network/discord)
+
 - Email: satelinknetwork@gmail.com
 - Docs: satelink.network/nodes
