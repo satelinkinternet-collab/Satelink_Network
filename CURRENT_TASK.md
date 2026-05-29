@@ -1,0 +1,1 @@
+agent/memory/CURRENT_TASK.md
