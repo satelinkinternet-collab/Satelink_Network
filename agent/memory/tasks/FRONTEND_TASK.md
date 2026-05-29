@@ -1,32 +1,52 @@
-# FRONTEND_WORKER TASK — SLOT 2
-Status: WAITING (activates after slot 1 DONE)
-Model: Claude Sonnet 4.6 (temporary)
-Max Turns: 25
-Assigned by: CEO via MASTER_TASK_QUEUE
+# FRONTEND_WORKER TASK — Admin Panel + Conversion Flow (SAT-56 Slot 4)
+# Assigned by: CEO
+# Issue: SAT-13 (admin panel) + conversion flow
+# Model: claude-sonnet-4-6
+# Max Turns: 20
+# Status: ACTIVE
 
-## HARD CONSTRAINTS
-- File scope: apps/web/src/app/admin/ · apps/web/src/app/dashboard/ · apps/web/src/components/
-- Do NOT touch backend files
-- Do NOT change API routes
-- Do NOT redesign — wire existing UI to real data only
+## YOUR JOB
 
-## JOB
-Replace all hardcoded/mock data in admin panel with real API calls.
+Two specific tasks. Complete both, commit, and write DONE to PROGRESS.md.
 
-## PRIORITY ORDER
-1. Epoch number display → call GET /api/status → show real epoch
-2. Node count display → call GET /api/nodes or /admin/nodes → show real count
-3. Revenue display → call GET /admin/revenue or /api/revenue → show real revenue
-4. Conversion tracker → call GET /system/free-tier → show near-limit IP count
+---
 
-## EXACT STEPS
-1. Find all files in apps/web/src/app/admin/ that contain hardcoded data:
-   grep -r "TODO\|STUB\|MOCK\|hardcoded\|fake\|placeholder\|[0-9]\{4,\}" apps/web/src/app/admin/ --include="*.tsx" --include="*.jsx" -l
-2. For each file found — replace mock data with real fetch() calls to existing API
-3. Verify each page loads without errors
-4. Write to agent/memory/PROGRESS.md:
-   DONE | slot=2 | task=admin_panel_real_data | pages_fixed=N | timestamp=$(date)
-5. STOP.
+## Task A: Wire admin panel real data (SAT-13)
 
-## EXIT CONDITION
-Admin panel pages show live data from API. DONE written. STOP.
+File: apps/web/src/app/admin/page.tsx and subdirectories
+
+Replace all hardcoded numbers with real API calls:
+- Epoch number → GET /api/status (field: current_epoch)
+- Node count → GET /api/status (field: nodes_online)
+- Revenue → GET /api/financial or /api/settlement/audit (real USDT amount)
+
+Verify: epoch shows 5732+, node count shows 0, revenue shows real USDT value.
+
+---
+
+## Task B: Add free-tier upgrade prompt (conversion flow)
+
+When a visitor hits the site from a blocked IP, show upgrade prompt.
+
+1. Find the 402 handler in apps/web/ — search for 402 or PaymentRequired
+2. If no 402 handler exists in frontend, create one at:
+   apps/web/src/app/gateway/rpc/[chain]/route.ts
+3. The prompt should show:
+   "You've used your 500 free calls today.
+    Deposit 1 USDT to rpc.satelink.network to continue."
+   With deposit address and instructions.
+
+---
+
+## COMMIT AND EXIT
+
+Commit both fixes:
+  git add apps/web/src/
+  git commit -m "feat(SAT-13): admin panel live data + free-tier upgrade prompt"
+  git push origin main
+
+Write to /Users/pradeepjakuraa/satelink/agent/memory/PROGRESS.md:
+  DONE | slot=SAT56-4 | task=frontend_admin_conversion | commit=HASH | timestamp=[now]
+
+End with: "ISSUE STATUS: DONE — admin panel + conversion flow committed"
+STOP. Max 20 turns.

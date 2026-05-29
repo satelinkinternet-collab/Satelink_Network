@@ -71,6 +71,28 @@ export async function POST(
       });
 
       const data = await response.json();
+
+      // 402: free tier exhausted — return JSON-RPC error so DApps parse it cleanly
+      if (response.status === 402) {
+        const depositAddress = data.deposit_address || 'rpc.satelink.network';
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id: body.id ?? null,
+          error: {
+            code: -32005,
+            message: `You've used your ${data.free_tier_limit ?? 500} free calls today. Deposit 1 USDT to ${depositAddress} to continue.`,
+            data: {
+              upgrade_url: 'https://docs.satelink.network',
+              deposit_address: data.deposit_address,
+              network: data.network,
+              usdt_contract: data.usdt_contract,
+              resets_in_minutes: data.resets_in_minutes,
+              how_to_fund: data.how_to_fund,
+            },
+          },
+        }, { status: 402 });
+      }
+
       return NextResponse.json(data, { status: response.status });
     } catch (err) {
       console.warn(`[RPC Proxy] Backend failed, falling back to direct RPC: ${err}`);
