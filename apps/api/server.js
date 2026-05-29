@@ -263,7 +263,7 @@ async function start() {
       }
     });
 
-    app.get('/system/rpc-healer{/:chain}', async (req, res) => {
+    app.get('/system/rpc-healer/:chain?', async (req, res) => {
       try {
         const chain = req.params.chain || 'polygon-amoy';
         const stats = await getHealerStats(chain);
@@ -424,10 +424,10 @@ async function start() {
   let depositListener;
   try {
     depositListener = new DepositListener(pool, console);
-    await depositListener.start();
-    console.log('[BOOT] ✅ DepositListener started — watching Polygon Mainnet for USDT deposits');
+    // Moved to after listen to avoid blocking Railway healthcheck
+    console.log('[BOOT] ✅ DepositListener initialized');
   } catch (err) {
-    console.error('[BOOT] ⚠️ DepositListener failed (non-fatal):', err.message);
+    console.error('[BOOT] ❌ FAILED at DepositListener initialization:', err.message);
   }
 
   // Step 10: Start epoch scheduler
@@ -507,6 +507,15 @@ async function start() {
       console.log('[BOOT] ✅ Server listening on port ' + PORT);
       console.log(`✅ Satelink Backend Running on port ${PORT}`);
       console.log(`📡 WebSocket available at /rpc/ws/:chain`);
+
+      // Start DepositListener after server is up (non-blocking for Railway)
+      if (depositListener) {
+        depositListener.start().then(() => {
+          console.log('[POST-BOOT] ✅ DepositListener started — watching Polygon Mainnet for USDT deposits');
+        }).catch(err => {
+          console.error('[POST-BOOT] ⚠️ DepositListener failed to start:', err.message);
+        });
+      }
 
       // Run migrations and schedulers AFTER server is up (non-blocking for Railway)
       try {
