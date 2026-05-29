@@ -67,9 +67,14 @@ export class DepositListener {
         await this._handleDeposit(from, amount, event);
       });
 
-      // Provider error → reconnect
+      // Provider error → reconnect (filter expiry is non-critical — ethers auto-recovers)
       this.provider.on('error', (err) => {
-        this.log.error(`${LOG_PREFIX} Provider error: ${err.message} — reconnecting in ${RECONNECT_DELAY_MS}ms`);
+        const msg = err?.message || String(err);
+        if (msg.includes('filter not found') || msg.includes('eth_getFilterChanges')) {
+          this.log.debug?.(`${LOG_PREFIX} Filter expired (non-critical, ethers will auto-recover)`);
+          return;
+        }
+        this.log.error(`${LOG_PREFIX} Provider error: ${msg} — reconnecting in ${RECONNECT_DELAY_MS}ms`);
         this._scheduleReconnect();
       });
 
