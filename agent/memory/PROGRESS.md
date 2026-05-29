@@ -6,10 +6,10 @@
 ---
 
 ## CURRENT ACTIVE SLOT
-Slot: C2-1
-Agent: BACKEND_WORKER
-Task: Mainnet USDT settlement completion
-Status: ACTIVE — SAT-39 assigned
+Slot: C2-2
+Agent: (next assigned)
+Task: (pending CEO activation)
+Status: C2-1 DONE — awaiting CEO to activate next slot
 
 ---
 
@@ -20,7 +20,7 @@ Slot 3 — CONVERSION_MONITOR → DONE
 Slot 4 — SENTINEL           → DONE
 Slot 5 — GROWTH_WORKER      → DONE
 Slot 6 — ORCHESTRATOR       → DONE
-Slot C2-1 — BACKEND_WORKER  → ACTIVE (SAT-39)
+Slot C2-1 — BACKEND_WORKER  → DONE (SAT-39)
 
 ---
 
@@ -56,3 +56,4 @@ NEXT: Paste each agent's INSTRUCTIONS.md content into its Instructions tab in Pa
 CEO_QUEUE_CHECK | status=DONE | action=activated_C2-1 | slot=C2-1 | agent=BACKEND_WORKER | paperclip_issue=SAT-39 | note=REVENUE_WORKER not on approved list; mapped to BACKEND_WORKER for USDT settlement task | timestamp=2026-05-29T00:00:00Z
 DONE | slot=3 | task=conversion_monitor | result=62 IPs tracked, 0 hot/at-limit, revenue opportunity=0 | timestamp=2026-05-29T23:59:00Z
 DONE | slot=1B | task=grouped_commits | result=6 directory commits + push: services(11 files), routes(4), workloads(48), docs(56), contracts(12), frontend(289). All pushed to origin main. 2216 diff lines committed. | commits=43c2494,79417cb,e98518b,f018c48,68b7aa0,57d1f5a | issue=SAT-45 | timestamp=2026-05-29T09:11:00Z
+DONE | slot=C2-1 | task=usdt_settlement | result=Revenue path traced and unblocked: fixed wallet column mismatch in creditNodeEarnings() and epoch_close_job claims INSERT (wallet_address→wallet); documented complete flow node-heartbeat→epoch-close→USDT-payout in docs/SETTLEMENT_FLOW.md; all env vars confirmed present; settlement jobs (TreasurySettlementJob + SettlementAnchorJob) functional on Polygon mainnet | commit=9054861 | timestamp=2026-05-29T10:00:00Z
