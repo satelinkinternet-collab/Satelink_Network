@@ -113,11 +113,24 @@ Exit: Revenue path documented or unblocked + DONE in PROGRESS.md
 
 ---
 
+## SLOT C2-EMERGENCY — BACKEND_WORKER
+Agent: BACKEND_WORKER
+Model: claude-sonnet-4-6
+Max Turns: 20
+Status: ACTIVE — emergency priority due to Railway healthcheck failure
+Task: Investigate and fix Railway deployment crash
+  - Read railway-crash.log (if available) or check recent logs
+  - Identify why healthcheck is failing (check server startup, DB connections, port binding)
+  - Restore /health to ok:true
+Exit: /health returns ok + DONE in PROGRESS.md
+
+---
+
 ## SLOT C2-2 — FRONTEND_WORKER
 Agent: FRONTEND_WORKER
 Model: claude-sonnet-4-6
 Max Turns: 20
-Status: WAITING — activates after C2-1 DONE
+Status: WAITING — activates after C2-EMERGENCY DONE
 Task: Verify and fix admin panel live-data wiring (Cycle 1 Slot 2 unverified)
   - Confirm each endpoint returns real data: /api/status, /admin/nodes, /admin/revenue, /system/free-tier
   - Fix any hardcoded values still present
@@ -190,3 +203,96 @@ Current → $100 Max → $200 Max → API billing
 Gemini Flash Lite agents stay Gemini forever (ops/monitoring)
 Sonnet agents stay Sonnet until Opus budget available
 Opus = CHIEF_ARCHITECT + ECONOMIC_STRATEGIST (Phase 4 only, manual)
+
+---
+
+## CYCLE 3 — SLOTS (Node Operator Acquisition Focus)
+# Created: 2026-05-29T14:15:00Z
+# Priority: Get first node operator online → first revenue
+
+---
+
+## SLOT C3-1 — DEVOPS_WORKER
+Agent: DEVOPS_WORKER
+Model: claude-sonnet-4-6
+Max Turns: 20
+Status: WAITING — activate next
+Task: Railway autoscaling + observability setup
+  - Configure Railway autoscaling rules for API service
+  - Set up log ingestion (OpenObserve or equivalent)
+  - Document config in docs/DEVOPS_RUNBOOK.md
+Exit: Autoscaling active + logs ingesting + DONE in PROGRESS.md
+
+---
+
+## SLOT C3-2 — SECURITY_WORKER
+Agent: SECURITY_WORKER
+Model: gemini-2.5-flash-lite
+Max Turns: 8
+Status: WAITING — after C3-1 DONE
+Task: Trivy scan + Infisical audit
+  - Run Trivy against container images
+  - Audit Infisical secret access logs
+  - Write report to: agent/memory/SECURITY_REPORT.md
+Exit: SECURITY_REPORT.md written + DONE in PROGRESS.md
+
+---
+
+## SLOT C3-3 — BACKEND_WORKER
+Agent: BACKEND_WORKER
+Model: claude-sonnet-4-6
+Max Turns: 20
+Status: WAITING — after C3-2 DONE
+Task: Node registration flow end-to-end test
+  - Register a test node via POST /api/nodes/register
+  - Confirm heartbeat endpoint works: POST /api/nodes/heartbeat
+  - Confirm node appears as 'online' in GET /api/status
+  - Fix any blocking issues in the registration flow
+Exit: One node registered + online + DONE in PROGRESS.md
+
+---
+
+## SLOT C3-4 — CONVERSION_MONITOR
+Agent: CONVERSION_MONITOR
+Model: gemini-2.5-flash-lite
+Max Turns: 4
+Status: WAITING — after C3-3 DONE
+Task: Free-tier conversion check
+  - curl https://rpc.satelink.network/stats/free-tier
+  - Compare to previous: 82 IPs, 0 at-limit
+  - Write update to: agent/memory/CONVERSIONS.md
+Exit: CONVERSIONS.md updated + DONE in PROGRESS.md
+
+---
+
+## SLOT C3-5 — SENTINEL
+Agent: SENTINEL
+Model: gemini-2.5-flash-lite
+Max Turns: 3
+Status: WAITING — after C3-4 DONE
+Task: Health check + node count verify
+  - Ping /health and /api/status
+  - Verify nodes_online reflects C3-3 registration
+  - Write: agent/memory/SENTINEL_STATUS.md
+Exit: SENTINEL_STATUS.md updated + DONE in PROGRESS.md
+
+---
+
+## SLOT C3-6 — ORCHESTRATOR
+Agent: ORCHESTRATOR
+Model: claude-sonnet-4-6
+Max Turns: 8
+Status: WAITING — after C3-5 DONE
+Task: Cycle 3 review + Cycle 4 queue
+  - Read all DONE entries
+  - Append Cycle 3 summary to MASTER_PROGRESS.md
+  - Write Cycle 4 slots (revenue verification focus)
+Exit: Summary appended + Cycle 4 queue written + DONE in PROGRESS.md
+
+---
+
+## BLOCKING (tracks across cycles)
+SAT-8: Chainlist PR — HUMAN ACTION REQUIRED
+  File: docs/chainlist_mainnet_pr.md
+  Submit to: github.com/ethereum-lists/chains
+  This is the highest-leverage single action remaining for organic discovery.
