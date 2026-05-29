@@ -6,10 +6,10 @@
 ---
 
 ## CURRENT ACTIVE SLOT
-Slot: 6
-Agent: ORCHESTRATOR
-Task: Week 1 review + write next cycle queue
-Status: ACTIVE — SAT-34 assigned
+Slot: C2-1
+Agent: BACKEND_WORKER
+Task: Mainnet USDT settlement completion
+Status: ACTIVE — SAT-39 assigned
 
 ---
 
@@ -19,7 +19,8 @@ Slot 2 — FRONTEND_WORKER   → DONE (no explicit DONE entry — assumed comple
 Slot 3 — CONVERSION_MONITOR → DONE
 Slot 4 — SENTINEL           → DONE
 Slot 5 — GROWTH_WORKER      → DONE
-Slot 6 — ORCHESTRATOR       → ACTIVE
+Slot 6 — ORCHESTRATOR       → DONE
+Slot C2-1 — BACKEND_WORKER  → ACTIVE (SAT-39)
 
 ---
 
@@ -38,7 +39,20 @@ DONE | slot=1 | task=auth_login_fix | result=createUnifiedAuthRouter mounted at 
 DONE | slot=3 | task=conversion_check | near_limit=70 | timestamp=2026-05-29T00:00:00Z
 DONE | slot=4 | task=health_check | status=HEALTHY | timestamp=2026-05-29T00:01:00Z
 DONE | slot=5 | task=operator_guide | file=docs/NODE_OPERATOR_GUIDE.md | timestamp=2026-05-29T00:02:00Z
-BLOCKED | slot=1a | task=auth_import_added | file=app_factory.mjs | reason=three_blockers | timestamp=2026-05-29T00:10:00Z | see=SAT-31
+DONE | slot=1a | task=auth_import_added | file=app_factory.mjs | commit=9daffb9 | timestamp=2026-05-29T22:42:00Z | result=createUnifiedAuthRouter factory exported from node_auth_route.mjs; mounted at /api/auth; curl POST /api/auth/node-token returns 400 (non-404) confirming route live | see=SAT-31
 CEO_CHECK | action=no_action | reason=slot_6_orchestrator_still_in_progress | next_slot=6 | agent=ORCHESTRATOR | paperclip_issue=SAT-34 | timestamp=2026-05-29T00:15:00Z
 
 DONE | slot=5 | task=node_operator_guide | result=Comprehensive node operator guide written to docs/NODE_OPERATOR_GUIDE.md covering registration (CLI/Docker/API), heartbeat automation, earnings and reputation tiers, claims workflow, and support | commit=f10b0fa | timestamp=2026-05-28T21:48:32Z
+DONE | slot=6 | task=week1_review | result=Cycle 1 complete: 5/5 worker slots DONE (auth fixed commit 14d1704, conversion monitor 70 near-limit IPs, sentinel HEALTHY epoch 4757, operator guide written). MASTER_PROGRESS.md written. MASTER_TASK_QUEUE.md updated with Cycle 2 slots C2-1 through C2-6 (revenue-first ordering). Risk flags: Slot 2 frontend unverified, 0 nodes online, USDT settlement pending. Next: activate C2-1 REVENUE_WORKER. | timestamp=2026-05-29T06:00:00Z
+CEO_TASK_3 | status=DONE | task=project_intelligence_layer | files_created=8 | issue=SAT-35 | timestamp=2026-05-29T00:00:00Z
+Skills directory: agent/memory/skills/ (8 files)
+Files: SATELINK_COMPANY_CONTEXT.md, SATELINK_ARCHITECTURE.md, SATELINK_REVENUE_MODEL.md, AGENT_UNIVERSAL_RULES.md, CODEBASE_MAP.md, DEPIN_CONCEPTS.md, CURRENT_SPRINT.md, README.md
+Next: Cycle 2 workers can now read skill files before executing. C2-1 REVENUE_WORKER is next active slot.
+CEO_TASK_4 | status=DONE | task=per_agent_intelligence | agents=7 | files_created=8 | issue=SAT-36 | timestamp=2026-05-29T00:00:00Z
+Intelligence layer complete. All 7 agents have INSTRUCTIONS.md files in agent/memory/agents/.
+Files: CEO, ORCHESTRATOR, BACKEND_WORKER, FRONTEND_WORKER, GROWTH_WORKER, CONVERSION_MONITOR, SENTINEL + README index.
+Combined with skills/ directory: agents now have full autonomous context for their domain.
+NEXT: Paste each agent's INSTRUCTIONS.md content into its Instructions tab in Paperclip. Then activate C2-1 REVENUE_WORKER.
+CEO_QUEUE_CHECK | status=DONE | action=activated_C2-1 | slot=C2-1 | agent=BACKEND_WORKER | paperclip_issue=SAT-39 | note=REVENUE_WORKER not on approved list; mapped to BACKEND_WORKER for USDT settlement task | timestamp=2026-05-29T00:00:00Z
+DONE | slot=3 | task=conversion_monitor | result=62 IPs tracked, 0 hot/at-limit, revenue opportunity=0 | timestamp=2026-05-29T23:59:00Z
+DONE | slot=1B | task=grouped_commits | result=6 directory commits + push: services(11 files), routes(4), workloads(48), docs(56), contracts(12), frontend(289). All pushed to origin main. 2216 diff lines committed. | commits=43c2494,79417cb,e98518b,f018c48,68b7aa0,57d1f5a | issue=SAT-45 | timestamp=2026-05-29T09:11:00Z

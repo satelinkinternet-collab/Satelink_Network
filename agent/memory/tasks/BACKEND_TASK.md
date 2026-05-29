@@ -1,41 +1,57 @@
-# BACKEND_WORKER TASK — SLOT 1
-Status: ACTIVE
-Model: Claude Sonnet 4.6 (temporary — will change when plan upgrades)
-Max Turns: 20
-Assigned by: CEO
+# BACKEND_WORKER — SLOT 1 PRODUCTION TASK
+# Assigned by: CEO
+# Model: claude-sonnet-4-6
+# Max Turns: 20
+# Status: ACTIVE
 
-## HARD CONSTRAINTS
-- File scope: apps/api/app_factory.mjs · apps/api/src/routes/ · apps/api/src/gateway/routes/auth_v2.js
-- You may NOT touch any other files
-- You have 20 turns maximum
-- STOP immediately when DONE is written
+## YOUR JOB
+Fix the auth login 404 error in the Satelink API.
 
-## JOB
-Fix auth login 404.
+## AUDIT FINDING (root cause already confirmed)
+createUnifiedAuthRouter is NOT mounted in apps/api/src/app_factory.mjs
+This is why POST /auth/login returns 404.
 
-## ROOT CAUSE (from audit)
-The `createUnifiedAuthRouter` from `auth_v2.js` is NOT mounted in `app_factory.mjs`.
-It's only mounted in legacy files (`src/core/routes.js`, `src/gateway/routes.js`) which are not used by Railway.
+## EXACT FIX
 
-## EXACT STEPS
-1. Read: apps/api/src/gateway/routes/auth_v2.js — understand the router
-2. Read: apps/api/app_factory.mjs — find where to mount it
-3. Add import at top of app_factory.mjs:
-   import { createUnifiedAuthRouter } from "./src/gateway/routes/auth_v2.js";
-4. Mount the router (after nodeAuthRouter mount, around line 195):
-   app.use(createUnifiedAuthRouter({ db: pool }));
-5. Test locally:
-   curl -s -X POST http://localhost:3000/login \
-     -H "Content-Type: application/json" \
-     -d '{"email":"test@test.com","password":"testpassword"}'
-   PASS = JSON response (401 or 400 is fine, means route works)
-   FAIL = 404 HTML (still broken, keep fixing)
-6. Commit:
-   git add apps/api/app_factory.mjs
-   git commit -m "fix: mount auth_v2 router in app_factory for /login endpoint"
-7. Write to agent/memory/PROGRESS.md:
-   DONE | slot=1 | task=auth_login_fix | commit=<hash> | timestamp=$(date)
-8. STOP. Do not explore further. Do not refactor. Do not improve other things.
+Step 1 — Read these two files completely:
+  apps/api/src/app_factory.mjs
+  apps/api/src/routes/node_auth_route.mjs
+
+Step 2 — In app_factory.mjs, find the router import section.
+  Look for lines like:
+    import { createXyzRouter } from './routes/...'
+    app.use('/path', createXyzRouter(deps))
+
+Step 3 — Add the auth router import:
+  import { createUnifiedAuthRouter } from './routes/node_auth_route.mjs';
+
+Step 4 — Mount it (match the pattern of other routers in this file):
+  app.use('/auth', createUnifiedAuthRouter(db));
+  (use the correct dependency injection — check how other routers receive db/config)
+
+Step 5 — Verify the server still starts cleanly (no import errors)
+
+Step 6 — Test the fix:
+  curl -s -X POST http://localhost:3000/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@satelink.io","password":"testpass"}'
+
+  PASS = status 200 or 401 (route is alive, credentials may be wrong — that is fine)
+  FAIL = status 404 (still broken — keep fixing)
+  FAIL = server crash (bad import — check the import path)
+
+Step 7 — Commit:
+  git add apps/api/src/app_factory.mjs
+  git commit -m "fix: mount createUnifiedAuthRouter in app_factory — resolves auth 404"
+
+Step 8 — Write to /Users/pradeepjakuraa/satelink/agent/memory/PROGRESS.md:
+  DONE | slot=1 | task=auth_login_fix | result=createUnifiedAuthRouter mounted | commit=<hash> | timestamp=<now>
+
+Step 9 — STOP. Do not continue. Do not refactor. Do not explore other issues.
+
+## FILE SCOPE (do not touch anything outside this list)
+  apps/api/src/app_factory.mjs          ← PRIMARY FIX FILE
+  apps/api/src/routes/node_auth_route.mjs ← READ ONLY (understand exports)
 
 ## EXIT CONDITION
-DONE is written in PROGRESS.md AND git commit exists. Then STOP.
+curl returns non-404 AND git commit exists AND DONE in PROGRESS.md → STOP
