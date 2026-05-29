@@ -106,7 +106,7 @@ export async function closeCurrentEpoch(pool) {
                 // 6. Create claim if above threshold
                 if (nodeEarnings >= MIN_CLAIM_THRESHOLD_USDT && node.wallet_address) {
                     await client.query(
-                        `INSERT INTO claims (epoch_id, node_id, wallet_address, amount_usdt, status, created_at)
+                        `INSERT INTO claims (epoch_id, node_id, wallet, amount_usdt, status, created_at)
                          VALUES ($1, $2, $3, $4, 'PENDING', NOW())`,
                         [epochId, node.id, node.wallet_address, nodeEarnings]
                     );

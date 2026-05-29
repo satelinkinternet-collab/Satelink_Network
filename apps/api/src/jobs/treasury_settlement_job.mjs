@@ -251,9 +251,9 @@ export class TreasurySettlementJob {
 
   async creditNodeEarnings(totalNodeShare) {
     try {
-      // Get active nodes
+      // Get active nodes — nodes table uses `wallet` not `wallet_address`
       const nodesResult = await this.pool.query(`
-        SELECT node_id, wallet_address, reputation_score
+        SELECT node_id, wallet
         FROM nodes WHERE status = 'active'
       `);
 
@@ -268,9 +268,9 @@ export class TreasurySettlementJob {
 
       for (const node of nodes) {
         await this.pool.query(`
-          INSERT INTO claims (node_id, wallet_address, amount_usdt, status, created_at)
+          INSERT INTO claims (node_id, wallet, amount_usdt, status, created_at)
           VALUES ($1, $2, $3, 'pending', NOW())
-        `, [node.node_id, node.wallet_address, perNodeShare]);
+        `, [node.node_id, node.wallet, perNodeShare]);
 
         console.log(`[TreasurySettlement] Credited ${node.node_id}: $${perNodeShare.toFixed(6)}`);
       }
