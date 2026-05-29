@@ -1,4 +1,4 @@
-import { OperationsEngine } from '../src/services/operations-engine.js';
+import { OperationsEngine } from '../apps/api/src/core/operations_engine.js';
 
 /**
  * Wraps a raw better-sqlite3 `db` into the async opsEngine interface

@@ -1,5 +1,6 @@
 console.log("REVENUE_ROUTE_LOADED");
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ override: true }); // override shell env so .env takes precedence over Paperclip's injected vars
 import path from "path";
 import { fileURLToPath } from "url";
 import { validateEnv } from "./utils/validateEnv.js";
@@ -8,6 +9,18 @@ import { createApp } from "./app_factory.mjs";
 import { PgDatabase } from "./apps/api/src/database/pg_adapter.js";
 import { DepositListener } from "./apps/api/src/services/deposit_listener.js";
 import { runMigrations } from "./apps/api/src/db/migrate.js";
+
+// Prevent unhandled async rejections (e.g. legacy seed methods, missing SQLite tables on PG)
+// from crashing the process — log them instead.
+process.on('unhandledRejection', (reason, promise) => {
+    const msg = reason?.message || String(reason);
+    // Suppress known non-critical seed/schema errors on PostgreSQL
+    if (msg.includes('relation') && msg.includes('does not exist')) {
+        console.warn('[server] Non-critical DB seed error (expected on fresh PG):', msg);
+        return;
+    }
+    console.error('[server] Unhandled Rejection:', msg);
+});
 
 // --- Enforce Directory Root Priority ---
 const __filename = fileURLToPath(import.meta.url);
@@ -44,8 +57,8 @@ if (process.env.NODE_ENV !== "test" && !process.env.MOCHA) {
             depositListener = new DepositListener(db.pool, logger);
             await depositListener.start();
 
-            const app = createApp(db);
-            const PORT = process.env.PORT || 8080;
+            const app = await createApp(db);
+            const PORT = process.env.PORT || 8081;
 
             app.listen(PORT, () => {
                 logger.info(`🚀 Satelink Backend Running`, { port: PORT, mode: process.env.NODE_ENV, db: 'postgresql' });

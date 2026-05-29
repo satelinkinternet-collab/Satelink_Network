@@ -7,15 +7,17 @@ import { attachHeartbeat } from "./core/heartbeat.js";
 import { attachRoutes } from "./core/routes.js";
 import { attachUI } from "./core/ui.js";
 
-export function createApp(db) {
+export async function createApp(db) {
   const app = express();
 
   // Attach modules in same order as server.js
   attachBaseMiddleware(app);
-  attachSchema(db);
+  // Skip SQLite schema bootstrap when using PostgreSQL — PG uses its own migration system
+  const isPostgres = process.env.DATABASE_URL?.startsWith('postgresql') || process.env.DATABASE_URL?.startsWith('postgres');
+  if (!isPostgres) attachSchema(db);
   attachSecurity(app, db);
   attachHeartbeat(app, db);
-  attachRoutes(app, db);
+  await attachRoutes(app, db);
   attachUI(app, db);
 
   // Global Error Handler
