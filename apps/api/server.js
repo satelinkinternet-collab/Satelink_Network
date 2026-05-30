@@ -234,7 +234,6 @@ async function start() {
 
   // Step 5: Mount additional middleware and routes
   try {
-    app.use(express.json());
     app.use("/", createPhase3Router());
     app.use("/credits", createCreditsRouter(pool, console));
 
