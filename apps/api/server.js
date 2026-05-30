@@ -27,6 +27,18 @@ import { createCreditsRouter } from "./src/routes/credits.js";
 
 const { Pool } = pkg;
 
+// Suppress ethers.js internal @TODO console.log for eth_getFilterChanges "filter not found".
+// ethers v6 subscriber-filterid.js#poll() catches filter-expiry errors and emits
+// console.log("@TODO", error) — harmless but noisy in production logs.
+const _origConsoleLog = console.log;
+console.log = (...args) => {
+  if (args[0] === '@TODO' && (
+    args[1]?.payload?.method === 'eth_getFilterChanges' ||
+    args[1]?.message?.includes('could not coalesce')
+  )) return;
+  _origConsoleLog(...args);
+};
+
 // Redis eliminated — all caching/rate-limiting/circuit-breaker is in-memory
 // This saves ~865k commands/month on Upstash free tier
 
