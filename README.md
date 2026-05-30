@@ -102,6 +102,7 @@ cd apps/web && npm run dev  # Frontend (port 3000)
 
 - [Integration Guide](docs/INTEGRATION_GUIDE.md)
 - [Node Operator Guide](docs/NODE_OPERATOR_GUIDE.md)
+- [Paid Tier Quickstart](docs/PAID_TIER_QUICKSTART.md)
 - [Deploy to Polygon](docs/DEPLOY_POLYGON.md)
 - [Architecture](docs/architecture/AUTONOMOUS_ECONOMIC_PROTOCOL.md)
 

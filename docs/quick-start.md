@@ -81,6 +81,8 @@ Response:
 3. Submit TX hash: `POST /api/keys/YOUR_KEY/deposit`
 4. Instant upgrade — no waiting
 
+**Note:** If you prefer a wallet-based integration instead of an API Key, check out our [Wallet-Based Paid Tier Quickstart](/docs/PAID_TIER_QUICKSTART.md).
+
 ## Next Steps
 
 - [API Reference](/docs/api-reference) — Full endpoint documentation
