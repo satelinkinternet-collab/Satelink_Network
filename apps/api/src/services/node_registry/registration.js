@@ -428,6 +428,89 @@ export function createNodeRegistryRouter(db, redis) {
     }
   });
 
+  router.post('/heartbeat', async (req, res) => {
+    try {
+      const { nodeId, node_id, cpu_pct, ram_pct, uptime_seconds, rpc_calls_served, endpoint_url } = req.body || {};
+      const actualNodeId = nodeId || node_id;
+
+      if (!actualNodeId) {
+        return res.status(400).json({ ok: false, error: 'nodeId or node_id is required' });
+      }
+
+      if (!db || !db.query) {
+        return res.status(503).json({ ok: false, error: 'Database unavailable' });
+      }
+
+      const nodeResult = await db.query(
+        'SELECT node_id, status FROM registered_nodes WHERE node_id = $1',
+        [actualNodeId]
+      );
+
+      if (nodeResult.rows.length === 0) {
+        return res.status(404).json({ ok: false, error: 'Node not found' });
+      }
+
+      const now = Math.floor(Date.now() / 1000);
+      const currentStatus = nodeResult.rows[0].status;
+      let newStatus = currentStatus;
+      let comebackInfo = null;
+
+      // Handle offline/suspended node comeback
+      if (currentStatus === 'offline' || currentStatus === 'suspended') {
+        comebackInfo = await handleNodeComeback(actualNodeId, db);
+        newStatus = 'active';
+      } else if (currentStatus === 'pending') {
+        newStatus = 'active';
+      }
+
+      // Update node with heartbeat
+      if (endpoint_url) {
+        const lowerUrl = endpoint_url.toLowerCase();
+        if (lowerUrl.includes('satelink.network') || lowerUrl.includes('localhost') || lowerUrl.includes('127.0.0.1')) {
+          return res.status(400).json({ ok: false, error: 'Invalid endpoint: circular reference not allowed' });
+        }
+        await db.query(
+          `UPDATE registered_nodes
+           SET last_heartbeat_at = $1, status = $2, updated_at = $1, endpoint_url = $4, consecutive_failures = 0
+           WHERE node_id = $3`,
+          [now, newStatus, actualNodeId, endpoint_url]
+        );
+      } else {
+        await db.query(
+          `UPDATE registered_nodes
+           SET last_heartbeat_at = $1, status = $2, updated_at = $1, consecutive_failures = 0
+           WHERE node_id = $3`,
+          [now, newStatus, actualNodeId]
+        );
+      }
+
+      if (redis) {
+        try {
+          await redis.set(
+            `node:heartbeat:${actualNodeId}`,
+            JSON.stringify({ cpu_pct, ram_pct, uptime_seconds, rpc_calls_served, timestamp: now }),
+            'EX',
+            300
+          );
+        } catch (e) { /* redis optional */ }
+      }
+
+      console.log(`[NodeRegistry] Heartbeat (generic): ${actualNodeId} status=${newStatus}${comebackInfo?.restored ? ' (restored)' : ''}`);
+
+      res.json({
+        ok: true,
+        nodeId: actualNodeId,
+        status: newStatus,
+        lastHeartbeatAt: now,
+        restored: comebackInfo?.restored || false,
+        offlineMinutes: comebackInfo?.offlineMinutes || null
+      });
+    } catch (err) {
+      console.error('[NodeRegistry] Heartbeat generic error:', err.message);
+      res.status(500).json({ ok: false, error: 'Failed to process heartbeat' });
+    }
+  });
+
   router.post('/:nodeId/heartbeat', async (req, res) => {
     try {
       const { nodeId } = req.params;

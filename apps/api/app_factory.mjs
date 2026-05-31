@@ -106,17 +106,19 @@ app.get("/api/mode", (req, res) => {
   // GET /api/status — Live network status for machine monitoring
   app.get("/api/status", async (req, res) => {
     try {
-      const [nodesResult, epochStatsResult, epochResult] = await Promise.all([
-        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'online'`),
+      const [nodesResult, regNodesResult, epochStatsResult, epochResult] = await Promise.all([
+        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'online' OR status = 'active'`),
+        pool.query(`SELECT COUNT(*) as count FROM registered_nodes WHERE status = 'active'`),
         pool.query(`SELECT COUNT(*) as total FROM revenue_events_v2 WHERE created_at > extract(epoch from now()) - 86400 AND is_test_data = false`),
         pool.query(`SELECT id FROM epochs ORDER BY id DESC LIMIT 1`)
       ]);
       const requests24h = epochStatsResult.rows?.[0]?.total || 0;
+      const nodesOnline = parseInt(nodesResult.rows[0]?.count || 0) + parseInt(regNodesResult.rows[0]?.count || 0);
 
       res.json({
         status: "operational",
         uptime_pct: 99.5,
-        nodes_online: parseInt(nodesResult.rows[0]?.count || 0),
+        nodes_online: nodesOnline,
         current_epoch: epochResult.rows[0]?.id || 0,
         total_requests_24h: parseInt(requests24h),
         avg_latency_ms: 85,
