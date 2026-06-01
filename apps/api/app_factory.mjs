@@ -106,17 +106,19 @@ app.get("/api/mode", (req, res) => {
   // GET /api/status — Live network status for machine monitoring
   app.get("/api/status", async (req, res) => {
     try {
-      const [nodesResult, epochStatsResult, epochResult] = await Promise.all([
-        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'online'`),
+      const [nodesResult, regNodesResult, epochStatsResult, epochResult] = await Promise.all([
+        pool.query(`SELECT COUNT(*) as count FROM nodes WHERE status = 'online' OR status = 'active'`),
+        pool.query(`SELECT COUNT(*) as count FROM registered_nodes WHERE status = 'active'`),
         pool.query(`SELECT COUNT(*) as total FROM revenue_events_v2 WHERE created_at > extract(epoch from now()) - 86400 AND is_test_data = false`),
         pool.query(`SELECT id FROM epochs ORDER BY id DESC LIMIT 1`)
       ]);
       const requests24h = epochStatsResult.rows?.[0]?.total || 0;
+      const nodesOnline = parseInt(nodesResult.rows[0]?.count || 0) + parseInt(regNodesResult.rows[0]?.count || 0);
 
       res.json({
         status: "operational",
         uptime_pct: 99.5,
-        nodes_online: parseInt(nodesResult.rows[0]?.count || 0),
+        nodes_online: nodesOnline,
         current_epoch: epochResult.rows[0]?.id || 0,
         total_requests_24h: parseInt(requests24h),
         avg_latency_ms: 85,
@@ -211,9 +213,10 @@ app.get("/api/mode", (req, res) => {
   // Free tier monitoring endpoint (outside /api to avoid router conflicts)
   app.get("/stats/free-tier", (req, res) => res.json(getFreeTierStats()));
 
-  // RPC Gateway with latency-based routing (50mb limit for batch requests)
-  // Path C: freeTierGate → 500 free/day per IP, wallet header bypasses to creditGate
-  app.use("/rpc", express.json({ limit: '50mb' }), freeTierGate, createRpcGateway(pool));
+  // RPC Gateway — freeTierGate runs before JSON parsing to reject rate-limited IPs
+  // before their request body is allocated (prevents OOM from high-volume abusers).
+  // Body limit 1mb covers all legitimate RPC batch calls; 50mb caused heap exhaustion.
+  app.use("/rpc", freeTierGate, express.json({ limit: '1mb' }), createRpcGateway(pool));
 
   // MEV Private Relay (S3-001) — 10x pricing, requires API key
   app.use("/rpc/mev", createMevRelayRouter(pool, redis));

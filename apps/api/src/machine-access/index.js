@@ -22,7 +22,7 @@ import { WebsocketAuthService } from "./websocket-auth.service.js";
 
 export function createMachineAccessRouter(pool, redis) {
   const router = express.Router();
-  router.use(express.json());
+  router.use(express.json({ limit: '100kb' }));
 
   const permissionValidator = new PermissionValidatorService();
   const environmentGuard = new EnvironmentGuardService();

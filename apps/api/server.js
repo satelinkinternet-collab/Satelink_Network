@@ -234,7 +234,6 @@ async function start() {
 
   // Step 5: Mount additional middleware and routes
   try {
-    app.use(express.json());
     app.use("/", createPhase3Router());
     app.use("/credits", createCreditsRouter(pool, console));
 
@@ -275,7 +274,7 @@ async function start() {
       }
     });
 
-    app.get('/system/rpc-healer/:chain?', async (req, res) => {
+    app.get(['/system/rpc-healer', '/system/rpc-healer/:chain'], async (req, res) => {
       try {
         const chain = req.params.chain || 'polygon-amoy';
         const stats = await getHealerStats(chain);

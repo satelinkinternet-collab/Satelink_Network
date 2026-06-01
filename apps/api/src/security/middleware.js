@@ -6,8 +6,8 @@ import helmet from "helmet";
 const IS_DEV = process.env.NODE_ENV === "development";
 
 export function attachBaseMiddleware(app) {
-    app.use(express.json({ limit: '10mb' }));
-    app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    app.use(express.json({ limit: '100kb' }));
+    app.use(express.urlencoded({ extended: true, limit: '100kb' }));
     app.use(cookieParser());
 
     // Safety headers and CORS
